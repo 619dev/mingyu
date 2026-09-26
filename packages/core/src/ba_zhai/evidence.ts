@@ -217,7 +217,8 @@ function buildCalculationFact(
   const yearBoundaryStatus: BaZhaiCalculationFact['yearBoundaryStatus'] =
     data.effectiveBirthYear === null
       ? '直接命卦'
-      : data.birthYearBoundaryNote.includes('未提供月日')
+      : data.birthYearBoundaryNote.includes('未提供月日') ||
+          data.birthYearBoundaryNote.includes('未提供出生时刻')
         ? '待复核'
         : '已核定';
   const steps: BaZhaiCalculationStep[] = [
@@ -248,7 +249,7 @@ function buildCalculationFact(
         yearBoundaryStatus === '直接命卦'
           ? '直接采用明确给定的命卦'
           : yearBoundaryStatus === '待复核'
-            ? `出生年份暂按${data.effectiveBirthYear}计算，立春前出生仍需按上一年复核`
+            ? data.birthYearBoundaryNote
             : `出生日期按立春年界取有效年份${data.effectiveBirthYear}`,
       sources: ['立春年界与干支年换算规则', '输入出生日期或明确给定的命卦资料'],
       limitation: CALCULATION_STEP_LIMITATION,
@@ -439,7 +440,9 @@ function buildCounterEvidenceFacts(
         calculationFact.yearBoundaryStatus === '直接命卦'
           ? '命卦已明确给定，不再反推出生年界'
           : calculationFact.yearBoundaryStatus === '待复核'
-            ? '只提供出生年份，立春前后的命卦年界仍需按完整出生日期复核'
+            ? data.birthYearBoundaryNote.includes('未提供出生时刻')
+              ? data.birthYearBoundaryNote
+              : '只提供出生年份，立春前后的命卦年界仍需按完整出生日期复核'
             : `出生日期已按立春年界核定，有效命卦年份为${data.effectiveBirthYear}`,
       sources: ['出生日期、立春年界与命卦有效年份核验'],
       limitation: COUNTER_FACT_LIMITATION,

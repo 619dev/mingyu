@@ -122,8 +122,16 @@ export interface LiuqiStep {
   order: number;
   label: '初之气' | '二之气' | '三之气' | '四之气' | '五之气' | '终之气';
   solarTerms: string[];
+  /** 节气所在日与下一节气前一日的日期标签；交节当日以 boundaryTime 判定。 */
   gregorianStart?: string;
   gregorianEnd?: string;
+  /** 节气历表的北京时间交接瞬时；终点归下一步。 */
+  boundaryTime?: {
+    startTimestamp: number;
+    endTimestampExclusive: number;
+    startBeijing: string;
+    endBeijingExclusive: string;
+  };
   hostQi: LiuqiProfile;
   guestQi: LiuqiProfile;
   hostGuestRelation: {
@@ -313,16 +321,25 @@ function padDatePart(value: number) {
   return String(value).padStart(2, '0');
 }
 
-function solarTermCivilDate(year: number, name: string) {
+function solarTermBoundary(year: number, name: string) {
   const index = SOLAR_TERM_INDEX[name];
   if (index === undefined) throw new Error(`五运六气缺少节气序号：${name}`);
   const evidence = calculateSolarTermEvidence(year, index);
   const shifted = new Date(evidence.utcTimestamp + 8 * 3_600_000);
-  return {
+  const date = {
     year: shifted.getUTCFullYear(),
     month: shifted.getUTCMonth() + 1,
     day: shifted.getUTCDate(),
   };
+  return {
+    date,
+    timestamp: evidence.utcTimestamp,
+    beijing: `${formatCivilDate(date)} ${padDatePart(shifted.getUTCHours())}:${padDatePart(shifted.getUTCMinutes())}:${padDatePart(shifted.getUTCSeconds())}`,
+  };
+}
+
+function solarTermCivilDate(year: number, name: string) {
+  return solarTermBoundary(year, name).date;
 }
 
 function addCivilDays(date: { year: number; month: number; day: number }, days: number) {
@@ -683,13 +700,20 @@ function buildQiSteps(sitianName: LiuqiName, year?: number): LiuqiStep[] {
     } satisfies LiuqiStep;
   });
   if (year !== undefined) {
-    const starts = steps.map((step) => solarTermCivilDate(year, step.solarTerms[0]));
-    const nextYearStart = solarTermCivilDate(year + 1, '大寒');
+    const starts = steps.map((step) => solarTermBoundary(year, step.solarTerms[0]));
+    const nextYearStart = solarTermBoundary(year + 1, '大寒');
     for (let index = 0; index < steps.length; index += 1) {
       const start = starts[index];
-      const end = addCivilDays(index + 1 < starts.length ? starts[index + 1] : nextYearStart, -1);
-      steps[index].gregorianStart = formatCivilDate(start);
+      const next = index + 1 < starts.length ? starts[index + 1] : nextYearStart;
+      const end = addCivilDays(next.date, -1);
+      steps[index].gregorianStart = formatCivilDate(start.date);
       steps[index].gregorianEnd = formatCivilDate(end);
+      steps[index].boundaryTime = {
+        startTimestamp: start.timestamp,
+        endTimestampExclusive: next.timestamp,
+        startBeijing: start.beijing,
+        endBeijingExclusive: next.beijing,
+      };
     }
   }
   return steps;
@@ -756,17 +780,13 @@ export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
     }),
     '六步主客气：',
     ...result.qiSteps.map((step) => {
-      const dates =
-        step.gregorianStart && step.gregorianEnd
-          ? `；公历${step.gregorianStart}至${step.gregorianEnd}`
-          : '';
+      const dates = step.boundaryTime
+        ? `；北京时间${step.boundaryTime.startBeijing}起，至${step.boundaryTime.endBeijingExclusive}交接`
+        : '';
       const current =
-        result.input.year && step.gregorianStart && step.gregorianEnd
-          ? isDateInRange(
-              { year: result.input.year, month: 6, day: 30 },
-              parseCivilDate(step.gregorianStart),
-              parseCivilDate(step.gregorianEnd),
-            )
+        result.input.year && step.boundaryTime
+          ? Date.UTC(result.input.year, 5, 30, 4, 0, 0) >= step.boundaryTime.startTimestamp &&
+            Date.UTC(result.input.year, 5, 30, 4, 0, 0) < step.boundaryTime.endTimestampExclusive
             ? '；年中落在此步'
             : ''
           : '';
@@ -887,6 +907,7 @@ export function calculateWuyunLiuqi(input: WuyunLiuqiInput): WuyunLiuqiResult {
     limitations: [
       '公历交司日期支持1900—2199年；其他年份按节气和传统序日表达五步、六步边界。',
       '五步交司按《运气要诀》所列传统日期序号表达，不把“节气后第几日”换算成现代精确到时分秒的交运时刻。',
+      '六步主客气按节气历表记录北京时间交接瞬时，起点归本步、终点归下一步；公历起止日期仅作传统日期标签。',
       '结果为年度传统节律结构，不含逐日气候计算。',
       '传统运气模型不能替代地域气象资料、个人健康资料或医疗诊断。',
       '符会与气运关系按吴谦《运气要诀》通行口径核验，不延伸为疾病轻重或现实事件预测。',

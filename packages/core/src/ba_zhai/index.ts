@@ -274,10 +274,13 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
     lichun.getSecond(),
   );
   const effectiveYear = birthCivil >= lichunCivil ? year : year - 1;
+  const isLichunDate =
+    year === lichun.getYear() && month === lichun.getMonth() && day === lichun.getDay();
   return {
     year: effectiveYear,
-    note:
-      effectiveYear === year
+    note: isLichunDate
+      ? `出生日期与 ${year} 年立春同日，未提供出生时刻；现按当日正午与立春时刻比较，命卦暂按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算，请按准确出生时刻复核。`
+      : effectiveYear === year
         ? `出生日期已过 ${year} 年立春，命卦按 ${year} 年计算。`
         : `出生日期在 ${year} 年立春前，命卦按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算。`,
   };

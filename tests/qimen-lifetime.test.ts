@@ -51,21 +51,22 @@ function clusterPatternFacts(cluster: {
   ].sort();
 }
 
-function findTimezoneSensitiveAnnualYear(targetOffsetMinutes: number): number {
-  for (let year = 2024; year <= 2050; year += 1) {
-    const date = new Date(Date.UTC(year, 5, 15, 12, 0, 0));
-    const defaultChart = generateQimen(date, 'zhuanpan', 'year', 'chaibu', 480);
-    const targetChart = generateQimen(date, 'zhuanpan', 'year', 'chaibu', targetOffsetMinutes);
-    const taiSuiPalace = diPanPalaces[targetChart.ganzhi.year[1]];
-    if (
-      taiSuiPalace &&
-      JSON.stringify(annualPatternFacts(defaultChart, taiSuiPalace)) !==
-        JSON.stringify(annualPatternFacts(targetChart, taiSuiPalace))
-    ) {
-      return year;
-    }
-  }
-  throw new Error(`未找到 UTC${targetOffsetMinutes / 60} 对年盘经典格局产生差异的年度样本`);
+function assertMonthClashLocalTime(
+  clusters: NonNullable<ReturnType<typeof calculateQimenLifetime>['eventClusters']>,
+  year: number,
+  offsetMinutes: number,
+) {
+  const monthClash = clusters.find((cluster) =>
+    cluster.key.startsWith(`cluster:${year}:month-clash:`),
+  );
+  assert.ok(monthClash?.triggerDates?.length);
+  const term = monthClash.triggerDates[0];
+  assert.equal(typeof term.timestamp, 'number');
+  const expected = new Date(term.timestamp! + offsetMinutes * 60_000)
+    .toISOString()
+    .slice(0, 19)
+    .replace('T', ' ');
+  assert.equal(term.dateTime, expected);
 }
 
 test('奇门终身局 P0：时间标准化与真太阳时校正', () => {
@@ -640,7 +641,7 @@ test('奇门终身局动态年盘失败应保留年份与原始原因', () => {
 
 test('奇门终身局动态年盘应采用固定 UTC 偏移而非默认东八区', () => {
   const targetOffsetMinutes = 14 * 60;
-  const year = findTimezoneSensitiveAnnualYear(targetOffsetMinutes);
+  const year = 2024;
   const result = calculateQimenLifetime({
     birthDateTime: '1990-05-15T14:30:00',
     timezone: 14,
@@ -666,11 +667,12 @@ test('奇门终身局动态年盘应采用固定 UTC 偏移而非默认东八区
     clusterPatternFacts(annualCluster),
     annualPatternFacts(expectedChart, taiSuiPalace),
   );
+  assertMonthClashLocalTime(result.eventClusters!, year, targetOffsetMinutes);
 });
 
 test('奇门终身局动态年盘应按目标年度读取 IANA 夏令时偏移', () => {
   const targetOffsetMinutes = -4 * 60;
-  const year = findTimezoneSensitiveAnnualYear(targetOffsetMinutes);
+  const year = 2024;
   const result = calculateQimenLifetime({
     birthDateTime: '2023-01-15T14:30:00',
     timeZoneId: 'America/New_York',
@@ -696,6 +698,7 @@ test('奇门终身局动态年盘应按目标年度读取 IANA 夏令时偏移',
     clusterPatternFacts(annualCluster),
     annualPatternFacts(expectedChart, taiSuiPalace),
   );
+  assertMonthClashLocalTime(result.eventClusters!, year, targetOffsetMinutes);
 });
 
 test('奇门终身局 P4：自包含提示词规范、多流派依据与合规红线核验', () => {

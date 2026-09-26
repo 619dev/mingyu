@@ -32,7 +32,7 @@ function asSpecialPattern(pillars: Pillars) {
  * 甲木生未月，干透丁火（月干）、戊土（时干）、癸水（年干），
  * 经 UsefulGodStrategy 裁决：
  * - conditionalUnfavorableStems: ['丁']（具体天干丁火因印食制化列忌）
- * - conditionalFavorableWuxing: ['火'] / favorableWuxing 含火（基础五行火为喜用）
+ * - conditionalFavorableWuxing: ['火']，但 favorableWuxing 不含火（食伤仍有前提）
  * - 丙火不在 conditionalUnfavorableStems 中（具体干不扩大为同五行）
  */
 function createSyntheticChartWithLuck(): BaziChartResult {
@@ -144,12 +144,24 @@ test('同盘 2027 丁命中 conditionalUnfavorableStems 丁，而 2026 丙不命
   );
   assert.equal(
     factBing2026.conditionStatus,
-    '引用已裁决喜用条件',
-    '丙未命中具体所忌干，仅随基础五行火为喜用',
+    '引用有前提的喜用条件',
+    '丙未命中具体所忌干，火仍须满足食伤泄秀条件',
+  );
+  assert.ok(factBing2026.hitSources.includes('条件五行喜用'));
+  assert.equal(factBing2026.hitSources.includes('基础五行喜忌'), false);
+  assert.equal(factBing2026.currentActionStatus, '资料不足');
+  assert.ok(
+    ctx2026.promptPayload.evidenceLines?.some(
+      (line) =>
+        line.startsWith('【辅证】岁运作用事实') &&
+        line.includes('流年丙') &&
+        line.includes('条件五行喜用'),
+    ),
+    '带前提的食伤候选应在提示词证据中标为辅证',
   );
 });
 
-test('2027 丁同时命中基础五行喜用与具体干所忌，裁定为双向条件引用', () => {
+test('2027 丁同时命中有前提的五行喜用与具体干所忌，裁定为双向条件引用', () => {
   const chart = createSyntheticChartWithLuck();
   const ctx2027 = buildFortuneSelectionContext(chart, {
     scope: 'year',
@@ -164,10 +176,11 @@ test('2027 丁同时命中基础五行喜用与具体干所忌，裁定为双向
   assert.ok(factDing);
   assert.equal(factDing.conditionStatus, '双向条件引用');
   assert.ok(factDing.hitSources.includes('conditionalUnfavorableStems'));
-  assert.ok(factDing.hitSources.includes('基础五行喜忌'));
+  assert.ok(factDing.hitSources.includes('条件五行喜用'));
+  assert.equal(factDing.hitSources.includes('基础五行喜忌'), false);
   assert.ok(
-    factDing.supportingFactKeys.some((k) => k.includes('favorable')),
-    '应有基础喜用支持事实 key',
+    factDing.supportingFactKeys.includes('bazi:useful-god:conditional-favorable-wuxing:火'),
+    '应指向有前提的食伤五行条件',
   );
   assert.ok(
     factDing.opposingFactKeys.includes('bazi:useful-god:conditional-unfavorable:丁'),

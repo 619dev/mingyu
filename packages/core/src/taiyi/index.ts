@@ -473,6 +473,19 @@ function readCivilParts(date: Date): TaiyiCivilParts {
   };
 }
 
+function withTaiyiCalendarSupport<T>(operation: () => T): T {
+  try {
+    return operation();
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('illegal solar year:')) {
+      throw new Error('太乙日期无法在当前历法库支持的范围内换算为干支或节气。', {
+        cause: error,
+      });
+    }
+    throw error;
+  }
+}
+
 /** 按东八区民用字段推四柱，替代依赖环境时区的 getGanZhiFromDate。 */
 function getTaiyiGanZhiFromDate(date: Date): {
   year: string;
@@ -481,16 +494,11 @@ function getTaiyiGanZhiFromDate(date: Date): {
   hour: string;
 } {
   const parts = readCivilParts(date);
-  const eightChar = SolarTime.fromYmdHms(
-    parts.year,
-    parts.month,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  )
-    .getLunarHour()
-    .getEightChar();
+  const eightChar = withTaiyiCalendarSupport(() =>
+    SolarTime.fromYmdHms(parts.year, parts.month, parts.day, parts.hour, parts.minute, parts.second)
+      .getLunarHour()
+      .getEightChar(),
+  );
   return {
     year: eightChar.getYear().getName(),
     month: eightChar.getMonth().getName(),
@@ -508,16 +516,11 @@ function daysSince(date: Date, year: number, month: number, day: number): number
 
 function getSeasonHalf(date: Date): 'winter' | 'summer' {
   const parts = readCivilParts(date);
-  const term = SolarTime.fromYmdHms(
-    parts.year,
-    parts.month,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  )
-    .getTerm()
-    .getName();
+  const term = withTaiyiCalendarSupport(() =>
+    SolarTime.fromYmdHms(parts.year, parts.month, parts.day, parts.hour, parts.minute, parts.second)
+      .getTerm()
+      .getName(),
+  );
   return [
     '夏至',
     '小暑',

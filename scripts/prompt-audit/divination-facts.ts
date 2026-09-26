@@ -1203,9 +1203,14 @@ function extractWuyunLiuqiFacts(data: unknown): DivinationPromptFact[] {
           record(item.hostGuestRelation)?.kind
             ? `主客关系${text(record(item.hostGuestRelation)?.kind)}`
             : undefined,
-          ...(item.gregorianStart && item.gregorianEnd
-            ? [`公历${item.gregorianStart}至${item.gregorianEnd}`]
-            : []),
+          ...(record(item.boundaryTime)?.startBeijing &&
+          record(item.boundaryTime)?.endBeijingExclusive
+            ? [
+                `北京时间${record(item.boundaryTime)?.startBeijing}起，至${record(item.boundaryTime)?.endBeijingExclusive}交接`,
+              ]
+            : item.gregorianStart && item.gregorianEnd
+              ? [`公历${item.gregorianStart}至${item.gregorianEnd}`]
+              : []),
         ],
         { scope: { start: '六步主客气：' } },
       ),

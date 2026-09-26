@@ -481,14 +481,15 @@ function collectCandidateSources(data: QimenData) {
   const activeGanZhi = getActiveGanZhi(data);
   const activeStem = getDunJiaStem(activeGanZhi);
   const activeSource = getActiveSource(data);
-  const dayStem = getDunJiaStem(data.ganzhi.day);
-  const hourStem = getDunJiaStem(data.ganzhi.hour);
+  const scope = data.scope ?? 'hour';
+  const dayStem = scope === 'day' || scope === 'hour' ? getDunJiaStem(data.ganzhi.day) : undefined;
+  const hourStem = scope === 'hour' ? getDunJiaStem(data.ganzhi.hour) : undefined;
   data.jiuGongGe.forEach((palace) => {
     if (hasTianPanStar(palace, data.zhiFu)) add(palace.gong, '值符落宫');
     if (palace.renPan.door === data.zhiShi) add(palace.gong, '值使落宫');
-    if (hasTianPanStem(palace, dayStem) || palace.diPan.stem === dayStem)
+    if (dayStem && (hasTianPanStem(palace, dayStem) || palace.diPan.stem === dayStem))
       add(palace.gong, '日干落宫');
-    if (hasTianPanStem(palace, hourStem) || palace.diPan.stem === hourStem)
+    if (hourStem && (hasTianPanStem(palace, hourStem) || palace.diPan.stem === hourStem))
       add(palace.gong, '时干落宫');
     if (hasTianPanStem(palace, activeStem) || palace.diPan.stem === activeStem)
       add(palace.gong, activeSource);
@@ -844,9 +845,25 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
   const juMethod =
     data.juMethod ?? (data.timeInfo?.juMethod as 'chaibu' | 'zhirun' | undefined) ?? 'chaibu';
   const juMethodLabel = juMethod === 'zhirun' ? '置闰法' : '拆补法';
+  const isYearOrMonth = scope === 'year' || scope === 'month';
+  const setupMethodLabel = isYearOrMonth ? '三元阴遁定局' : juMethodLabel;
   const activeSource = getActiveSource(data);
   const juTerm = data.timeInfo.juTerm || data.timeInfo.solarTerm;
   const activeGanZhi = getActiveGanZhi(data);
+  const setupRule =
+    scope === 'year'
+      ? '干支年所属的一百八十年三元确定阴遁一、四、七局'
+      : scope === 'month'
+        ? '干支年所属的五年三元确定阴遁一、四、七局'
+        : '节气、三元与主动干支共同确定阴阳遁和局数';
+  const setupSources = isYearOrMonth
+    ? [`《奇门遁甲统宗》附${scope === 'year' ? '年' : '月'}奇门起例`]
+    : scope === 'hour'
+      ? ['《烟波钓叟歌》阴阳二遁与一气三元口径']
+      : ['日家奇门按节气三元定局口径'];
+  const setupPromptText = isYearOrMonth
+    ? `${scopeLabel}定局：干支年${data.ganzhi.year}属${data.timeInfo.epoch}，取阴遁${data.juShu}局`
+    : `${scopeLabel}定局规则：采用${juMethodLabel}，节气、三元与主动干支共同确定阴阳遁和局数${data.timeInfo?.juMethodNote ? `；${data.timeInfo.juMethodNote}` : ''}`;
   const zhiFuPalace = data.jiuGongGe.find((item) => hasTianPanStar(item, data.zhiFu));
   const zhiShiPalace = data.jiuGongGe.find((item) => item.renPan.door === data.zhiShi);
   const ruleSourceFacts: QimenRuleSourceFact[] = [
@@ -854,10 +871,10 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       key: 'rule:qimen:setup',
       status: '已声明',
       category: '定局规则',
-      rule: '节气、三元与主动干支共同确定阴阳遁和局数',
+      rule: setupRule,
       appliesTo: ['排盘范围', '定局'],
-      sources: ['《烟波钓叟歌》阴阳二遁与一气三元口径', '时家、日家、月家与年家分层定局计算入口'],
-      promptText: `${scopeLabel}定局规则：采用${juMethodLabel}，节气、三元与主动干支共同确定阴阳遁和局数${data.timeInfo?.juMethodNote ? `；${data.timeInfo.juMethodNote}` : ''}`,
+      sources: setupSources,
+      promptText: setupPromptText,
       limitation: RULE_SOURCE_LIMITATION,
     },
     {
@@ -866,7 +883,11 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       category: '值符值使规则',
       rule: '由主动干支、遁局和旬首体系定位值符星与值使门',
       appliesTo: ['值符定位', '值使定位'],
-      sources: ['《烟波钓叟歌》直符直使与时干时支口径', '旬首、值符与值使定位计算'],
+      sources: isYearOrMonth
+        ? [`《奇门遁甲统宗》附${scope === 'year' ? '年' : '月'}奇门起例`]
+        : scope === 'hour'
+          ? ['《烟波钓叟歌》直符直使与时干时支口径', '旬首、值符与值使定位计算']
+          : ['日干支旬首、值符与值使定位计算'],
       promptText: '旬首值符值使规则：由主动干支、遁局和旬首体系定位值符星与值使门',
       limitation: RULE_SOURCE_LIMITATION,
     },
@@ -879,7 +900,11 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       sources:
         layoutMethod === 'feipan'
           ? ['洛书九宫飞布路径与飞盘争议口径', '飞盘九星、八门、八神与天地盘干排布计算']
-          : ['《烟波钓叟歌》星随符转、门随地转口径', '转盘九宫门星神干排布计算'],
+          : isYearOrMonth
+            ? [`《奇门遁甲统宗》附${scope === 'year' ? '年' : '月'}奇门起例`]
+            : scope === 'hour'
+              ? ['《烟波钓叟歌》星随符转、门随地转口径', '转盘九宫门星神干排布计算']
+              : ['日家九宫门星神干排布计算'],
       promptText: `${layoutMethodLabel}九宫规则：门、星、神及天地盘干按当前方法排列后逐宫核验`,
       limitation: RULE_SOURCE_LIMITATION,
     },
@@ -901,7 +926,7 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       status: '已确定',
       inputs: { scope, activeGanZhi, layoutMethod },
       result: { scopeLabel, activeGanZhi, layoutMethodLabel },
-      promptText: `排盘范围：${scopeLabel}，采用${layoutMethodLabel}与${juMethodLabel}，以${activeGanZhi}作为本盘主动干支`,
+      promptText: `排盘范围：${scopeLabel}，采用${layoutMethodLabel}与${setupMethodLabel}，以${activeGanZhi}作为本盘主动干支`,
       sourceKeys: ['rule:qimen:setup'],
       limitation: CALCULATION_FACT_LIMITATION,
     },
@@ -909,14 +934,18 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       key: 'qimen:calculation:setup',
       stage: '定局',
       status: '已确定',
-      inputs: {
-        solarTerm: data.timeInfo.solarTerm,
-        juTerm,
-        epoch: data.timeInfo.epoch,
-        activeGanZhi,
-      },
+      inputs: isYearOrMonth
+        ? { yearGanZhi: data.ganzhi.year, epoch: data.timeInfo.epoch, activeGanZhi }
+        : {
+            solarTerm: data.timeInfo.solarTerm,
+            juTerm,
+            epoch: data.timeInfo.epoch,
+            activeGanZhi,
+          },
       result: { isYangDun: data.isYangDun, juShu: data.juShu },
-      promptText: `定局结果：${juTerm}${data.timeInfo.epoch}，${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局${juTerm !== data.timeInfo.solarTerm ? `；排盘时实际节气为${data.timeInfo.solarTerm}` : ''}`,
+      promptText: isYearOrMonth
+        ? `定局结果：干支年${data.ganzhi.year}${data.timeInfo.epoch}，阴遁${data.juShu}局`
+        : `定局结果：${juTerm}${data.timeInfo.epoch}，${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局${juTerm !== data.timeInfo.solarTerm ? `；排盘时实际节气为${data.timeInfo.solarTerm}` : ''}`,
       sourceKeys: ['rule:qimen:setup'],
       limitation: CALCULATION_FACT_LIMITATION,
     },
@@ -968,12 +997,11 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
   ];
   const calculationFacts = unique(calculationEvidenceFacts.map((item) => item.promptText));
   const ruleSources = unique(ruleSourceFacts.map((item) => item.promptText));
-  const stemSources: QimenCandidateSource[] = ['年干落宫', '月干落宫', '日干落宫', '时干落宫'];
   const sourcePriority: QimenCandidateSource[] = [
     '值符落宫',
     '值使落宫',
     activeSource,
-    ...stemSources.filter((source) => source !== activeSource),
+    ...(scope === 'hour' ? (['日干落宫'] as const) : []),
     '盘面洞察',
     '经典格局',
   ];
@@ -1175,7 +1203,7 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       candidateSources: [...item.sources],
       reasons: item.sources.map((source) => `候选来源：${source}`),
       promptText: `${item.direction}${item.name}来自${item.sources.join('、')}；这只是候选宫方向；方位仅在现实路线、安全和事项用神均匹配时采用`,
-      sources: ['候选宫方向字段', '值符、值使、年/月/日/时干、盘面洞察与经典格局候选来源'],
+      sources: ['候选宫方向字段', '值符、值使、当前排盘范围主动干、盘面洞察与经典格局候选来源'],
       limitation: DIRECTION_FACT_LIMITATION,
     })),
   ];
@@ -1265,7 +1293,7 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       tags: [
         scopeLabel,
         layoutMethodLabel,
-        juMethodLabel,
+        setupMethodLabel,
         data.isYangDun ? '阳遁' : '阴遁',
         `${data.juShu}局`,
       ],
@@ -1295,7 +1323,7 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       level: index === 0 ? '主证' : '辅证',
       title: `${item.name}用神宫候选`,
       detail: `引用逐宫事实${item.palaceFactKey}；候选来源${item.sources.join('、')}；支持${item.support.join('、') || '未见独立增强证据'}；限制${item.constraints.join('、') || '未见空亡或明确风险标签'}`,
-      source: '值符、值使、年/月/日/时干、盘面洞察与经典格局候选定位',
+      source: '值符、值使、当前排盘范围主动干、盘面洞察与经典格局候选定位',
       tags: [item.name, ...item.sources],
     })),
     ...patternItems,
@@ -1307,7 +1335,7 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       source: counterSummaryFact.sources.join('、'),
       tags: ['反证汇总', counterSummaryFact.status],
     },
-    ...(data.seasonality
+    ...(data.seasonality && !isYearOrMonth
       ? [
           {
             level: '辅证' as const,

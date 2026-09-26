@@ -1,6 +1,7 @@
 import type { MeihuaData } from '../types/divination';
 import { getBranchWuxing, getSeasonState, isSheng, isKe } from '../ganzhi';
 import { MEIHUA_DIRECTION_OPTIONS, MEIHUA_OBJECT_OPTIONS } from '../divination/config';
+import { hasCompleteCharacterCalculation } from '../divination/algorithms/meihua/helpers/methods';
 
 export function formatMeihuaFacts(data: MeihuaData): string[] {
   const lines = [...data.yaosDetail].sort((a, b) => a.position - b.position);
@@ -70,15 +71,7 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
       facts.push(
         `起卦取数：所闻声音数${c.soundCount}除8取余得上卦数${c.upperTrigramIndex}；声音数${c.soundCount}加时支${c.timeZhi}序数${c.timeZhiIndex}，除8取余得下卦数${c.lowerTrigramIndex}，除6取余得动爻${c.movingYaoIndex}；卦数余0取8，动爻余0取6`,
       );
-    } else if (
-      hasResolvedIndices &&
-      c.methodKey === 'character' &&
-      typeof c.characterCount === 'number' &&
-      typeof c.characterUpperNumber === 'number' &&
-      typeof c.characterLowerNumber === 'number' &&
-      (c.characterCount !== 1 ||
-        (typeof c.characterLeftStrokes === 'number' && typeof c.characterRightStrokes === 'number'))
-    ) {
+    } else if (hasResolvedIndices && hasCompleteCharacterCalculation(c)) {
       const toneText = Array.isArray(c.characterTones)
         ? `，传统声类按平1、上2、去3、入4取数为${c.characterTones.join('、')}`
         : Array.isArray(c.characterStrokeCounts)

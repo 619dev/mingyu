@@ -1,17 +1,53 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  analyzeQimenEvidence,
-  generateQimen,
-  evaluateQimenPatternFulfillment,
-} from 'mingyu-core/divination/qimen';
+import { analyzeQimenEvidence, generateQimen } from 'mingyu-core/divination/qimen';
 import { generateQimen as generateQimenFromSource } from '../packages/core/src/divination/algorithms/qimen/index';
-import { formatQimenPatternConditionSummary } from '../packages/core/src/divination/algorithms/qimen/helpers/guidance';
+import {
+  evaluateQimenPatternFulfillment,
+  formatQimenPatternConditionSummary,
+} from '../packages/core/src/divination/algorithms/qimen/helpers/guidance';
 import type { QimenCandidateSource } from '../packages/core/src/divination/algorithms/qimen/index';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
+import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
+
+test('年家与月家奇门提示词使用对应的三元阴遁依据', () => {
+  for (const scope of ['year', 'month'] as const) {
+    const data = generateQimenFromSource(fixedDate, 'zhuanpan', scope);
+    const setup = data.evidenceAnalysis?.ruleSourceFacts.find(
+      (item) => item.key === 'rule:qimen:setup',
+    );
+    assert.equal(data.timeInfo.epoch, '下元');
+    assert.equal(data.isYangDun, false);
+    assert.equal(data.juShu, 7);
+    assert.equal(Object.hasOwn(data, 'juMethod'), false);
+    assert.equal(Object.hasOwn(data.timeInfo, 'juMethod'), false);
+    assert.equal(Object.hasOwn(data.timeInfo, 'juTerm'), false);
+    assert.equal(Object.hasOwn(data.timeInfo, 'isZhiRun'), false);
+    assert.ok(setup?.sources.some((source) => source.includes('《奇门遁甲统宗》')));
+    assert.doesNotMatch(setup?.promptText || '', /拆补法|置闰法/);
+
+    const prompt = formatEnhancedDivinationInfo('qimen', data);
+    assert.match(prompt, /三元阴遁定局/);
+    assert.match(prompt, /核心结构：阴遁7局；干支年乙巳 下元/);
+    if (scope === 'month') assert.match(prompt, /月建壬午/);
+    assert.doesNotMatch(prompt, /起局方法：[^\n]*拆补法|起局方法：[^\n]*置闰法/);
+    assert.doesNotMatch(prompt, /^节令：/m);
+
+    const summary = getDivinationSummaryBlocks('qimen', data);
+    assert.ok(summary.lines.includes('定局：干支年乙巳下元'));
+    assert.ok(summary.lines.includes(`实际节气：${data.timeInfo.solarTerm}`));
+    assert.doesNotMatch(summary.lines.join('\n'), /定局：立春|定局：芒种|定局：夏至/);
+    assert.doesNotMatch(summary.lines.join('\n'), /节令背景|月相|建除|日干/);
+    assert.ok(
+      summary.lines.some((line) =>
+        line.includes(scope === 'year' ? '干支年：乙巳' : '乙巳年、壬午月'),
+      ),
+    );
+  }
+});
 
 test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
   const data = generateQimen(fixedDate);
@@ -182,6 +218,33 @@ test('奇门证据按排盘范围使用六甲遁干主动源并优先于日时�
   }
 });
 
+test('年、月、日家候选来源不随更短周期干支变化', () => {
+  const cases = [
+    ['year', '2025-03-10T02:00:00Z', '2025-09-10T19:00:00Z', ['日干落宫', '时干落宫']],
+    ['month', '2025-06-18T02:00:00Z', '2025-06-26T19:00:00Z', ['日干落宫', '时干落宫']],
+    ['day', '2025-06-18T02:00:00Z', '2025-06-18T10:00:00Z', ['时干落宫']],
+  ] as const;
+
+  for (const [scope, firstTime, secondTime, shorterSources] of cases) {
+    const first = generateQimenFromSource(new Date(firstTime), 'zhuanpan', scope, 'chaibu', 480);
+    const second = generateQimenFromSource(new Date(secondTime), 'zhuanpan', scope, 'chaibu', 480);
+    assert.equal(first.ganzhi[scope], second.ganzhi[scope]);
+    assert.deepEqual(
+      first.evidenceAnalysis!.candidates,
+      second.evidenceAnalysis!.candidates,
+      `${scope} 候选宫与来源应稳定`,
+    );
+    for (const data of [first, second]) {
+      assert.ok(
+        data.evidenceAnalysis!.candidates.every(({ sources }) =>
+          sources.every((source) => !(shorterSources as readonly string[]).includes(source)),
+        ),
+        `${scope} 不应采用较短周期干源`,
+      );
+    }
+  }
+});
+
 test('奇门同宫空迫按宫汇总，门迫格局不重复列为自身条件', () => {
   const data = generateQimen(fixedDate);
   const [first, second] = data.jiuGongGe;
@@ -211,7 +274,11 @@ test('奇门同宫空迫按宫汇总，门迫格局不重复列为自身条件',
   });
   const structured = formatQimenPatternConditionSummary(data);
   assert.deepEqual(structured, [`${first.name}同宫见空亡`, `${second.name}同宫见门迫`]);
-  assert.ok(evaluateQimenPatternFulfillment(data).some((item) => item.startsWith('【门迫】')));
+  const menPoFulfillment = evaluateQimenPatternFulfillment(data).find((item) =>
+    item.startsWith('【门迫】'),
+  );
+  assert.ok(menPoFulfillment);
+  assert.doesNotMatch(menPoFulfillment, /同宫见门迫/);
   data.classicPatterns = data.classicPatterns.filter((pattern) => pattern.name === '门迫');
   assert.deepEqual(formatQimenPatternConditionSummary(data), []);
   assert.doesNotMatch(formatEnhancedDivinationInfo('qimen', data), /格局条件：/);

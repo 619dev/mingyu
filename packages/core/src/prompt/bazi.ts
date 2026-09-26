@@ -198,9 +198,16 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
       }
     }
     if (specialAdjudication.status === '成立' && specialAdjudication.kind === '从儿格') {
-      facts.push(
-        `从儿五行流向：食伤${specialAdjudication.outputElement}生财${specialAdjudication.wealthElement}`,
-      );
+      const flowAlreadyShown =
+        result.analysis.mingGe.basis?.includes('承接食伤所生') &&
+        formatBaziForPrompt(result).includes(
+          `食伤${specialAdjudication.outputElement}生财星${specialAdjudication.wealthElement}`,
+        );
+      if (!flowAlreadyShown) {
+        facts.push(
+          `从儿五行流向：食伤${specialAdjudication.outputElement}生财${specialAdjudication.wealthElement}`,
+        );
+      }
       facts.push(
         ...specialAdjudication.functionalResolutions
           .filter((item) => !result.analysis.mingGe.basis?.includes(item))

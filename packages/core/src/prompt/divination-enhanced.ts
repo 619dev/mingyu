@@ -887,6 +887,26 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
         palaceName && fullSummary.startsWith(palaceName)
           ? fullSummary.slice(palaceName.length)
           : fullSummary;
+      if (item.key.startsWith('combo:triGood:') || item.key.startsWith('combo:mixed:')) {
+        const sourceNames = [...new Set(item.sources)];
+        const sourcePatterns = sourceNames.map((sourceName) =>
+          data.classicPatterns?.find(
+            (pattern) =>
+              pattern.name === sourceName &&
+              (!item.palace || pattern.palaces.includes(item.palace)),
+          ),
+        );
+        if (sourceNames.length && sourcePatterns.every(Boolean)) {
+          const good = sourceNames.filter((_, index) => sourcePatterns[index]?.type === 'good');
+          const bad = sourceNames.filter((_, index) => sourcePatterns[index]?.type === 'bad');
+          if (item.key.startsWith('combo:triGood:') && good.length === sourceNames.length) {
+            return `${name}：${good.join('、')}同宫`;
+          }
+          if (item.key.startsWith('combo:mixed:') && good.length && bad.length) {
+            return `${name}：吉格${good.join('、')}；凶格${bad.join('、')}`;
+          }
+        }
+      }
       return `${name}：${summary}`;
     });
   const palaceLines = data.jiuGongGe.map((palace) => {
@@ -894,14 +914,21 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
     const horseMark = data.horseStar?.palace === palace.gong ? '，马星' : '';
     return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}，地盘${palace.diPan.stem || '无'}${voidMark}${horseMark}`;
   });
-  const seasonalitySummary = data.seasonality
-    ? [
-        `节气五行${data.seasonality.seasonalElement || '未列'}`,
-        `日干${data.seasonality.dayStem}${data.seasonality.seasonRelation}`,
-      ].join('；')
-    : '';
+  const isYearOrMonth = scopePresentation.scope === 'year' || scopePresentation.scope === 'month';
+  const seasonalitySummary =
+    !isYearOrMonth && data.seasonality
+      ? [
+          `节气五行${data.seasonality.seasonalElement || '未列'}`,
+          `日干${data.seasonality.dayStem}${data.seasonality.seasonRelation}`,
+        ].join('；')
+      : '';
   const specialConditionsText = data.specialConditions?.description?.trim() || '';
   const juTerm = data.timeInfo?.juTerm || data.timeInfo?.solarTerm || '未列';
+  const juMethodText = isYearOrMonth
+    ? `《奇门遁甲统宗》${scopePresentation.scope === 'year' ? '年家一百八十年' : '月家五年'}三元阴遁定局`
+    : data.juMethod === 'zhirun'
+      ? '置闰法定局'
+      : '拆补法定局';
   const birthInfo = formatQimenBirthInfo(data, supplementaryInfo);
 
   const triggerConditions = [...new Set(data.yingQi?.triggerConditions ?? [])];
@@ -915,9 +942,9 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
 
   return [
     '占法：奇门遁甲',
-    `起局方法：${data.method === 'feipan' ? '飞盘法' : '转盘法'}；${data.juMethod === 'zhirun' ? '置闰法定局' : '拆补法定局'}；${scopePresentation.scopeLabel}`,
+    `起局方法：${data.method === 'feipan' ? '飞盘法' : '转盘法'}；${juMethodText}；${scopePresentation.scopeLabel}`,
     '取用主线：先按问题确定主体、事项用神与主客身份，再到九宫核对落点；值符值使提供全局背景。',
-    `核心结构：${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局；${`${juTerm} ${data.timeInfo?.epoch || ''}`.trim()}`,
+    `核心结构：${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局；${isYearOrMonth ? `干支年${data.ganzhi.year} ${data.timeInfo?.epoch || ''}`.trim() : `${juTerm} ${data.timeInfo?.epoch || ''}`.trim()}${scopePresentation.scope === 'month' ? `；月建${data.ganzhi.month}` : ''}`,
     birthInfo,
     seasonalitySummary ? `节令：${seasonalitySummary}` : '',
     `值符值使与${scopePresentation.scope === 'hour' ? '时干' : `${scopePresentation.scopeLabel}主动干`}：值符${data.zhiFu}${zhiFuPalace ? `落${zhiFuPalace.name}` : '未见落宫'}；值使${data.zhiShi}${zhiShiPalace ? `落${zhiShiPalace.name}` : '未见落宫'}；${scopePresentation.scope === 'hour' ? formatQimenHourStem(data) : formatQimenActiveStem(data)}`,

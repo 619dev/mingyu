@@ -265,6 +265,29 @@ test('梅花七种起卦入口都应生成完整可移植的对象化证据', ()
   }
 });
 
+test('梅花字占证据仅在原始笔画或声类与卦数一致时认定计算完整', () => {
+  const cases = [
+    generateMeihua(fixedDate, {
+      method: 'character',
+      characterText: '西林',
+      characterStrokeCounts: [6, 8],
+    }),
+    generateMeihua(fixedDate, {
+      method: 'character',
+      characterText: '今日动静如何',
+      characterTones: [1, 4, 3, 3, 1, 1],
+    }),
+  ];
+  delete cases[0].calculation!.characterStrokeCounts;
+  delete cases[1].calculation!.characterTones;
+  for (const data of cases) {
+    const fact = analyzeMeihuaEvidence({ ...data, evidenceAnalysis: undefined }).calculationFact;
+    assert.equal(fact.status, '缺少中间参数');
+    assert.equal(fact.steps.length, 0);
+    assert.doesNotMatch(fact.promptText, /上卦=.*除8|字数取数：/u);
+  }
+});
+
 test('梅花六十四卦卦辞爻辞与乾坤用辞应完整生成条件化事实', () => {
   const facts = hexagramsData.flatMap((hexagram) => {
     const gua = conditionMeihuaTraditionalText(hexagram.description, {

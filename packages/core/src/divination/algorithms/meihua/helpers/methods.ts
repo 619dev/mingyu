@@ -204,6 +204,87 @@ function sum(values: number[], label: string): number {
   }, 0);
 }
 
+/** 旧盘重建证据时，从原始分笔、逐字笔画或声类重算，避免把缓存卦数当成取数来源。 */
+export function hasCompleteCharacterCalculation(calculation: MeihuaCalculation): boolean {
+  const count = calculation.characterCount;
+  const upper = calculation.characterUpperNumber;
+  const lower = calculation.characterLowerNumber;
+  if (
+    calculation.methodKey !== 'character' ||
+    typeof count !== 'number' ||
+    !Number.isSafeInteger(count) ||
+    count < 1 ||
+    count > 100 ||
+    typeof upper !== 'number' ||
+    !Number.isSafeInteger(upper) ||
+    upper <= 0 ||
+    typeof lower !== 'number' ||
+    !Number.isSafeInteger(lower) ||
+    lower <= 0 ||
+    (calculation.characterText !== undefined &&
+      Array.from(calculation.characterText).length !== count)
+  ) {
+    return false;
+  }
+
+  let expectedUpper: number;
+  let expectedLower: number;
+  if (count === 1) {
+    const left = calculation.characterLeftStrokes;
+    const right = calculation.characterRightStrokes;
+    if (
+      typeof left !== 'number' ||
+      !Number.isSafeInteger(left) ||
+      left <= 0 ||
+      typeof right !== 'number' ||
+      !Number.isSafeInteger(right) ||
+      right <= 0
+    ) {
+      return false;
+    }
+    expectedUpper = left;
+    expectedLower = right;
+  } else if (count <= 3) {
+    const strokes = calculation.characterStrokeCounts;
+    if (
+      !strokes ||
+      strokes.length !== count ||
+      !strokes.every((value) => Number.isSafeInteger(value) && value > 0)
+    ) {
+      return false;
+    }
+    const split = Math.floor(count / 2);
+    expectedUpper = strokes.slice(0, split).reduce((total, value) => total + value, 0);
+    expectedLower = strokes.slice(split).reduce((total, value) => total + value, 0);
+  } else if (count <= 10) {
+    const tones = calculation.characterTones;
+    if (
+      !tones ||
+      tones.length !== count ||
+      !tones.every((value) => Number.isInteger(value) && value >= 1 && value <= 4)
+    ) {
+      return false;
+    }
+    const split = Math.floor(count / 2);
+    expectedUpper = tones.slice(0, split).reduce((total, value) => total + value, 0);
+    expectedLower = tones.slice(split).reduce((total, value) => total + value, 0);
+  } else {
+    expectedUpper = Math.floor(count / 2);
+    expectedLower = count - expectedUpper;
+  }
+
+  return (
+    Number.isSafeInteger(expectedUpper) &&
+    Number.isSafeInteger(expectedLower) &&
+    Number.isSafeInteger(upper + lower) &&
+    upper === expectedUpper &&
+    lower === expectedLower &&
+    calculation.upperTrigramIndex === (upper % 8 || 8) &&
+    calculation.lowerTrigramIndex === (lower % 8 || 8) &&
+    calculation.movingYaoIndex === ((upper + lower) % 6 || 6)
+  );
+}
+
 export function resolveCharacterMethod(settings: MeihuaSettings): MeihuaMethodResult {
   const rawText = settings.characterText;
   const characterText = rawText === undefined ? undefined : rawText.trim();

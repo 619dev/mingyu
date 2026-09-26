@@ -1,4 +1,12 @@
-import { createContext, useContext, useCallback, useMemo, useState, type ReactNode } from 'react';
+/** @jsxRuntime classic */
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { AstrolabeChart } from '@/components/AstrolabeChart';
 import { lookupMetaphysicsTerm } from '@/lib/metaphysics-terms';
 import {
@@ -1924,10 +1932,14 @@ function QimenTraditionalBoard({
     [data.jiuGongGe],
   );
 
+  const isHourScope = !data.scope || data.scope === 'hour';
   const hourStem = data.ganzhi?.hour?.slice(0, 1) || '戊';
   const anGanMap = useMemo(
-    () => calculateQimenAnGanMap(data.jiuGongGe, data.zhiShi, hourStem, data.isYangDun),
-    [data.jiuGongGe, data.zhiShi, hourStem, data.isYangDun],
+    () =>
+      isHourScope
+        ? calculateQimenAnGanMap(data.jiuGongGe, data.zhiShi, hourStem, data.isYangDun)
+        : new Map<number, string>(),
+    [data.jiuGongGe, data.zhiShi, hourStem, data.isYangDun, isHourScope],
   );
 
   const stemRelationMap = new Map<number, string[]>();
@@ -1938,10 +1950,22 @@ function QimenTraditionalBoard({
   const scopeLabel = { hour: '时家', day: '日家', month: '月家', year: '年家' }[
     data.scope ?? 'hour'
   ];
+  const juMethodLabel =
+    data.scope === 'month' || data.scope === 'year'
+      ? '三元'
+      : data.juMethod === 'zhirun'
+        ? '置闰'
+        : '拆补';
   const specialConditions = [
     data.specialConditions?.isLiuJiaHour ? '六甲时' : '',
     data.specialConditions?.isLiuGuiHour ? '六癸时' : '',
-    data.specialConditions?.isShiGanRuMu ? '时干入墓' : '',
+    data.scope === 'day'
+      ? data.specialConditions?.isRiGanRuMu
+        ? '日干入墓'
+        : ''
+      : data.specialConditions?.isShiGanRuMu
+        ? '时干入墓'
+        : '',
     data.specialConditions?.isWuBuYuShi ? '五不遇时' : '',
   ]
     .filter(Boolean)
@@ -1954,6 +1978,10 @@ function QimenTraditionalBoard({
   const patternNames = Array.from(patternCounts.entries())
     .map(([label, count]) => `${label}${count > 1 ? `×${count}` : ''}`)
     .join(' · ');
+  const juBasis =
+    data.scope === 'month' || data.scope === 'year'
+      ? `干支年${data.ganzhi.year}${data.timeInfo.epoch}`
+      : `${data.timeInfo.juTerm ?? data.timeInfo.solarTerm}${data.timeInfo.epoch}`;
 
   const zhiFuStarClassic = useMemo(() => {
     return data.zhiFu ? getQimenStarClassic(data.zhiFu) : undefined;
@@ -2023,7 +2051,7 @@ function QimenTraditionalBoard({
   return (
     <TraditionalBoardShell
       title={`${scopeLabel}奇门九宫盘`}
-      subtitle={`${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局 · ${data.method === 'feipan' ? '飞盘' : '转盘'}${data.juMethod === 'zhirun' ? ' · 置闰' : ' · 拆补'}`}
+      subtitle={`${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局 · ${data.method === 'feipan' ? '飞盘' : '转盘'} · ${juMethodLabel}`}
       className="traditional-qimen-board"
     >
       <TraditionalMeta items={[['日期', dateLabel ?? getSessionDisplayDate(session)]]} />
@@ -2037,22 +2065,24 @@ function QimenTraditionalBoard({
           ['旬空', data.voidBranches?.join('、') || '无'],
           ['值符', data.zhiFu],
           ['值使', data.zhiShi],
-          ['节气', `${data.timeInfo.solarTerm} · ${data.timeInfo.epoch}`],
+          ['节气', data.timeInfo.solarTerm],
           ['马星', data.horseStar ? `${data.horseStar.branch}·${data.horseStar.name}` : undefined],
         ]}
       />
-      {moonPhaseLabel ? <p className="traditional-note-row">{moonPhaseLabel}</p> : null}
+      {data.scope !== 'year' && data.scope !== 'month' && moonPhaseLabel ? (
+        <p className="traditional-note-row">{moonPhaseLabel}</p>
+      ) : null}
       <TraditionalFacts
         items={[
           [
             '定局',
-            `${scopeLabel} · ${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局（${data.method === 'feipan' ? '飞盘' : '转盘'}·${data.juMethod === 'zhirun' ? '置闰' : '拆补'}）`,
+            `${scopeLabel} · ${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局（${data.method === 'feipan' ? '飞盘' : '转盘'}·${juMethodLabel}）· ${juBasis}`,
           ],
-          ['特殊时格', specialConditions || '常局'],
-          ['盘局特征', patternNames || '平局'],
+          [data.scope === 'day' ? '特殊日格' : '特殊时格', specialConditions || undefined],
+          ['盘局特征', patternNames || undefined],
           [
             '节令背景',
-            data.seasonality
+            (data.scope === 'hour' || data.scope === 'day' || !data.scope) && data.seasonality
               ? `${data.seasonality.currentJieQi}，交节后${data.seasonality.jieQiPhase.phase}阶段；${data.seasonality.dayStem}${data.seasonality.seasonRelation}；月相${data.seasonality.lunarPhaseDetail}；建除${data.seasonality.dayOfficer}`
               : undefined,
           ],
@@ -2088,13 +2118,15 @@ function QimenTraditionalBoard({
           >
             长生状态
           </button>
-          <button
-            type="button"
-            className={`traditional-qimen-btn ${showAnGan ? 'is-active' : ''}`}
-            onClick={() => setShowAnGan((prev) => !prev)}
-          >
-            暗干排布
-          </button>
+          {isHourScope ? (
+            <button
+              type="button"
+              className={`traditional-qimen-btn ${showAnGan ? 'is-active' : ''}`}
+              onClick={() => setShowAnGan((prev) => !prev)}
+            >
+              暗干排布
+            </button>
+          ) : null}
         </div>
         <span className="traditional-qimen-tip">
           {selectedGong
@@ -3909,16 +3941,17 @@ export function formatDivinationSessionShareText(session: DivinationSession): st
     }
   } else if (session.method === 'qimen') {
     for (const branch of session.qimenRange?.branches ?? [{ data: session.data as QimenData }]) {
+      const d = branch.data;
+      const isLongScope = d.scope === 'year' || d.scope === 'month';
       if ('startTimestamp' in branch) {
         lines.push(formatQimenRangeInterval(branch.startTimestamp, branch.endTimestamp));
-        lines.push(formatQimenRangeMoonPhase(branch));
+        if (!isLongScope) lines.push(formatQimenRangeMoonPhase(branch));
       }
-      const d = branch.data;
       lines.push(
-        `局数：${d.isYangDun ? '阳遁' : '阴遁'}${d.juShu}局；节气${d.timeInfo.solarTerm}；定局${d.timeInfo.juTerm ?? d.timeInfo.solarTerm}${d.timeInfo.epoch}`,
+        `局数：${d.isYangDun ? '阳遁' : '阴遁'}${d.juShu}局；节气${d.timeInfo.solarTerm}；定局${isLongScope ? `干支年${d.ganzhi.year}` : (d.timeInfo.juTerm ?? d.timeInfo.solarTerm)}${d.timeInfo.epoch}`,
       );
       lines.push(`值符：${d.zhiFu}  值使：${d.zhiShi}`);
-      if (d.seasonality)
+      if (!isLongScope && d.seasonality)
         lines.push(
           `节令阶段：${d.seasonality.jieQiPhase.phase}；月相${d.seasonality.lunarPhaseDetail}；建除${d.seasonality.dayOfficer}`,
         );

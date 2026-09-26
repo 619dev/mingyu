@@ -180,6 +180,33 @@ test('梅花旧盘缺少取数输入时不把卦象反填为起卦输入', () =>
   assert.doesNotMatch(formatMeihuaFacts(character).join('\n'), /起卦取数：|undefined/u);
 });
 
+test('梅花字占旧盘缺少逐字笔画或声类时不输出缓存卦数算式', () => {
+  const date = new Date('2026-05-19T10:30:00+08:00');
+  const strokes = generateMeihua(date, {
+    method: 'character',
+    characterText: '西林',
+    characterStrokeCounts: [6, 8],
+  });
+  delete strokes.calculation!.characterStrokeCounts;
+  assert.doesNotMatch(formatMeihuaFacts(strokes).join('\n'), /起卦取数：/u);
+
+  const tones = generateMeihua(date, {
+    method: 'character',
+    characterText: '今日动静如何',
+    characterTones: [1, 4, 3, 3, 1, 1],
+  });
+  delete tones.calculation!.characterTones;
+  assert.doesNotMatch(formatMeihuaFacts(tones).join('\n'), /起卦取数：/u);
+
+  const inconsistent = generateMeihua(date, {
+    method: 'character',
+    characterText: '西林',
+    characterStrokeCounts: [6, 8],
+  });
+  inconsistent.calculation!.characterStrokeCounts = [7, 8];
+  assert.doesNotMatch(formatMeihuaFacts(inconsistent).join('\n'), /起卦取数：/u);
+});
+
 test('梅花旧盘缺少动爻取数结果时不输出不完整算式', () => {
   const date = new Date('2026-05-19T10:30:00+08:00');
   const cases = [

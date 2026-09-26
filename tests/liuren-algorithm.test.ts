@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { LiurenLesson, LiurenPlateItem } from 'mingyu-core/types';
+import { calculateSolarTermEvidence, TimeManager } from 'mingyu-core/calendar';
 import { analyzeLiurenEvidence, generateLiuren } from 'mingyu-core/divination/liuren';
 import {
   getLiurenGuaTiFacts,
@@ -123,6 +124,29 @@ test('大六壬应输出分层取用与应期证据', () => {
     assert.ok(transmission.wuxing);
     assert.ok(transmission.seasonState);
     assert.equal(typeof transmission.isVoid, 'boolean');
+  }
+});
+
+test('不同全局时区下月将均在雨水交节整秒切换', () => {
+  const boundary = calculateSolarTermEvidence(2024, 4).utcTimestamp;
+  try {
+    for (const offsetMinutes of [-300, 0, 840]) {
+      TimeManager.setTimezoneOffsetMinutesOverride(offsetMinutes);
+      for (const [timestamp, monthLeader] of [
+        [boundary - 1000, '子'],
+        [boundary, '亥'],
+      ] as const) {
+        const result = generateLiuren(new Date(timestamp));
+        assert.equal(result.monthLeader, monthLeader);
+        assert.equal(result.evidenceAnalysis?.calculationFact.monthLeader, monthLeader);
+        assert.equal(
+          result.heavenlyPlate.find((item) => item.under === result.divinationBranch)?.branch,
+          monthLeader,
+        );
+      }
+    }
+  } finally {
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
   }
 });
 

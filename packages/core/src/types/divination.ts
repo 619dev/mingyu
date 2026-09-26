@@ -518,7 +518,7 @@ export interface MeihuaData extends BaseHexagramData {
     tiYongSeasonEvaluation?: string;
     /** 事态初中终三阶段推进演化趋势（依据《梅花易数·观梅数诀》） */
     timelineTrend?: {
-      trend: '先难后易' | '先顺后阻' | '始末顺畅' | '始终受制' | '中途多阻' | '平稳演进';
+      trend: '先难后易' | '先顺后阻' | '始末顺畅' | '始终受制' | '中途多阻' | '未形成单向走势';
       summary: string;
     };
     yingQi?: string[];
@@ -588,6 +588,7 @@ export interface QimenSpecialConditions {
   isLiuJiaHour: boolean;
   isLiuGuiHour: boolean;
   isShiGanRuMu: boolean;
+  isRiGanRuMu?: boolean;
   isWuBuYuShi: boolean;
   description: string;
 }
@@ -595,10 +596,10 @@ export interface QimenSpecialConditions {
 export interface QimenTimeInfo {
   /** 排盘时刻实际所处的天文节气。 */
   solarTerm: string;
-  /** 拆补/置闰法实际采用的定局节气；置闰法下可能与 solarTerm 不同。 */
-  juTerm: string;
+  /** 时家/日家拆补或置闰法采用的定局节气；置闰法下可能与 solarTerm 不同。 */
+  juTerm?: string;
   epoch: string;
-  [key: string]: string;
+  [key: string]: string | undefined;
 }
 
 export interface QimenBranchPalace {
@@ -807,7 +808,7 @@ export interface QimenLifetimeInput {
   applyChinaDst?: boolean;
   /** 排盘方法：zhuanpan(转盘法，默认) | feipan(飞盘法) */
   method?: 'zhuanpan' | 'feipan';
-  /** 定局方法：chaibu(拆补法，默认) | zhirun(置闰法) */
+  /** 时家/日家定局方法：chaibu(拆补法，默认) | zhirun(置闰法) */
   juMethod?: 'chaibu' | 'zhirun';
   /** 阶段划分引擎配置 */
   stagePolicy?: QimenStagePolicy;

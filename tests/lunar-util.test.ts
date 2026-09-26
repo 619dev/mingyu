@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LunarUtil, TimeManager, resolveBirthCalendarClockTime } from '@core/calendar';
+import {
+  LunarUtil,
+  TimeManager,
+  calculateSolarTermEvidence,
+  resolveBirthCalendarClockTime,
+} from '@core/calendar';
 
 const GANZHI_FIXTURES = [
   [2024, 2, 4, 16, 20, { year: '癸卯', month: '乙丑', day: '戊戌', hour: '庚申' }],
@@ -52,6 +57,33 @@ test('农历工具干支应符合交节与晚子时固定真值', () => {
       expected,
     );
   });
+});
+
+test('全局时区改变时节气与年月柱仍按同一交节瞬时点切换', () => {
+  const boundary = calculateSolarTermEvidence(2024, 3).utcTimestamp;
+  const cases = [
+    { timestamp: boundary - 1000, term: '大寒', year: '癸卯', month: '乙丑' },
+    { timestamp: boundary, term: '立春', year: '甲辰', month: '丙寅' },
+  ];
+
+  try {
+    for (const offsetMinutes of [-300, 0, 840]) {
+      TimeManager.setTimezoneOffsetMinutesOverride(offsetMinutes);
+      for (const { timestamp, term, year, month } of cases) {
+        const date = new Date(timestamp);
+        const managed = TimeManager.getDivinationTime(date);
+        const info = LunarUtil.getTimeInfo(date);
+        assert.equal(managed.timeInfo.jieQi, term);
+        assert.equal(managed.ganzhi.year, year);
+        assert.equal(managed.ganzhi.month, month);
+        assert.deepEqual(info, managed.timeInfo);
+        assert.deepEqual(LunarUtil.getGanZhi(date), managed.ganzhi);
+        assert.deepEqual(LunarUtil.getLunar(date), managed.timeInfo.lunar);
+      }
+    }
+  } finally {
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+  }
 });
 
 test('农历工具显示文本不应保留 tyme4ts toString 的农历前缀，并应保留闰月', () => {

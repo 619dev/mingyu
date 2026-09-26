@@ -214,6 +214,7 @@ function formatQimenHorseSummary(data: QimenData) {
 }
 
 function formatQimenSeasonalitySummary(data: QimenData) {
+  if (data.scope === 'year' || data.scope === 'month') return '';
   const seasonality = data.seasonality;
   if (!seasonality) return '';
   return `节令背景：实际节气${seasonality.currentJieQi}，节气五行${seasonality.seasonalElement || '未知'}，日干${seasonality.dayStem}${seasonality.seasonRelation}，月相${seasonality.lunarPhaseDetail || seasonality.lunarPhase}，建除${seasonality.dayOfficer}${seasonality.dayOfficerFortuneLabel}`;
@@ -367,6 +368,15 @@ export function getDivinationSummaryBlocks(
     case 'qimen': {
       const item = data as QimenData;
       const qimenActive = getQimenActiveContext(item);
+      const isYearOrMonth = qimenActive.scope === 'year' || qimenActive.scope === 'month';
+      const pillarLine =
+        qimenActive.scope === 'year'
+          ? `干支年：${item.ganzhi.year}`
+          : qimenActive.scope === 'month'
+            ? `干支：${item.ganzhi.year}年、${item.ganzhi.month}月`
+            : qimenActive.scope === 'day'
+              ? `干支：${item.ganzhi.year}年、${item.ganzhi.month}月、${item.ganzhi.day}日`
+              : `干支：${item.ganzhi.year}、${item.ganzhi.month}、${item.ganzhi.day}、${item.ganzhi.hour}`;
       return {
         title: '奇门起局结果',
         tags: [
@@ -375,9 +385,9 @@ export function getDivinationSummaryBlocks(
           `值使：${item.zhiShi}`,
         ],
         lines: [
-          `干支：${item.ganzhi.year}、${item.ganzhi.month}、${item.ganzhi.day}、${item.ganzhi.hour}`,
+          pillarLine,
           `实际节气：${item.timeInfo.solarTerm}`,
-          `定局：${item.timeInfo.juTerm || item.timeInfo.solarTerm}${item.timeInfo.epoch}`,
+          `定局：${isYearOrMonth ? `干支年${item.ganzhi.year}` : item.timeInfo.juTerm || item.timeInfo.solarTerm}${item.timeInfo.epoch}`,
           wrapMainEvidence(formatQimenFocusSummary(item)),
           `格局：${item.patternTags?.join('、') || '未列'}`,
           formatQimenPatternComboSummary(item),
@@ -737,6 +747,15 @@ function formatSsgwPrompt(data: SsgwData) {
 }
 
 export function buildDivinationPromptDocument(options: DivinationPromptOptions): PromptDocument {
+  const qimenScope = options.method === 'qimen' ? (options.data as QimenData).scope : undefined;
+  const qimenSelectionScope =
+    qimenScope === 'year'
+      ? 'yearly'
+      : qimenScope === 'month'
+        ? 'monthly'
+        : qimenScope === 'day'
+          ? 'daily'
+          : 'hourly';
   const promptMethodId =
     options.method === 'huangji'
       ? 'huangji-jingshi'
@@ -752,7 +771,7 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
         methodId: promptMethodId,
         topicId: options.topicId,
         subtopicId: options.subtopicId,
-        scope: options.scope,
+        scope: options.scope ?? (qimenScope ? qimenSelectionScope : undefined),
       })
     : undefined;
   if (options.method === 'ssgw') {

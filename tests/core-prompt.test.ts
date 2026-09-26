@@ -285,6 +285,27 @@ test('npm 奇门提示词应统一定局三元并输出年命落宫', () => {
   assert.doesNotMatch(prompt, /【补充信息】[\s\S]*出生年份/);
 });
 
+test('年家与月家奇门解读选择和主客依据沿用本次盘式', () => {
+  for (const [scope, selectionLabel] of [
+    ['year', '流年/年计'],
+    ['month', '流月/月计'],
+  ] as const) {
+    const data = generateQimen(new Date('2026-08-08T15:14:00+08:00'), 'zhuanpan', scope);
+    const prompt = buildDivinationPrompt({
+      method: 'qimen',
+      data,
+      question: '整体解读',
+      topicId: 'general',
+      schools: ['zhuke'],
+    });
+
+    assert.match(prompt, /方法：占问 · 奇门遁甲/u);
+    assert.ok(prompt.includes(`分析范围：${selectionLabel}`));
+    assert.match(prompt, /结合本次主动干、值符值使和事项用神/u);
+    assert.doesNotMatch(prompt, /时家奇门|结合日干、时干/u);
+  }
+});
+
 test('npm 通用占法提示词保留求测人基本资料但不混入梅花设置', () => {
   const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
   const prompt = buildDivinationPrompt({

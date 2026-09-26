@@ -460,3 +460,19 @@ test('梅花：三阶段摘要必须列出互变真实关系，不把互卦未�
   });
   assert.match(changedTiResult.summary, /变卦用\/体：用生体/u);
 });
+
+test('梅花体克用且互卦比和时，不把未判定的三阶段关系写成平稳走势', () => {
+  const result = evaluateMeihuaTimelineTrend({
+    tiElement: '木',
+    originalYongElement: '土',
+    interTiElement: '木',
+    interYongElement: '木',
+    changedYongElement: '土',
+  });
+
+  assert.equal(result.trend, '未形成单向走势');
+  assert.equal(
+    result.summary,
+    '主卦用/体：体克用；互卦：体互与原体比和、用互与原体比和；变卦用/体：体克用',
+  );
+});

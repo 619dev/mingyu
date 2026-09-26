@@ -52,6 +52,20 @@ test('五运六气2026年公历边界与独立年历的节气日期一致', () =
   }
 });
 
+test('六步主客气按交节瞬时衔接，交节当日不被整日归入新一步', () => {
+  const result = calculateWuyunLiuqi({ year: 2026 });
+  const first = result.qiSteps[0].boundaryTime;
+  const second = result.qiSteps[1].boundaryTime;
+  assert.ok(first && second);
+  assert.equal(first.endTimestampExclusive, second.startTimestamp);
+  assert.equal(first.endBeijingExclusive, second.startBeijing);
+  assert.match(second.startBeijing, /^2026-03-20 \d{2}:\d{2}:\d{2}$/);
+  assert.ok(second.startTimestamp > Date.parse('2026-03-19T16:00:00Z'));
+  assert.ok(second.startTimestamp < Date.parse('2026-03-20T16:00:00Z'));
+  assert.match(result.prompt, /初之气.*至2026-03-20 \d{2}:\d{2}:\d{2}交接/);
+  assert.match(result.prompt, /二之气.*北京时间2026-03-20 \d{2}:\d{2}:\d{2}起/);
+});
+
 test('五运六气支持的300个公历年各步日期连续且两种划分覆盖同一年段', () => {
   const day = (value: string | undefined) => {
     assert.ok(value);
@@ -60,6 +74,7 @@ test('五运六气支持的300个公历年各步日期连续且两种划分覆�
     return timestamp / 86_400_000;
   };
   let previousEnd: number | undefined;
+  let previousQiEnd: number | undefined;
   for (let year = 1900; year <= 2199; year += 1) {
     const result = calculateWuyunLiuqi({ year });
     for (const steps of [result.movementSteps, result.qiSteps]) {
@@ -70,6 +85,21 @@ test('五运六气支持的300个公历年各步日期连续且两种划分覆�
         if (index > 0) assert.equal(start, day(steps[index - 1].gregorianEnd) + 1);
       }
     }
+    result.qiSteps.forEach((step, index) => {
+      const range = step.boundaryTime;
+      assert.ok(range, `${year}年第${index + 1}步缺少交节时界`);
+      assert.ok(range.endTimestampExclusive > range.startTimestamp);
+      if (index > 0) {
+        assert.equal(
+          range.startTimestamp,
+          result.qiSteps[index - 1].boundaryTime?.endTimestampExclusive,
+        );
+      }
+    });
+    if (previousQiEnd !== undefined) {
+      assert.equal(result.qiSteps[0].boundaryTime?.startTimestamp, previousQiEnd);
+    }
+    previousQiEnd = result.qiSteps[5].boundaryTime?.endTimestampExclusive;
     const start = day(result.movementSteps[0].gregorianStart);
     const end = day(result.movementSteps[4].gregorianEnd);
     assert.equal(start, day(result.qiSteps[0].gregorianStart));

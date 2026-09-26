@@ -148,6 +148,29 @@ test('大六壬完整提示词只补充尚未在盘面显示的判断事实', ()
   }
 });
 
+test('大六壬在线提示词用取传依据和期限条件表达候选取舍', () => {
+  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const legacyTiming = '未给出目标期限时，只判断先后、快慢和触发条件，不硬换成唯一日期';
+  data.timingEvidence = [...(data.timingEvidence ?? []).slice(0, 3), legacyTiming];
+
+  const analysis = analyzeLiurenEvidence(data);
+  assert.equal(analysis.timingFacts[3].rawText, legacyTiming);
+  assert.equal(analysis.timingFacts[3].promptText, '以问题期限、三传先后和现实触发条件核对应期');
+  assert.ok(analysis.ordinaryTransmissionAdjudicationFact.candidateFacts.length > 0);
+  assert.ok(analysis.counterEvidenceFacts.length > 0);
+
+  for (const prompt of [
+    buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
+    buildAppDivinationPrompt('liuren', '问合作进度', data),
+    formatLiurenJudgmentFacts(data).join('\n'),
+  ]) {
+    assert.match(prompt, /四课直接上下克前置成立，取传采用直接克候选/);
+    assert.match(prompt, /以问题期限、三传先后和现实触发条件核对应期/);
+    assert.match(prompt, /课传反证：/);
+    assert.doesNotMatch(prompt, /遥克不得抢占|未给出目标期限时|不硬换成唯一日期/);
+  }
+});
+
 test('大六壬未在四课行标明的空亡反证仍保留', () => {
   const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
   data.xunKong = [...new Set([...(data.xunKong ?? []), data.fourLessons[0].upper])];

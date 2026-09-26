@@ -116,7 +116,7 @@ export function evaluateMeihuaTimelineTrend(params: {
   changedYongElement: string;
   changedTiElement?: string;
 }): {
-  trend: '先难后易' | '先顺后阻' | '始末顺畅' | '始终受制' | '中途多阻' | '平稳演进';
+  trend: '先难后易' | '先顺后阻' | '始末顺畅' | '始终受制' | '中途多阻' | '未形成单向走势';
   summary: string;
 } {
   const {
@@ -183,7 +183,7 @@ export function evaluateMeihuaTimelineTrend(params: {
   }
 
   return {
-    trend: '平稳演进',
+    trend: '未形成单向走势',
     summary,
   };
 }

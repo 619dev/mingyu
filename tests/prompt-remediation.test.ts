@@ -98,6 +98,17 @@ test('奇门提示资料保留完整格局索引，空亡事实不重复列出',
   assert.doesNotMatch(text, /灾咎减半/);
 });
 
+test('奇门复合格局列出同宫实际命中格局，省略重复的泛化条件', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const text = formatEnhancedDivinationInfo('qimen', data);
+  const combos = text.split('复合格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
+
+  assert.match(combos, /兑七宫三吉聚气：天遁、月奇得使、月奇得地/);
+  assert.match(combos, /巽四宫吉凶混杂：吉格三奇游六仪、相佐；\n凶格门迫、癸击刑/);
+  assert.doesNotMatch(combos, /聚集\d+个吉格|同时见吉格与凶格|气机不纯/);
+  assert.equal(combos.split('巽四宫吉凶混杂').length - 1, 1);
+});
+
 test('三山国王签谱提示资料过滤串签典故与编辑性噪音', () => {
   const sign = resolveSignByNumber(79, new Date('2026-09-01T12:00:00+08:00'));
   const story = resolveSsgwStoryContent(sign);

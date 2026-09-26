@@ -1,5 +1,6 @@
 import type { LiurenData, LiurenShenShaFact, LiurenTransmission } from '../../../types/divination';
 import { getDivinationTime, TimeManager } from '../../../calendar/timeManager';
+import { DEFAULT_CHINA_TIMEZONE_HOURS } from '../../../calendar/civil-time';
 import { getVoidBranches } from '../../../calendar/lunar';
 import { SolarTerm, SolarTime } from 'tyme4ts';
 import { getBranchWuxing, getSeasonState, getYiMa } from '../../../ganzhi';
@@ -374,7 +375,11 @@ function buildShenShaFacts(
 }
 
 function getMonthLeaderByZhongqi(timestamp: number) {
-  const currentParts = TimeManager.getWallClockParts(new Date(timestamp));
+  // tyme4ts 的中气时刻以东八区钟表表达；月将必须按真实交节瞬时点切换。
+  const currentParts = TimeManager.getWallClockParts(
+    new Date(timestamp),
+    DEFAULT_CHINA_TIMEZONE_HOURS * 60,
+  );
   const currentTime = SolarTime.fromYmdHms(
     currentParts.year,
     currentParts.month,
@@ -567,7 +572,7 @@ export function generateLiuren(customDate?: Date): LiurenData {
     `一级发用：先看初传${firstTransmission.branch}${firstTransmission.isVoid ? '空亡，待出空或冲实' : '不空，可直接作为起始信号'}`,
     `二级三传：${threeTransmissions.map((item) => `${item.stage}${item.branch}（月令${item.seasonState}${item.isVoid ? '、空' : ''}）`).join('→')}`,
     `三级日月：以日支${dayBranch}、月支${ganzhi.month.charAt(1)}对初传和类神的同支、冲合与旺衰作为触发条件`,
-    '未给出目标期限时，只判断先后、快慢和触发条件，不硬换成唯一日期',
+    '以问题期限、三传先后和现实触发条件核对应期',
   ];
 
   // 为入传天将附加可核验的基础属性。

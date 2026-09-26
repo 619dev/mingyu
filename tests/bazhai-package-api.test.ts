@@ -97,6 +97,28 @@ test('八宅立春日期边界应按干支年切换命卦', () => {
   assert.equal(after.mingGua, '震');
 });
 
+test('八宅出生日期落在立春当天且缺少时刻时应标为待复核', () => {
+  const result = analyzeBaZhai({
+    birthYear: 2024,
+    birthMonth: 2,
+    birthDay: 4,
+    gender: 'male',
+  });
+
+  assert.equal(result.effectiveBirthYear, 2023);
+  assert.match(result.birthYearBoundaryNote, /立春同日，未提供出生时刻/);
+  assert.match(result.birthYearBoundaryNote, /按当日正午与立春时刻比较/);
+  assert.match(result.prompt, /立春同日，未提供出生时刻/);
+  assert.equal(result.evidenceAnalysis.calculationFact.yearBoundaryStatus, '待复核');
+  assert.match(result.evidenceAnalysis.calculationFact.promptText, /请按准确出生时刻复核/);
+  assert.match(
+    result.evidenceAnalysis.counterEvidenceFacts.find((item) => item.type === '命卦年界')
+      ?.promptText ?? '',
+    /未提供出生时刻/,
+  );
+  assert.equal(result.evidenceAnalysis.summaryFact.status, '证据链有缺口');
+});
+
 test('八宅大游年应符合八宅逐宫传统真值', () => {
   const palaceOrder = ['坎', '艮', '震', '巽', '离', '坤', '兑', '乾'];
   const cases = [

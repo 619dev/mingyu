@@ -306,8 +306,8 @@ pnpm mcp
 
 ### 奇门遁甲排盘方法
 
-奇门遁甲工具支持 `qimenMethod` 参数：`zhuanpan`（转盘法，默认）或 `feipan`（飞盘法）；`qimenScope` 可选 `hour`（时家，默认）、`day`、`month`、`year`；`qimenJuMethod` 可选 `chaibu`（拆补，默认）或 `zhirun`（置闰），后者只对时家、日家生效。
-返回结果会包含 `timeInfo`（正式定局节气与三元）、`seasonality`（实际节气、节气五行、月相、建除十二神、四柱干支互动）和 `patternCombos`（吉凶叠加、吉格逢空、伏吟反吟叠马星等复合格局），提示词工具会把这些字段作为解读证据。
+奇门遁甲工具支持 `qimenMethod` 参数：`zhuanpan`（转盘法，默认）或 `feipan`（飞盘法）；`qimenScope` 可选 `hour`（时家，默认）、`day`、`month`、`year`。时家、日家的 `qimenJuMethod` 可选 `chaibu`（拆补，默认）或 `zhirun`（置闰）；年家、月家按《奇门遁甲统宗》三元阴遁定局。
+返回结果的 `timeInfo.solarTerm` 记录实际节气；时家、日家另有正式定局节气 `juTerm`，年家、月家以干支年和三元确定局数。`seasonality` 保留实际节气、节气五行、月相、建除十二神和四柱互动等时间事实；提示词按排盘级别选取相关资料。`patternCombos` 记录同宫格局、格局逢空等复合命中。
 
 奇门终身局工具必须提供 `birthDateTime`；出生时间按 `timeZoneId` 或固定 `timezone` 解析，`timeStandard: "trueSolar"` 时还必须提供 `location.longitude`。`periodRange` 使用有效的 `startDate`、`endDate`（`YYYY-MM-DD`）指定动态流年区间，本地 stdio/自部署服务最多连续31个年份；在线 Remote MCP 为保证边缘稳定，单次最多10个年份，超过时会返回 `RESOURCE_LIMIT`，请按年份分段调用。`topics` 可限定事业、财运、婚姻、健康、学业、迁居、家庭、子女或合作主题；终身局工具返回出生主体、阶段卡和该区间实际生成的动态事件簇。
 

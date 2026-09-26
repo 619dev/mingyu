@@ -720,8 +720,10 @@ function buildTimingFacts(
     },
     {
       type: '期限边界',
-      matcher: (text) => /未给出目标期限|未给期限/.test(text),
-      computed: '未给出目标期限时，以盘面先后、快慢与触发条件为应期资料',
+      matcher: (text) =>
+        text.startsWith('以问题期限、三传先后和现实触发条件核对应期') ||
+        /未给出目标期限|未给期限/.test(text),
+      computed: '以问题期限、三传先后和现实触发条件核对应期',
       sources: ['当前问题是否给出目标期限、盘面先后快慢与触发条件'],
     },
   ];
@@ -735,7 +737,8 @@ function buildTimingFacts(
       type: definition.type,
       sourceStatus: rawText ? '原结果提供' : '由盘面补齐',
       ...(rawText ? { rawText } : {}),
-      promptText: rawText ?? definition.computed,
+      promptText:
+        definition.type === '期限边界' ? definition.computed : (rawText ?? definition.computed),
       sources: rawText
         ? ['当前大六壬结果已保存的应期条件', ...definition.sources]
         : definition.sources,

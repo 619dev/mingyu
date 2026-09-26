@@ -4,7 +4,10 @@ import { MEIHUA_DIRECTION_OPTIONS, MEIHUA_OBJECT_OPTIONS } from './config';
 import { getSeasonState, isKe, isSheng } from '../ganzhi';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import { MingyuCoreError } from '../shared/result';
-import { resolveRandomMethod } from './algorithms/meihua/helpers/methods';
+import {
+  hasCompleteCharacterCalculation,
+  resolveRandomMethod,
+} from './algorithms/meihua/helpers/methods';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import {
   buildRandomTraceFact,
@@ -608,13 +611,7 @@ function buildCalculationFacts(data: MeihuaData): string[] {
       appendResolvedResultFacts(facts, data);
     }
   } else if (calculation.methodKey === 'character') {
-    const hasCharacterNumbers =
-      hasFiniteNumber(calculation.characterCount) &&
-      hasFiniteNumber(calculation.characterUpperNumber) &&
-      hasFiniteNumber(calculation.characterLowerNumber) &&
-      hasFiniteNumber(calculation.upperTrigramIndex) &&
-      hasFiniteNumber(calculation.lowerTrigramIndex) &&
-      hasFiniteNumber(calculation.movingYaoIndex);
+    const hasCharacterNumbers = hasCompleteCharacterCalculation(calculation);
     if (hasCharacterNumbers) {
       const toneText = Array.isArray(calculation.characterTones)
         ? `，传统平上去入声数${calculation.characterTones.join('、')}（不等同于普通话一至四声）`
@@ -821,13 +818,7 @@ function buildMeihuaCalculationFact(data: MeihuaData): MeihuaCalculationFact {
     if (Array.isArray(calculation.characterStrokeCounts)) {
       inputs.characterStrokeCounts = calculation.characterStrokeCounts.join(',');
     }
-    if (
-      hasFiniteNumber(calculation.characterUpperNumber) &&
-      hasFiniteNumber(calculation.characterLowerNumber) &&
-      hasFiniteNumber(calculation.upperTrigramIndex) &&
-      hasFiniteNumber(calculation.lowerTrigramIndex) &&
-      hasFiniteNumber(calculation.movingYaoIndex)
-    ) {
+    if (hasCompleteCharacterCalculation(calculation)) {
       steps.push(
         {
           key: 'meihua:calculation:upper',

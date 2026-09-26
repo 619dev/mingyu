@@ -125,7 +125,10 @@ function collectQimenPatternConditions(data: QimenData): QimenPatternCondition[]
 export function evaluateQimenPatternFulfillment(data: QimenData): string[] {
   return collectQimenPatternConditions(data).map(({ name, type, palaceName, conditions }) => {
     const identity = type === 'good' ? '吉格' : type === 'bad' ? '凶格' : '中性格局';
-    return `【${name}】落${palaceName}，属${identity}，同宫见${conditions.join('、')}。`;
+    const additionalConditions = conditions.filter(
+      (condition) => !(name === '门迫' && condition === '门迫'),
+    );
+    return `【${name}】落${palaceName}，属${identity}${additionalConditions.length ? `，同宫见${additionalConditions.join('、')}` : ''}。`;
   });
 }
 

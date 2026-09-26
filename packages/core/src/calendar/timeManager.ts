@@ -137,9 +137,8 @@ export class TimeManager {
       throw new Error('自定义时间不是有效日期。');
     }
     const offsetMinutes = this.getTimezoneOffsetMinutes(targetTime, explicitOffsetMinutes);
-    // 显式地点时区下，节气仍按采用历表的中国标准时瞬时点定位；未显式传入时保留原有全局口径。
-    const termOffsetMinutes =
-      explicitOffsetMinutes === undefined ? offsetMinutes : DEFAULT_CHINA_TIMEZONE_HOURS * 60;
+    // 节气是同一个真实瞬时点，全局时区配置只影响当地钟表与日时柱。
+    const termOffsetMinutes = DEFAULT_CHINA_TIMEZONE_HOURS * 60;
     const termDate = referenceDate ?? targetTime;
     if (!(termDate instanceof Date) || Number.isNaN(termDate.getTime())) {
       throw new Error('节气参考时间不是有效日期。');

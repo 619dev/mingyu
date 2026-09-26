@@ -300,21 +300,30 @@ test('破格救应已在核心判断列明时省略重复格局条件', () => {
   assert.match(formatBaziPatternConditions(result), /破格项：伤官见官/);
 });
 
-test('格神前提未满足时不附加救应条件，从儿格只写已成立的五行流向', () => {
+test('格神前提未满足时不附加救应条件，从儿格不重复已有的财气承接与五行流向', () => {
   const uncertain = createBaziResult({ year: 1980, month: 1, day: 3, timeIndex: 0 });
   const uncertainConditions = formatBaziPatternConditions(uncertain);
   assert.equal(uncertainConditions, '');
 
   const conger = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  assert.equal(formatBaziPatternConditions(conger), '');
   for (const prompt of [
     buildBaziPrompt({ result: conger }),
     buildBaziPrompt({ result: conger, schools: ['ziping', 'mangpai'] }),
   ]) {
     assert.doesNotMatch(prompt, /支藏印官未构成从儿格的实际反证/);
-    assert.match(prompt, /从儿五行流向：/);
+    assert.match(prompt, /承接食伤所生/);
+    assert.match(prompt, /食伤土生财星金/);
     assert.doesNotMatch(prompt, /原支藏印官事实：/);
     assert.match(prompt, /年柱: 庚申[^\n]*[\s\S]*藏干: [^\n]*壬\[七杀\]/);
   }
+  assert.doesNotMatch(buildBaziPrompt({ result: conger }), /从儿五行流向：/);
+});
+
+test('从儿格缺少明确财气承接依据时仍保留本盘五行流向', () => {
+  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  result.analysis.mingGe.basis = result.analysis.mingGe.basis?.replace('承接食伤所生', '财星明透');
+  assert.match(formatBaziPatternConditions(result), /从儿五行流向：食伤土生财金/);
 });
 
 test('格神未成立的真实命盘不把破格候选和救应路径当作提示词结论', () => {

@@ -417,7 +417,10 @@ export function buildDivinationPrompt(
           )
         : method === 'qimen' && options.qimenRange
           ? buildPromptTask(
-              '依据各时间段的定局、九宫、值符值使、用神和节令资料，区分共有事实与随时间变化的条件，结合标明时刻的月相参照回答【问题】。',
+              options.qimenRange.branches[0]?.data.scope === 'year' ||
+                options.qimenRange.branches[0]?.data.scope === 'month'
+                ? '依据各时间段的实际节气、三元定局依据、九宫、值符值使与用神资料，区分共有事实与随时间变化的条件，回答【问题】。'
+                : '依据各时间段的定局、九宫、值符值使、用神和节令资料，区分共有事实与随时间变化的条件，结合标明时刻的月相参照回答【问题】。',
               'qimen',
             )
           : method === 'meihua' && options.meihuaRange?.status === 'conditional'

@@ -56,11 +56,11 @@ test('五运六气年度盘展示全年主客运气事实', () => {
   assert.match(html, /司天/u);
 });
 
-test('缺少可选格局标签的旧奇门记录仍应正常渲染', () => {
+test('缺少可选格局标签的旧奇门记录不显示空格局区', () => {
   const legacyData = { ...generateQimen(FIXED_DATE) };
   delete (legacyData as Partial<QimenData>).patternTags;
 
   const html = renderBoard('qimen', legacyData);
   assert.match(html, /奇门九宫盘/);
-  assert.match(html, /盘局特征/);
+  assert.doesNotMatch(html, /盘局特征/);
 });

@@ -292,9 +292,11 @@ function buildFortuneEvidenceLines(params: {
           ? '反证'
           : fact.conditionStatus === '双向条件引用'
             ? '主证'
-            : fact.placement === '岁运透干'
-              ? '主证'
-              : '辅证';
+            : fact.conditionStatus === '引用有前提的喜用条件'
+              ? '辅证'
+              : fact.placement === '岁运透干'
+                ? '主证'
+                : '辅证';
       items.push({
         level,
         title: '岁运作用事实',

@@ -1085,11 +1085,14 @@ export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOpti
         )
       : [];
     const dayLifeStage = getShiErGong(info.wuxing, dayBranch);
-    const movingLifeStages = movingBranches.map(({ position, branch }) => ({
-      position,
-      branch,
-      stage: getShiErGong(info.wuxing, branch),
-    }));
+    // 动爻对本爻的生旺墓绝须来自另一爻；本爻自身的十二长生已由 shiErGong 单独记录。
+    const movingLifeStages = movingBranches
+      .filter(({ position }) => position !== index + 1)
+      .map(({ position, branch }) => ({
+        position,
+        branch,
+        stage: getShiErGong(info.wuxing, branch),
+      }));
     const changedLifeStage = changedInfo ? getShiErGong(info.wuxing, changedInfo.dizhi) : undefined;
     const isDongMu = movingLifeStages.some(({ stage }) => stage === '墓');
     const isHuaMu = changedLifeStage === '墓';

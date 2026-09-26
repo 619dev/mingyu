@@ -749,7 +749,7 @@ function buildOrdinaryTransmissionAdjudication(args: {
     if (inactiveOutput.length) {
       setSuppressed(inactiveOutput, '下贼上候选前置成立，上克下候选不再参与取舍');
     }
-    setSuppressed([...remoteUpper, ...remoteLower], '四课直接上下克前置成立，遥克不得抢占');
+    setSuppressed([...remoteUpper, ...remoteLower], '四课直接上下克前置成立，取传采用直接克候选');
 
     stages.push(
       createOrdinaryStage(

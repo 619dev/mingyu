@@ -3774,6 +3774,14 @@ test('公开 API 奇门应支持年、月、日、时四种计式', async () => 
     assert.equal(body.data.scope, scope, scope);
     assert.equal(body.data.method, 'feipan', scope);
     assert.equal(body.data.jiuGongGe.length, 9, scope);
+    if (scope === 'year' || scope === 'month') {
+      assert.equal(Object.hasOwn(body.data, 'juMethod'), false, scope);
+      assert.equal(Object.hasOwn(body.data.timeInfo, 'juTerm'), false, scope);
+      assert.equal(Object.hasOwn(body.data.timeInfo, 'juMethod'), false, scope);
+    } else {
+      assert.equal(body.data.juMethod, 'zhirun', scope);
+      assert.equal(body.data.timeInfo.juMethod, 'zhirun', scope);
+    }
   }
 });
 

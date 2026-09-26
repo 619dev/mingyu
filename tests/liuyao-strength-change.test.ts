@@ -102,6 +102,24 @@ test('六爻：生旺墓绝应分别核验日辰、明动爻与自身变爻', ()
   assert.match(huaMuData.evidenceAnalysis?.promptText ?? '', /动而化墓|化墓/);
 });
 
+test('六爻：单个辰土爻发动不因自身辰支判作入动墓', () => {
+  const data = generateLiuyao(SAMPLE_DATE, { yaos: [7, 8, 6, 8, 8, 8] });
+  const movingYao = data.yaosDetail[2];
+  const lineFact = data.evidenceAnalysis?.lineFacts[2];
+
+  assert.equal(data.originalName, '地雷复');
+  assert.equal(movingYao.najiaDizhi, '辰');
+  assert.equal(movingYao.shiErGong, '墓');
+  assert.equal(movingYao.isChanging, true);
+  assert.equal(movingYao.isRiMu, false);
+  assert.equal(movingYao.isHuaMu, false);
+  assert.deepEqual(movingYao.movingLifeStages, []);
+  assert.equal(movingYao.isDongMu, false);
+  assert.equal(movingYao.isRuMu, false);
+  assert.ok(!lineFact?.constraints.includes('入动墓'));
+  assert.doesNotMatch(lineFact?.promptText ?? '', /入动墓|动爻生旺墓绝第3爻辰墓/);
+});
+
 test('六爻：爻内三刑汇总应按共享三刑口径识别两支互见', () => {
   const data = generateSampleLiuyao();
 

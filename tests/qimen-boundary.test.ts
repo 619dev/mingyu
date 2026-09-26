@@ -48,16 +48,24 @@ test('奇门拆补法在交节当天应按具体时刻换节气，不应按整�
 
 test('奇门日家月家主动干标签不得误写成时干', () => {
   const dayChart = generateQimen(new Date('2026-09-03T04:00:00.000Z'), 'zhuanpan', 'day');
-  const monthChart = generateQimen(new Date('2026-09-01T04:00:00.000Z'), 'zhuanpan', 'month');
+  const monthChart = generateQimen(new Date('2024-01-15T02:30:00.000Z'), 'zhuanpan', 'month');
 
   assert.ok(dayChart.patternTags.some((tag) => tag.includes('击刑（日干庚')));
-  assert.ok(monthChart.patternTags.some((tag) => tag.includes('入墓（月干丙')));
+  assert.ok(monthChart.patternTags.some((tag) => tag.includes('入墓（月干乙')));
   assert.doesNotMatch(dayChart.patternTags.join('、'), /击刑（时干庚/);
-  assert.doesNotMatch(monthChart.patternTags.join('、'), /入墓（时干丙/);
+  assert.doesNotMatch(monthChart.patternTags.join('、'), /入墓（时干乙/);
   assert.match(
     dayChart.patternDetails.find((item) => item.tag.startsWith('击刑'))?.summary ?? '',
     /日干落击刑位/,
   );
+});
+
+test('日家日干入墓与时家时干入墓分字段记录', () => {
+  const dayChart = generateQimen(new Date('2025-01-08T04:00:00Z'), 'zhuanpan', 'day');
+  assert.equal(dayChart.ganzhi.day, '丁丑');
+  assert.equal(dayChart.specialConditions?.isRiGanRuMu, true);
+  assert.equal(dayChart.specialConditions?.isShiGanRuMu, false);
+  assert.match(dayChart.specialConditions?.description ?? '', /日干丁入墓/);
 });
 
 test('奇门拆补法定三元应按晚子时日柱推进符头日', () => {
@@ -197,13 +205,99 @@ test('奇门九星关系：未知星或非法宫位应明确报错', () => {
 
 test('月家与年家奇门应校验完整干支，不应只读取单个天干或地支', () => {
   assert.deepEqual(getMonthQimenJuShu('丙寅', '甲辰'), {
-    isYangDun: true,
-    juShu: 1,
-    yuan: '月局',
+    isYangDun: false,
+    juShu: 7,
+    yuan: '下元',
   });
   assert.throws(() => getMonthQimenJuShu('甲丑', '甲辰'), /月干支不是有效六十甲子/);
   assert.throws(() => getMonthQimenJuShu('丙寅', '甲丑'), /年干支不是有效六十甲子/);
   assert.throws(() => getYearQimenJuShu('甲丑'), /年干支不是有效六十甲子/);
+});
+
+test('月家奇门按干支年五年三元定阴遁一四七局', () => {
+  const years = [
+    ['甲子', '上元', 1],
+    ['戊辰', '上元', 1],
+    ['己巳', '中元', 4],
+    ['癸酉', '中元', 4],
+    ['甲戌', '下元', 7],
+    ['戊寅', '下元', 7],
+    ['己卯', '上元', 1],
+    ['甲午', '上元', 1],
+    ['甲辰', '下元', 7],
+    ['己酉', '上元', 1],
+  ] as const;
+
+  for (const [yearGanZhi, yuan, juShu] of years) {
+    assert.deepEqual(getMonthQimenJuShu('丙寅', yearGanZhi), {
+      isYangDun: false,
+      juShu,
+      yuan,
+    });
+  }
+  assert.deepEqual(getMonthQimenJuShu('壬申', '甲辰'), getMonthQimenJuShu('丙寅', '甲辰'));
+});
+
+test('月家奇门在立春交节瞬时随干支年切换五年三元', () => {
+  const before = generateQimen(
+    new Date('2024-02-04T08:27:06Z'),
+    'zhuanpan',
+    'month',
+    'chaibu',
+    480,
+  );
+  const after = generateQimen(new Date('2024-02-04T08:27:07Z'), 'zhuanpan', 'month', 'chaibu', 480);
+
+  assert.equal(before.ganzhi.year, '癸卯');
+  assert.equal(before.timeInfo.epoch, '中元');
+  assert.equal(before.juShu, 4);
+  assert.equal(after.ganzhi.year, '甲辰');
+  assert.equal(after.timeInfo.epoch, '下元');
+  assert.equal(after.juShu, 7);
+});
+
+test('年家奇门按一百八十年三元定阴遁一四七局', () => {
+  assert.deepEqual(getYearQimenJuShu('甲子', 1864), {
+    isYangDun: false,
+    juShu: 1,
+    yuan: '上元',
+  });
+  assert.deepEqual(getYearQimenJuShu('甲子', 1924), {
+    isYangDun: false,
+    juShu: 4,
+    yuan: '中元',
+  });
+  assert.deepEqual(getYearQimenJuShu('甲子', 1984), {
+    isYangDun: false,
+    juShu: 7,
+    yuan: '下元',
+  });
+  assert.deepEqual(getYearQimenJuShu('甲子', 2044), {
+    isYangDun: false,
+    juShu: 1,
+    yuan: '上元',
+  });
+});
+
+test('非时家格局只使用本级别及更长周期的干支', () => {
+  const cases = [
+    ['year', '2025-03-10T02:00:00Z', '2025-09-10T19:00:00Z'],
+    ['month', '2025-06-18T02:00:00Z', '2025-06-26T19:00:00Z'],
+    ['day', '2025-06-18T02:00:00Z', '2025-06-18T10:00:00Z'],
+  ] as const;
+
+  for (const [scope, firstTime, secondTime] of cases) {
+    const first = generateQimen(new Date(firstTime), 'zhuanpan', scope, 'chaibu', 480);
+    const second = generateQimen(new Date(secondTime), 'zhuanpan', scope, 'chaibu', 480);
+    assert.equal(first.ganzhi.year, second.ganzhi.year);
+    if (scope === 'month') assert.equal(first.ganzhi.month, second.ganzhi.month);
+    assert.deepEqual(first.classicPatterns, second.classicPatterns);
+    assert.deepEqual(first.patternCombos, second.patternCombos);
+    assert.doesNotMatch(
+      (first.classicPatterns ?? []).map((item) => item.name).join('、'),
+      /时格|时勃|日勃|伏干格|飞干格|天辅时|五合时/,
+    );
+  }
 });
 
 test('奇门格局应拒绝未知值符和值使，不应按零宫位继续判断', () => {

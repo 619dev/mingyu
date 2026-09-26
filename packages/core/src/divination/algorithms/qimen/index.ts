@@ -2,8 +2,8 @@
  * @file 奇门遁甲排盘算法（主入口）
  * @description 基于转盘法或飞盘法，实现时家/日家/月家/年家奇门完整排盘，
  * 含定局、布盘、格局识别、方位建议、应期判断。
- * @流派 转盘奇门为默认口径，飞盘奇门为可选口径（拆补法定局）
- * @古籍依据 《烟波钓叟歌》《御定奇门宝鉴》《遁甲演义》《奇门遁甲秘籍大全》
+ * @流派 转盘奇门为默认口径，飞盘奇门为可选口径
+ * @古籍依据 时家参考《烟波钓叟歌》《御定奇门宝鉴》；年家、月家采用《奇门遁甲统宗》附录起例
  *
  * @核心流程
  * 1. 定局数（拆补法/月家法/年家法）：根据 scope 选择不同定局方式
@@ -193,7 +193,7 @@ function mapStemRelations(
  * 支持时家（hour）、日家（day）、月家（month）、年家（year）四种级别。
  * 默认时家奇门（精确到时辰），使用拆补法定局。
  *
- * 遵循拆补法定局，并按所选转盘法或飞盘法完整输出九宫四盘（天地人神）、
+ * 时家、日家按拆补或置闰定局，年家、月家按三元阴遁定局；再按所选转盘法或飞盘法输出九宫四盘（天地人神）、
  * 格局标签、经典格局（九遁、三奇、门迫、击刑、入墓等）、
  * 宫位洞察、方位吉凶指引和应期估算。
  *
@@ -202,10 +202,10 @@ function mapStemRelations(
  * 1. **时间信息**：《歌》"先须掌上排九宫，纵横十五在其中"
  *    - 获取公历、农历、节气、干支等完整时间数据
  *
- * 2. **定局数**：《歌》"阴阳二遁分顺逆，一气三元人莫测"
+ * 2. **定局数**：按各排盘级别所选口径计算
  *    - 时家/日家：拆补法（以节气为界）
- *    - 月家：月支循环定局
- *    - 年家：年干分组 + 三元甲子周期
+ *    - 月家：干支年五年三元阴遁局
+ *    - 年家：一百八十年三元阴遁局
  *
  * 3. **寻值符值使（旬首法）**：《歌》"直符直使各有时，时干直符时支使"
  *    - 由对应级别干支的旬首定位值符星和值使门
@@ -380,10 +380,9 @@ export function generateQimen(
     zhiFu,
     zhiShi,
     yearGanZhi: ganzhi.year,
-    monthGanZhi: ganzhi.month,
-    dayStem,
-    dayGanZhi: ganzhi.day,
-    hourGanZhi: ganzhi.hour,
+    ...(scope !== 'year' ? { monthGanZhi: ganzhi.month } : {}),
+    ...(scope === 'day' || scope === 'hour' ? { dayStem, dayGanZhi: ganzhi.day } : {}),
+    ...(scope === 'hour' ? { hourGanZhi: ganzhi.hour } : {}),
   };
   const classicPatternsRaw = getClassicPatterns(classicPatternContext);
   const classicPatterns = mapClassicPatterns(classicPatternsRaw);
@@ -461,17 +460,13 @@ export function generateQimen(
     activeGanZhi,
     zhiFu,
     zhiShi,
-    dayGanZhi: ganzhi.day,
     yearBranch,
-    dayStem,
-    dayBranch,
-    monthBranch,
+    ...(scope === 'day' || scope === 'hour' ? { dayGanZhi: ganzhi.day, dayStem, dayBranch } : {}),
+    ...(scope !== 'year' ? { monthBranch } : {}),
     solarTerm: jushuResult.jieQi || jieQi,
     actualSolarTerm: jushuResult.actualJieQi || jieQi,
     epoch: yuan,
-    hourGanZhi: ganzhi.hour,
-    hourStem,
-    hourBranch,
+    ...(scope === 'hour' ? { hourGanZhi: ganzhi.hour, hourStem, hourBranch } : {}),
     jiuGongGe,
   });
   const publicPatternCombos = patternCombos.map(({ score: _score, ...combo }) => combo);
@@ -479,19 +474,28 @@ export function generateQimen(
   // ──────────────────────────────────────────────────────────────────────────
   // 步骤 15：返回完整 QimenData
   // ──────────────────────────────────────────────────────────────────────────
+  const isYearOrMonthScope = scope === 'year' || scope === 'month';
   const result: QimenData = {
     method,
     scope,
-    juMethod: jushuResult.juMethod,
+    ...(!isYearOrMonthScope ? { juMethod: jushuResult.juMethod } : {}),
     timeInfo: {
       solarTerm: jushuResult.actualJieQi || jieQi,
-      juTerm: jushuResult.jieQi || jieQi,
       epoch: jushuResult.yuan,
-      juMethod: jushuResult.juMethod,
-      ...(jushuResult.fuTou ? { fuTou: jushuResult.fuTou } : {}),
-      ...(jushuResult.fuTouDate ? { fuTouDate: jushuResult.fuTouDate } : {}),
-      ...(jushuResult.chaoShenOrJieQi ? { chaoShenOrJieQi: jushuResult.chaoShenOrJieQi } : {}),
-      ...(jushuResult.isZhiRun !== undefined ? { isZhiRun: String(jushuResult.isZhiRun) } : {}),
+      ...(!isYearOrMonthScope
+        ? {
+            juTerm: jushuResult.jieQi || jieQi,
+            juMethod: jushuResult.juMethod,
+            ...(jushuResult.fuTou ? { fuTou: jushuResult.fuTou } : {}),
+            ...(jushuResult.fuTouDate ? { fuTouDate: jushuResult.fuTouDate } : {}),
+            ...(jushuResult.chaoShenOrJieQi
+              ? { chaoShenOrJieQi: jushuResult.chaoShenOrJieQi }
+              : {}),
+            ...(jushuResult.isZhiRun !== undefined
+              ? { isZhiRun: String(jushuResult.isZhiRun) }
+              : {}),
+          }
+        : {}),
       ...(jushuResult.juMethodNote ? { juMethodNote: jushuResult.juMethodNote } : {}),
     },
     ganzhi,
@@ -579,7 +583,7 @@ function getJushuForScope(
         jieQi: timeInfo.jieQi,
         juMethod,
         isZhiRun: false,
-        juMethodNote: '年家奇门使用年干与三元甲子定局，拆补/置闰仅适用于时家与日家',
+        juMethodNote: '《奇门遁甲统宗》年家三元阴遁定局',
       };
     }
     case 'month': {
@@ -589,7 +593,7 @@ function getJushuForScope(
         jieQi: timeInfo.jieQi,
         juMethod,
         isZhiRun: false,
-        juMethodNote: '月家奇门使用月家定局法，拆补/置闰仅适用于时家与日家',
+        juMethodNote: '《奇门遁甲统宗》月家五年三元阴遁定局',
       };
     }
     case 'day':
@@ -688,7 +692,7 @@ function checkDayRuMu(
   const ruMuMap = STEM_TOMB_MAP;
   const ruMuInfo = ruMuMap[dayGan];
   if (ruMuInfo && dayZhi === ruMuInfo.branch) {
-    conditions.isShiGanRuMu = true;
+    conditions.isRiGanRuMu = true;
     conditions.description += `日干${dayGan}入墓（${dayGan}入${ruMuInfo.palace}宫/${ruMuInfo.branch}支），大势迟滞，宜静不宜动；`;
   }
 }

@@ -220,7 +220,7 @@ const METHOD_LABELS: Record<PromptMethodId, string> = {
   meihua: '梅花易数',
   xiaoliuren: '小六壬',
   jinkoujue: '金口诀',
-  qimen: '时家奇门',
+  qimen: '奇门遁甲',
   liuren: '大六壬',
   tarot: '塔罗',
   lenormand: '雷诺曼',

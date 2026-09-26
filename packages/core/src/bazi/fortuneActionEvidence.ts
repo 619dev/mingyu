@@ -24,12 +24,13 @@ export type FortuneActionLevelChinese = '大运' | '流年' | '流月' | '流日
 export type FortuneActionPlacement = '岁运透干' | '岁运藏干';
 export type FortuneActionHiddenCategory = '本气' | '中气' | '余气';
 export type FortuneActionConditionStatus =
-  '引用已裁决喜用条件' | '引用已裁决所忌条件' | '双向条件引用' | '未引用';
+  '引用已裁决喜用条件' | '引用有前提的喜用条件' | '引用已裁决所忌条件' | '双向条件引用' | '未引用';
 export type FortuneActionCurrentStatus = '满足' | '不满足' | '资料不足';
 export type FortuneActionHitSourceType =
   | 'conditionalFavorableStems'
   | 'conditionalUnfavorableStems'
   | '基础五行喜忌'
+  | '条件五行喜用'
   | 'patternBreakerRestrictions'
   | '制化来源';
 
@@ -213,7 +214,10 @@ export function analyzeFortuneActionEvidence(params: {
   const baseFavWuxing = new Set<string>([
     ...(usefulGod.favorableWuxing ?? []),
     ...(usefulGod.decisionEvidence?.base?.favorable ?? []),
+  ]);
+  const conditionalFavWuxing = new Set<string>([
     ...(usefulGod.conditionalFavorableWuxing ?? []),
+    ...(usefulGod.decisionEvidence?.conditionalFavorableWuxing ?? []),
   ]);
   const baseUnfavWuxing = new Set<string>([
     ...(usefulGod.unfavorableWuxing ?? []),
@@ -276,8 +280,12 @@ export function analyzeFortuneActionEvidence(params: {
 
       const isBaseFav = baseFavWuxing.has(element);
       const isBaseUnfav = baseUnfavWuxing.has(element);
+      const isConditionalFav = conditionalFavWuxing.has(element);
       if (isBaseFav || isBaseUnfav) {
         hitSources.push('基础五行喜忌');
+      }
+      if (isConditionalFav) {
+        hitSources.push('条件五行喜用');
       }
 
       // 2. 作用对象收集（仅从结构化制化/调候字段取）
@@ -299,14 +307,15 @@ export function analyzeFortuneActionEvidence(params: {
       const isSpecificFav = condFavStems.has(stem);
       const isSpecificUnfav = condUnfavStems.has(stem) || matchingBreakers.length > 0;
 
-      const favorableHit = isSpecificFav || isBaseFav;
+      const favorableHit = isSpecificFav || isBaseFav || isConditionalFav;
       const unfavorableHit = isSpecificUnfav || isBaseUnfav;
 
       let conditionStatus: FortuneActionConditionStatus = '未引用';
       if (favorableHit && unfavorableHit) {
         conditionStatus = '双向条件引用';
       } else if (favorableHit) {
-        conditionStatus = '引用已裁决喜用条件';
+        conditionStatus =
+          isSpecificFav || isBaseFav ? '引用已裁决喜用条件' : '引用有前提的喜用条件';
       } else if (unfavorableHit) {
         conditionStatus = '引用已裁决所忌条件';
       } else {
@@ -327,6 +336,9 @@ export function analyzeFortuneActionEvidence(params: {
       }
       if (isBaseFav) {
         supportingFactKeys.push(`bazi:useful-god:base:favorable:${element}`);
+      }
+      if (isConditionalFav) {
+        supportingFactKeys.push(`bazi:useful-god:conditional-favorable-wuxing:${element}`);
       }
 
       if (condUnfavStems.has(stem)) {
