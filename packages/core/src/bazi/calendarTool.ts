@@ -137,12 +137,12 @@ function toNativeDate(time: {
 
 function formatDateTime(date: Date): string {
   const civil = fromNativeDate(date);
-  return `${civil.year}-${formatNumber(civil.month)}-${formatNumber(civil.day)} ${formatNumber(civil.hour)}:${formatNumber(civil.minute)}`;
+  return `${civil.year}-${formatNumber(civil.month)}-${formatNumber(civil.day)} ${formatNumber(civil.hour)}:${formatNumber(civil.minute)}:${formatNumber(civil.second)}`;
 }
 
-function formatHourMinute(date: Date): string {
+function formatHourMinuteSecond(date: Date): string {
   const civil = fromNativeDate(date);
-  return `${formatNumber(civil.hour)}:${formatNumber(civil.minute)}`;
+  return `${formatNumber(civil.hour)}:${formatNumber(civil.minute)}:${formatNumber(civil.second)}`;
 }
 
 function startOfLocalDay(date: Date) {
@@ -302,12 +302,12 @@ function getMonthDaysInfoDetailed(year: number, month: number): DetailedBaziMont
 
     if (cursor.getTime() === firstDay.getTime() && sliceStart.getTime() > dayStart.getTime()) {
       boundaryNotes.push(
-        `${monthInfo.startTermName}于${formatHourMinute(monthInfo.startAt)}交节，本日自该刻起进入${monthInfo.month}`,
+        `${monthInfo.startTermName}于${formatHourMinuteSecond(monthInfo.startAt)}交节，本日自该刻起进入${monthInfo.month}`,
       );
     }
     if (cursor.getTime() === lastDayInclusive.getTime() && sliceEnd.getTime() < dayEnd.getTime()) {
       boundaryNotes.push(
-        `${monthInfo.endTermName}于${formatHourMinute(monthInfo.endAt)}交节，本日到该刻前仍属${monthInfo.month}`,
+        `${monthInfo.endTermName}于${formatHourMinuteSecond(monthInfo.endAt)}交节，本日到该刻前仍属${monthInfo.month}`,
       );
     }
 

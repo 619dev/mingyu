@@ -31,6 +31,31 @@ test('七政四余页面应能直接渲染并显示典籍折叠区', () => {
   );
   assert.match(html, /七政四余十一曜/);
   assert.match(html, /果老星宗/);
+  assert.match(html, /回归黄经/);
+  assert.doesNotMatch(html, /恒星黄经/);
+});
+
+test('七政四余未定义恒星黄道零点时只输出目标日期黄经', () => {
+  const result = generateQizheng({
+    year: 2024,
+    month: 6,
+    day: 15,
+    hour: 12,
+    latitude: 39.9042,
+    longitude: 116.4074,
+    timezone: 8,
+  });
+
+  assert.equal(
+    result.ziqi.tropicalLongitude,
+    result.stars.find((star) => star.name.startsWith('紫炁'))?.longitude,
+  );
+  assert.equal('siderealLongitude' in result.ziqi, false);
+  for (const fact of result.evidenceAnalysis.starFacts) {
+    assert.equal(fact.longitude, result.stars.find((star) => star.name === fact.name)?.longitude);
+    assert.equal('siderealLongitude' in fact, false);
+  }
+  assert.doesNotMatch(result.prompt, /恒星黄经/);
 });
 
 test('七政四余可选秒数应贯穿天文时间、光照证据与出生提示，省略时保持默认结果', () => {

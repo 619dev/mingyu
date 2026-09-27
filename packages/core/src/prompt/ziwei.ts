@@ -269,6 +269,27 @@ function formatMutagenMap(payload: AnalysisPayloadV1, isOriginScope = false) {
   return values.length ? values.join('；') : isOriginScope ? '未记录生年四化' : '未记录当前四化';
 }
 
+function isRestatedZiweiEvidence(title: string, detail: string) {
+  const text = detail.startsWith(`${title}：`) ? detail.slice(title.length + 1) : detail;
+  const majorStar = /^(.+?)主星为(.+)$/u.exec(title);
+  if (majorStar && text === `${majorStar[1]}登记主星${majorStar[2]}。`) return true;
+
+  const trine = /^(.+?)三方四正见化([禄权科忌])$/u.exec(title);
+  if (trine && text === `${trine[1]}及其三方四正宫位中可见化${trine[2]}信息。`) {
+    return true;
+  }
+
+  const flying = /^(.+?)化([禄权科忌])入(.+)$/u.exec(title);
+  if (flying) {
+    const target = flying[3];
+    return (
+      text === `${flying[1]}化${flying[2]}落${target}宫。` ||
+      (flying[1] === target && text === `${flying[1]}化${flying[2]}回入本宫。`)
+    );
+  }
+  return false;
+}
+
 export function formatZiweiPayloadForPrompt(
   payload: AnalysisPayloadV1,
   options: {
@@ -284,7 +305,8 @@ export function formatZiweiPayloadForPrompt(
     const level = item.level ? `【${item.level}】` : '';
     const detail = item.promptText || item.description;
     const title = `${item.title}：`;
-    return `${level}${detail.startsWith(title) ? detail : `${title}${detail}`}`;
+    const evidence = detail.startsWith(title) ? detail : `${title}${detail}`;
+    return `${level}${isRestatedZiweiEvidence(item.title, detail) ? item.title : evidence}`;
   });
   const evidenceLimit = options.maxEvidence ?? 30;
   const evidencePrimary = evidenceItems.slice(0, evidenceLimit);

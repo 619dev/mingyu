@@ -238,6 +238,29 @@ test('真实紫微盘的重点宫星只在详细资料列出一次，十二宫�
   assert.ok(palaceIndex.some((item) => item.includes('主星：')));
 });
 
+test('真实紫微盘证据保留主辅等级，省略标题已说明的重复释义', async () => {
+  const runtime = await calculateZiweiChart(
+    {
+      name: '证据去重核验',
+      gender: '女',
+      dateType: 'solar',
+      birthDate: '1990-05-15',
+      birthTimeIndex: 4,
+      algorithm: 'default',
+    },
+    { scopes: ['origin'] },
+  );
+  const prompt = formatZiweiPayloadForPrompt(runtime.payloadByScope.origin);
+
+  assert.match(prompt, /【主证】命宫主星为天机\n/);
+  assert.match(prompt, /【主证】福德三方四正见化忌\n/);
+  assert.match(prompt, /【主证】父母化忌入命宫\n/);
+  assert.doesNotMatch(prompt, /命宫主星为天机：命宫登记主星天机/);
+  assert.doesNotMatch(prompt, /福德三方四正见化忌：福德及其三方四正宫位中可见化忌信息/);
+  assert.doesNotMatch(prompt, /父母化忌入命宫：父母化忌落命宫宫/);
+  assert.match(prompt, /福德见生年化科：太阴在福德带有生年化科/);
+});
+
 test('格局条件未列出具体宫位时保留必要的宫位资料', () => {
   const payload = createPayload();
   payload.palaces[1].minor_stars.push({ name: '左辅', kind: 'minor' });

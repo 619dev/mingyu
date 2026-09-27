@@ -407,14 +407,6 @@ function collectContinuousSamples(result: QizhengResult): ContinuousSample[] {
     result.ziqi.tropicalLongitude,
     360,
   );
-  addSample(
-    samples,
-    'ziqi.siderealLongitude',
-    '紫炁恒星黄经',
-    '度',
-    result.ziqi.siderealLongitude,
-    360,
-  );
   addSample(samples, 'ziqi.cycleProgress', '紫炁周期进度', '比例', result.ziqi.cycleProgress);
   addSample(
     samples,

@@ -304,7 +304,7 @@ export interface QizhengStarFact {
   name: string;
   kind: QizhengStar['kind'];
   tropicalLongitude: number;
-  siderealLongitude: number;
+  longitude: number;
   xiu: string;
   sevenStar: string;
   xiuDegree: number;
@@ -565,7 +565,6 @@ export interface ZiqiModelInfo {
 
 export interface ZiqiPosition {
   tropicalLongitude: number;
-  siderealLongitude: number;
   direction: '顺行';
   dailyMotionDegrees: number;
   cycleProgress: number;
@@ -858,14 +857,6 @@ function buildQizhengAstronomicalTime(input: QizhengInput): AstronomicalTimeEvid
   });
 }
 
-function getDecimalYear(utcMs: number): number {
-  const date = new Date(utcMs);
-  const year = date.getUTCFullYear();
-  const start = Date.UTC(year, 0, 1);
-  const end = Date.UTC(year + 1, 0, 1);
-  return year + (utcMs - start) / (end - start);
-}
-
 /** 依《七政算内篇》单一古法模型计算紫炁回归黄经。 */
 export function calculateZiqiTropicalLongitude(input: QizhengInput): number {
   const targetUtcMs = getTargetUtcMs(input);
@@ -873,32 +864,12 @@ export function calculateZiqiTropicalLongitude(input: QizhengInput): number {
   return normalizeLongitude(ZIQI_MODERN_EPOCH_LONGITUDE + elapsedDays * ZIQI_DAILY_MOTION);
 }
 
-/**
- * J2000.0 至目标年份的黄经岁差（IAU 2006 近似，单位：度）。
- * 23.44° 是黄赤交角，不能作为岁差基数；2024 年累计岁差约 0.34°。
- */
-export function getPrecessionOffset(year: number): number {
-  if (!Number.isFinite(year)) throw new Error('岁差年份必须是有效数字。');
-  const t = (year - 2000) / 100;
-  const arcSeconds =
-    5028.796195 * t + 1.1054348 * t ** 2 + 0.00007964 * t ** 3 - 0.000023857 * t ** 4;
-  return arcSeconds / 3600;
-}
-
-/** 回归黄经 → 恒星黄经（减岁差） */
-function toSidereal(tropical: number, year: number): number {
-  return normalizeLongitude(tropical - getPrecessionOffset(year));
-}
-
 /** 返回紫炁的完整可审计位置数据；项目中不存在第二套紫炁计算模型。 */
 export function calculateZiqiPosition(input: QizhengInput): ZiqiPosition {
-  const targetUtcMs = getTargetUtcMs(input);
   const tropicalLongitude = calculateZiqiTropicalLongitude(input);
-  const siderealLongitude = toSidereal(tropicalLongitude, getDecimalYear(targetUtcMs));
   const daysSinceZeroLongitude = tropicalLongitude / ZIQI_DAILY_MOTION;
   return {
     tropicalLongitude,
-    siderealLongitude,
     direction: ZIQI_MODEL_INFO.direction,
     dailyMotionDegrees: ZIQI_DAILY_MOTION,
     cycleProgress: tropicalLongitude / 360,
@@ -1529,7 +1500,7 @@ function buildQizhengEvidence(
     name: star.name,
     kind: star.kind,
     tropicalLongitude: star.tropicalLongitude,
-    siderealLongitude: star.longitude,
+    longitude: star.longitude,
     xiu: star.xiu,
     sevenStar: star.sevenStar,
     xiuDegree: star.xiuDegree,
@@ -2465,7 +2436,6 @@ export type { QizhengLimitDirection, QizhengTimeLordResult } from './time-lords'
 
 export const qizheng = {
   generateQizheng,
-  getPrecessionOffset,
   calculateZiqiTropicalLongitude,
   calculateZiqiPosition,
   ZIQI_MODEL_INFO,

@@ -203,6 +203,10 @@ test('七政本命区间每个分支的完整盘与独立单点计算一致', ()
       path,
     );
   }
+  assert.equal(
+    range.branches[0]!.continuous.some((fact) => fact.path === 'ziqi.siderealLongitude'),
+    false,
+  );
 });
 
 test('七政本命区间支持单秒范围与进度回调', () => {

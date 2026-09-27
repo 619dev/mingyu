@@ -335,10 +335,6 @@ export const QizhengBoard = memo(function QizhengBoard({
           </div>
           <div className="result-meta-lines">
             <div>
-              <span>恒星黄经</span>
-              <strong>{data.ziqi.siderealLongitude.toFixed(4)}°</strong>
-            </div>
-            <div>
               <span>回归黄经</span>
               <strong>{data.ziqi.tropicalLongitude.toFixed(4)}°</strong>
             </div>

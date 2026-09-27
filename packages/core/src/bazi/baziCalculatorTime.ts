@@ -71,7 +71,7 @@ function createUtcDate(year: number, month: number, day: number): Date {
 }
 
 function formatLocalDateTime(time: SolarTimeInstance): string {
-  return `${time.getYear()}-${String(time.getMonth()).padStart(2, '0')}-${String(time.getDay()).padStart(2, '0')} ${String(time.getHour()).padStart(2, '0')}:${String(time.getMinute()).padStart(2, '0')}`;
+  return `${time.getYear()}-${String(time.getMonth()).padStart(2, '0')}-${String(time.getDay()).padStart(2, '0')} ${String(time.getHour()).padStart(2, '0')}:${String(time.getMinute()).padStart(2, '0')}:${String(time.getSecond()).padStart(2, '0')}`;
 }
 
 function parseDateKey(dateKey: string): { year: number; month: number; day: number } {
