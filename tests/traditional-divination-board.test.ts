@@ -56,6 +56,34 @@ test('五运六气年度盘展示全年主客运气事实', () => {
   assert.match(html, /司天/u);
 });
 
+test('五运六气六步在交节当日展示准确时界', () => {
+  const result = calculateWuyunLiuqi({ year: 2026 });
+  const first = result.qiSteps[0];
+  const second = result.qiSteps[1];
+  assert.equal(first.gregorianEnd, '2026-03-19');
+  assert.equal(second.gregorianStart, '2026-03-20');
+  assert.ok(first.boundaryTime && second.boundaryTime);
+  assert.equal(first.boundaryTime.endTimestampExclusive, second.boundaryTime.startTimestamp);
+  assert.ok(second.boundaryTime.startTimestamp > Date.parse('2026-03-20T00:00:00+08:00'));
+
+  const html = renderBoard('wuyun', result);
+  assert.ok(
+    html.includes(
+      `初之气 · 现代节气交节参考（北京时间）：${first.boundaryTime.startBeijing}起，至${second.boundaryTime.startBeijing}前`,
+    ),
+  );
+  assert.ok(
+    html.includes(
+      `二之气 · 现代节气交节参考（北京时间）：${second.boundaryTime.startBeijing}起，至${second.boundaryTime.endBeijingExclusive}前`,
+    ),
+  );
+  assert.doesNotMatch(html, /初之气 · 公历2026-01-20至2026-03-19/u);
+  assert.match(html, /初运 · 公历2026-01-20至2026-04-01/u);
+
+  const withoutCalendar = renderBoard('wuyun', calculateWuyunLiuqi({ yearGanZhi: '丙午' }));
+  assert.match(withoutCalendar, /初之气 · 按传统节气分步/u);
+});
+
 test('缺少可选格局标签的旧奇门记录不显示空格局区', () => {
   const legacyData = { ...generateQimen(FIXED_DATE) };
   delete (legacyData as Partial<QimenData>).patternTags;

@@ -111,7 +111,7 @@ const TOPIC_FACT_FOCUS: Partial<Record<ZiweiPromptTopic, string>> = {
   'job-change': '官禄宫、迁移宫、福德宫与四化关系',
   'startup-partnership': '官禄宫、财帛宫、迁移宫、兄弟宫与关系四化',
   'investment-partnership': '财帛宫、田宅宫、福德宫、官禄宫与四化落点',
-  recent: '【分析对象】所列层级的落宫、四化及其与本命命身轴的关系',
+  recent: '本次分析资料所列层级的落宫、四化及其与本命命身轴的关系',
   family: '父母宫、兄弟宫、子女宫、田宅宫及相关四化',
   'home-move': '田宅宫、迁移宫及福德宫',
   'settle-relocate': '迁移宫、田宅宫及官禄宫',

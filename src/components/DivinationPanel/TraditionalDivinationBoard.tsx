@@ -3500,6 +3500,10 @@ function WuyunTraditionalBoard({
   const target = `${targetYear}${data.input.yearGanZhi}`;
   const formatRange = (start?: string, end?: string) =>
     start && end ? `公历${start}至${end}` : '按传统节气序日';
+  const formatQiBoundary = (step: WuyunLiuqiResult['qiSteps'][number]) =>
+    step.boundaryTime
+      ? `现代节气交节参考（北京时间）：${step.boundaryTime.startBeijing}起，至${step.boundaryTime.endBeijingExclusive}前`
+      : '按传统节气分步';
 
   return (
     <TraditionalBoardShell
@@ -3559,7 +3563,7 @@ function WuyunTraditionalBoard({
           {data.qiSteps.map((step) => (
             <div key={step.label}>
               <span>
-                {step.label} · {formatRange(step.gregorianStart, step.gregorianEnd)}
+                {step.label} · {formatQiBoundary(step)}
               </span>
               <strong>
                 主气{step.hostQi.name}；客气{step.guestQi.name}

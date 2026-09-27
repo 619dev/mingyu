@@ -6,8 +6,28 @@ import {
   evaluateJinkoujueBihePoems,
   generateJinkoujue,
 } from '../packages/core/src/divination/algorithms/jinkoujue.ts';
+import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
+
+test('金口诀月将按节气真实瞬时切换，不随占卜时区覆盖延后', () => {
+  const before = new Date('2024-02-19T12:13:11+08:00');
+  const at = new Date('2024-02-19T12:13:12+08:00');
+  try {
+    for (const offset of [480, 0, -300, 840]) {
+      TimeManager.setTimezoneOffsetMinutesOverride(offset);
+      assert.equal(generateJinkoujue({ customDate: before }).monthLeader, '子');
+      assert.equal(generateJinkoujue({ customDate: at }).monthLeader, '亥');
+    }
+  } finally {
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+  }
+});
+
+test('金口诀目标年末只查当前与下一轮冬至，避免预取越过历表上界', () => {
+  const result = generateJinkoujue({ customDate: new Date('9999-12-31T00:00:00Z') });
+  assert.equal(result.monthLeader, '丑');
+});
 
 test('金口诀随机记录应重放拒绝采样并核对起课数字与地分', () => {
   const samples = [0xffffffff / 0x100000000, 0.5];

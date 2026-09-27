@@ -144,6 +144,26 @@ test('星盘底层入口拒绝无效地理坐标', () => {
   }
 });
 
+test('本命盘拒绝未知相位类型，避免把无效筛选显示为无相位', () => {
+  assert.throws(
+    () =>
+      calculateChart(
+        {
+          year: 1990,
+          month: 7,
+          day: 15,
+          hour: 12,
+          minute: 0,
+          timezone: 8,
+          latitude: 39.9042,
+          longitude: 116.4074,
+        },
+        { aspectTypes: ['未知' as AspectType] },
+      ),
+    /本命相位类型不受支持/,
+  );
+});
+
 test('相位拒绝非有限位置速度和非法容许度强度', () => {
   const bodies = [
     { name: '甲', longitude: 0 },
@@ -249,6 +269,26 @@ test('仅行星位置入口允许缺坐标，完整星盘入口拒绝用默认�
       name,
     );
   }
+});
+
+test('完整星盘应将已计算宫位用于同宫星群检测', () => {
+  const chart = calculateChart({
+    year: 1990,
+    month: 7,
+    day: 15,
+    hour: 12,
+    minute: 0,
+    timezone: 8,
+    latitude: 39.9042,
+    longitude: 116.4074,
+  });
+  const members = ['Sun', 'Mercury', 'Jupiter'].map((name) =>
+    chart.planets.find((planet) => planet.name === name),
+  );
+
+  assert.ok(members.every((planet) => planet?.house === 10));
+  assert.equal(new Set(members.map((planet) => planet?.sign)).size, 2);
+  assert.ok(chart.summary.patterns.includes('同宫星群（木星、水星、太阳，第10宫）'));
 });
 
 test('仅位置入口保留南北交点且与完整星盘的交点和莉莉丝一致', () => {

@@ -527,9 +527,11 @@ const BODY_LABELS: Record<string, string> = {
   Pluto: '冥王星',
 };
 
-function findPatternsFromBodies(bodies: AspectBody[]): AspectPattern[] {
+function findPatternsFromBodies(bodies: Array<AspectBody & { house: number }>): AspectPattern[] {
   const detected = detectPatternsIn(
-    Object.fromEntries(bodies.map((body) => [body.name, { lon: body.longitude }])),
+    Object.fromEntries(
+      bodies.map((body) => [body.name, { lon: body.longitude, house: body.house }]),
+    ),
     { bodies: bodies.map((body) => body.name) },
   );
   return detected.map((pattern) => {
@@ -653,6 +655,10 @@ export function calculateChart(
 ) {
   const utc = toUtc(input);
   const { latitude, longitude } = requireChartCoordinates(input);
+  const aspectTypes = options.aspectTypes ?? Object.values(AspectType);
+  if (aspectTypes.some((type) => !Object.values(AspectType).includes(type))) {
+    throw new Error('本命相位类型不受支持。');
+  }
   const jd = julianDateOfUtc(utc);
   const extraBodies: BodyId[] = [];
   if (options.includeAsteroids) extraBodies.push('ceres', 'pallas', 'juno', 'vesta');
@@ -735,8 +741,8 @@ export function calculateChart(
     name: body.name === 'North Node' ? 'True North Node' : body.name,
     longitude: body.longitude,
     longitudeSpeed: body.longitudeSpeed,
+    house: body.house,
   }));
-  const aspectTypes = options.aspectTypes ?? Object.values(AspectType);
   const allAspects = calculateAspects(aspectBodies, {
     minimumStrength: options.minimumAspectStrength,
   }).aspects.filter((aspect) => aspectTypes.includes(aspect.type));

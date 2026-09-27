@@ -1063,6 +1063,29 @@ function evaluateStatusForOrdinaryPattern(params: {
       activeBreakers,
     };
   }
+  const effectiveBreakers = assessedBreakers.filter((item) => item.usability.effective);
+  const unresolved = effectiveBreakers.filter(
+    (item) => !item.repairStatuses.some((status) => status === '满足'),
+  );
+  const indeterminate = unresolved.filter((item) =>
+    item.repairStatuses.some((status) => status === '资料不足'),
+  );
+  const unrescued = unresolved.filter((item) => item.repairStatus === '不满足');
+  if (unrescued.length) {
+    return {
+      status: '破格',
+      detail: `原局见${effectiveBreakers.map((item) => item.label).join('、')}；${unrescued
+        .map((item) => {
+          const details = item.repairOptions
+            .flat()
+            .map((path) => path.detail)
+            .join('；');
+          return details || item.repair?.detail || `${item.label}未见有效救应`;
+        })
+        .join('；')}`,
+      activeBreakers,
+    };
+  }
   const uncertainBreakers = assessedBreakers.filter((item) => item.usability.uncertain);
   if (uncertainBreakers.length) {
     return {
@@ -1073,7 +1096,6 @@ function evaluateStatusForOrdinaryPattern(params: {
       activeBreakers,
     };
   }
-  const effectiveBreakers = assessedBreakers.filter((item) => item.usability.effective);
   if (!effectiveBreakers.length) {
     const suppressed = assessedBreakers
       .filter((item) => item.group.visible.length > 0)
@@ -1085,12 +1107,6 @@ function evaluateStatusForOrdinaryPattern(params: {
       activeBreakers,
     };
   }
-  const unresolved = effectiveBreakers.filter(
-    (item) => !item.repairStatuses.some((status) => status === '满足'),
-  );
-  const indeterminate = unresolved.filter((item) =>
-    item.repairStatuses.some((status) => status === '资料不足'),
-  );
   if (indeterminate.length) {
     return {
       status: '未判定',
@@ -1106,24 +1122,9 @@ function evaluateStatusForOrdinaryPattern(params: {
       activeBreakers,
     };
   }
-  if (!unresolved.length) {
-    return {
-      status: '破而复成',
-      detail: `原局见${effectiveBreakers.map((item) => item.label).join('、')}，但每项均有明示且有效的救应路径。`,
-      activeBreakers,
-    };
-  }
   return {
-    status: '破格',
-    detail: `原局见${effectiveBreakers.map((item) => item.label).join('、')}；${unresolved
-      .map((item) => {
-        const details = item.repairOptions
-          .flat()
-          .map((path) => path.detail)
-          .join('；');
-        return details || item.repair?.detail || `${item.label}未见有效救应`;
-      })
-      .join('；')}`,
+    status: '破而复成',
+    detail: `原局见${effectiveBreakers.map((item) => item.label).join('、')}，但每项均有明示且有效的救应路径。`,
     activeBreakers,
   };
 }

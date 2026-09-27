@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator.ts';
+import { getYearMonthsGanZhi } from '../packages/core/src/bazi/calendarTool.ts';
 import { buildEnhancedLuckChronicleSection } from '../packages/core/src/minglu/bazi-enhancer.ts';
+import { buildMingluArticle } from '../packages/core/src/minglu/builder.ts';
 
 test('立春前跨公历年交运，前后两运均保留交运节令年的实际区间', () => {
   const result = baziCalculator.calculateBazi({
@@ -107,4 +109,37 @@ test('远期大运逐年仍使用真实节令月边界，月数随实际区间�
   assert.equal(futureYear.startDateTime, futureYear.months[0]?.startDateTime);
   assert.ok(futureYear.months.every((month) => month.endDateTime <= futureYear.endDateTime));
   assert.ok(futureYear.months.every((month) => month.startDateTime < month.endDateTime));
+});
+
+test('立春后春节前的流月使用寅月名称并与八字节令月对齐', () => {
+  const result = baziCalculator.calculateBazi({
+    gender: 'male',
+    year: 1990,
+    month: 2,
+    day: 10,
+    timeIndex: 6,
+    isLunar: false,
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+  });
+  const year = buildMingluArticle({
+    person: { name: '节令流月核验', gender: 'male' },
+    baziResult: result,
+  })
+    .luckChronicleSection.cycles.flatMap((cycle) => cycle.annualYears)
+    .find((item) => item.year === 2024)!;
+  const first = year.months[0]!;
+  const referenceMonths = getYearMonthsGanZhi(2024);
+  const reference = referenceMonths[0]!;
+
+  assert.deepEqual(
+    year.months.map((month) => month.monthName.split('（')[0]),
+    referenceMonths.map((month) => month.month),
+  );
+  assert.equal(first.monthName, '寅月（孟春）');
+  assert.equal(first.ganZhi, reference.ganZhi);
+  assert.equal(first.startDateTime, reference.startDateTime);
+  assert.equal(first.endDateTime, reference.endDateTime);
+  assert.ok(first.startDateTime < '2024-02-05 12:00:00');
+  assert.ok(first.endDateTime > '2024-02-05 12:00:00');
 });

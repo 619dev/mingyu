@@ -112,7 +112,7 @@ const TOPIC_FACT_FOCUS: Partial<Record<BaziPromptTopic, string>> = {
   'exam-landing': '印星、食伤与官星',
   growth: '日主旺衰、格局取用与原局关系',
   talent: '日主、食伤、印星、格局与五行作用方向',
-  recent: '【分析对象】所列层级的实际干支、关系与取用',
+  recent: '本次分析资料所列层级的实际干支、关系与取用',
 };
 
 function formatFullFortune(result: BaziChartResult) {

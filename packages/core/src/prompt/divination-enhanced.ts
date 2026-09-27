@@ -1333,13 +1333,15 @@ export function formatTaiyiInfo(data: TaiyiResult) {
           : '',
       ]
     : [];
+  const civilDate = data.dateTime.split(' ')[0];
+  const [civilYear, civilMonth] = civilDate.split('-');
   const dateTime =
     data.scope === 'year'
-      ? `${data.dateTime.slice(0, 4)}年`
+      ? `${civilYear}年`
       : data.scope === 'month'
-        ? `${data.dateTime.slice(0, 7)}月`
+        ? `${civilYear}-${civilMonth}月`
         : data.scope === 'day'
-          ? data.dateTime.slice(0, 10)
+          ? civilDate
           : data.dateTime;
   return [
     `占法：太乙神数（${scopeLabel}）`,
