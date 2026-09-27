@@ -4381,8 +4381,7 @@ test('公开 API 星盘应附带真太阳时参考且不改写现代星历时刻
         item.ownerFactKeys.every((key: string) => astrolabeFactKeys.has(key)),
     ),
   );
-  assert.match(body.data.evidenceAnalysis.promptText, /【盘面资料】[\s\S]*【传统依据】/);
-  assert.doesNotMatch(body.data.evidenceAnalysis.promptText, /证据汇总：|解释限制（方法限制）：/);
+  assert.match(body.data.evidenceAnalysis.promptText, /证据汇总：[\s\S]*解释限制（方法限制）：/);
   body.data.aspects.forEach(
     (aspect: {
       strength?: number;
@@ -6277,7 +6276,8 @@ test('公开 API 太乙应返回年计七十二局立成结果', async () => {
       (item: Record<string, unknown>) => item.kind === '囚' && item.status === '已命中',
     ),
   );
-  assert.match(body.data.evidenceAnalysis.promptText, /证据汇总：[\s\S]*解释限制（方法限制）：/);
+  assert.match(body.data.evidenceAnalysis.promptText, /【盘面资料】[\s\S]*【传统依据】/);
+  assert.doesNotMatch(body.data.evidenceAnalysis.promptText, /证据汇总：|解释限制（方法限制）：/);
   assert.doesNotMatch(body.data.evidenceAnalysis.promptText, /宜先守后动|不宜轻进/);
   assert.doesNotMatch(
     body.data.evidenceAnalysis.promptText,
@@ -6415,7 +6415,7 @@ test('公开 API 五运六气应返回年度主客气结构与轻量提示词结
   assert.equal(prompted.response.status, 200);
   assert.equal(prompted.body.data.result, undefined);
   assert.equal(prompted.body.data.resultSummary.yearGanZhi, '丙午');
-  assert.match(prompted.body.data.prompt, /交气日时干德符/);
+  assert.doesNotMatch(prompted.body.data.prompt, /平气参考条件：|交气日时干德符/);
   assert.match(prompted.body.data.prompt, /二火加临：君位臣则顺/);
   assert.match(prompted.body.data.prompt, /司天化令：正化；南北政：北政/);
   assert.equal(prompted.body.data.resultSummary.annualClassification.sitianTransformation, '正化');

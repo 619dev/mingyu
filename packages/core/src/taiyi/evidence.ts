@@ -784,7 +784,6 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     ...(data.scope === 'month' ? ['月计按逐月节气换局。'] : []),
     '积数按七十二局循环；主客定大将取算数个位，整十以九去余，参将以大将宫数乘三取个位。',
     `三门${data.conditions.threeGates.status}，直使${data.conditions.threeGates.directGate}；五将${data.conditions.fiveGenerals.launched ? '发' : '不发'}；阴阳${data.conditions.yinYangHarmony.matched ? '和' : '不和'}。`,
-    '【输出要求】结合本次盘面条件，说明主客双方的传统攻守判断及其依据。',
   ].join('\n');
 
   return {
