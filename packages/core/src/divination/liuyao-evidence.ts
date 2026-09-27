@@ -484,6 +484,18 @@ function buildGenerationFact(data: LiuyaoData): LiuyaoGenerationFact {
     coins: [...item.coins] as [2 | 3, 2 | 3, 2 | 3],
     total: item.total,
   }));
+  if (method === 'time' || method === 'coins') {
+    coinThrows.forEach((item, index) => {
+      if (
+        item.coins.length !== 3 ||
+        !item.coins.every((coin) => coin === 2 || coin === 3) ||
+        item.coins.reduce<number>((sum, coin) => sum + coin, 0) !== item.total ||
+        item.total !== data.yaoArray[index]
+      ) {
+        throw new Error(`第${index + 1}爻三钱记录与原始爻值不一致。`);
+      }
+    });
+  }
   const yarrow = data.generation?.yarrow;
   if (method === 'yarrow') {
     if (

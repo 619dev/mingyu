@@ -1374,6 +1374,14 @@ function assertResidentialResult(
       assertStructuredField('fengshui.flowYear', year, monthPlate.year);
       assertStructuredField('fengshui.flowMonth', calculationInput.flowMonth, monthPlate.month);
       assertStructuredField('fengshui.flowDay', calculationInput.flowDay, monthPlate.day);
+      if (!Number.isInteger(monthPlate.solarTermYear)) {
+        throw new Error('补算返回缺少住宅玄空流月所属节气年。');
+      }
+      assertStructuredField(
+        'fengshui.flowSolarTermYear',
+        monthPlate.solarTermYear,
+        flowStars.yearPlate.year,
+      );
     }
     const palaces = xuankong.palaces;
     if (

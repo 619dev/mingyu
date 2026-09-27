@@ -6,6 +6,34 @@ import { isKe, isSheng } from 'mingyu-core/ganzhi';
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedYaos = [7, 8, 9, 6, 7, 8] as const;
 
+test('六爻三钱来源须同时吻合铜钱合计与原始爻值', () => {
+  const coinThrows = Array.from({ length: 6 }, () => ({
+    coins: [2, 2, 3] as const,
+    total: 7 as const,
+  }));
+  const data = generateLiuyao(fixedDate, { method: 'coins', coinThrows });
+  assert.equal(data.evidenceAnalysis?.generationFact.status, '可核验');
+  assert.equal(data.evidenceAnalysis?.summaryFact.status, '证据链完整');
+
+  const wrongTotal = {
+    ...data,
+    generation: {
+      ...data.generation!,
+      coinThrows: [{ coins: [2, 2, 3] as const, total: 8 as const }, ...coinThrows.slice(1)],
+    },
+  };
+  assert.throws(() => analyzeLiuyaoEvidence(wrongTotal), /第1爻三钱记录与原始爻值不一致/u);
+
+  const wrongCoins = {
+    ...data,
+    generation: {
+      ...data.generation!,
+      coinThrows: [{ coins: [2, 3, 3] as const, total: 7 as const }, ...coinThrows.slice(1)],
+    },
+  };
+  assert.throws(() => analyzeLiuyaoEvidence(wrongCoins), /第1爻三钱记录与原始爻值不一致/u);
+});
+
 test('六爻动墓和化墓不归入日辰关系', () => {
   const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
   data.yaosDetail[0] = {

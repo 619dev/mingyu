@@ -866,26 +866,7 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
         palaceName && fullSummary.startsWith(palaceName)
           ? fullSummary.slice(palaceName.length)
           : fullSummary;
-      if (item.key.startsWith('combo:triGood:') || item.key.startsWith('combo:mixed:')) {
-        const sourceNames = [...new Set(item.sources)];
-        const sourcePatterns = sourceNames.map((sourceName) =>
-          data.classicPatterns?.find(
-            (pattern) =>
-              pattern.name === sourceName &&
-              (!item.palace || pattern.palaces.includes(item.palace)),
-          ),
-        );
-        if (sourceNames.length && sourcePatterns.every(Boolean)) {
-          const good = sourceNames.filter((_, index) => sourcePatterns[index]?.type === 'good');
-          const bad = sourceNames.filter((_, index) => sourcePatterns[index]?.type === 'bad');
-          if (item.key.startsWith('combo:triGood:') && good.length === sourceNames.length) {
-            return `${name}：${good.join('、')}同宫`;
-          }
-          if (item.key.startsWith('combo:mixed:') && good.length && bad.length) {
-            return `${name}：吉格${good.join('、')}；凶格${bad.join('、')}`;
-          }
-        }
-      }
+      // 基础格局已逐条解释，复合格局只保留组合结论，避免再次罗列来源条件。
       return `${name}：${summary}`;
     });
   const palaceLines = data.jiuGongGe.map((palace) => {

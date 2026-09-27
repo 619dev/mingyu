@@ -2,13 +2,14 @@ import type { MeihuaData, MeihuaDivinationMethod } from '../types/divination';
 import { trigramsByIndex } from './hexagram-data';
 import { dizhi } from './divination-data';
 import { MEIHUA_DIRECTION_OPTIONS, MEIHUA_OBJECT_OPTIONS } from './config';
-import { getSeasonState, isKe, isSheng } from '../ganzhi';
+import { getBranchWuxing, getSeasonState, isKe, isSheng } from '../ganzhi';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import { MingyuCoreError } from '../shared/result';
 import {
   hasCompleteCharacterCalculation,
   resolveRandomMethod,
 } from './algorithms/meihua/helpers/methods';
+import { findHexagramByTrigrams } from './algorithms/meihua/helpers/hexagram';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import {
   buildRandomTraceFact,
@@ -795,6 +796,87 @@ function validateMeihuaCalculation(data: MeihuaData): {
   checkBoardTrigram('上卦', calculation.upperTrigramIndex, data.mainHexagram.upper);
   checkBoardTrigram('下卦', calculation.lowerTrigramIndex, data.mainHexagram.lower);
   compare('主卦动爻位置', data.movingYao.position, calculation.movingYaoIndex);
+
+  const upper = trigramByName.get(data.mainHexagram.upper);
+  const lower = trigramByName.get(data.mainHexagram.lower);
+  const moving = data.movingYao.position;
+  if (upper && lower && Number.isInteger(moving) && moving >= 1 && moving <= 6) {
+    const mainLines = [...lower.lines, ...upper.lines];
+    const changedLines = [...mainLines];
+    changedLines[moving - 1] = 1 - changedLines[moving - 1];
+    const isPureQianOrKun =
+      upper.name === lower.name && (upper.name === '乾' || upper.name === '坤');
+    const interSource = isPureQianOrKun ? changedLines : mainLines;
+    const findTrigram = (lines: number[]) =>
+      Object.values(trigramsByIndex).find(
+        (item) => item && item.lines.every((line, index) => line === lines[index]),
+      );
+    const interLower = findTrigram(interSource.slice(1, 4));
+    const interUpper = findTrigram(interSource.slice(2, 5));
+    const changedLower = findTrigram(changedLines.slice(0, 3));
+    const changedUpper = findTrigram(changedLines.slice(3, 6));
+    if (interLower && interUpper && changedLower && changedUpper) {
+      const checkHexagram = (
+        label: string,
+        recorded: { name: string; symbol: string; upper: string; lower: string } | null | undefined,
+        alias: string | undefined,
+        expectedUpper: typeof upper,
+        expectedLower: typeof lower,
+      ) => {
+        const expected = findHexagramByTrigrams(
+          Number(Object.entries(trigramsByIndex).find(([, item]) => item === expectedUpper)?.[0]),
+          Number(Object.entries(trigramsByIndex).find(([, item]) => item === expectedLower)?.[0]),
+        );
+        if (
+          recorded &&
+          (recorded.name !== expected.name ||
+            recorded.symbol !== expected.symbol ||
+            recorded.upper !== expectedUpper.name ||
+            recorded.lower !== expectedLower.name ||
+            (alias !== undefined && alias !== expected.name))
+        ) {
+          mismatches.push(`${label}记录与主卦六爻推得的${expected.name}不一致`);
+        }
+      };
+      checkHexagram('主卦', data.mainHexagram, data.originalName, upper, lower);
+      checkHexagram('互卦', data.interHexagram, data.interName, interUpper, interLower);
+      checkHexagram('变卦', data.changedHexagram, data.changedName, changedUpper, changedLower);
+
+      const movingInLower = moving <= 3;
+      const checkGua = (
+        label: string,
+        recorded: { name: string; element: string } | null | undefined,
+        expected: typeof upper,
+      ) => {
+        if (
+          recorded &&
+          (recorded.name !== expected.name || recorded.element !== expected.element)
+        ) {
+          mismatches.push(`${label}记录与动爻及卦象不一致`);
+        }
+      };
+      checkGua('体卦', data.tiGua, movingInLower ? upper : lower);
+      checkGua('用卦', data.yongGua, movingInLower ? lower : upper);
+      checkGua('体互', data.interTiGua, movingInLower ? interUpper : interLower);
+      checkGua('用互', data.interYongGua, movingInLower ? interLower : interUpper);
+      checkGua('变后体卦', data.changedTiGua, movingInLower ? changedUpper : changedLower);
+      checkGua('变后用卦', data.changedYongGua, movingInLower ? changedLower : changedUpper);
+
+      const monthBranch = data.ganzhi.month.slice(-1);
+      if (dizhi.includes(monthBranch)) {
+        const ti = movingInLower ? upper : lower;
+        const yong = movingInLower ? lower : upper;
+        if (
+          data.analysis.monthBranch !== monthBranch ||
+          data.analysis.monthElement !== getBranchWuxing(monthBranch) ||
+          data.analysis.tiSeasonState !== getSeasonState(ti.element, monthBranch) ||
+          data.analysis.yongSeasonState !== getSeasonState(yong.element, monthBranch)
+        ) {
+          mismatches.push('体用月令旺衰记录与月建及主卦不一致');
+        }
+      }
+    }
+  }
 
   return { missing: Array.from(new Set(missing)), mismatches: Array.from(new Set(mismatches)) };
 }

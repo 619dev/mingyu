@@ -96,6 +96,32 @@ test('节气边界资料不完整时本命证据不能标为完整', () => {
   );
   assert.equal(analysis.summaryFact.status, '证据链有缺口');
   assert.equal(analysis.summaryFact.missingFactCount, 1);
+  assert.equal(analysis.calculationSteps.at(-1)?.status, '存在资料缺口');
+  assert.equal(analysis.calculationSteps.at(-1)?.result.missingFactCount, 1);
+});
+
+test('真实命盘增补五行喜忌待判时本命证据应保留资料缺口', () => {
+  const result = baziCalculator.calculateBazi({
+    year: 1990,
+    month: 9,
+    day: 5,
+    timeIndex: 6,
+    gender: 'male',
+    isLunar: false,
+  });
+  assert.equal(result.analysis.usefulGod.incrementStatus, '待判');
+
+  const analysis = analyzeBaziNatalEvidence(result);
+  const usefulFact = analysis.analysisFacts.find((item) => item.type === '用神取忌');
+  assert.equal(usefulFact?.status, '资料缺口');
+  assert.match(usefulFact?.result ?? '', /增补五行喜忌待判/);
+  assert.equal(
+    analysis.calculationSteps.find((item) => item.stage === '核心判断形成')?.status,
+    '存在资料缺口',
+  );
+  assert.equal(analysis.summaryFact.status, '证据链有缺口');
+  assert.equal(analysis.summaryFact.missingFactCount, 1);
+  assert.equal(analysis.calculationSteps.at(-1)?.result.missingFactCount, 1);
 });
 
 test('八字本命提示词应保留用户选择的传统时辰且不混入工程证据话术', () => {

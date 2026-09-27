@@ -412,7 +412,7 @@ function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
     },
     {
       key: 'bazi:natal:analysis:useful-god',
-      status: usefulResult ? '已记录' : '资料缺口',
+      status: usefulResult && usefulGod.incrementStatus !== '待判' ? '已记录' : '资料缺口',
       type: '用神取忌',
       result: usefulResult,
       basis: usefulBasis,
@@ -465,6 +465,9 @@ function buildCalculationSteps(args: {
   ).length;
   const missingPillarFactCount = pillarFacts.filter((item) => item.status === '资料缺口').length;
   const missingAnalysisCount = analysisFacts.filter((item) => item.status === '资料缺口').length;
+  const incompleteBoundaryCount = data.warningFacts.filter(
+    (item) => item.status === '资料不完整',
+  ).length;
   const hiddenTenGodMismatchCount = pillarFacts.filter(
     (item) => item.hiddenStems.length > 0 && item.hiddenTenGods.length !== item.hiddenStems.length,
   ).length;
@@ -558,7 +561,10 @@ function buildCalculationSteps(args: {
     {
       key: 'bazi:natal:calculation:summary',
       stage: '证据汇总',
-      status: missingPillarFactCount || missingAnalysisCount ? '存在资料缺口' : '已计算',
+      status:
+        missingPillarFactCount || missingAnalysisCount || incompleteBoundaryCount
+          ? '存在资料缺口'
+          : '已计算',
       inputs: {
         pillarFactCount: pillarFacts.length,
         analysisFactCount: analysisFacts.length,
@@ -566,10 +572,10 @@ function buildCalculationSteps(args: {
         warningFactCount: data.warningFacts.length,
       },
       result: {
-        missingFactCount: missingPillarFactCount + missingAnalysisCount,
+        missingFactCount: missingPillarFactCount + missingAnalysisCount + incompleteBoundaryCount,
       },
       dependsOnStepKeys: ['bazi:natal:calculation:core-analysis'],
-      promptText: `汇总四柱${pillarFacts.length}项、核心判断${analysisFacts.length}项、柱间关系${relationFacts.length}项、排盘边界${data.warningFacts.length}项，资料缺口${missingPillarFactCount + missingAnalysisCount}项`,
+      promptText: `汇总四柱${pillarFacts.length}项、核心判断${analysisFacts.length}项、柱间关系${relationFacts.length}项、排盘边界${data.warningFacts.length}项，资料缺口${missingPillarFactCount + missingAnalysisCount + incompleteBoundaryCount}项`,
       sources: ['出生时间、四柱、派生资料、核心判断与排盘边界逐项汇总'],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -864,11 +870,13 @@ export function analyzeBaziNatalEvidence(data: BaziChartResult): BaziNatalEviden
     relationFacts,
     counterEvidenceFacts,
   });
-  const incompleteBoundaryCheck = data.warningFacts.some((item) => item.status === '资料不完整');
+  const incompleteBoundaryCount = data.warningFacts.filter(
+    (item) => item.status === '资料不完整',
+  ).length;
   const missingFactCount =
     pillarFacts.filter((item) => item.status === '资料缺口').length +
     analysisFacts.filter((item) => item.status === '资料缺口').length +
-    Number(incompleteBoundaryCheck);
+    incompleteBoundaryCount;
   const summaryFact: BaziNatalSummaryFact = {
     key: 'bazi:natal:evidence-summary',
     status: missingFactCount ? '证据链有缺口' : '证据链完整',

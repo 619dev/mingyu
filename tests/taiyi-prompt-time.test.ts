@@ -20,6 +20,7 @@ test('太乙月日时计正文保留实际东八区起局时刻，与外层当�
     assert.ok(prompt.includes(target));
     assert.match(prompt, /2026年5月19日/);
     assert.ok(prompt.includes(`本计干支：${result.ganZhi}`));
+    assert.ok(result.evidenceAnalysis.calculationChain[0]?.includes('2026-07-11 14:35:00'));
   }
 });
 
@@ -27,6 +28,11 @@ test('太乙年计以目标年份表达，避免把内部年中取样时刻当�
   const result = generateTaiyi({ year: 2026 });
   assert.match(result.prompt, /分析目标：2026年年计。/);
   assert.doesNotMatch(result.prompt, /分析目标：.*起局/);
+  assert.equal(
+    result.evidenceAnalysis.calculationChain[0],
+    '年计以2026年及本计干支丙午作为时间输入',
+  );
+  assert.doesNotMatch(result.evidenceAnalysis.calculationChain.join('；'), /2026-07-01/);
 });
 
 test('太乙提示词以将参宫位呈现中宫事实，不重复生成同义判断', () => {

@@ -6611,7 +6611,7 @@ test('公开玄空流年流月与提示词在立春前使用上一节气年', as
       assert.equal(body.data.flowStars.monthPlate.year, 2026);
     } else {
       assert.match(body.data.prompt, /流年飞星：2025年二黑入中/);
-      assert.match(body.data.prompt, /2026年1月15日所属节气月/);
+      assert.match(body.data.prompt, /2026年1月15日中国标准时间12:00所属节气月/);
     }
   }
 });

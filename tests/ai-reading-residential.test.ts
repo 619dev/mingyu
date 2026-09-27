@@ -194,6 +194,47 @@ test('住宅 AI 补算会按实际返回的目标流运资料核验，而非只�
   );
 });
 
+test('住宅 AI 补算核对交节前的流年与流月所属节气年', async () => {
+  const januarySubject = buildReadingSubject(input, {
+    ...prompt,
+    residentialFlowMonth: '1',
+    residentialFlowDay: '15',
+  });
+  const januaryAction: ReadingAction = {
+    ...action,
+    input: { ...action.input, flowMonth: 1, flowDay: 15 },
+  };
+
+  await withRealApi(async () => {
+    const resource = await executeReadingAction(januaryAction, undefined, januarySubject);
+    const result = resource.structured as Record<string, unknown>;
+    const xuankong = result.xuankong as Record<string, unknown>;
+    const flowStars = xuankong.flowStars as Record<string, unknown>;
+    const monthPlate = flowStars.monthPlate as Record<string, unknown>;
+    const yearPlate = flowStars.yearPlate as Record<string, unknown>;
+    assert.equal(monthPlate.year, 2026);
+    assert.equal(monthPlate.solarTermYear, 2025);
+    assert.equal(yearPlate.year, 2025);
+  });
+
+  await withRealApi(
+    async () => {
+      await assert.rejects(
+        executeReadingAction(januaryAction, undefined, januarySubject),
+        /fengshui\.flowSolarTermYear/u,
+      );
+    },
+    (body) => {
+      const data = body.data as Record<string, unknown>;
+      const result = data.result as Record<string, unknown>;
+      const xuankong = result.xuankong as Record<string, unknown>;
+      const flowStars = xuankong.flowStars as Record<string, unknown>;
+      const yearPlate = flowStars.yearPlate as Record<string, unknown>;
+      yearPlate.year = 2026;
+    },
+  );
+});
+
 test('住宅 AI 补算拒绝修改已锁定的建造年或门向', async () => {
   await assert.rejects(
     executeReadingAction(

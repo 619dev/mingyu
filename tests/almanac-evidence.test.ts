@@ -45,6 +45,13 @@ test('四离日的明确事项禁忌应压过原始宜嫁娶并保留两层证�
   assert.ok(
     !custom.days[0].topicMatchFacts?.some((fact) => fact.sourceType === '值日神煞事项规则'),
   );
+  const customDecision = custom.evidenceAnalysis?.candidates[0].decisionFact;
+  const customGodStep = customDecision?.steps.find((step) => step.stage === '值日神煞');
+  assert.ok(customDecision?.backgroundGodFactKeys.includes('2026-12-21:god:四离'));
+  assert.equal(customGodStep?.status, '通过');
+  assert.deepEqual(customGodStep?.factKeys, []);
+  assert.match(customGodStep?.result ?? '', /明确事项规则支持0项，限制0项/);
+  assert.doesNotMatch(customDecision?.promptText ?? '', /值日神煞：吉神|值日神煞：凶神/);
 });
 
 test('黄历择日应内置透明约束与候选证据', () => {
@@ -200,7 +207,31 @@ test('工作时段偏好下无可用时辰的日期不得仍列为可用候选�
       candidate.decisionFact.steps.find((step) => step.stage === '可用时辰')?.result,
       '未筛出无强冲突时辰',
     );
+    assert.match(
+      candidate.decisionFact.steps.find((step) => step.stage === '可用时辰')?.promptText ?? '',
+      /此项作为日期分组的一般限制/,
+    );
+    assert.ok(candidate.decisionFact.limitingFactKeys.includes(`${date}:decision:hours`));
+    assert.doesNotMatch(candidate.decisionFact.promptText, /未见明确限制，归入条件候选/);
   }
+});
+
+test('缺少逐时资料时应标记未提供，不误报无可用时辰', () => {
+  const data = generateAlmanacSelection({
+    topic: 'travel',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
+  });
+  data.days[0].hours = [];
+
+  const evidence = analyzeAlmanacEvidence(data);
+  const candidate = evidence.candidates[0];
+  assert.equal(
+    candidate.decisionFact.steps.find((step) => step.stage === '可用时辰')?.status,
+    '未提供',
+  );
+  assert.ok(candidate.limitations.includes('未提供逐时资料'));
+  assert.ok(!evidence.counterEvidenceFacts.some((fact) => fact.type === '无可用时辰'));
 });
 
 test('择日证据应保留日课、宿曜、九星、百忌、方位神与逐时时课来源', () => {

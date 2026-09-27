@@ -115,6 +115,63 @@ test('玄空年盘与月盘在立春前后使用同一节气年', () => {
   }
 });
 
+test('交节当日按中国标准时间正午取月盘，标明交节前后所属月份不同', () => {
+  const beforeXiaohan = resolveMonthFlyingStar(2026, 1, 5);
+  assert.equal(beforeXiaohan.solarTermYear, 2025);
+  assert.equal(beforeXiaohan.centerStar, 1);
+  assert.match(beforeXiaohan.calendarNote, /12:00所属节气月（子月）/);
+  assert.match(beforeXiaohan.calendarNote, /小寒于2026年1月5日 16:23:10交节/);
+  assert.match(beforeXiaohan.calendarNote, /交节前后分属不同节气月/);
+  const beforeXiaohanPlate = generateXuanKong({
+    year: 2024,
+    sitMountain: '子',
+    flowYear: 2026,
+    flowMonth: 1,
+    flowDay: 5,
+  });
+  assert.equal(beforeXiaohanPlate.flowStars?.yearPlate.year, 2025);
+  assert.equal(beforeXiaohanPlate.flowStars?.yearPlate.centerStar, 2);
+  assert.equal(beforeXiaohanPlate.flowStars?.monthPlate?.solarTermYear, 2025);
+
+  const afterLichun = resolveMonthFlyingStar(2026, 2, 4);
+  assert.equal(afterLichun.solarTermYear, 2026);
+  assert.equal(afterLichun.centerStar, 8);
+  assert.match(afterLichun.calendarNote, /立春于2026年2月4日 04:02:08交节/);
+
+  const beforeJingzhe = generateXuanKong({
+    year: 2024,
+    sitMountain: '子',
+    flowYear: 2026,
+    flowMonth: 3,
+    flowDay: 5,
+  });
+  assert.equal(beforeJingzhe.flowStars?.monthPlate?.centerStar, 8);
+  assert.equal(beforeJingzhe.flowStars?.yearPlate.year, 2026);
+  assert.equal(beforeJingzhe.plates.month?.[4], 8);
+  assert.ok(
+    beforeJingzhe.palaces.every(
+      (palace) => palace.monthStar === beforeJingzhe.plates.month?.[palace.gong - 1],
+    ),
+  );
+  assert.match(beforeJingzhe.prompt, /惊蛰于2026年3月5日 21:59:00交节/);
+  assert.equal(resolveMonthFlyingStar(2026, 3, 6).centerStar, 7);
+});
+
+test('替卦未成四正局时证据范围仍列出实际叠加的流年流月盘', () => {
+  const result = generateXuanKong({
+    year: 2024,
+    sitMountain: '子',
+    guaType: '替卦',
+    flowYear: 2026,
+    flowMonth: 3,
+    flowDay: 5,
+  });
+  assert.equal(result.formation, '替卦未成四正局');
+  assert.match(result.evidenceAnalysis.limitationFacts[0].promptText, /三盘、流年流月飞星/);
+  assert.deepEqual(result.plates.year, result.flowStars?.yearPlate.plate);
+  assert.deepEqual(result.plates.month, result.flowStars?.monthPlate?.plate);
+});
+
 test('月紫白按协纪辨方书十二年支三组表逐月逆行', () => {
   const firstMonthStars = [8, 5, 2, 8, 5, 2, 8, 5, 2, 8, 5, 2];
   for (let yearOffset = 0; yearOffset < 12; yearOffset++) {

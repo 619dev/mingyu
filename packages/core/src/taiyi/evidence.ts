@@ -648,7 +648,9 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     throw new Error('太乙积数、360周期余数、数段或局数计算链不一致。');
   }
   const calculationChain = [
-    `${scopeLabel}以${data.dateTime}及本计干支${data.ganZhi}作为时间输入`,
+    data.scope === 'year'
+      ? `${scopeLabel}以${data.dateTime.split('-')[0]}年及本计干支${data.ganZhi}作为时间输入`
+      : `${scopeLabel}以${data.dateTime}及本计干支${data.ganZhi}作为时间输入`,
     `按${scopeLabel}独立规则得到${data.accumulatedLabel}${data.accumulatedValue}，折算360周期余数${data.entryYears}`,
     `360周期余数${data.entryYears}分别落在第${data.yuan}个72数段、第${data.ji}个60数段；数段不冒充已统一口径的元纪`,
     `积数按七十二局循环定位${data.yinYang}第${data.bureau}局`,

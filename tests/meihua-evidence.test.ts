@@ -104,6 +104,50 @@ test('梅花起卦证据应核对取数与盘面，并准确表达整除时的�
   assert.match(summaryStep?.promptText ?? '', /起卦计算记录不一致/u);
 });
 
+test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () => {
+  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const mutations = [
+    {
+      label: '互卦',
+      change: (item: typeof data) => {
+        item.interHexagram!.upper = '乾';
+      },
+      diagnostic: /互卦记录与主卦六爻推得的水山蹇不一致/u,
+    },
+    {
+      label: '变卦',
+      change: (item: typeof data) => {
+        item.changedHexagram!.lower = '坤';
+      },
+      diagnostic: /变卦记录与主卦六爻推得的火水未济不一致/u,
+    },
+    {
+      label: '体互',
+      change: (item: typeof data) => {
+        item.interTiGua!.element = '火';
+      },
+      diagnostic: /体互记录与动爻及卦象不一致/u,
+    },
+    {
+      label: '旺衰',
+      change: (item: typeof data) => {
+        item.analysis.tiSeasonState = '旺';
+      },
+      diagnostic: /体用月令旺衰记录与月建及主卦不一致/u,
+    },
+  ];
+  for (const { label, change, diagnostic } of mutations) {
+    const changed = structuredClone(data);
+    change(changed);
+    changed.evidenceAnalysis = undefined;
+    const fact = analyzeMeihuaEvidence(changed);
+    assert.equal(fact.calculationFact.status, '计算不一致', label);
+    assert.equal(fact.summaryFact.status, '部分资料缺失', label);
+    assert.equal(fact.calculationFact.steps.length, 0, label);
+    assert.match(fact.calculationFact.promptText, diagnostic, label);
+  }
+});
+
 test('梅花体互用互应沿用原体所在方位，不得上下颠倒', () => {
   const lowerMoving = generateMeihua(fixedDate, { method: 'number', number: 123 });
   const lowerProcess = analyzeMeihuaEvidence(lowerMoving).stages.find(

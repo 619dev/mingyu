@@ -4,7 +4,7 @@
  * @传统依据 《协纪辨方书》三元紫白；年星随三元甲子逆计入中，月星按节气月紫白；飞布沿洛书顺飞。
  * 入中星委托 tyme4ts 干支年、节气月九星，与黄历紫白同源。
  */
-import { SolarDay, SixtyCycleYear } from 'tyme4ts';
+import { SolarDay, SolarTerm, SolarTime, SixtyCycleYear } from 'tyme4ts';
 
 import { daysInGregorianMonth } from '../calendar/date-validation';
 import { getNineStarProfile } from '../direction';
@@ -80,6 +80,21 @@ function plateFromCenter(centerStar: number): number[] {
   return flyStars(centerStar, '顺飞');
 }
 
+const MONTH_JIE = [
+  '小寒',
+  '立春',
+  '惊蛰',
+  '清明',
+  '立夏',
+  '芒种',
+  '小暑',
+  '立秋',
+  '白露',
+  '寒露',
+  '立冬',
+  '大雪',
+] as const;
+
 export function resolveYearFlyingStar(year: number): XuanKongPeriodStarPlate {
   if (!Number.isSafeInteger(year) || year < 1 || year > 9999) {
     throw new Error('流年必须是 1-9999 的整数年份。');
@@ -91,7 +106,7 @@ export function resolveYearFlyingStar(year: number): XuanKongPeriodStarPlate {
     centerStar,
     starName: starName(centerStar),
     plate: plateFromCenter(centerStar),
-    calendarNote: `按公元${year}年干支取三元紫白入中，再顺飞九宫`,
+    calendarNote: `按${year}年立春起的节气年取三元紫白入中，再顺飞九宫`,
   };
 }
 
@@ -112,7 +127,13 @@ export function resolveMonthFlyingStar(
     throw new Error(`流月日期必须是 1-${maxDay} 的整数。`);
   }
   const solarDay = SolarDay.fromYmd(year, month, resolvedDay);
-  const sixtyMonth = solarDay.getSixtyCycleDay().getSixtyCycleMonth();
+  const jie = SolarTerm.fromName(year, MONTH_JIE[month - 1]);
+  const jieTime = jie.getJulianDay().getSolarTime();
+  const onJieDay = solarDay.subtract(jie.getSolarDay()) === 0;
+  // SolarDay 在交节当天整日归新月；日期输入约定用中国标准时间正午作参照。
+  const referenceTime = SolarTime.fromYmdHms(year, month, resolvedDay, 12, 0, 0);
+  const effectiveDay = onJieDay && referenceTime.isBefore(jieTime) ? solarDay.next(-1) : solarDay;
+  const sixtyMonth = effectiveDay.getSixtyCycleDay().getSixtyCycleMonth();
   const centerStar = sixtyMonth.getNineStar().getIndex() + 1;
   assertStar(centerStar);
   const monthBranch = sixtyMonth.getSixtyCycle().getEarthBranch().getName();
@@ -124,9 +145,7 @@ export function resolveMonthFlyingStar(
     centerStar,
     starName: starName(centerStar),
     plate: plateFromCenter(centerStar),
-    calendarNote: day
-      ? `按${year}年${month}月${resolvedDay}日所属节气月（${monthBranch}月）取月紫白入中，再顺飞九宫`
-      : `未指定日期时按${year}年${month}月15日所属节气月（${monthBranch}月）取月紫白入中，再顺飞九宫`,
+    calendarNote: `${day === undefined ? '未指定日期时' : ''}按${year}年${month}月${resolvedDay}日中国标准时间12:00所属节气月（${monthBranch}月）取月紫白入中，再顺飞九宫${onJieDay ? `；当日${jie.getName()}于${jieTime.toString()}交节，未提供具体时刻，交节前后分属不同节气月` : ''}`,
   };
 }
 

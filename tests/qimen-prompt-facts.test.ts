@@ -65,6 +65,23 @@ test('奇门完整提示词按问题写入复合格局与值符宫应期触发',
   assert.doesNotMatch(prompt, /minDays|maxDays|super-good|super-bad/);
 });
 
+test('奇门复合格局保留叠加判断且不复述已单列的格局条件', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
+  const comboBlock = prompt.split('复合格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
+  const triGoodLine =
+    comboBlock.split('\n').find((line) => line.startsWith('兑七宫三吉聚气：')) ?? '';
+  const mixedLine =
+    comboBlock.split('\n').find((line) => line.startsWith('巽四宫吉凶混杂：')) ?? '';
+
+  assert.match(prompt, /三奇游六仪（吉格）/);
+  assert.match(prompt, /门迫（凶格）/);
+  assert.match(triGoodLine, /兑七宫三吉聚气：聚集7个吉格，吉象叠加/);
+  assert.doesNotMatch(triGoodLine, /天遁|月奇得使|月奇得地|休诈|门生宫|蛇化为龙|飞鸟跌穴/);
+  assert.match(mixedLine, /巽四宫吉凶混杂：同时见吉格与凶格，气机不纯，需分清主次/);
+  assert.doesNotMatch(mixedLine, /三奇游六仪|相佐|门迫|癸击刑|癸入墓/);
+});
+
 test('奇门甲子时以旬首所遁戊分别定位天盘和地盘', () => {
   for (const method of ['zhuanpan', 'feipan'] as const) {
     const data = generateQimen(new Date('2026-05-20T00:30:00+08:00'), method);

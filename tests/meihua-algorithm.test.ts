@@ -15,6 +15,7 @@ import {
   resolveTimeMethod,
 } from '../packages/core/src/divination/algorithms/meihua/helpers/methods.ts';
 import { MeihuaHelpers } from '../packages/core/src/divination/divination-helpers.ts';
+import { getDivinationTime } from '../packages/core/src/calendar/timeManager.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
 
@@ -266,6 +267,25 @@ test('梅花：年月日时起卦应以农历年支入数，不应在立春后�
   assert.equal(data.calculation.movingYaoIndex, 1);
   assert.equal(data.originalName, '泽天夬');
   assert.equal(data.changedName, '泽风大过');
+});
+
+test('梅花：观梅占原例应取兑上离下、初爻动', () => {
+  // 《梅花易数》卷一《观梅占》：辰年十二月十七日申时，34取兑、43取离与初爻。
+  const sample = getDivinationTime(SAMPLE_DATE);
+  const result = resolveTimeMethod(
+    { ...sample.ganzhi, hour: '甲申' },
+    {
+      ...sample.timeInfo.lunar,
+      yearInChinese: '戊辰',
+      monthNumber: 12,
+      dayNumber: 17,
+    },
+  );
+  assert.deepEqual(
+    [result.upperTrigramIndex, result.lowerTrigramIndex, result.movingYaoIndex],
+    [2, 3, 1],
+  );
+  assert.equal(findHexagramByTrigrams(2, 3).name, '泽火革');
 });
 
 test('梅花：未知起卦方式应明确报错，不应静默退回时间卦', () => {

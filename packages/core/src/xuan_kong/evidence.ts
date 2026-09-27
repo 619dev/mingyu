@@ -282,7 +282,7 @@ export function analyzeXuanKongEvidence(
       type: '体系边界',
       promptText:
         result.formation === '替卦未成四正局'
-          ? '当前替卦未形成四类正局，按实际三盘与已登记组合解读'
+          ? `当前替卦未形成四类正局，按实际三盘${result.flowStars ? `、${result.flowStars.monthPlate ? '流年流月' : '流年'}飞星` : ''}与已登记组合解读`
           : result.flowStars
             ? `当前输出${result.guaType}运盘、山盘、向盘、${result.flowStars.monthPlate ? '流年流月' : '流年'}飞星、局型与已登记组合`
             : `当前输出${result.guaType}运盘、山盘、向盘、局型与已登记组合`,
