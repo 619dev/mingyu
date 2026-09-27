@@ -305,14 +305,20 @@ function resolveMingGua(input: BaZhaiInput): {
   throw new Error('需提供 birthYear+gender 或直接给定 mingGua。');
 }
 
-function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>): string {
+function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMeasurement): string {
   const lines: string[] = [];
+  const houseUnstable = measurement?.stability === '宅卦不稳定';
   lines.push('【八宅风水排盘】');
   lines.push(`命卦：${r.mingGua}（${r.mingGroup}）`);
   lines.push(`立春年界：${r.birthYearBoundaryNote}`);
+  if (measurement?.stability === '宅卦不稳定') {
+    lines.push(
+      `测量误差跨越宅卦边界；候选坐向：${measurement.candidateDirections.map((item) => `${item.label}（${item.houseGua}宅、命宅${item.match}）`).join('、')}。以下宅卦及八方以中心读数列示。`,
+    );
+  }
   if (r.houseGua) {
-    lines.push(`宅卦：${r.houseGua}（${r.houseGroup}）`);
-    lines.push(`命宅配合：${r.match}`);
+    lines.push(`宅卦：${r.houseGua}（${r.houseGroup}${houseUnstable ? '，中心读数' : ''}）`);
+    lines.push(`命宅配合：${r.match}${houseUnstable ? '（中心读数）' : ''}`);
   }
   if (r.mingPalace?.length) {
     lines.push('命卦八方：');
@@ -321,7 +327,7 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>): string {
     }
   }
   if (r.housePalace?.length) {
-    lines.push('宅卦八方：');
+    lines.push(`宅卦八方${houseUnstable ? '（中心读数）' : ''}：`);
     for (const palace of r.housePalace) {
       lines.push(`  ${palace.direction}${palace.label}（${palace.luck}，约${palace.degree}°）`);
     }
@@ -480,7 +486,7 @@ function analyzeBaZhaiByMeasurement(
   return {
     ...result,
     evidenceAnalysis,
-    prompt: buildPrompt({ ...resultFacts, evidenceAnalysis }),
+    prompt: buildPrompt({ ...resultFacts, evidenceAnalysis }, directionMeasurement),
     directionMeasurement,
   };
 }

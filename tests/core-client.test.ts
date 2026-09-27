@@ -149,6 +149,20 @@ test('统一客户端应直接提供前端常用的时间、环境与轻量排�
   assert.ok(residential.xuankong);
 });
 
+test('月相客户端只接受明确时区的有效时间文本', () => {
+  const client = createMingyuClient();
+  const utc = client.moonPhase('2026-08-06T04:00:00.000Z');
+  const offset = client.moonPhase('2026-08-06T12:00:00+08:00');
+  assert.equal(offset.utcDateTime, utc.utcDateTime);
+
+  for (const value of ['2026-08-06T04:00:00', '2026-08-06', '2026-02-30T04:00:00Z']) {
+    assert.throws(() => client.moonPhase(value), /UTC 时间文本必须是带 Z 或明确偏移/);
+    const safe = client.safe.moonPhase(value);
+    assert.equal(safe.ok, false);
+    if (!safe.ok) assert.equal(safe.error.category, 'validation');
+  }
+});
+
 test('safe 同步方法应保持同步，并区分校验、不支持和边界错误', () => {
   const client = createMingyuClient();
   const success = client.safe.zodiac({ zodiac: '子', year: 2026 });

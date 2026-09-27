@@ -2115,6 +2115,32 @@ test('公开 API 应支持八字紫微合参提示词', async () => {
   assertPromptIsPortableTaskText(body.data.prompt);
 });
 
+test('同一命主的八字紫微本命合参不将两套盘面写成双方关系', async () => {
+  const { response, body } = await callApi('bazi-ziwei/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: '单人合参样本',
+      gender: 'female',
+      year: 1992,
+      month: 8,
+      day: 21,
+      timeIndex: 4,
+      dateType: 'solar',
+      question: '本命事业方向如何？',
+      promptScope: 'origin',
+      responseMode: 'prompt-only',
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.match(body.data.prompt, /【八字排盘信息】/);
+  assert.match(body.data.prompt, /【紫微盘面信息】/);
+  assert.match(body.data.prompt, /请依据同一命主的八字与紫微本命结构交叉印证后回答问题/);
+  assert.doesNotMatch(body.data.prompt, /双方本命结构/);
+});
+
 test('八字紫微合参自定义模式不拼接预设主题，只保留通用短框架', async () => {
   const person = {
     gender: 'male' as const,

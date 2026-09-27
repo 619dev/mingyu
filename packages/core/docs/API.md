@@ -384,7 +384,7 @@
 | `normalizeBirth(profile)`                   | 校验并标准化公历/农历、传统时辰、精准时分和真太阳时输入   |
 | `trueSolarBirth(input)`                     | 换算出生真太阳时、跨日日期和传统时辰索引                  |
 | `astronomicalTime(input)`                   | 换算历史时区、UTC、JD、近似 UT1、ΔT 与 TT                 |
-| `moonPhase(utcDateTime)`                    | 计算月相、照明比例及前后朔弦望事件                        |
+| `moonPhase(utcDateTime)`                    | 计算月相、照明比例及前后朔弦望事件；字符串须为带 `Z` 或明确偏移的 ISO 日期时间 |
 | `solarTerm(year, index)`                    | 返回单个节气历表时刻与太阳视黄经独立核验                  |
 | `solarTerms(year)`                          | 按公历年份返回从小寒至冬至的 24 个节气证据                |
 | `solarIllumination(input)`                  | 返回太阳高度、方位、视太阳正午、日出日落和曙暮光          |

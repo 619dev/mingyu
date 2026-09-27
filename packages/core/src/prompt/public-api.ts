@@ -893,7 +893,7 @@ export function buildBaziZiweiPromptForResults(params: {
               '八字按本命结构、紫微按所列运限分别成论后交叉印证，时间层未对齐时分开陈述。',
               'bazi-ziwei-mismatch',
             )
-          : buildPromptTask('请依据双方本命结构交叉印证后回答问题。', 'bazi-ziwei');
+          : buildPromptTask('请依据同一命主的八字与紫微本命结构交叉印证后回答问题。', 'bazi-ziwei');
   const selectedTask = promptSelection ? buildPromptSelectionTask(task, promptSelection) : task;
   return joinSections([
     buildPromptGuidance('bazi-ziwei'),

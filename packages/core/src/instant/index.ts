@@ -261,6 +261,12 @@ function formatLocalDateTime(parts: InstantWallClockParts) {
   return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
 }
 
+function getObserverTimezone(
+  context: ReturnType<typeof buildInstantChartContext>,
+): number | undefined {
+  return context.wallClock.offsetHours ?? context.observer?.timezone;
+}
+
 export function buildInstantChartContext(
   request: Pick<InstantChartRequest, 'type' | 'customDate' | 'timeStandard' | 'observer'>,
 ) {
@@ -288,6 +294,15 @@ export function buildInstantChartContext(
     definition.requiresObserver === 'always' || timeStandard === 'true-solar'
       ? getObserverWallClockParts(customDate, observer!)
       : getWallClockPartsInOffset(customDate, BEIJING_TIMEZONE);
+  if (
+    observer?.timeZoneId &&
+    (definition.requiresObserver === 'always' || timeStandard === 'true-solar') &&
+    observer.timezone !== undefined &&
+    wallClock.offsetHours !== undefined &&
+    Math.abs(observer.timezone - wallClock.offsetHours) > 1e-6
+  ) {
+    throw new Error('观测地点固定偏移与排盘时刻的 IANA 实际偏移不一致。');
+  }
   const trueSolarTime =
     timeStandard === 'true-solar'
       ? convertTrueSolarTime({
@@ -336,7 +351,7 @@ function buildBaziInput(
       ? {
           birthPlace: context.observer?.locationName,
           birthLongitude: context.observer!.longitude,
-          timezone: context.observer?.timezone,
+          timezone: getObserverTimezone(context),
           timeZoneId: context.observer?.timeZoneId,
         }
       : {}),
@@ -368,7 +383,7 @@ async function calculateZiwei(
     ...(useTrueSolarTime
       ? {
           birthLongitude: context.observer!.longitude,
-          timezone: context.observer?.timezone,
+          timezone: getObserverTimezone(context),
           timeZoneId: context.observer?.timeZoneId,
         }
       : {}),
@@ -472,10 +487,11 @@ export async function calculateInstantChart<T extends InstantChartType>(
         day: String(context.wallClock.day),
         hour: String(context.wallClock.hour),
         minute: String(context.wallClock.minute),
+        second: String(context.wallClock.second),
         latitude: String(context.observer!.latitude),
         longitude: String(context.observer!.longitude),
-        ...(context.observer!.timezone !== undefined
-          ? { timezone: String(context.observer!.timezone) }
+        ...(getObserverTimezone(context) !== undefined
+          ? { timezone: String(getObserverTimezone(context)) }
           : {}),
         ...(context.observer!.timeZoneId ? { timeZoneId: context.observer!.timeZoneId } : {}),
         ...(context.observer!.locationName ? { locationName: context.observer!.locationName } : {}),
@@ -489,10 +505,11 @@ export async function calculateInstantChart<T extends InstantChartType>(
         day: context.wallClock.day,
         hour: context.wallClock.hour,
         minute: context.wallClock.minute,
+        second: context.wallClock.second,
         latitude: context.observer!.latitude,
         longitude: context.observer!.longitude,
-        ...(context.observer!.timezone !== undefined
-          ? { timezone: context.observer!.timezone }
+        ...(getObserverTimezone(context) !== undefined
+          ? { timezone: getObserverTimezone(context) }
           : {}),
         ...(context.observer!.timeZoneId ? { timeZoneId: context.observer!.timeZoneId } : {}),
         useTrueSolarTime: context.timeStandard === 'true-solar',
