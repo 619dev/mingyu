@@ -195,17 +195,18 @@ test('本月原文明确列出的丙子壬戊与戊午壬甲两透条件仍可�
   }
 });
 
-test('庚日寅月丙甲两透优先丙火，未见丙仍按先甲次丁', () => {
+test('庚日寅月丙甲两透显荣，未见丙仍先取丙火', () => {
   const withBingJia = collectClimateRuleCandidates(context(['丙', '甲', '庚', '辛']));
   const withoutBing = collectClimateRuleCandidates(context(['甲', '庚', '辛', '壬']));
   const withoutJia = collectClimateRuleCandidates(context(['丙', '庚', '辛', '壬']));
   const withDingJia = collectClimateRuleCandidates(context(['丁', '甲', '庚', '辛']));
 
   const specialized = withBingJia.find(
-    (candidate) => candidate.rule.id === 'yin-month-geng-bing-jia',
+    (candidate) => candidate.rule.id === 'yin-month-geng-bing-jia-visible',
   );
   assert.equal(specialized?.status, '满足');
-  assert.equal(specialized?.rule.priority, 120);
+  assert.equal(specialized?.rule.priority, 123);
+  assert.equal(selectTherapeuticHintRule(withBingJia, '身弱')?.id, specialized?.rule.id);
   assert.deepEqual(
     resolveClimateFavorableOrder(
       '金',
@@ -240,23 +241,26 @@ test('庚日寅月丙甲两透优先丙火，未见丙仍按先甲次丁', () =>
       [],
       { 木: 0, 火: 0, 土: 0, 金: 1, 水: 0 },
     ),
-    ['木', '火'],
+    ['火', '木'],
   );
   assert.equal(
     withoutBing.some(
-      (candidate) => candidate.rule.id === 'yin-month-geng-bing-jia' && candidate.status === '满足',
+      (candidate) =>
+        candidate.rule.id === 'yin-month-geng-bing-jia-visible' && candidate.status === '满足',
     ),
     false,
   );
   assert.equal(
     withoutJia.some(
-      (candidate) => candidate.rule.id === 'yin-month-geng-bing-jia' && candidate.status === '满足',
+      (candidate) =>
+        candidate.rule.id === 'yin-month-geng-bing-jia-visible' && candidate.status === '满足',
     ),
     false,
   );
   assert.equal(
-    withDingJia.find((candidate) => candidate.rule.id === 'yin-month-geng-jia-bing-xin')?.status,
-    '满足',
+    withDingJia.find((candidate) => candidate.rule.id === 'yin-month-geng-bing-jia-visible')
+      ?.status,
+    '不满足',
   );
 
   const usefulGod = determineUsefulGod(
@@ -277,82 +281,260 @@ test('庚日寅月丙甲两透优先丙火，未见丙仍按先甲次丁', () =>
   assert.equal(usefulGod.primaryReason, '扶抑');
 });
 
-test('木火两旺及身强才旺有根规则不在身弱时命中', () => {
-  const weakWoodFire = {
-    ...context(['庚', '甲', '乙', '丙']),
-    strengthStatus: '身弱',
-    wuxingCounts: { 木: 3, 火: 2, 土: 0, 金: 1, 水: 0 },
-  };
-  const strongWoodFire = { ...weakWoodFire, strengthStatus: '身强' };
-  assert.equal(
-    collectClimateRuleCandidates(weakWoodFire).find(
-      (candidate) => candidate.rule.id === 'yin-month-geng-wood-fire-both',
-    )?.status,
-    '不满足',
-  );
-  assert.equal(
-    collectClimateRuleCandidates(strongWoodFire).find(
-      (candidate) => candidate.rule.id === 'yin-month-geng-wood-fire-both',
-    )?.status,
-    '满足',
-  );
-
-  const strengthGatedRules = [
+test('调候高等级断语按本月原文所列干支条件命中', () => {
+  const cases = [
     {
-      id: 'yin-month-ding-jia-geng-all',
-      monthBranch: '寅',
-      dayMaster: '火',
-      dayStem: '丁',
-      stems: ['甲', '庚', '丁'],
-    },
-    {
-      id: 'yin-month-geng-wu-xin-ji',
-      monthBranch: '寅',
-      dayMaster: '金',
-      dayStem: '庚',
-      stems: ['戊', '壬', '丁', '庚'],
-    },
-    {
-      id: 'shen-month-geng-jia-ding-all',
-      monthBranch: '申',
-      dayMaster: '金',
-      dayStem: '庚',
-      stems: ['甲', '丁', '庚'],
-    },
-    {
-      id: 'yin-month-ren-bing-geng-jia',
-      monthBranch: '寅',
-      dayMaster: '水',
-      dayStem: '壬',
-      stems: ['丙', '庚', '甲', '壬'],
-    },
-    {
-      id: 'mao-month-ren-bing-jia-all',
+      id: 'mao-month-ren-wu-xin-visible',
       monthBranch: '卯',
       dayMaster: '水',
       dayStem: '壬',
-      stems: ['丙', '甲', '壬'],
+      stems: ['戊', '辛', '壬'],
+      missing: ['丙', '甲', '壬'],
+    },
+    {
+      id: 'yin-month-ren-geng-bing-wu-visible',
+      monthBranch: '寅',
+      dayMaster: '水',
+      dayStem: '壬',
+      stems: ['庚', '丙', '戊', '壬'],
+      missing: ['庚', '丙', '甲', '壬'],
+    },
+    {
+      id: 'shen-month-geng-ding-jia-visible',
+      monthBranch: '申',
+      dayMaster: '金',
+      dayStem: '庚',
+      stems: ['丁', '甲', '庚'],
+      missing: ['丙', '甲', '庚'],
+    },
+    {
+      id: 'si-month-geng-ren-wu-bing-visible',
+      monthBranch: '巳',
+      dayMaster: '金',
+      dayStem: '庚',
+      stems: ['壬', '戊', '丙', '庚'],
+      missing: ['壬', '丙', '甲', '庚'],
     },
   ] as const;
-
-  for (const ruleCase of strengthGatedRules) {
+  for (const item of cases) {
     const base = {
-      ...context(ruleCase.stems),
-      monthBranch: ruleCase.monthBranch,
-      dayMaster: ruleCase.dayMaster,
-      dayStem: ruleCase.dayStem,
+      monthBranch: item.monthBranch,
+      dayMaster: item.dayMaster,
+      dayStem: item.dayStem,
     };
-    const weak = collectClimateRuleCandidates({ ...base, strengthStatus: '身弱' });
-    const strong = collectClimateRuleCandidates({ ...base, strengthStatus: '身强' });
+    const matched = collectClimateRuleCandidates({ ...context([...item.stems]), ...base });
+    const unmatched = collectClimateRuleCandidates({ ...context([...item.missing]), ...base });
     assert.equal(
-      weak.find((candidate) => candidate.rule.id === ruleCase.id)?.status,
-      '不满足',
-      `${ruleCase.id} 不应在身弱命中`,
+      matched.find((candidate) => candidate.rule.id === item.id)?.status,
+      '满足',
+      item.id,
     );
     assert.equal(
-      strong.find((candidate) => candidate.rule.id === ruleCase.id)?.status,
-      '满足',
-      `${ruleCase.id} 应在身强命中`,
+      unmatched.find((candidate) => candidate.rule.id === item.id)?.status,
+      '不满足',
+      item.id,
+    );
+    assert.equal(selectTherapeuticHintRule(matched, '身弱')?.id, item.id, item.id);
+  }
+});
+
+test('庚子丁甲两透还须丙藏支，庚卯丁甲两透还须庚藏支', () => {
+  for (const item of [
+    {
+      id: 'zi-month-geng-ding-jia-visible-bing-hidden',
+      monthBranch: '子',
+      stems: ['丁', '甲', '庚'],
+      hidden: ['丙'],
+    },
+    {
+      id: 'mao-month-geng-ding-jia-visible-geng-hidden',
+      monthBranch: '卯',
+      stems: ['丁', '甲', '庚'],
+      hidden: ['庚'],
+    },
+  ]) {
+    const base = { ...context(item.stems), monthBranch: item.monthBranch };
+    const withHidden = collectClimateRuleCandidates({ ...base, hiddenStems: item.hidden });
+    const withoutHidden = collectClimateRuleCandidates(base);
+    assert.equal(withHidden.find((candidate) => candidate.rule.id === item.id)?.status, '满足');
+    assert.equal(
+      withoutHidden.find((candidate) => candidate.rule.id === item.id)?.status,
+      '不满足',
     );
   }
+  const gengMao = CLIMATE_RULES.find(
+    (rule) => rule.id === 'mao-month-geng-ding-jia-visible-geng-hidden',
+  );
+  assert.match(gengMao?.hint ?? '', /得中和方论大贵/u);
+  assert.equal(
+    gengMao?.traceHints?.some((hint) => hint.startsWith('成格层次:')),
+    false,
+  );
+});
+
+test('丁午庚壬科甲须火局及另一火透，土透制壬则降等', () => {
+  const base = {
+    ...context(['庚', '壬', '丁', '丙']),
+    monthBranch: '午',
+    dayMaster: '火',
+    dayStem: '丁',
+  };
+  const withFireFormation = collectClimateRuleCandidates({ ...base, formationWuxings: ['火'] });
+  const withoutFireFormation = collectClimateRuleCandidates(base);
+  const withoutFireCompanion = collectClimateRuleCandidates({
+    ...context(['庚', '壬', '丁']),
+    monthBranch: '午',
+    dayMaster: '火',
+    dayStem: '丁',
+    formationWuxings: ['火'],
+  });
+  const withEarth = collectClimateRuleCandidates({
+    ...context(['庚', '壬', '丁', '戊']),
+    monthBranch: '午',
+    dayMaster: '火',
+    dayStem: '丁',
+    formationWuxings: ['火'],
+  });
+  const id = 'wu-month-ding-geng-ren-kejia';
+  assert.equal(withFireFormation.find((candidate) => candidate.rule.id === id)?.status, '满足');
+  assert.equal(
+    withoutFireFormation.find((candidate) => candidate.rule.id === id)?.status,
+    '不满足',
+  );
+  assert.equal(
+    withoutFireCompanion.find((candidate) => candidate.rule.id === id)?.status,
+    '不满足',
+  );
+  assert.equal(withEarth.find((candidate) => candidate.rule.id === id)?.status, '不满足');
+  assert.equal(
+    withEarth.find((candidate) => candidate.rule.id === 'wu-month-ding-geng-ren-tu-ordinary')
+      ?.status,
+    '满足',
+  );
+});
+
+test('丙未庚壬两透须贴身相生方论科甲名宦', () => {
+  const near = collectClimateRuleCandidates({
+    ...context(['庚', '壬', '丙', '甲']),
+    monthBranch: '未',
+    dayMaster: '火',
+    dayStem: '丙',
+  });
+  const far = collectClimateRuleCandidates({
+    ...context(['庚', '甲', '丙', '壬']),
+    monthBranch: '未',
+    dayMaster: '火',
+    dayStem: '丙',
+  });
+  const id = 'wei-month-bing-geng-ren-kejia';
+  assert.equal(near.find((candidate) => candidate.rule.id === id)?.status, '满足');
+  assert.equal(far.find((candidate) => candidate.rule.id === id)?.status, '不满足');
+  assert.equal(selectTherapeuticHintRule(near, '身强')?.id, id);
+});
+
+test('壬子戊丙两透与火局分属富贵荣华、一富而已', () => {
+  const base = { monthBranch: '子', dayMaster: '水', dayStem: '壬' };
+  const both = collectClimateRuleCandidates({ ...context(['戊', '丙', '壬']), ...base });
+  const onlyWu = collectClimateRuleCandidates({ ...context(['戊', '甲', '壬']), ...base });
+  const onlyBing = collectClimateRuleCandidates({ ...context(['丙', '甲', '壬']), ...base });
+  const waterWithoutBing = collectClimateRuleCandidates({
+    ...context(['戊', '甲', '壬']),
+    ...base,
+    formationWuxings: ['水'],
+  });
+  const waterWithBing = collectClimateRuleCandidates({
+    ...context(['戊', '丙', '壬']),
+    ...base,
+    formationWuxings: ['水'],
+  });
+  const fireWithoutWu = collectClimateRuleCandidates({
+    ...context(['甲', '乙', '壬']),
+    ...base,
+    formationWuxings: ['火'],
+  });
+  const fireWithBoth = collectClimateRuleCandidates({
+    ...context(['戊', '丙', '壬']),
+    ...base,
+    formationWuxings: ['火'],
+  });
+  assert.equal(selectTherapeuticHintRule(both, '身强')?.id, 'zi-month-ren-wu-bing-visible');
+  assert.equal(selectTherapeuticHintRule(onlyWu, '身强')?.id, 'zi-month-ren-wu-no-bing');
+  assert.equal(selectTherapeuticHintRule(onlyBing, '身强')?.id, 'zi-month-ren-bing-no-wu');
+  assert.equal(
+    selectTherapeuticHintRule(waterWithoutBing, '身强')?.id,
+    'zi-month-ren-water-formation-no-fire',
+  );
+  assert.equal(
+    waterWithBing.find((candidate) => candidate.rule.id === 'zi-month-ren-water-formation-no-fire')
+      ?.status,
+    '不满足',
+  );
+  assert.equal(
+    selectTherapeuticHintRule(fireWithoutWu, '身强')?.id,
+    'zi-month-ren-fire-formation-wealth',
+  );
+  assert.equal(selectTherapeuticHintRule(fireWithBoth, '身强')?.id, 'zi-month-ren-wu-bing-visible');
+  assert.equal(
+    CLIMATE_RULES.some((rule) => rule.id === 'zi-month-ren-fire-formation-wu'),
+    false,
+  );
+});
+
+test('庚辰丁甲两透无比肩方论科甲，甲藏丁透另论异路', () => {
+  const base = { monthBranch: '辰', dayMaster: '金', dayStem: '庚' };
+  const noPeer = collectClimateRuleCandidates({ ...context(['丁', '甲', '庚', '壬']), ...base });
+  const withPeer = collectClimateRuleCandidates({ ...context(['丁', '甲', '庚', '庚']), ...base });
+  const hiddenJia = collectClimateRuleCandidates({
+    ...context(['丁', '戊', '庚', '壬']),
+    ...base,
+    hiddenStems: ['甲'],
+  });
+  const noHiddenJia = collectClimateRuleCandidates({
+    ...context(['丁', '戊', '庚', '壬']),
+    ...base,
+  });
+  assert.equal(
+    selectTherapeuticHintRule(noPeer, '身弱')?.id,
+    'chen-month-geng-jia-ding-visible-no-peer',
+  );
+  assert.equal(
+    withPeer.find((candidate) => candidate.rule.id === 'chen-month-geng-jia-ding-visible-no-peer')
+      ?.status,
+    '不满足',
+  );
+  assert.equal(
+    hiddenJia.find((candidate) => candidate.rule.id === 'chen-month-geng-jia-hidden-ding-visible')
+      ?.status,
+    '满足',
+  );
+  assert.equal(
+    noHiddenJia.find((candidate) => candidate.rule.id === 'chen-month-geng-jia-hidden-ding-visible')
+      ?.status,
+    '不满足',
+  );
+});
+
+test('壬辰甲庚俱透科甲，甲透庚藏仅论修齐品格', () => {
+  const base = { monthBranch: '辰', dayMaster: '水', dayStem: '壬' };
+  const both = collectClimateRuleCandidates({ ...context(['甲', '庚', '壬']), ...base });
+  const hiddenGeng = collectClimateRuleCandidates({
+    ...context(['甲', '丙', '壬']),
+    ...base,
+    hiddenStems: ['庚'],
+  });
+  const noGeng = collectClimateRuleCandidates({ ...context(['甲', '丙', '壬']), ...base });
+  assert.equal(selectTherapeuticHintRule(both, '身强')?.id, 'chen-month-ren-jia-geng-visible');
+  assert.equal(
+    selectTherapeuticHintRule(hiddenGeng, '身强')?.id,
+    'chen-month-ren-jia-visible-geng-hidden',
+  );
+  assert.equal(
+    noGeng.find((candidate) => candidate.rule.id === 'chen-month-ren-jia-visible-geng-hidden')
+      ?.status,
+    '不满足',
+  );
+  assert.equal(
+    CLIMATE_RULES.some((rule) => rule.id === 'chen-month-ren-water-formation-wu'),
+    false,
+  );
 });

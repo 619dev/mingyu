@@ -1061,6 +1061,17 @@ function MeihuaTraditionalBoard({
   const tiTrigramClassic = useMemo(() => {
     return data.tiGua?.name ? getMeihuaTrigramClassic(data.tiGua.name) : undefined;
   }, [data.tiGua]);
+  const relationReferenceContext = [
+    `本次主卦${data.mainHexagram.name}：${data.analysis.tiYongSeasonEvaluation || `体卦月令${data.analysis.tiSeasonState}、用卦月令${data.analysis.yongSeasonState}`}`,
+    data.interHexagram
+      ? `互卦${data.interHexagram.name}：${data.analysis.inter1Relation}、${data.analysis.inter2Relation}`
+      : '',
+    data.changedHexagram
+      ? `变卦${data.changedHexagram.name}：${data.analysis.changedTiYongRelation}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('；');
 
   return (
     <TraditionalBoardShell
@@ -1142,10 +1153,10 @@ function MeihuaTraditionalBoard({
       </div>
       {meihuaJudgement ? (
         <ClassicalAnnotationCard
-          title={`${meihuaJudgement.relationType} · 体用关系原文`}
+          title={`${meihuaJudgement.relationType} · 体用总诀参考`}
           source={meihuaJudgement.sourceBook}
           verse={meihuaJudgement.classicSummary}
-          modernAdvice={meihuaJudgement.context}
+          modernAdvice={`${relationReferenceContext}。原文为主卦体用关系的传统参考，具体取义合参主互变与所问事项。`}
         />
       ) : null}
       {tiTrigramClassic ? (

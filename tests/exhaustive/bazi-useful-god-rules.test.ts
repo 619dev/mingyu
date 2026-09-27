@@ -1196,8 +1196,9 @@ const testCases: Array<{
       undefined,
       '丁',
       {
-        visibleStems: ['丁', '庚', '壬', '甲'],
-        wuxingCounts: { 木: 1, 火: 3, 土: 0, 金: 1, 水: 2 },
+        visibleStems: ['丁', '庚', '壬', '丙'],
+        formationWuxings: ['火'],
+        wuxingCounts: { 木: 0, 火: 4, 土: 0, 金: 1, 水: 2 },
       },
     ],
     expected: {
@@ -1225,6 +1226,7 @@ const testCases: Array<{
       '丁',
       {
         visibleStems: ['丁', '庚', '壬', '己'],
+        formationWuxings: ['火'],
         wuxingCounts: { 木: 0, 火: 3, 土: 1, 金: 1, 水: 2 },
       },
     ],
@@ -1289,6 +1291,12 @@ const testCases: Array<{
       '丙',
       {
         visibleStems: ['丙', '庚', '壬', '甲'],
+        visibleStemSources: [
+          { pillar: 'year', stem: '庚' },
+          { pillar: 'month', stem: '壬' },
+          { pillar: 'day', stem: '丙' },
+          { pillar: 'hour', stem: '甲' },
+        ],
         wuxingCounts: { 木: 1, 火: 2, 土: 1, 金: 1, 水: 2 },
       },
     ],

@@ -344,7 +344,7 @@ test('五运六气年度资料列出平气条件，不据年干支确认全年�
   assert.match(resultDingHai.pathomechanism.pingQiBasis, /交气日时干德符/);
 });
 
-test('五运六气跨节气精度范围保留完整年度结构并明确日期口径', () => {
+test('五运六气跨节气精度范围保留完整年度结构并省略计算状态', () => {
   for (const year of [1, 99, 1899, 2200, 9999]) {
     const result = calculateWuyunLiuqi({ year });
     const reference = calculateWuyunLiuqi({ yearGanZhi: getWuyunLiuqiYearGanZhi(year) });
@@ -359,7 +359,8 @@ test('五运六气跨节气精度范围保留完整年度结构并明确日期�
         (step) => step.gregorianStart === undefined && step.gregorianEnd === undefined,
       ),
     );
-    assert.match(result.prompt, /按节气与传统序日表示各步边界/);
+    assert.match(result.prompt, /运气年度：大寒节令起，至次年大寒节令前/);
+    assert.doesNotMatch(result.prompt, /日期口径：/);
   }
   for (const year of [1900, 2199]) {
     const result = calculateWuyunLiuqi({ year });
@@ -370,6 +371,7 @@ test('五运六气跨节气精度范围保留完整年度结构并明确日期�
       ),
     );
     assert.ok(result.qiSteps[5].gregorianEnd?.startsWith(`${year + 1}-01-`));
+    assert.match(result.prompt, /现代节气交节参考（北京时间）/);
   }
 });
 

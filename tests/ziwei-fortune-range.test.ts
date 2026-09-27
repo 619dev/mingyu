@@ -462,6 +462,7 @@ test('紫微闰月目标日沿用引擎流月归属且不压缩十二个常规�
   assert.equal(new Set(year.months?.map((month) => month.dateStr)).size, 12);
   assert.equal(year.targetMonth?.dateStr, '2025-08-20');
   assert.equal(year.targetMonth?.month, 7);
+  assert.equal(year.months?.find((month) => month.month === 7)?.dateStr, '2025-08-09');
 });
 
 test('紫微立春后农历年前目标日按实际流年分段且不混入虚岁起点干支', async () => {

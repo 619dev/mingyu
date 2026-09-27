@@ -380,6 +380,20 @@ test('曲直格依据已包含亥卯未木局与成立事实时不再另列格�
   }
 });
 
+test('流派提示词不重复曲直格依据中的成立条件、透干和成员藏干', () => {
+  const result = createBaziResult({ year: 1980, month: 1, day: 3, timeIndex: 3 });
+  for (const prompt of [
+    buildBaziPrompt({ result, school: 'ziping' }),
+    buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+    buildBaziPromptForResult({ result, schools: ['ziping', 'mangpai'] }),
+  ]) {
+    assert.match(prompt, /格局: 曲直格/);
+    assert.match(prompt, /特殊格裁决：曲直格成立/);
+    assert.match(prompt, /年柱: [^\n]+[\s\S]*藏干: [^\n]+/);
+    assert.doesNotMatch(prompt, /特殊格条件：|^食伤明透：|^财星明透：|^成员支藏干保留：/m);
+  }
+});
+
 test('格神未成立的真实命盘不把破格候选和救应路径当作提示词结论', () => {
   for (const input of [
     { year: 1980, month: 3, day: 15, timeIndex: 3 },

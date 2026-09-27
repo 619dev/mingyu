@@ -178,6 +178,7 @@ function formatSchoolPatternFacts(result: BaziChartResult, embedded = false) {
   const facts = formatPatternFulfillmentFacts(result.analysis.mingGe);
   const special = result.analysis.mingGe.specialAdjudication;
   const fulfillment = result.analysis.mingGe.fulfillment;
+  const curveFactsInChart = embedded && special?.kind === '曲直格';
   const specialFacts = facts
     .filter(
       (item) =>
@@ -194,6 +195,10 @@ function formatSchoolPatternFacts(result: BaziChartResult, embedded = false) {
           item.startsWith('原支藏印官事实：')),
     )
     .filter((item) => !item.startsWith('原支藏印官事实：'))
+    .filter(
+      (item) =>
+        !curveFactsInChart || !/^(?:特殊格条件|食伤明透|财星明透|成员支藏干保留)：/u.test(item),
+    )
     .filter(
       (item) =>
         !item.startsWith('财星明透：') ||

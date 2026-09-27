@@ -409,15 +409,37 @@ export async function buildZiweiFlowMonths(
       }
     }
   } else {
-    const targetLunarYear = SolarDay.fromYmd(
+    const lunarYear = SolarDay.fromYmd(
       ...(targetDateStr.split('-').map(Number) as [number, number, number]),
     )
       .getLunarDay()
       .getLunarMonth()
-      .getLunarYear()
-      .getYear();
+      .getLunarYear();
+    const targetLunarYear = lunarYear.getYear();
     for (let month = 1; month <= 12; month += 1) {
       monthAnchors.push(formatSolarDay(LunarDay.fromYmd(targetLunarYear, month, 1).getSolarDay()));
+    }
+    const leapMonth = lunarYear.getLeapMonth();
+    if (leapMonth) {
+      const leapStart = LunarDay.fromYmd(targetLunarYear, -leapMonth, 1).getSolarDay();
+      const nextMonthStart =
+        leapMonth < 12
+          ? LunarDay.fromYmd(targetLunarYear, leapMonth + 1, 1).getSolarDay()
+          : LunarDay.fromYmd(targetLunarYear + 1, 1, 1).getSolarDay();
+      const spanDays = nextMonthStart.subtract(leapStart);
+      const precedingDate = formatSolarDay(leapStart.next(-1));
+      const precedingHoroscope = await resolveHoroscope(precedingDate, targetHourIndex);
+      let previousMonthlySignature = `${precedingHoroscope.monthly.heavenlyStem}${precedingHoroscope.monthly.earthlyBranch}`;
+      // 闰月可能在月中切换到下月，逐日读取该闰月的真实切换日。
+      for (let offset = 0; offset < spanDays; offset += 1) {
+        const dateStr = formatSolarDay(leapStart.next(offset));
+        const horoscope = await resolveHoroscope(dateStr, targetHourIndex);
+        const monthlySignature = `${horoscope.monthly.heavenlyStem}${horoscope.monthly.earthlyBranch}`;
+        if (monthlySignature !== previousMonthlySignature) {
+          monthAnchors.push(dateStr);
+          previousMonthlySignature = monthlySignature;
+        }
+      }
     }
   }
 
@@ -427,7 +449,10 @@ export async function buildZiweiFlowMonths(
     const horoscope = await resolveHoroscope(dateStr, targetHourIndex);
     const monthlySignature = `${horoscope.monthly.heavenlyStem}${horoscope.monthly.earthlyBranch}`;
     if (monthlySignature === previousMonthlySignature) {
-      throw new Error('紫微流月边界未产生新的月干支，不能把重复月份压缩为一层。');
+      if (input.horoscopeDivide === 'exact') {
+        throw new Error('紫微流月边界未产生新的月干支，不能把重复月份压缩为一层。');
+      }
+      continue;
     }
     previousMonthlySignature = monthlySignature;
     const layer = serializeLayer(horoscope, 'monthly', astrolabe);

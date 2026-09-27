@@ -731,7 +731,6 @@ export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
   return [
     `年干支：${result.input.yearGanZhi}${result.input.year === undefined ? '' : `（公历 ${result.input.year} 年对应的运气年度）`}`,
     `运气年度：${annualPeriod}`,
-    `日期口径：${result.calendarDateStatus === '公历日期已换算' ? '节令边界同时列出公历日期' : '按节气与传统序日表示各步边界'}`,
     `岁运：${result.annualMovement.name}（${result.annualMovement.toneName}），${result.annualMovement.strength}（${result.annualMovement.yinYang}干）`,
     `司天：${result.sitian.name}`,
     `在泉：${result.zaiquan.name}`,

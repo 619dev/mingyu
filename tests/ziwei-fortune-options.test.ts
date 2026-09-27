@@ -62,10 +62,40 @@ test('紫微闰月流月选项覆盖引擎连续月段，流日可跨公历月',
   assert.equal(options.effectiveMonthDateStr, '2023-02-20');
   const leapMonth = options.monthOptions.find((month) => month.month === 2);
   assert.equal(leapMonth?.dateStr, '2023-02-20');
-  assert.equal(leapMonth?.endDateStr, '2023-04-19');
-  assert.equal(options.dayOptions.length, 59);
+  assert.equal(leapMonth?.endDateStr, '2023-04-05');
+  assert.equal(options.monthOptions.find((month) => month.month === 3)?.dateStr, '2023-04-06');
+  assert.equal(options.dayOptions.length, 45);
   assert.equal(options.dayOptions[0]?.dateStr, '2023-02-20');
-  assert.equal(options.dayOptions.at(-1)?.dateStr, '2023-04-19');
+  assert.equal(options.dayOptions.at(-1)?.dateStr, '2023-04-05');
+});
+
+test('紫微闰月后半段按引擎实际切月日生成流月与流日选项', async () => {
+  const input = normalizeChartInput({
+    name: '闰六月切月',
+    gender: '女',
+    dateType: 'solar',
+    birthDate: '1990-05-15',
+    birthTimeIndex: 4,
+  });
+  const options = await buildZiweiFortuneOptions(
+    input,
+    { startAge: 36, endAge: 36 },
+    { selectedYearDateStr: '2025-08-19', selectedMonthDateStr: '2025-08-19' },
+  );
+  const month = options.monthOptions.find(
+    (item) => item.dateStr <= '2025-08-19' && item.endDateStr >= '2025-08-19',
+  );
+  assert.deepEqual(
+    month && {
+      month: month.month,
+      dateStr: month.dateStr,
+      endDateStr: month.endDateStr,
+      ganZhi: month.ganZhi,
+    },
+    { month: 7, dateStr: '2025-08-09', endDateStr: '2025-09-21', ganZhi: '甲申' },
+  );
+  assert.equal(options.effectiveMonthDateStr, '2025-08-09');
+  assert.ok(options.dayOptions.some((item) => item.dateStr === '2025-08-19'));
 });
 
 test('紫微末段虚岁选项支持 2100 年后的真实日期', async () => {
