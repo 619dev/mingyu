@@ -139,23 +139,23 @@ function getBaziTopicTask(topic: BaziPromptTopic, topicLabel: string): string {
   switch (topic) {
     case 'job-change':
     case 'career':
-      return `请依据八字排盘资料重点分析${topicLabel}，按正统子平法推演：一辨原局格局成破与官印喜忌，二析大运当前十年气机是助身还是克身，三察岁运冲合是否引动官杀职位、印星单位或驿马提纲，四权衡动静利弊给出宜动或宜守之应期时序，五给出契合喜用的行业五行与发展方位建议。`;
+      return `请依据八字排盘资料分析${topicLabel}：核对原局格局、官印食伤与取用，再结合已列岁运的干支作用说明当前时间窗口。将盘面线索与【问题】中的实际职业选择对应，给出需要核对的条件。`;
     case 'marriage':
     case 'relationship':
     case 'relationship-push':
     case 'relationship-decision':
     case 'reconciliation-decision':
-      return `请依据八字排盘资料重点分析${topicLabel}，按正统子平法推演：一辨配偶星与夫妻宫日支之生克安宁，二察原局是否存在刑冲破害或比劫争夺，三审岁运引动逢合逢冲之转折契机，四推断感情转机或关键节点时序，五给出相处磨合之趋避建议。`;
+      return `请依据八字排盘资料分析${topicLabel}：核对日支夫妻宫、配偶星与实际命中的合冲刑害，再结合已列岁运说明所选时间窗口的关系变化条件。将传统取义与【问题】中的相处事实对应。`;
     case 'wealth':
     case 'investment-partnership':
     case 'startup-partnership':
-      return `请依据八字排盘资料重点分析${topicLabel}，按正统子平法推演：一辨身强身弱与财星真伪（身旺任财还是身弱财多），二察局中财库开闭与比劫争夺之病药，三审岁运是否引动财星或冲开财库，四指出财帛丰盈与谨防破耗借贷风险之关键节点，五给出求财合伙之趋避策略。`;
+      return `请依据八字排盘资料分析${topicLabel}：核对日主旺衰、财星状态、食伤与比劫的实际作用，结合已列岁运说明所选时间窗口的条件变化。将盘面取象与【问题】中的收入、负债或合伙事实分开陈述。`;
     case 'study':
     case 'study-advance':
     case 'exam-landing':
-      return `请依据八字排盘资料重点分析${topicLabel}，按正统子平法推演：一辨印星与食伤之清纯得力程度，二察文星气象，三推演岁运是否官印相生吐秀或逢财破印阻滞，四指出发挥最佳之应考时段与调节要点。`;
+      return `请依据八字排盘资料分析${topicLabel}：核对印星、食伤与实际形成的官印或伤官配印结构，结合已列岁运说明所选时间窗口的传统取象，并与【问题】中的备考条件对应。`;
     case 'health':
-      return `请依据八字排盘资料重点分析${topicLabel}，依五行生克与藏象学说推演：一辨原局五行偏枯与强弱，二察地支刑冲对相应脏腑经络之冲击，三结合岁运引动指出需要防范之时段，四给出五行调候与生活起居之趋避建议。`;
+      return `请依据八字排盘资料分析${topicLabel}的传统五行取象：核对月令、根气、寒暖燥湿与实际成立的刑冲，结合已列岁运说明所选时间窗口，并与【问题】中的症状、检查结果及作息资料分别对应。`;
     default:
       return `请依据八字排盘资料${topicLabel === '通用' ? '完成整体解读' : `重点分析${topicLabel}`}，结合问题给出有依据的分析。`;
   }

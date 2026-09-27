@@ -1,6 +1,8 @@
-import { memo, useState } from 'react';
+import * as React from 'react';
 import type { BaziReverseSource } from '@/lib/bazi-reverse-input';
 import type { QizhengAspect, QizhengResult, QizhengStar } from 'mingyu-core/qizheng';
+
+const { memo, useState } = React;
 
 const SIGN_INDEXES = Array.from({ length: 12 }, (_, index) => index);
 const STAR_STYLES: Array<{ match: string; symbol: string; color: string }> = [

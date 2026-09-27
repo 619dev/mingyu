@@ -211,6 +211,73 @@ test('单系统模式 (system: bazi 或 system: ziwei) 独立生成自包含提�
   assert.ok(ziweiOnly.prompt.includes('官禄宫'));
 });
 
+test('本命主题任务只依据已列本命盘事实，不生成岁运应期任务', async () => {
+  const baziResult = baziCalculator.calculateBazi(samplePerson);
+  const ziweiResult = await getSampleZiweiResult();
+  for (const system of ['bazi', 'ziwei', 'bazi_ziwei'] as const) {
+    const result = buildThematicConsultationPrompt({
+      system,
+      baziResult,
+      ziweiResult,
+      topic: 'career',
+      scope: 'natal',
+      ziweiScope: 'origin',
+      question: '目前有哪些职业选择依据？',
+    });
+    const task = result.prompt.split('【任务】\n')[1]?.split('【问题】\n')[0] ?? '';
+    assert.match(task, /已列|本命/);
+    assert.doesNotMatch(task, /大运|流年|岁运|运限|应期|年份|时间节点|前后阶段/);
+    assert.doesNotMatch(result.prompt, /未提供具体岁运资料|未提供具体运限资料/);
+  }
+});
+
+test('本命健康主题结合医学资料核对传统取象', async () => {
+  const baziResult = baziCalculator.calculateBazi(samplePerson);
+  const ziweiResult = await getSampleZiweiResult();
+  for (const system of ['bazi', 'ziwei', 'bazi_ziwei'] as const) {
+    const prompt = buildThematicConsultationPrompt({
+      system,
+      baziResult,
+      ziweiResult,
+      topic: 'health',
+      scope: 'natal',
+      ziweiScope: 'origin',
+      question: '结合体检结果看身体状态。',
+    }).prompt;
+    const task = prompt.split('【任务】\n')[1]?.split('【问题】\n')[0] ?? '';
+    assert.match(task, /传统健康取象/);
+    assert.match(task, /检查结果/);
+    assert.match(task, /医学资料评估/);
+    assert.doesNotMatch(task, /大运|流年|岁运|运限|应期/);
+  }
+});
+
+test('主题任务说明以已列盘面及现实条件为依据', () => {
+  const baziResult = baziCalculator.calculateBazi(samplePerson);
+  const prompt = buildThematicConsultationPrompt({
+    system: 'bazi',
+    baziResult,
+    topic: 'wealth',
+    scope: 'yearly',
+    question: '如何比较收入和债务压力？',
+  }).prompt;
+  const task = prompt.split('【任务】\n')[1]?.split('【问题】\n')[0] ?? '';
+  assert.match(task, /收入、负债或合作事实/);
+  assert.doesNotMatch(task, /丰盈年份|最佳决断窗口期|富贵贫贱/);
+});
+
+test('本命时机主题的默认问题定位于本命条件', () => {
+  const baziResult = baziCalculator.calculateBazi(samplePerson);
+  const prompt = buildThematicConsultationPrompt({
+    system: 'bazi',
+    baziResult,
+    topic: 'timing',
+    scope: 'natal',
+  }).prompt;
+  assert.match(prompt, /【问题】\n请说明本命结构中与时机取义相关的条件。/);
+  assert.doesNotMatch(prompt, /近期关键动静时机/);
+});
+
 test('主题及双盘流派提示词只呈现一次八字格局判定与破格限制', async () => {
   const baziResult = baziCalculator.calculateBazi({
     ...samplePerson,

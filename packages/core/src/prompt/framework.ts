@@ -787,11 +787,14 @@ export function getPromptSelectionSection(selection: PromptSelection) {
 }
 
 export function buildPromptSelectionTask(task: string, selection: PromptSelection) {
+  const isNatal = selection.scope === 'natal';
   const focus =
     selection.topicId === 'general'
       ? '先组织全部已列资料，说明整体主线与相互制约。'
-      : `围绕${selection.topicLabel}${selection.subtopicLabel ? `（${selection.subtopicLabel}）` : ''}展开，综合相关宫位、干支关系与前后阶段，说明主线、成因和转折。`;
-  const scope = `以${selection.scopeLabel}为重点，结合所列本命与各层时间资料推演；区分盘面事实、传统取义和条件性判断。`;
+      : `围绕${selection.topicLabel}${selection.subtopicLabel ? `（${selection.subtopicLabel}）` : ''}展开，综合相关宫位与干支关系，说明主线和成立条件${isNatal ? '' : '，以及所列阶段的变化'}。`;
+  const scope = isNatal
+    ? '以已列本命资料为依据，区分盘面事实、传统取义和条件性判断。'
+    : `以${selection.scopeLabel}为重点，结合所列本命与时间资料推演；区分盘面事实、传统取义和条件性判断。`;
   const normalizedTask = task.trim();
   return [normalizedTask, focus, scope].filter(Boolean).join(' ');
 }

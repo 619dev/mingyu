@@ -291,13 +291,14 @@ export interface YilinSourceEntry {
   rawLabel: string;
   observedLabel: string;
   text: string;
+  editorialNotes: string[];
   markers: {
     kanripoRefs: string[];
     wikisourceSKchars: string[];
   };
   skcharId: string | null;
   textDigest: string;
-  textNormalization: 'none' | 'fixed-volume-footer';
+  textNormalization: 'none' | 'fixed-volume-footer' | 'fixed-section-anchor';
 }
 
 export interface YilinGapSummary {

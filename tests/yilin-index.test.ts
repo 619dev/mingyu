@@ -28,16 +28,34 @@ test('焦氏易林固定索引覆盖 64×64 卦对并保留版本缺口统计', 
 
 test('易林每个卦对均可查询，文字一致状态依据两份正文判断', () => {
   const keys = new Set<string>();
+  let wikisourceNotes = 0;
+  let kanripoNotes = 0;
+  let alignedNoteEntries = 0;
+  let sectionAnchors = 0;
   for (const base of YILIN_HEXAGRAM_ORDER) {
     for (const target of YILIN_HEXAGRAM_ORDER) {
       const entry = queryYilinEntry(base, target);
       keys.add(entry.key);
+      wikisourceNotes += entry.sources.wikisource.editorialNotes.length;
+      kanripoNotes += entry.sources.kanripo.editorialNotes.length;
+      if (entry.sources.kanripo.editorialNotes.length) {
+        assert.ok(entry.sources.wikisource.editorialNotes.length, entry.key);
+        alignedNoteEntries++;
+      }
+      if (entry.sources.wikisource.textNormalization === 'fixed-section-anchor') {
+        sectionAnchors++;
+      }
       for (const source of [entry.sources.wikisource, entry.sources.kanripo]) {
         assert.ok(source.text.length > 0, entry.key);
         assert.ok(source.source.length > 0, entry.key);
         assert.ok(Number.isInteger(source.volume), entry.key);
         assert.ok(Number.isInteger(source.line), entry.key);
         assert.ok(source.rawLabel.length > 0, entry.key);
+        assert.ok(Array.isArray(source.editorialNotes), entry.key);
+        assert.doesNotMatch(source.text, /\{\{SK notes\||\{\{SK anchor\|/u, entry.key);
+        if (source.sourceKind === 'kanripo-wyg') {
+          assert.doesNotMatch(source.text, /[()]/u, entry.key);
+        }
         if (source.observedLabel !== null) assert.ok(source.observedLabel.length > 0, entry.key);
         assert.ok(source.page === null || source.page.length > 0, entry.key);
         assert.match(source.textDigest, /^[0-9a-f]{16}$/u);
@@ -50,6 +68,10 @@ test('易林每个卦对均可查询，文字一致状态依据两份正文判�
     }
   }
   assert.equal(keys.size, 4096);
+  assert.equal(alignedNoteEntries, 692);
+  assert.equal(wikisourceNotes, 693);
+  assert.equal(kanripoNotes, 872);
+  assert.equal(sectionAnchors, 59);
   const entry = queryYilinEntry('乾', '需');
   assert.equal(entry.gaps.length, 0);
   assert.notEqual(entry.sources.wikisource.text, entry.sources.kanripo.text);
@@ -107,6 +129,32 @@ test('易林卷尾尾注只做确定性边界清理并留下规范化标记', ()
   }
 });
 
+test('易林章节锚点与校注不混入正文，本卦之卦方向保持独立', () => {
+  const forward = queryYilinEntry('乾', '需');
+  const reverse = queryYilinEntry('需', '乾');
+  assert.equal(forward.key, '乾→需');
+  assert.equal(reverse.key, '需→乾');
+  assert.notEqual(forward.text, reverse.text);
+  assert.equal(forward.selectedSource, 'kanripo');
+  assert.equal(forward.text, '目瞤足動喜如其願舉家蒙寵');
+  assert.equal(queryYilinEntry('乾', '需', 'wikisource').selectedSource, 'wikisource');
+
+  const inlineNote = queryYilinEntry('觀', '同人');
+  assert.equal(inlineNote.text, '有頭無目赫赫粟粟消耗為疾三年不復');
+  assert.deepEqual(inlineNote.sources.wikisource.editorialNotes, ['一作不見菽粟']);
+  assert.deepEqual(inlineNote.sources.kanripo.editorialNotes, ['一作不/見菽粟']);
+  assert.equal(inlineNote.sources.wikisource.text, inlineNote.sources.kanripo.text);
+  const nestedNote = queryYilinEntry('賁', '蹇');
+  assert.deepEqual(nestedNote.sources.wikisource.editorialNotes, [
+    '一作{{SKchar|2025}}{{SKchar|2025}}墳墳',
+  ]);
+
+  const sectionEnd = queryYilinEntry('乾', '未濟');
+  assert.equal(sectionEnd.sources.wikisource.textNormalization, 'fixed-section-anchor');
+  assert.equal(sectionEnd.text, sectionEnd.sources.kanripo.text);
+  assert.doesNotMatch(sectionEnd.text, /SK anchor|焦氏易林卷/u);
+});
+
 test('公开 API 暴露固定易林查询并拒绝未知卦名', async () => {
   const openApi = getPublicApiOpenApiDocument(DEFAULT_PUBLIC_API_RUNTIME) as {
     paths: Record<string, { post?: unknown }>;
@@ -135,6 +183,25 @@ test('公开 API 暴露固定易林查询并拒绝未知卦名', async () => {
   assert.equal(body.data.key, '兌→隨');
   assert.equal(body.data.edition.parsedPairCount, 4096);
   assert.ok(body.data.sources);
+
+  const missingGlyph = await handlePublicApiRequest(
+    new Request('https://aov.cc/api/v1/classics/yilin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseHexagram: '乾', targetHexagram: '需' }),
+    }),
+  );
+  assert.equal(missingGlyph.status, 200);
+  const resolved = (await missingGlyph.json()) as {
+    data: {
+      selectedSource: string;
+      text: string;
+      sources: { wikisource: { text: string; editorialNotes: string[] } };
+    };
+  };
+  assert.equal(resolved.data.selectedSource, 'kanripo');
+  assert.equal(resolved.data.text, '目瞤足動喜如其願舉家蒙寵');
+  assert.match(resolved.data.sources.wikisource.text, /\{\{SKchar\|3681\}\}/u);
 
   const invalid = await handlePublicApiRequest(
     new Request('https://aov.cc/api/v1/classics/yilin', {

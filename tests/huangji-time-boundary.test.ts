@@ -84,3 +84,18 @@ test('皇极固定北京时间口径不随全局占卜时区覆盖改变', () =>
     TimeManager.setTimezoneOffsetMinutesOverride(480);
   }
 });
+
+test('皇极年月日时只查目标所需节气，避免历表边界预取越界', () => {
+  const firstAvailable = calculateHuangjiJingshi({ date: new Date('0001-01-07T00:00:00Z') });
+  assert.equal(firstAvailable.dateTimeForecast?.calendar.activeSolarTerm, '小寒');
+  assert.equal(firstAvailable.dateTimeForecast?.calendar.forecastYear, 1);
+
+  const lastYear = calculateHuangjiJingshi({ date: new Date('9999-12-31T00:00:00Z') });
+  assert.equal(lastYear.dateTimeForecast?.calendar.activeSolarTerm, '冬至');
+  assert.equal(lastYear.dateTimeForecast?.calendar.forecastYear, 10000);
+
+  assert.throws(
+    () => calculateHuangjiJingshi({ date: new Date('0001-01-01T00:00:00Z') }),
+    /无法定位起盘时间所属的皇极节气/,
+  );
+});

@@ -968,8 +968,12 @@ function resolveCalendar(
     utcTimestamp: number;
   }> = [];
 
+  // 索引 0 属于上一公历年的冬至，目标年份只需再查看下一轮的冬至、
+  // 小寒。避免为极端年份预取整个下一轮节气而越过历表上界。
   for (const forecastYear of [year, year + 1]) {
-    for (let index = 0; index < 24; index += 1) {
+    const firstIndex = forecastYear === 1 ? 1 : 0;
+    const lastIndex = forecastYear === year ? 23 : 1;
+    for (let index = firstIndex; index <= lastIndex; index += 1) {
       const term = SolarTerm.fromIndex(forecastYear, index);
       candidates.push({
         forecastYear,

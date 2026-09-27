@@ -1197,7 +1197,7 @@ export function getPublicApiOpenApiDocument(
         post: {
           summary: '焦氏易林固定4096条索引查询',
           description:
-            '按固定卦序查询焦氏易林卦对原文；同时返回 Wikisource 四库全书本与 Kanripo KR3g0029 WYG 对读资料、来源定位和未决字形/校勘状态，不承担起卦或随机取卦。',
+            '按固定卦序查询焦氏易林卦对正文；同时返回 Wikisource 四库全书本与 Kanripo KR3g0029 WYG 对读资料、独立校注、来源定位和未决字形/校勘状态，不承担起卦或随机取卦。',
           requestBody: openApiJsonRequestBody('#/components/schemas/YilinQueryRequest'),
           responses: { '200': { description: '焦氏易林原文、双底本对读和来源状态' } },
         },
@@ -2429,7 +2429,7 @@ export function getPublicApiOpenApiDocument(
           required: ['baseHexagram', 'targetHexagram'],
           additionalProperties: false,
           description:
-            '固定 W20.03 版本的焦氏易林 64×64 索引查询。支持固定卦名及已登记的繁简/异体输入；source 默认 both，同时返回两个固定底本的原文和来源状态。',
+            '固定 W20.03 版本的焦氏易林 64×64 索引查询。支持固定卦名及已登记的繁简/异体输入；source 默认 both，优先选无缺字标记的正文，同时返回两个底本的正文、独立校注和来源状态。',
           properties: {
             baseHexagram: {
               type: 'string',
@@ -2447,7 +2447,8 @@ export function getPublicApiOpenApiDocument(
               type: 'string',
               enum: ['wikisource', 'kanripo', 'both'],
               default: 'both',
-              description: '选择 text 字段的主底本；both 仍以 Wikisource 为主并同时返回两份资料。',
+              description:
+                '选择 text 字段的主底本；both 优先使用无缺字标记的正文，并同时返回两份资料。',
             },
           },
         },
