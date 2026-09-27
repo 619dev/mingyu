@@ -138,6 +138,8 @@ export function formatBaziFortuneSelection(
   const rangeStart = `${formatSolarDateTime(cycleRange.start, true)}:${String(cycleRange.start.second).padStart(2, '0')}`;
   const rangeEnd = `${formatSolarDateTime(cycleRange.end, true)}:${String(cycleRange.end.second).padStart(2, '0')}`;
   const upperDayun = summary.find((line) => line.startsWith('所属大运：'));
+  const effectiveMonthRange =
+    scope === 'month' ? summary.find((line) => line.startsWith('本运有效时段：')) : undefined;
   const consolidateYearDayun = scope === 'year' && Boolean(upperDayun);
   const selectedLayerName = { dayun: '大运', year: '流年', month: '流月', day: '流日' }[scope];
   if (!consolidateYearDayun) {
@@ -154,9 +156,12 @@ export function formatBaziFortuneSelection(
       : scope === 'dayun'
         ? `${context.cycleStartYear}年起`
         : scope === 'month'
-          ? summary.find((line) => line.startsWith('日期范围：'))?.replace('日期范围：', '')
+          ? effectiveMonthRange
+            ? undefined
+            : summary.find((line) => line.startsWith('日期范围：'))?.replace('日期范围：', '')
           : context.dayBreakdown?.[0]?.date;
   if (selectedDate) lines.push(`选择日期：${selectedDate}`);
+  if (effectiveMonthRange) lines.push(effectiveMonthRange);
 
   if (scope === 'month') {
     const monthLine = summary.find((line) => line.startsWith('流月：'));

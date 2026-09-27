@@ -14,20 +14,6 @@ export const REN_XU_CLIMATE_RULES: ClimateRule[] = [
     hint: '壬水戌月，先丙后甲',
   },
   {
-    id: 'xu-month-ren-bing-jia-xin-all',
-    label: '壬日戌月丙甲辛全透极品规则',
-    description: '壬水生戌月，丙甲辛三者全透，较合原文"壬水生戌月，三者全透，鼎甲可期"。',
-    priority: 126,
-    months: ['戌'],
-    dayMasters: ['水'],
-    dayStems: ['壬'],
-    requiredVisibleStems: ['丙', '甲', '辛'],
-    usefulWuxing: '火',
-    favorableOrder: ['火', '木', '金'],
-    traceHints: ['取用层次:丙甲辛三者全透', '成格层次:鼎甲可期'],
-    hint: '壬水戌月丙甲辛三者全透，鼎甲可期',
-  },
-  {
     id: 'xu-month-ren-jia-bing',
     label: '壬日戌月甲丙并用规则',
     description:

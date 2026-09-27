@@ -13,18 +13,4 @@ export const JIA_HAI_CLIMATE_RULES: ClimateRule[] = [
     favorableOrder: ['火', '水'],
     hint: '甲木亥月，先丙后癸',
   },
-  {
-    id: 'hai-month-jia-bing-gui-geng-all',
-    label: '甲日亥月丙癸庚全透极品规则',
-    description: '甲木生亥月，丙癸庚三者全透，较合原文"甲木生亥月，三者全透，鼎甲可期"。',
-    priority: 126,
-    months: ['亥'],
-    dayMasters: ['木'],
-    dayStems: ['甲'],
-    requiredVisibleStems: ['丙', '癸', '庚'],
-    usefulWuxing: '火',
-    favorableOrder: ['火', '水', '金'],
-    traceHints: ['取用层次:丙癸庚三者全透', '成格层次:鼎甲可期'],
-    hint: '甲木亥月丙癸庚三者全透，鼎甲可期',
-  },
 ];

@@ -2,9 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { buildCurrentBaziFortuneSelection } from 'mingyu-core/bazi';
 
 import { baziCalculator } from '@core/bazi/baziCalculator';
-import { BaziFortuneSelector } from '../src/components/BaziFortuneTools/BaziFortuneSelector';
+import {
+  BaziFortuneSelector,
+  resolveFortuneSelectorState,
+} from '../src/components/BaziFortuneTools/BaziFortuneSelector';
 import { BaziChartBoard } from '../src/pages/ResultPage/components/BaziChartBoard';
 
 test('八字结果盘应展示排盘预警和稳定基础参考', () => {
@@ -247,4 +251,99 @@ test('八字岁运区应提供流时并把回到今天放在顶部', () => {
   assert.match(html, />流时</);
   assert.equal(html.match(/class="fortune-row"/g)?.length, 5);
   assert.doesNotMatch(html, /class="row-title"><button/);
+});
+
+test('八字岁运选择器在立春前默认定位上一节气年和末月', (context) => {
+  context.mock.timers.enable({ apis: ['Date'], now: new Date('2008-01-15T04:00:00Z') });
+  const result = baziCalculator.calculateBazi({
+    year: 1992,
+    month: 7,
+    day: 15,
+    timeIndex: 3,
+    gender: 'female',
+  });
+  const html = renderToStaticMarkup(createElement(BaziFortuneSelector, { result }));
+  const yearRow = html
+    .split('class="row-title">流年</div>')[1]
+    ?.split('class="row-title">流月</div>')[0];
+  const monthRow = html
+    .split('class="row-title">流月</div>')[1]
+    ?.split('class="row-title">流日</div>')[0];
+  const activeYear = yearRow?.match(/class="fortune-item active"[^>]*>([\s\S]*?)<\/button>/)?.[1];
+  const activeMonth = monthRow?.match(/class="fortune-item active"[^>]*>([\s\S]*?)<\/button>/)?.[1];
+
+  assert.match(activeYear ?? '', /class="fortune-year">2007<\/div>/);
+  assert.match(activeMonth ?? '', /class="fortune-year">丑月<\/div>/);
+});
+
+test('八字岁运选择器换命盘后定位新盘当前岁运且同盘重渲染保留手动选择', (context) => {
+  const now = new Date('2026-09-27T04:00:00.000Z');
+  context.mock.timers.enable({ apis: ['Date'], now });
+
+  const firstResult = baziCalculator.calculateBazi({
+    year: 1992,
+    month: 7,
+    day: 15,
+    timeIndex: 3,
+    gender: 'female',
+  });
+  const nextResult = baziCalculator.calculateBazi({
+    year: 1988,
+    month: 11,
+    day: 3,
+    timeIndex: 8,
+    gender: 'male',
+  });
+  const firstSelection = resolveFortuneSelectorState(null, firstResult, now);
+  const manuallySelected = {
+    ...firstSelection,
+    year: firstSelection.year - 1,
+    month: 3,
+    day: 4,
+    hourIndex: 7,
+  };
+
+  assert.strictEqual(
+    resolveFortuneSelectorState(manuallySelected, firstResult, now),
+    manuallySelected,
+  );
+
+  const nextSelection = resolveFortuneSelectorState(manuallySelected, nextResult, now);
+  const expected = buildCurrentBaziFortuneSelection(nextResult, now);
+  assert.ok(expected);
+  assert.equal(nextSelection.result, nextResult);
+  assert.deepEqual(
+    {
+      cycleIndex: nextSelection.cycleIndex,
+      year: nextSelection.year,
+      month: nextSelection.month,
+      day: nextSelection.day,
+      hourIndex: nextSelection.hourIndex,
+    },
+    {
+      cycleIndex: expected.cycleIndex,
+      year: expected.year,
+      month: expected.month,
+      day: expected.day,
+      hourIndex: 6,
+    },
+  );
+
+  const selectionAfterSwitchBack = resolveFortuneSelectorState(nextSelection, firstResult, now);
+  assert.deepEqual(
+    {
+      cycleIndex: selectionAfterSwitchBack.cycleIndex,
+      year: selectionAfterSwitchBack.year,
+      month: selectionAfterSwitchBack.month,
+      day: selectionAfterSwitchBack.day,
+      hourIndex: selectionAfterSwitchBack.hourIndex,
+    },
+    {
+      cycleIndex: firstSelection.cycleIndex,
+      year: firstSelection.year,
+      month: firstSelection.month,
+      day: firstSelection.day,
+      hourIndex: firstSelection.hourIndex,
+    },
+  );
 });

@@ -972,13 +972,19 @@ function assertAstrolabeResult(
   }
 
   const evidence = result.scopeEvidence;
-  const scope =
-    typeof calculationInput.astrolabeScopeText === 'string' &&
-    calculationInput.astrolabeScopeText.trim()
-      ? 'custom'
-      : (calculationInput.astrolabeScope ?? 'natal');
+  const customText =
+    typeof calculationInput.astrolabeScopeText === 'string'
+      ? calculationInput.astrolabeScopeText.trim()
+      : '';
+  const scope = customText ? 'custom' : (calculationInput.astrolabeScope ?? 'natal');
   if (record(evidence)) {
     assertStructuredField('astrolabe.scopeEvidence.scope', scope, evidence.scope);
+    if (customText) {
+      assertStructuredField('astrolabe.scopeEvidence.promptText', customText, evidence.promptText);
+      if (typeof data.prompt !== 'string' || !data.prompt.includes(customText)) {
+        throw new Error('补算身份核验失败：astrolabe.prompt。');
+      }
+    }
     const expectedDate = calculationInput.astrolabeScopeDate;
     if (expectedDate !== undefined && scope !== 'custom') {
       const actualDate = evidence.referenceDate ?? evidence.dateStr;

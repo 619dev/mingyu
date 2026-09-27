@@ -14,18 +14,4 @@ export const WU_SI_CLIMATE_RULES: ClimateRule[] = [
     favorableOrder: ['水', '木'],
     hint: '戊土巳月，先壬后甲',
   },
-  {
-    id: 'si-month-wu-gui-bing-xin-all',
-    label: '戊日巳月壬甲齐透鼎甲可期规则',
-    description: '戊土生巳月，壬水润燥与甲木疏土齐透，壬甲相辅成格，主鼎甲可期。',
-    priority: 126,
-    months: ['巳'],
-    dayMasters: ['土'],
-    dayStems: ['戊'],
-    requiredVisibleStems: ['壬', '甲'],
-    usefulWuxing: '水',
-    favorableOrder: ['水', '木'],
-    traceHints: ['取用层次:壬甲齐透', '成格层次:鼎甲可期'],
-    hint: '戊土巳月壬甲齐透，鼎甲可期',
-  },
 ];

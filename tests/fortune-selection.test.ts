@@ -12,6 +12,7 @@ import {
 } from 'mingyu-core/bazi';
 import { getDayHourBreakdown } from '@core/bazi/fortuneSelection/helpers/breakdown';
 import type { BaziChartResult } from '@core/bazi/baziTypes';
+import { formatBaziFortuneSelection } from '@core/prompt/bazi-fortune';
 
 function createMockResult(): BaziChartResult {
   return {
@@ -564,6 +565,29 @@ test('交节裁剪后的流时文字应与有效时间一致', () => {
   );
 });
 
+test('流时首尾部分裁剪时应提示有效范围，即使仍有十二时辰', () => {
+  const result = createMockResult();
+  const cycle = result.luckInfo.cycles[0];
+  cycle.startSolarTime = { year: 2008, month: 2, day: 8, hour: 23, minute: 30, second: 0 };
+  cycle.endSolarTime = { year: 2008, month: 2, day: 9, hour: 22, minute: 30, second: 0 };
+
+  const context = buildFortuneSelectionContext(result, {
+    scope: 'day',
+    cycleIndex: 0,
+    year: 2008,
+    month: 1,
+    day: 6,
+  });
+
+  assert.equal(context?.hourBreakdown?.length, 12);
+  assert.equal(context?.hourBreakdown?.[0]?.interval.start.minute, 30);
+  assert.equal(context?.hourBreakdown?.at(-1)?.interval.end.minute, 30);
+  assert.match(
+    context?.promptPayload.summaryLines.join('\n') ?? '',
+    /流时有效时段：2008-02-08 23:30:00至2008-02-09 22:30:00（终点不含）/,
+  );
+});
+
 test('岁运各层应按精确交运时刻裁剪并返回结构化时间', () => {
   const result = createMockResult();
   const cycle = result.luckInfo.cycles[0];
@@ -579,6 +603,10 @@ test('岁运各层应按精确交运时刻裁剪并返回结构化时间', () =>
   assert.equal(year?.monthBreakdown?.[0]?.timeRange.start.hour, 12);
   assert.equal(year?.monthBreakdown?.[0]?.timeRange.start.day, 8);
   assert.equal(year?.monthBreakdown?.[0]?.timeRange.end.day, 9);
+  assert.match(
+    year?.promptPayload.breakdownLines?.[0] ?? '',
+    /交运 2008-02-08 12:00:00～交运 2008-02-09 12:00:00/,
+  );
 
   const month = buildFortuneSelectionContext(result, {
     scope: 'month',
@@ -589,6 +617,22 @@ test('岁运各层应按精确交运时刻裁剪并返回结构化时间', () =>
   assert.equal(month?.dayBreakdown?.length, 2);
   assert.equal(month?.dayBreakdown?.[0]?.timeRange.start.hour, 12);
   assert.equal(month?.dayBreakdown?.[1]?.timeRange.end.hour, 12);
+  assert.match(month?.displayText ?? '', /2008-02-08 12:00:00 至 2008-02-09 12:00:00/);
+  assert.ok(
+    month?.promptPayload.summaryLines.includes(
+      '本运有效时段：2008-02-08 12:00:00至2008-02-09 12:00:00（终点不含）',
+    ),
+  );
+  const monthPrompt = formatBaziFortuneSelection(month);
+  assert.match(
+    monthPrompt?.focus ?? '',
+    /本运有效时段：2008-02-08 12:00:00至2008-02-09 12:00:00（终点不含）/,
+  );
+  assert.doesNotMatch(monthPrompt?.focus ?? '', /选择日期：2008-02-04 至 2008-03-05/);
+  assert.match(
+    month?.promptPayload.detailGroups?.[0]?.lines?.[0] ?? '',
+    /交运 2008-02-08 12:00:00～交运 2008-02-09 12:00:00/,
+  );
 
   const day = buildFortuneSelectionContext(result, {
     scope: 'day',
@@ -605,6 +649,10 @@ test('岁运各层应按精确交运时刻裁剪并返回结构化时间', () =>
   );
   const clippedHour = day?.hourBreakdown?.find((item) => item.label === '午时');
   assert.equal(clippedHour?.timeRange, '2008-02-08 12:00:00至2008-02-08 13:00:00（终点不含）');
+  assert.deepEqual(
+    day?.promptPayload.detailGroups?.[0]?.lines.map((line) => line.slice(0, 10)),
+    ['2008-02-08', '2008-02-09'],
+  );
 });
 
 test('2100 节令年末月的 2101 年流日应能构造流时详情', () => {

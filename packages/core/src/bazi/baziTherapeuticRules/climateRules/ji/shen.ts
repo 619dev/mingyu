@@ -13,18 +13,4 @@ export const JI_SHEN_CLIMATE_RULES: ClimateRule[] = [
     favorableOrder: ['火', '木'],
     hint: '己土申月，先丙后甲',
   },
-  {
-    id: 'shen-month-ji-bing-jia-geng-all',
-    label: '己日申月丙甲庚全透极品规则',
-    description: '己土生申月，丙甲庚三者全透，较合原文"己土生申月，三者全透，鼎甲可期"。',
-    priority: 126,
-    months: ['申'],
-    dayMasters: ['土'],
-    dayStems: ['己'],
-    requiredVisibleStems: ['丙', '甲', '庚'],
-    usefulWuxing: '火',
-    favorableOrder: ['火', '木', '金'],
-    traceHints: ['取用层次:丙甲庚三者全透', '成格层次:鼎甲可期'],
-    hint: '己土申月丙甲庚三者全透，鼎甲可期',
-  },
 ];

@@ -326,6 +326,25 @@ test('从儿格缺少明确财气承接依据时仍保留本盘五行流向', ()
   assert.match(formatBaziPatternConditions(result), /从儿五行流向：食伤土生财金/);
 });
 
+test('从儿格流派资料不重复五行流向与已列的财星明透条件', () => {
+  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  assert.equal(result.analysis.mingGe.specialAdjudication?.kind, '从儿格');
+  const prompts = [
+    buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+    buildBaziPromptForResult({ result, schools: ['ziping', 'mangpai'] }),
+  ];
+  for (const prompt of prompts) {
+    assert.equal(prompt.match(/食伤土生财星金/g)?.length, 1);
+    assert.doesNotMatch(prompt, /从儿五行流向：|^财星明透：/m);
+    assert.match(prompt, /庚财星明透，承接食伤所生/);
+    assert.match(prompt, /特殊格裁决：从儿格成立/);
+    assertNoEngineeringPromptText(prompt);
+  }
+  const independentSchoolFacts = formatBaziSchoolPrompt(result, 'ziping');
+  assert.match(independentSchoolFacts, /从儿五行流向：食伤土生财金/);
+  assert.doesNotMatch(independentSchoolFacts, /^财星明透：/m);
+});
+
 test('曲直格依据已包含亥卯未木局与成立事实时不再另列格局条件', () => {
   for (const input of [
     { year: 1980, month: 1, day: 3, timeIndex: 3 },
@@ -594,7 +613,11 @@ test('八字流月提示词应突出所选日期范围并保留必要触发资�
   const fortuneSection = prompt.user.match(/【岁运重点】([\s\S]*?)\n\n【问题】/)?.[1] || '';
 
   assert.match(prompt.user, /【分析对象】\n分析对象：\d{4}年.+流月/);
-  assert.match(fortuneSection, /选择日期：\d{4}-\d{2}-\d{2} 至 \d{4}-\d{2}-\d{2}/);
+  if (fortuneContext.promptPayload.summaryLines.some((line) => line.startsWith('本运有效时段：'))) {
+    assert.match(fortuneSection, /本运有效时段：\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}至/);
+  } else {
+    assert.match(fortuneSection, /选择日期：\d{4}-\d{2}-\d{2} 至 \d{4}-\d{2}-\d{2}/);
+  }
   assert.match(fortuneSection, /节气月：/);
   assert.match(fortuneSection, /上层岁运：/);
   assert.doesNotMatch(prompt.user, /该流月包含的流日/);

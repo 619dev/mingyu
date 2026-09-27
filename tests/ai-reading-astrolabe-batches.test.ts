@@ -11,7 +11,72 @@ import {
 } from '../src/lib/ai/astrolabe-batch-resources';
 import { generateAstrolabeReadingLocally } from '../src/lib/ai/astrolabe-reading-calculation';
 import { executeReadingAction } from '../src/lib/ai/reading-resources';
+import type { ReadingSubjectSnapshot } from '../src/lib/ai/reading-subject';
 import { handlePublicApiRequest } from '../src/lib/public-api/handler';
+
+test('自定义星盘范围补算核对结构化范围与完整提示词', async () => {
+  const customText = '分析合成样本的指定阶段';
+  const locked = {
+    name: '合成样本',
+    gender: 'female',
+    year: 1995,
+    month: 5,
+    day: 20,
+    hour: 12,
+    minute: 30,
+    latitude: 39.9042,
+    longitude: 116.4074,
+    timezone: 8,
+    useTrueSolarTime: false,
+  };
+  const input = {
+    astrolabeScope: 'natal',
+    astrolabeScopeText: customText,
+    question: '请分析此阶段。',
+  };
+  const baseline = await handlePublicApiRequest(
+    new Request('https://aov.cc/api/v1/divination/astrolabe/prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...locked, ...input, gender: '女', responseMode: 'full' }),
+    }),
+  );
+  const body = (await baseline.json()) as { ok: boolean; data: Record<string, unknown> };
+  assert.equal(body.ok, true, JSON.stringify(body));
+  const subject: ReadingSubjectSnapshot = {
+    id: 'synthetic-custom-astrolabe',
+    source: 'astrolabe',
+    allowedMethods: ['astrolabe'],
+    lockedInputs: { astrolabe: locked },
+    range: {},
+  };
+  const action = { kind: 'calculate' as const, method: 'astrolabe', input };
+  const originalFetch = globalThis.fetch;
+  let responseData = structuredClone(body.data);
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ success: true, data: responseData }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })) as typeof fetch;
+  try {
+    const valid = await executeReadingAction(action, undefined, subject);
+    assert.ok(valid.text.includes(customText));
+
+    responseData = structuredClone(body.data);
+    const alteredResult = responseData.result as Record<string, unknown>;
+    (alteredResult.scopeEvidence as Record<string, unknown>).promptText = '另一分析范围';
+    await assert.rejects(
+      executeReadingAction(action, undefined, subject),
+      /astrolabe\.scopeEvidence\.promptText/u,
+    );
+
+    responseData = structuredClone(body.data);
+    responseData.prompt = String(responseData.prompt).replaceAll(customText, '另一分析范围');
+    await assert.rejects(executeReadingAction(action, undefined, subject), /astrolabe\.prompt/u);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test('完整星盘分批补算经真实接口保持三个范围事件及完整提示资料', async (context) => {
   context.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-16T04:00:00Z') });

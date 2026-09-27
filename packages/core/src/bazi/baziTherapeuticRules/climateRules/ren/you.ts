@@ -26,20 +26,6 @@ export const REN_YOU_CLIMATE_RULES: ClimateRule[] = [
     hint: '壬水酉月，先丙后甲',
   },
   {
-    id: 'you-month-ren-bing-jia-geng-all',
-    label: '壬日酉月丙甲庚全透极品规则',
-    description: '壬水生酉月，丙甲庚三者全透，较合原文"壬水生酉月，三者全透，鼎甲可期"。',
-    priority: 126,
-    months: ['酉'],
-    dayMasters: ['水'],
-    dayStems: ['壬'],
-    requiredVisibleStems: ['丙', '甲', '庚'],
-    usefulWuxing: '火',
-    favorableOrder: ['火', '木', '金'],
-    traceHints: ['取用层次:丙甲庚三者全透', '成格层次:鼎甲可期'],
-    hint: '壬水酉月丙甲庚三者全透，鼎甲可期',
-  },
-  {
     id: 'you-month-ren-jia-wu',
     label: '壬日酉月甲戊并用规则',
     description:

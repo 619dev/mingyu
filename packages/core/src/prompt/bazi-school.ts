@@ -193,8 +193,15 @@ function formatSchoolPatternFacts(result: BaziChartResult, embedded = false) {
           item.startsWith('顺局作用：') ||
           item.startsWith('原支藏印官事实：')),
     )
-    .filter((item) => !item.startsWith('原支藏印官事实：'));
-  if (embedded) return specialFacts;
+    .filter((item) => !item.startsWith('原支藏印官事实：'))
+    .filter(
+      (item) =>
+        !item.startsWith('财星明透：') ||
+        !special?.visibleWealthStems.every((stem) =>
+          special.satisfied.some((condition) => condition.includes(`${stem}财星明透`)),
+        ),
+    );
+  if (embedded) return specialFacts.filter((item) => !item.startsWith('从儿五行流向：'));
   const alternatives = formatAlternativePatternCandidates(result.analysis.mingGe);
   return [
     alternatives && result.analysis.mingGe.basis ? `取格依据：${result.analysis.mingGe.basis}` : '',

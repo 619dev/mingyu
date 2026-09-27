@@ -86,6 +86,10 @@ function formatYearBreakdownLine(
   return `${item.year}年(${item.age}岁) ${item.ganZhi}｜${compactTenGod(result, item.ganZhi)}`;
 }
 
+function formatLocalDateTime(time: LocalTimeRange['start']): string {
+  return `${time.year}-${String(time.month).padStart(2, '0')}-${String(time.day).padStart(2, '0')} ${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}:${String(time.second).padStart(2, '0')}`;
+}
+
 function formatMonthBreakdownLine(
   result: BaziChartResult,
   item: {
@@ -98,9 +102,15 @@ function formatMonthBreakdownLine(
     endDateTime?: string;
     startTermName?: string;
     endTermName?: string;
+    timeRange: LocalTimeRange;
   },
 ) {
-  return `${item.label} ${item.ganZhi}｜${compactTenGod(result, item.ganZhi)}｜${item.startTermName || ''} ${item.startDateTime || item.startDate}～${item.endTermName || ''} ${item.endDateTime || item.endDate}`;
+  const start = formatLocalDateTime(item.timeRange.start);
+  const end = formatLocalDateTime(item.timeRange.end);
+  const startName =
+    !item.startDateTime || item.startDateTime === start ? item.startTermName || '' : '交运';
+  const endName = !item.endDateTime || item.endDateTime === end ? item.endTermName || '' : '交运';
+  return `${item.label} ${item.ganZhi}｜${compactTenGod(result, item.ganZhi)}｜${startName} ${start}～${endName} ${end}`;
 }
 
 function formatDayBreakdownLine(
@@ -379,9 +389,7 @@ function clipToCycle(range: LocalTimeRange, cycleRange: LocalTimeRange) {
 }
 
 function formatClippedHourTimeRange(range: LocalTimeRange): string {
-  const formatEndpoint = (time: LocalTimeRange['start']) =>
-    `${time.year}-${String(time.month).padStart(2, '0')}-${String(time.day).padStart(2, '0')} ${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}:${String(time.second).padStart(2, '0')}`;
-  return `${formatEndpoint(range.start)}至${formatEndpoint(range.end)}（终点不含）`;
+  return `${formatLocalDateTime(range.start)}至${formatLocalDateTime(range.end)}（终点不含）`;
 }
 
 export function normalizeFortuneSelection(
@@ -682,6 +690,9 @@ export function buildFortuneSelectionContext(
   }
   const monthTimeRange = clipToCycle(monthInfo.timeRange, cycleTimeRange);
   if (!monthTimeRange) return null;
+  const monthClippedByCycle =
+    monthTimeRange.startTimestamp !== monthInfo.timeRange.startTimestamp ||
+    monthTimeRange.endTimestamp !== monthInfo.timeRange.endTimestamp;
 
   if (normalized.scope === 'month') {
     const breakdown = dayInfoList.flatMap((item) => {
@@ -784,7 +795,9 @@ export function buildFortuneSelectionContext(
       ],
       dayBreakdown: breakdown,
       displayLabel: `${yearItem.year}年${monthInfo.month}`,
-      displayText: `${yearItem.year}年 ${monthInfo.month}（${monthInfo.ganZhi}，${monthInfo.startDateTime || monthInfo.startDate} 起，至 ${monthInfo.endDateTime || monthInfo.endDate} 交下节）`,
+      displayText: monthClippedByCycle
+        ? `${yearItem.year}年 ${monthInfo.month}（${monthInfo.ganZhi}，本运内 ${formatLocalDateTime(monthTimeRange.start)} 至 ${formatLocalDateTime(monthTimeRange.end)}）`
+        : `${yearItem.year}年 ${monthInfo.month}（${monthInfo.ganZhi}，${monthInfo.startDateTime || monthInfo.startDate} 起，至 ${monthInfo.endDateTime || monthInfo.endDate} 交下节）`,
       actionEvidence,
       promptPayload: {
         scopeLabel: `分析对象：${yearItem.year}年${monthInfo.month}流月`,
@@ -796,6 +809,9 @@ export function buildFortuneSelectionContext(
           monthTriggerSummary,
           `日期范围：${monthInfo.startDate} 至 ${monthInfo.endDate}`,
           `交节时刻：${monthInfo.startTermName || ''} ${monthInfo.startDateTime || ''} 起，${monthInfo.endTermName || ''} ${monthInfo.endDateTime || ''} 交下节`,
+          ...(monthClippedByCycle
+            ? [`本运有效时段：${formatClippedHourTimeRange(monthTimeRange)}`]
+            : []),
           ...(monthInfo.startTermEvidence
             ? [`起始交节核验：${monthInfo.startTermEvidence.promptText}`]
             : []),
@@ -874,7 +890,22 @@ export function buildFortuneSelectionContext(
       },
     ];
   });
-  const hoursClippedByBoundary = hourBreakdown.length < rawHourBreakdown.length;
+  const hoursClippedByBoundary =
+    hourBreakdown.length < rawHourBreakdown.length ||
+    hourBreakdown.some((item, index) => {
+      const original = rawHourBreakdown[index];
+      return (
+        original &&
+        (item.interval.startTimestamp !== original.interval.startTimestamp ||
+          item.interval.endTimestamp !== original.interval.endTimestamp)
+      );
+    });
+  const firstHour = hourBreakdown[0];
+  const lastHour = hourBreakdown.at(-1);
+  const effectiveHourSummary =
+    hoursClippedByBoundary && firstHour && lastHour
+      ? `流时有效时段：${formatLocalDateTime(firstHour.interval.start)}至${formatLocalDateTime(lastHour.interval.end)}（终点不含）`
+      : undefined;
   const previousDate = createCivilDate(actualYear, actualMonth, actualDay);
   previousDate.setUTCDate(previousDate.getUTCDate() - 1);
   const ziChuStart = `${previousDate.getUTCFullYear()}-${String(previousDate.getUTCMonth() + 1).padStart(2, '0')}-${String(previousDate.getUTCDate()).padStart(2, '0')} 23:00`;
@@ -909,13 +940,15 @@ export function buildFortuneSelectionContext(
     ],
     triggerEvidence,
   });
-  const monthDayLines = dayInfoList.map((item) =>
-    formatDayBreakdownLine(result, {
-      date: item.solarDate,
-      ganZhi: item.ganZhi,
-      boundaryNote: item.boundaryNote,
-    }),
-  );
+  const monthDayLines = dayInfoList
+    .filter((item) => clipToCycle(item.timeRange, cycleTimeRange))
+    .map((item) =>
+      formatDayBreakdownLine(result, {
+        date: item.solarDate,
+        ganZhi: item.ganZhi,
+        boundaryNote: item.boundaryNote,
+      }),
+    );
   const hourLines = hourBreakdown.map((item) =>
     `${item.label} ${item.timeRange || ''} ${item.ganZhi}`.trim(),
   );
@@ -953,18 +986,14 @@ export function buildFortuneSelectionContext(
         dayTriggerSummary,
         `按子初换日（命理日口径，与节令月有效范围分列）：${ziChuStart} 至 ${ziChuEnd}`,
         ...(dayInfo.boundaryNote ? [`交节提示：${dayInfo.boundaryNote}`] : []),
-        ...(hoursClippedByBoundary
-          ? ['流时列表已按节令月有效范围与交节时刻裁剪，交节前后各时辰仅保留落在所选节令月范围内者']
-          : []),
+        ...(effectiveHourSummary ? [effectiveHourSummary] : []),
       ],
       selectedFacts: [
         `流日十神：${dayTenGod}`,
         dayTriggerSummary,
         `按子初换日（命理日口径，与节令月有效范围分列）：${ziChuStart} 至 ${ziChuEnd}`,
         ...(dayInfo.boundaryNote ? [`交节提示：${dayInfo.boundaryNote}`] : []),
-        ...(hoursClippedByBoundary
-          ? ['流时列表已按节令月有效范围与交节时刻裁剪，交节前后各时辰仅保留落在所选节令月范围内者']
-          : []),
+        ...(effectiveHourSummary ? [effectiveHourSummary] : []),
       ],
       evidenceLines: buildFortuneEvidenceLines({
         scope: 'day',
