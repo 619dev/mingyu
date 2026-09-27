@@ -102,7 +102,7 @@ test('紫微真太阳时落入宿主夏令时缺口时四柱与任务书保持�
   assert.equal(utc.wrongInSnapshot, false);
 });
 
-test('太乙年计代表时刻与在线提示词不受宿主时区影响', () => {
+test('太乙年计代表时刻不受宿主时区影响，提示词只列年份', () => {
   const script = `
     import { generateTaiyi } from './packages/core/src/taiyi/index.ts';
     import { formatTaiyiInfo } from './packages/core/src/prompt/divination-enhanced.ts';
@@ -115,7 +115,8 @@ test('太乙年计代表时刻与在线提示词不受宿主时区影响', () =>
   assert.equal(utc.dateTime, '2026-07-01 12:00:00');
   assert.equal(utc.bureau, 55);
   assert.deepEqual(honolulu, utc);
-  assert.match(honolulu.prompt, /起局时间：2026-07-01 12:00:00/);
+  assert.match(honolulu.prompt, /起局时间：2026年/);
+  assert.doesNotMatch(honolulu.prompt, /2026-07-01 12:00:00/);
 });
 
 test('黄历择日范围在宿主跳过整日时仍包含每个公历日期', () => {
