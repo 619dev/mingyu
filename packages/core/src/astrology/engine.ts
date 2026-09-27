@@ -9,7 +9,6 @@ import {
   Engine,
   detectPatternsIn,
   isDayChart,
-  julianDay,
   lotFortune,
   lotSpirit,
   lunarEclipses,
@@ -346,10 +345,14 @@ function requireChartCoordinates(input: BirthData): { latitude: number; longitud
 }
 
 export function toJulianDate(input: BirthData): number {
-  return toUtc(input).getTime() / 86_400_000 + 2_440_587.5;
+  return julianDateOfUtc(toUtc(input));
 }
 
 export const time = { toJulianDate } as const;
+
+function julianDateOfUtc(utc: Date): number {
+  return utc.getTime() / 86_400_000 + 2_440_587.5;
+}
 
 function houseForLongitude(cusps: readonly number[], longitude: number): number {
   for (let index = 0; index < cusps.length; index += 1) {
@@ -648,14 +651,7 @@ export function calculateChart(
 ) {
   const utc = toUtc(input);
   const { latitude, longitude } = requireChartCoordinates(input);
-  const jd = julianDay(
-    utc.getUTCFullYear(),
-    utc.getUTCMonth() + 1,
-    utc.getUTCDate(),
-    utc.getUTCHours(),
-    utc.getUTCMinutes(),
-    utc.getUTCSeconds(),
-  );
+  const jd = julianDateOfUtc(utc);
   const extraBodies: BodyId[] = [];
   if (options.includeAsteroids) extraBodies.push('ceres', 'pallas', 'juno', 'vesta');
   if (options.includeLilith) extraBodies.push('true_lilith');
@@ -786,6 +782,7 @@ export function calculateChart(
         hour: utc.getUTCHours(),
         minute: utc.getUTCMinutes(),
         second: utc.getUTCSeconds(),
+        ...(utc.getUTCMilliseconds() ? { millisecond: utc.getUTCMilliseconds() } : {}),
       },
     },
   };
@@ -808,14 +805,7 @@ export function calculatePlanets(
 ): ChartPlanet[] {
   const utc = toUtc(input);
   validateOptionalCoordinates(input);
-  const jd = julianDay(
-    utc.getUTCFullYear(),
-    utc.getUTCMonth() + 1,
-    utc.getUTCDate(),
-    utc.getUTCHours(),
-    utc.getUTCMinutes(),
-    utc.getUTCSeconds(),
-  );
+  const jd = julianDateOfUtc(utc);
   return calculatePositionOnlyBodies(jd, getRequestedBodyNames(options));
 }
 

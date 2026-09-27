@@ -202,11 +202,42 @@ export function scanQizhengPeriodEvents(params: {
     return Math.abs(velocity) < 1e-10 ? 0 : velocity;
   };
 
+  // 停逆附近，同一采样段可能两次越过同一宫界或精确角，段首尾却落在同侧。
+  // 先找轨迹转向点并插入采样帧，再按单调小段查找交点。
+  const stationTimes = new Set<number>();
   for (let index = 1; index < frames.length; index += 1) {
-    const previousUtc = frames[index - 1].utc;
-    const currentUtc = frames[index].utc;
-    const previous = frames[index - 1].map;
-    const current = frames[index].map;
+    const left = frames[index - 1].utc;
+    const right = frames[index].utc;
+    for (const name of bodies) {
+      if (!frames[index - 1].map.has(name) || !frames[index].map.has(name)) continue;
+      const leftVelocity = velocityAt(left, name);
+      const rightVelocity = velocityAt(right, name);
+      if (
+        leftVelocity === undefined ||
+        rightVelocity === undefined ||
+        leftVelocity === 0 ||
+        rightVelocity === 0 ||
+        Math.sign(leftVelocity) === Math.sign(rightVelocity)
+      )
+        continue;
+      const station = refineCrossing(left, right, (utc) => {
+        const velocity = velocityAt(utc, name);
+        if (velocity === undefined) throw new Error(`停逆求根缺少${name}的黄经采样。`);
+        return velocity;
+      });
+      if (station > left && station < right) stationTimes.add(station);
+    }
+  }
+  const stationAwareFrames = [
+    ...frames,
+    ...[...stationTimes].map((utc) => ({ utc, map: mapByName(params.sampleLongitudes(utc)) })),
+  ].sort((left, right) => left.utc - right.utc);
+
+  for (let index = 1; index < stationAwareFrames.length; index += 1) {
+    const previousUtc = stationAwareFrames[index - 1].utc;
+    const currentUtc = stationAwareFrames[index].utc;
+    const previous = stationAwareFrames[index - 1].map;
+    const current = stationAwareFrames[index].map;
     for (const name of bodies) {
       const before = previous.get(name);
       const after = current.get(name);

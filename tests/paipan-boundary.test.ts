@@ -225,9 +225,13 @@ test('夏令时:仅时辰精度时只提示不校正', () => {
 test('夏令时区间函数:边界与非夏令时年份', () => {
   // 区间内
   assert.equal(checkChinaDst(1988, 7, 15, 12).inDst, true);
-  // 1988 区间外(4月10日 03:00 起)
+  // 1988 年 4 月 17 日 02:00 拨到 03:00。
   assert.equal(checkChinaDst(1988, 4, 9, 12).inDst, false);
-  assert.equal(checkChinaDst(1988, 4, 10, 3).inDst, true);
+  assert.equal(checkChinaDst(1988, 4, 10, 3).inDst, false);
+  assert.equal(checkChinaDst(1988, 4, 16, 23, 59).inDst, false);
+  assert.equal(checkChinaDst(1988, 4, 17, 3).inDst, true);
+  assert.equal(isDateInChinaDstRange(1988, 4, 10), false);
+  assert.equal(isDateInChinaDstRange(1988, 4, 17), true);
   // 结束日 02:00 后恢复标准时
   assert.equal(checkChinaDst(1988, 9, 11, 2).inDst, false);
   // 结束日 01:30 为重复时段
@@ -235,7 +239,7 @@ test('夏令时区间函数:边界与非夏令时年份', () => {
   assert.equal(amb.inDst, true);
   assert.equal(amb.ambiguous, true);
   // 开始日 02:30 为不存在时段
-  const gap = checkChinaDst(1988, 4, 10, 2, 30);
+  const gap = checkChinaDst(1988, 4, 17, 2, 30);
   assert.equal(gap.nonexistent, true);
   // 非夏令时年份
   assert.equal(checkChinaDst(1994, 7, 15, 12).inDst, false);

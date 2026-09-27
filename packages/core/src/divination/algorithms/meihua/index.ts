@@ -316,9 +316,16 @@ export function generateMeihua(customDate?: Date, settings?: MeihuaSettings): Me
   const mainHexagram = findHexagramByTrigrams(upperTrigramIndex, lowerTrigramIndex);
 
   const mainLines = [...lowerTrigram.lines, ...upperTrigram.lines];
+  const changedLines = [...mainLines];
+  changedLines[movingYaoIndex - 1] = 1 - changedLines[movingYaoIndex - 1];
 
-  const interLowerLines = mainLines.slice(1, 4);
-  const interUpperLines = mainLines.slice(2, 5);
+  // 《梅花易数》卷一《互卦起例》载“乾坤无互，互其变卦”：主卦为纯乾或纯坤时，改取变卦中间四爻。
+  const mutualSourceLines =
+    upperTrigramIndex === lowerTrigramIndex && (upperTrigramIndex === 1 || upperTrigramIndex === 8)
+      ? changedLines
+      : mainLines;
+  const interLowerLines = mutualSourceLines.slice(1, 4);
+  const interUpperLines = mutualSourceLines.slice(2, 5);
 
   const findTrigramByBottomUpLines = (lines: number[]) => {
     for (let i = 1; i <= 8; i++) {
@@ -345,9 +352,6 @@ export function generateMeihua(customDate?: Date, settings?: MeihuaSettings): Me
     );
   }
   const interHexagram = findHexagramByTrigrams(interUpperResult.index, interLowerResult.index);
-
-  const changedLines = [...mainLines];
-  changedLines[movingYaoIndex - 1] = 1 - changedLines[movingYaoIndex - 1];
 
   const changedLowerLines = changedLines.slice(0, 3);
   const changedUpperLines = changedLines.slice(3, 6);

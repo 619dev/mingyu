@@ -269,7 +269,7 @@ function buildSixteenGodFacts(data: TaiyiEvidenceInput): TaiyiSixteenGodFact[] {
 
 function getImprisonedRoles(data: TaiyiEvidenceInput): string[] {
   return [
-    data.wenChangPalace === data.taiyiPalace ? '文昌' : undefined,
+    data.wenChangPosition === data.taiyiPosition ? '文昌' : undefined,
     data.lordGeneral === data.taiyiPalace ? '主大将' : undefined,
     data.lordAssistant === data.taiyiPalace ? '主参将' : undefined,
     data.guestGeneral === data.taiyiPalace ? '客大将' : undefined,
@@ -288,17 +288,17 @@ function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
   }> = [
     {
       kind: '掩',
-      matched: data.shiJiPalace === data.taiyiPalace,
-      calculationText: `始击第${data.shiJiPalace}宫与太乙第${data.taiyiPalace}宫比较`,
+      matched: data.shiJiPosition === data.taiyiPosition,
+      calculationText: `始击${data.shiJiPosition}与太乙${data.taiyiPosition}比较`,
       matchedText: '始击与太乙同宫，传统称掩；只作为客目与太乙位置重合的条件提示',
-      unmatchedText: '始击与太乙不同宫，未形成掩的位置条件',
+      unmatchedText: '始击与太乙不同位，未形成掩的位置条件',
     },
     {
       kind: '囚',
       matched: imprisonedRoles.length > 0,
-      calculationText: `文昌第${data.wenChangPalace}宫、主将参第${data.lordGeneral}/${data.lordAssistant}宫、客将参第${data.guestGeneral}/${data.guestAssistant}宫与太乙第${data.taiyiPalace}宫逐项比较`,
+      calculationText: `文昌${data.wenChangPosition}与太乙${data.taiyiPosition}比较；主将参第${data.lordGeneral}/${data.lordAssistant}宫、客将参第${data.guestGeneral}/${data.guestAssistant}宫与太乙第${data.taiyiPalace}宫逐项比较`,
       matchedText: `${imprisonedRoles.join('、')}与太乙同宫，传统称囚；只作为对应目将与太乙位置重合的条件提示`,
-      unmatchedText: '文昌、主客大小将均与太乙不同宫，未形成囚的位置条件',
+      unmatchedText: '文昌未与太乙同位，主客大小将均未与太乙同宫，未形成囚的位置条件',
     },
     {
       kind: '主将参中宫',
@@ -524,7 +524,7 @@ function buildSummaryFact(args: {
 
 export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnalysis {
   const scopeLabel = SCOPE_LABELS[data.scope];
-  const isCover = data.shiJiPalace === data.taiyiPalace;
+  const isCover = data.shiJiPosition === data.taiyiPosition;
   const imprisonedRoles = getImprisonedRoles(data);
   const isImprison = imprisonedRoles.length > 0;
   const positionFacts = buildPositionFacts(data);

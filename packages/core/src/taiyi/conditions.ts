@@ -30,7 +30,7 @@ const TAIYI_YANG_PALACES = new Set([8, 3, 4, 9]);
 /** 十六神中八个正宫位为阳，其余八个间辰为阴。 */
 const TAIYI_YANG_POINTS = new Set(['乾', '子', '艮', '卯', '巽', '午', '坤', '酉']);
 
-export type TaiyiPalaceRelation = '同宫' | '迫' | '格';
+export type TaiyiPalaceRelation = '同宫' | '击' | '迫' | '格';
 export type TaiyiPolarity = '阳' | '阴';
 export type TaiyiWuxing = '木' | '火' | '土' | '金' | '水';
 
@@ -187,6 +187,26 @@ function relationBetweenPalaces(
   return undefined;
 }
 
+/** 二目按十六神原位判同宫与邻位，不能先把间辰折入相邻八宫。 */
+function relationBetweenEyeAndTaiyi(
+  eyePosition: string,
+  taiyiPosition: string,
+  eyePalace: number,
+  taiyiPalace: number,
+  adjacentRelation: '击' | '迫',
+): TaiyiPalaceRelation | undefined {
+  const positions = '子丑艮寅卯辰巽巳午未坤申酉戌乾亥';
+  const eyeIndex = positions.indexOf(eyePosition);
+  const taiyiIndex = positions.indexOf(taiyiPosition);
+  if (eyeIndex >= 0 && taiyiIndex >= 0) {
+    const distance = Math.abs(eyeIndex - taiyiIndex);
+    const circularDistance = Math.min(distance, positions.length - distance);
+    if (circularDistance === 0) return '同宫';
+    if (circularDistance <= 2) return adjacentRelation;
+  }
+  return relationBetweenPalaces(eyePalace, taiyiPalace) === '格' ? '格' : undefined;
+}
+
 function buildGateCondition(data: TaiyiConditionInput): TaiyiThreeGateCondition {
   const directGateRemainder = positiveOneBased(data.accumulatedValue, 240);
   // 上元甲子起开门，每满三十转下一门；余 0 为完整一周后的开门。
@@ -297,13 +317,25 @@ function buildHostGuestElementRelation(data: TaiyiConditionInput): TaiyiHostGues
 }
 
 function buildFiveGeneralsCondition(data: TaiyiConditionInput): TaiyiFiveGeneralsCondition {
-  const shiJiRelationToTaiyi = relationBetweenPalaces(data.shiJiPalace, data.taiyiPalace);
-  const wenChangRelationToTaiyi = relationBetweenPalaces(data.wenChangPalace, data.taiyiPalace);
-  const shiJiNoCoverOrHit = shiJiRelationToTaiyi !== '同宫' && shiJiRelationToTaiyi !== '迫';
+  const shiJiRelationToTaiyi = relationBetweenEyeAndTaiyi(
+    data.shiJiPosition,
+    data.taiyiPosition,
+    data.shiJiPalace,
+    data.taiyiPalace,
+    '击',
+  );
+  const wenChangRelationToTaiyi = relationBetweenEyeAndTaiyi(
+    data.wenChangPosition,
+    data.taiyiPosition,
+    data.wenChangPalace,
+    data.taiyiPalace,
+    '迫',
+  );
+  const shiJiNoCoverOrHit = shiJiRelationToTaiyi !== '同宫' && shiJiRelationToTaiyi !== '击';
   const wenChangNoImprisonOrPressure =
     wenChangRelationToTaiyi !== '同宫' && wenChangRelationToTaiyi !== '迫';
   const relations: TaiyiFiveGeneralsRelation[] = [];
-  if (shiJiRelationToTaiyi === '同宫' || shiJiRelationToTaiyi === '迫') {
+  if (shiJiRelationToTaiyi === '同宫' || shiJiRelationToTaiyi === '击') {
     relations.push({
       relation: shiJiRelationToTaiyi,
       left: '始击',

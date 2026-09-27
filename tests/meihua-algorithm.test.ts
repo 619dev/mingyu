@@ -50,6 +50,11 @@ test('梅花：变卦应按初爻到上爻的传统爻位计算', () => {
   assert.equal(data.calculation.timeZhiIndex, 5);
   assert.equal(data.calculation.totalWithTime, 128);
   assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
+  const lowerCalculation = data.evidenceAnalysis?.calculationFact.steps.find(
+    (item) => item.target === '下卦',
+  );
+  assert.equal(lowerCalculation?.remainder, 0);
+  assert.match(lowerCalculation?.promptText ?? '', /除以8，余数为0（余0按8计索引），索引为8/u);
   assert.equal(data.evidenceAnalysis?.calculationFact.methodKey, 'number');
   assert.equal(data.evidenceAnalysis?.calculationFact.inputs.number, 123);
   assert.equal(data.evidenceAnalysis?.calculationFact.steps.length, 3);
@@ -75,6 +80,67 @@ test('梅花：互卦应取二三四爻为下互、三四五爻为上互', () =>
   assert.equal(data.interYongGua?.name, '艮');
   assert.equal(data.analysis.inter1Relation, '体互克原体');
   assert.equal(data.analysis.inter2Relation, '原体生用互');
+});
+
+test('梅花：纯乾、纯坤主卦应按原文改取变卦互', () => {
+  const qian = generateMeihua(SAMPLE_DATE, {
+    method: 'random',
+    replay: [0, 0, 0.25],
+  });
+  const kun = generateMeihua(SAMPLE_DATE, {
+    method: 'random',
+    replay: [0.999999999, 0.999999999, 0.25],
+  });
+
+  assert.equal(qian.originalName, '乾为天');
+  assert.equal(qian.movingYao.position, 2);
+  assert.equal(qian.changedName, '天火同人');
+  assert.equal(qian.interName, '天风姤');
+  assert.equal(qian.interHexagram?.upper, '乾');
+  assert.equal(qian.interHexagram?.lower, '巽');
+  assert.match(
+    qian.evidenceAnalysis?.hexagramStructureFacts[1]?.sources.join('') ?? '',
+    /乾坤无互/u,
+  );
+  assert.equal(qian.evidenceAnalysis?.hexagramStructureFacts[1]?.hexagram, qian.interName);
+  assert.equal(qian.evidenceAnalysis?.hexagramStructureFacts[2]?.hexagram, qian.changedName);
+  assert.equal(
+    qian.evidenceAnalysis?.stages.find((stage) => stage.stage === 'process')?.hexagram,
+    qian.interName,
+  );
+  assert.equal(
+    qian.evidenceAnalysis?.stages.find((stage) => stage.stage === 'process')?.ti.name,
+    '乾',
+  );
+  assert.equal(
+    qian.evidenceAnalysis?.stages.find((stage) => stage.stage === 'process')?.yong.name,
+    '巽',
+  );
+
+  assert.equal(kun.originalName, '坤为地');
+  assert.equal(kun.movingYao.position, 2);
+  assert.equal(kun.changedName, '地水师');
+  assert.equal(kun.interName, '地雷复');
+  assert.equal(kun.interHexagram?.upper, '坤');
+  assert.equal(kun.interHexagram?.lower, '震');
+  assert.match(
+    kun.evidenceAnalysis?.hexagramStructureFacts[1]?.sources.join('') ?? '',
+    /乾坤无互/u,
+  );
+  assert.equal(kun.evidenceAnalysis?.hexagramStructureFacts[1]?.hexagram, kun.interName);
+  assert.equal(kun.evidenceAnalysis?.hexagramStructureFacts[2]?.hexagram, kun.changedName);
+  assert.equal(
+    kun.evidenceAnalysis?.stages.find((stage) => stage.stage === 'process')?.hexagram,
+    kun.interName,
+  );
+  assert.equal(
+    kun.evidenceAnalysis?.stages.find((stage) => stage.stage === 'process')?.ti.name,
+    '坤',
+  );
+  assert.equal(
+    kun.evidenceAnalysis?.stages.find((stage) => stage.stage === 'process')?.yong.name,
+    '震',
+  );
 });
 
 test('梅花：天泽履二爻动应变天雷无妄，不得错认成天山遁', () => {

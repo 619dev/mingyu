@@ -1,7 +1,7 @@
 import { SolarTime, SixtyCycleYear, Gender, LunarHour, EightChar } from 'tyme4ts';
 import { TIME_MAP } from './baziDefinitions';
 import { resolveTrueSolarBirthTime } from '../calendar/true-solar-time';
-import { isDateInChinaDstRange } from '../calendar/china-dst';
+import { checkChinaDst, isDateInChinaDstRange } from '../calendar/china-dst';
 import {
   buildBaziWarningEvidence,
   checkJieqiBoundary,
@@ -444,6 +444,29 @@ export class BaziCalculator {
           second: solarTime.getSecond(),
         }),
       );
+    } else if (applyChinaDst && hasPreciseStandardTime) {
+      if (person.timeZoneId) {
+        throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
+      }
+      const dst = checkChinaDst(
+        solarTime.getYear(),
+        solarTime.getMonth(),
+        solarTime.getDay(),
+        solarTime.getHour(),
+        solarTime.getMinute(),
+      );
+      if (dst.nonexistent) {
+        throw new Error('该中国历史钟表时间处于夏令时跳时缺口，实际并不存在。');
+      }
+      if (dst.ambiguous) {
+        throw new Error('该中国历史钟表时间处于夏令时回拨重复时段，无法唯一定时。');
+      }
+      if (dst.inDst) {
+        solarTime = solarTime.next(dst.offsetMinutes * 60);
+        lunarHour = solarTime.getLunarHour();
+        termSolarTime = solarTime;
+        warnings.push('出生钟表时间处于中国历史夏令时期间，已回拨 60 分钟为北京时间后排盘。');
+      }
     } else if (
       applyChinaDst &&
       isDateInChinaDstRange(solarTime.getYear(), solarTime.getMonth(), solarTime.getDay())
@@ -495,7 +518,9 @@ export class BaziCalculator {
     const mingGuaYear = resolveMingGuaYear(termSolarTime, pillars.year.ganZhi);
     const finalTimeInfo = timing
       ? this.getTimeInfoFromClock(timing.correctedTime.hour, timing.correctedTime.minute)
-      : selectedTimeInfo!;
+      : hasPreciseStandardTime
+        ? this.getTimeInfoFromClock(solarTime.getHour(), solarTime.getMinute())
+        : selectedTimeInfo!;
 
     const dayMasterGan = pillars.day.gan;
     const genderEnum = gender === 'male' ? Gender.MAN : Gender.WOMAN;

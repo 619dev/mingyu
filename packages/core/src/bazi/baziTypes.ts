@@ -596,7 +596,8 @@ export interface BaziChartResult {
         | 'shichen-representative'
         | 'day-end'
         | 'solar-term-boundary'
-        | 'month-commander-boundary';
+        | 'month-commander-boundary'
+        | 'dst-boundary';
       boundary?: {
         name: string;
         side: 'before' | 'at';

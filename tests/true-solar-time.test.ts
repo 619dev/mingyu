@@ -220,11 +220,28 @@ test('真太阳时便捷入口应拒绝含时区后缀、非法日期和越界�
   );
 });
 
+test('公历出生日期不得返回农历闰月标记', () => {
+  assert.throws(
+    () =>
+      resolveTrueSolarBirthTime({
+        dateType: 'solar',
+        year: 2024,
+        month: 2,
+        day: 10,
+        hour: 12,
+        minute: 0,
+        isLeapMonth: true,
+        longitude: 116.4,
+      }),
+    /公历日期不能设置农历闰月/,
+  );
+});
+
 test('旧中国夏令时兼容模式应拒绝跳时缺口和未消歧重复时段', () => {
   assert.throws(
     () =>
       convertTrueSolarTime({
-        localDateTime: '1988-04-10T02:30:00',
+        localDateTime: '1988-04-17T02:30:00',
         longitude: 116.4074,
         applyChinaDst: true,
       }),

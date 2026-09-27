@@ -38,6 +38,14 @@ test('皇极值年偏移在六十年末年归59且下一统卦重置为0，跨�
   assert.ok(after.prompt.includes(`已过${-start}年，顺行${-start}位`));
 });
 
+test('六十年统卦遇四正卦时保留变爻原卦与圆图顺取两步', () => {
+  const result = calculateHuangjiJingshi({ year: 2164 });
+  assert.equal(result.forecast?.hexagrams.sixtyYear.normalizedFrom, '离');
+  assert.equal(result.forecast?.hexagrams.sixtyYear.hexagram.shortName, '革');
+  assert.match(result.calculationChain[2], /大有运卦第2爻变为离卦，再依六十卦圆图顺取革六十年统卦/);
+  assert.match(result.prompt, /由大有卦第2爻变得离卦，再依去四正卦的六十卦圆图顺取革卦/);
+});
+
 test('皇极时点盘的四个近层各自保留卦体及实际推演爻位', () => {
   const result = calculateHuangjiJingshi({ date: new Date('2025-12-25T12:30:00+08:00') });
   const layers = result.dateTimeForecast!.hexagrams;

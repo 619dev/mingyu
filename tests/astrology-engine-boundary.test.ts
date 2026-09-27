@@ -252,6 +252,36 @@ test('星历日期转换保留公元1至99年且时区换算可以跨年', () =>
   }
 });
 
+test('秒级小数时区换算后排盘、位置与儒略日使用同一瞬时', () => {
+  const input = {
+    year: 2026,
+    month: 1,
+    day: 1,
+    hour: 12,
+    minute: 0,
+    timezone: 5.5001,
+    latitude: 39.9,
+    longitude: 116.4,
+  };
+  const jd = toJulianDate(input);
+  const reference = getApparentPosition('moon', jd);
+  const chart = calculateChart(input);
+  const moon = chart.planets.find((planet) => planet.name === 'Moon');
+  const position = calculatePlanets(input).find((planet) => planet.name === 'Moon');
+  assert.equal(chart.calculated.julianDate, jd);
+  assert.deepEqual(chart.calculated.utcDateTime, {
+    year: 2026,
+    month: 1,
+    day: 1,
+    hour: 6,
+    minute: 29,
+    second: 59,
+    millisecond: 640,
+  });
+  assert.equal(moon?.longitude, reference.longitude);
+  assert.equal(position?.longitude, reference.longitude);
+});
+
 test('相位入相按当前相对速度判定而非跨过精确相位后的一小时采样', () => {
   const cases = [
     [59.99, 12, true],

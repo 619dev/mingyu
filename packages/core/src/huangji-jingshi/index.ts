@@ -356,7 +356,7 @@ export function buildHuangjiJingshiPrompt(
         `会内统卦辞：${governing.hexagram.judgment}`,
         `运卦：${yun.hexagram.name}，${formatHuangjiCivilYear(yun.startYear)}至${formatHuangjiCivilYear(yun.endYear)}；由${yun.derivedFrom}卦第${yun.changedLine}爻变得`,
         `运卦卦辞：${yun.hexagram.judgment}`,
-        `六十年统卦：${sixtyYear.hexagram.name}，${formatHuangjiCivilYear(sixtyYear.startYear)}至${formatHuangjiCivilYear(sixtyYear.endYear)}；由${sixtyYear.derivedFrom}卦第${sixtyYear.changedLine}爻变得`,
+        `六十年统卦：${sixtyYear.hexagram.name}，${formatHuangjiCivilYear(sixtyYear.startYear)}至${formatHuangjiCivilYear(sixtyYear.endYear)}；由${sixtyYear.derivedFrom}卦第${sixtyYear.changedLine}爻变得${sixtyYear.normalizedFrom ? `${sixtyYear.normalizedFrom}卦，再依去四正卦的六十卦圆图顺取${sixtyYear.hexagram.shortName}卦` : ''}`,
         `六十年统卦辞：${sixtyYear.hexagram.judgment}`,
         `十年卦：${decade.hexagram.name}，${formatHuangjiCivilYear(decade.startYear)}至${formatHuangjiCivilYear(decade.endYear)}；由${decade.derivedFrom}卦第${decade.changedLine}爻变得`,
         `十年卦辞：${decade.hexagram.judgment}`,
@@ -605,7 +605,9 @@ export function calculateHuangjiJingshi(input: HuangjiJingshiInput): HuangjiJing
       ? [
           `${formatHuangjiCivilYear(normalized.year)}距本元起点已过${offsetInYuan}年，位于第${huiIndex}会（${forecast.hui.branch}会）`,
           `${forecast.hexagrams.governing.hexagram.shortName}统卦第${forecast.hexagrams.yun.changedLine}爻变为${forecast.hexagrams.yun.hexagram.shortName}运卦`,
-          `${forecast.hexagrams.yun.hexagram.shortName}运卦第${forecast.hexagrams.sixtyYear.changedLine}爻变为${forecast.hexagrams.sixtyYear.hexagram.shortName}六十年统卦`,
+          forecast.hexagrams.sixtyYear.normalizedFrom
+            ? `${forecast.hexagrams.yun.hexagram.shortName}运卦第${forecast.hexagrams.sixtyYear.changedLine}爻变为${forecast.hexagrams.sixtyYear.normalizedFrom}卦，再依六十卦圆图顺取${forecast.hexagrams.sixtyYear.hexagram.shortName}六十年统卦`
+            : `${forecast.hexagrams.yun.hexagram.shortName}运卦第${forecast.hexagrams.sixtyYear.changedLine}爻变为${forecast.hexagrams.sixtyYear.hexagram.shortName}六十年统卦`,
           `${forecast.hexagrams.sixtyYear.hexagram.shortName}六十年统卦第${forecast.hexagrams.decade.changedLine}爻变为${forecast.hexagrams.decade.hexagram.shortName}十年卦；本年轮值${forecast.hexagrams.annual.shortName}卦`,
           ...(dateTimeForecast ? dateTimeForecast.calculationChain : []),
           ...(sixDayCycle ? sixDayCycle.calculationChain : []),

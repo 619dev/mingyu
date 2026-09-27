@@ -263,6 +263,8 @@ test('宿界前后必须落入相邻两宿，边界本身归入新宿', () => {
   const angle = boundaries.find((item) => item.mansion === '角');
   assert.ok(angle);
   assert.equal(longitudeToQizhengMansion(angle.longitude - 1e-6, boundaries).xiu, '轸');
+  assert.equal(longitudeToQizhengMansion(angle.longitude - 5e-8, boundaries).xiu, '轸');
+  assert.equal(longitudeToQizhengMansion(angle.longitude + 5e-8, boundaries).xiu, '角');
 });
 
 test('二十八宿边界应覆盖公开年份上限 2200 年', () => {

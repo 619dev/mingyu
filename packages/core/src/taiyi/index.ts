@@ -684,9 +684,9 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
   });
 
   const judgments: string[] = [];
-  if (shiJiPalace === taiyiPalace) judgments.push('掩：始击与太乙同宫，传统称客目掩太乙。');
+  if (shiJiPosition === taiyiPosition) judgments.push('掩：始击与太乙同宫，传统称客目掩太乙。');
   const imprisonedRoles = [
-    wenChangPalace === taiyiPalace ? '文昌' : undefined,
+    wenChangPosition === taiyiPosition ? '文昌' : undefined,
     lordGeneral === taiyiPalace ? '主大将' : undefined,
     lordAssistant === taiyiPalace ? '主参将' : undefined,
     guestGeneral === taiyiPalace ? '客大将' : undefined,

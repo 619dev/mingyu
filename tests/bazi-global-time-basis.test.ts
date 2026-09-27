@@ -233,3 +233,70 @@ test('中国历史夏令时的 standardTime 只回拨一次，起运按还原后
     startSolarTime: { year: 1988, month: 7, day: 1, hour: 11, minute: 0, second: 0 },
   });
 });
+
+test('精确标准时间按中国历史夏令时回拨后统一四柱、时辰与起运', () => {
+  for (const [clockHour, standardDay, standardHour] of [
+    [0, 30, 23],
+    [1, 1, 0],
+  ] as const) {
+    const clock = baziCalculator.calculateBazi(
+      makeInput({
+        year: 1988,
+        month: 7,
+        day: 1,
+        birthHour: clockHour,
+        birthMinute: 30,
+        birthSecond: 0,
+        useTrueSolarTime: false,
+        timezone: 8,
+        applyChinaDst: true,
+      }),
+    );
+    const standard = baziCalculator.calculateBazi(
+      makeInput({
+        year: 1988,
+        month: standardDay === 30 ? 6 : 7,
+        day: standardDay,
+        birthHour: standardHour,
+        birthMinute: 30,
+        birthSecond: 0,
+        useTrueSolarTime: false,
+        timezone: 8,
+        applyChinaDst: false,
+      }),
+    );
+    assert.deepEqual(clock.pillars, standard.pillars);
+    assert.deepEqual(clock.solarDate, standard.solarDate);
+    assert.deepEqual(clock.timeInfo, standard.timeInfo);
+    assert.deepEqual(
+      clock.luckInfo.cycles[0]?.startSolarTime,
+      standard.luckInfo.cycles[0]?.startSolarTime,
+    );
+    assert.match(clock.warnings.join('；'), /已回拨 60 分钟/);
+  }
+});
+
+test('精确标准时间拒绝夏令时不存在与重复钟表时刻', () => {
+  for (const [year, month, day, hour, pattern] of [
+    [1986, 5, 4, 2, /跳时缺口/],
+    [1988, 9, 11, 1, /回拨重复时段/],
+  ] as const) {
+    assert.throws(
+      () =>
+        baziCalculator.calculateBazi(
+          makeInput({
+            year,
+            month,
+            day,
+            birthHour: hour,
+            birthMinute: 30,
+            birthSecond: 0,
+            useTrueSolarTime: false,
+            timezone: 8,
+            applyChinaDst: true,
+          }),
+        ),
+      pattern,
+    );
+  }
+});

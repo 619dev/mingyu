@@ -7,11 +7,13 @@ import type {
 } from './baziTypes';
 import { analyzeBaziNatalEvidence } from './natalEvidence';
 import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
+import { checkChinaDst } from '../calendar/china-dst';
 import { MONTH_COMMANDER, TIME_MAP } from './baziDefinitions';
 import { resolveShenShaVariantConfig } from './baziShenSha';
 import { SolarTerm } from 'tyme4ts';
 
 const SECOND = 1_000;
+const HOUR = 60 * 60 * SECOND;
 const DAY = 24 * 60 * 60 * SECOND;
 const BEIJING_OFFSET = 8 * 60 * 60 * SECOND;
 const JIE_MONTH_BRANCH: Readonly<Record<string, string>> = {
@@ -34,7 +36,8 @@ type UnknownTimeScenarioSource =
   | 'shichen-representative'
   | 'day-end'
   | 'solar-term-boundary'
-  | 'month-commander-boundary';
+  | 'month-commander-boundary'
+  | 'dst-boundary';
 
 export interface UnknownTimeCandidatePoint {
   hour: number;
@@ -44,6 +47,7 @@ export interface UnknownTimeCandidatePoint {
   timeName: string;
   boundaryName?: string;
   boundarySide?: 'before' | 'at';
+  dstInterpretation?: 'daylight' | 'standard';
 }
 
 function pad(value: number): string {
@@ -82,6 +86,35 @@ function getFirstEffectiveTimestamp(term: ReturnType<typeof SolarTerm.fromIndex>
     : roundedTimestamp;
 }
 
+function clockFromTimestamp(timestamp: number) {
+  const date = new Date(timestamp);
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    hour: date.getUTCHours(),
+    minute: date.getUTCMinutes(),
+    second: date.getUTCSeconds(),
+  };
+}
+
+function wallClockFromStandardTimestamp(timestamp: number, applyChinaDst: boolean) {
+  const daylightClock = clockFromTimestamp(timestamp + HOUR);
+  const daylight = applyChinaDst
+    ? checkChinaDst(
+        daylightClock.year,
+        daylightClock.month,
+        daylightClock.day,
+        daylightClock.hour,
+        daylightClock.minute,
+      )
+    : undefined;
+  if (daylight?.inDst && !daylight.nonexistent) {
+    return { timestamp: timestamp + HOUR, dstInterpretation: 'daylight' as const };
+  }
+  return { timestamp, dstInterpretation: 'standard' as const };
+}
+
 function collectBoundaryCandidatePoints(person: Person): UnknownTimeCandidatePoint[] {
   const solarDate = resolveBirthCalendarClockTime({
     dateType: person.isLunar ? 'lunar' : 'solar',
@@ -105,7 +138,6 @@ function collectBoundaryCandidatePoints(person: Person): UnknownTimeCandidatePoi
     source: Extract<UnknownTimeScenarioSource, `${string}-boundary`>,
     name: string,
   ) => {
-    if (timestamp <= dayStart || timestamp >= dayEnd) return;
     const existing = boundaries.get(timestamp) ?? [];
     existing.push({ source, name });
     boundaries.set(timestamp, existing);
@@ -143,11 +175,17 @@ function collectBoundaryCandidatePoints(person: Person): UnknownTimeCandidatePoi
 
   const points: UnknownTimeCandidatePoint[] = [];
   for (const [timestamp, facts] of [...boundaries].sort((left, right) => left[0] - right[0])) {
-    for (const [side, pointTimestamp] of [
+    for (const [side, standardTimestamp] of [
       ['before', timestamp - SECOND],
       ['at', timestamp],
     ] as const) {
-      const local = new Date(pointTimestamp + BEIJING_OFFSET);
+      const wall = wallClockFromStandardTimestamp(
+        standardTimestamp + BEIJING_OFFSET,
+        person.applyChinaDst === true,
+      );
+      const pointTimestamp = wall.timestamp - BEIJING_OFFSET;
+      if (pointTimestamp < dayStart || pointTimestamp >= dayEnd) continue;
+      const local = new Date(wall.timestamp);
       const hour = local.getUTCHours();
       const minute = local.getUTCMinutes();
       const second = local.getUTCSeconds();
@@ -161,12 +199,44 @@ function collectBoundaryCandidatePoints(person: Person): UnknownTimeCandidatePoi
           source: fact.source,
           boundaryName: fact.name,
           boundarySide: side,
+          ...(person.applyChinaDst === true ? { dstInterpretation: wall.dstInterpretation } : {}),
           timeName: `${fact.name}${sideLabel}${clock}候选`,
         });
       }
     }
   }
   return points;
+}
+
+function collectDstBoundaryCandidatePoints(
+  person: Person,
+  solarDate: { year: number; month: number; day: number },
+): UnknownTimeCandidatePoint[] {
+  if (person.applyChinaDst !== true) return [];
+  const gap = checkChinaDst(solarDate.year, solarDate.month, solarDate.day, 2);
+  const repeated = checkChinaDst(solarDate.year, solarDate.month, solarDate.day, 1);
+  const clocks = gap.nonexistent
+    ? ([
+        [1, 59, 59, '跳时前'],
+        [3, 0, 0, '跳时后'],
+      ] as const)
+    : repeated.ambiguous
+      ? ([
+          [0, 59, 59, '回拨前'],
+          [1, 0, 0, '重复时段起'],
+          [1, 59, 59, '重复时段末'],
+          [2, 0, 0, '回拨后'],
+        ] as const)
+      : [];
+  return clocks.map(([hour, minute, second, name]) => ({
+    hour,
+    minute,
+    second,
+    source: 'dst-boundary',
+    boundaryName: `中国历史夏令时${name}`,
+    boundarySide: name.endsWith('前') ? 'before' : 'at',
+    timeName: `中国历史夏令时${name}${formatClock({ hour, minute, second })}候选`,
+  }));
 }
 
 type UnknownTimeScenario = NonNullable<BaziChartResult['unknownTimeAnalysis']>['scenarios'][number];
@@ -195,6 +265,7 @@ function buildScenarioKey(point: UnknownTimeCandidatePoint): string {
     formatClock(point),
     point.boundaryName ?? 'point',
     point.boundarySide ?? 'point',
+    ...(point.dstInterpretation ? [point.dstInterpretation] : []),
   ].join(':');
 }
 
@@ -202,6 +273,19 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
   if (person.useTrueSolarTime) {
     throw new Error('出生时辰未知，补齐出生时分后才能校正真太阳时。');
   }
+  if (person.applyChinaDst && person.timeZoneId) {
+    throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
+  }
+  const solarDate = resolveBirthCalendarClockTime({
+    dateType: person.isLunar ? 'lunar' : 'solar',
+    year: person.year,
+    month: person.month,
+    day: person.day,
+    hour: 12,
+    minute: 0,
+    second: 0,
+    isLeapMonth: person.isLeapMonth,
+  });
   const candidateInput: Person = {
     ...person,
     isThreePillars: false,
@@ -233,37 +317,52 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
       timeName: '日末23:59:59候选',
     },
     ...collectBoundaryCandidatePoints(person),
+    ...collectDstBoundaryCandidatePoints(person, solarDate),
   ];
 
-  return points.map((point, index) => ({
-    point,
-    scenarioKey: buildScenarioKey(point),
-    person:
-      index === 0
-        ? {
+  return points.flatMap((point) => {
+    const clock = { ...solarDate, hour: point.hour, minute: point.minute, second: point.second };
+    const dst = person.applyChinaDst
+      ? checkChinaDst(clock.year, clock.month, clock.day, clock.hour, clock.minute)
+      : undefined;
+    if (dst?.nonexistent) return [];
+    const interpretations = dst?.ambiguous
+      ? (['daylight', 'standard'] as const)
+      : ([dst?.inDst ? 'daylight' : 'standard'] as const);
+    return interpretations
+      .filter((interpretation) =>
+        point.dstInterpretation ? interpretation === point.dstInterpretation : true,
+      )
+      .map((interpretation) => {
+        const standard = clockFromTimestamp(
+          Date.UTC(clock.year, clock.month - 1, clock.day, clock.hour, clock.minute, clock.second) -
+            (interpretation === 'daylight' ? HOUR : 0),
+        );
+        const disambiguatedPoint = dst?.ambiguous
+          ? {
+              ...point,
+              dstInterpretation: interpretation,
+              timeName: `${point.timeName}${interpretation === 'daylight' ? '（回拨前）' : '（回拨后）'}`,
+            }
+          : point;
+        return {
+          point: disambiguatedPoint,
+          scenarioKey: buildScenarioKey(disambiguatedPoint),
+          person: {
             ...candidateInput,
-            timeIndex: 0,
-            birthHour: 0,
-            birthMinute: 0,
-            birthSecond: 0,
-          }
-        : index <= TIME_MAP.length
-          ? { ...candidateInput, timeIndex: index - 1 }
-          : index === TIME_MAP.length + 1
-            ? {
-                ...candidateInput,
-                timeIndex: 12,
-                birthHour: 23,
-                birthMinute: 59,
-                birthSecond: 59,
-              }
-            : {
-                ...candidateInput,
-                birthHour: point.hour,
-                birthMinute: point.minute,
-                birthSecond: point.second,
-              },
-  }));
+            isLunar: false,
+            isLeapMonth: false,
+            year: standard.year,
+            month: standard.month,
+            day: standard.day,
+            birthHour: standard.hour,
+            birthMinute: standard.minute,
+            birthSecond: standard.second,
+            applyChinaDst: false,
+          },
+        };
+      });
+  });
 }
 
 export function buildUnknownTimeScenario(

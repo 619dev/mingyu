@@ -307,8 +307,8 @@ test('大六壬三传成局应按六壬指南输出课体标签', () => {
   assert.deepEqual(getLiurenTransmissionGuaTi(['子', '子', '卯']), []);
 });
 
-test('大六壬课体登记表应固定十六条来源、稳定键和结构条件', () => {
-  assert.equal(REGISTERED_LIUREN_GUA_TI_COUNT, 16);
+test('大六壬课体登记表应固定十四条来源、稳定键和结构条件', () => {
+  assert.equal(REGISTERED_LIUREN_GUA_TI_COUNT, 14);
   const facts = getLiurenGuaTiFacts({ transmissionBranches: ['亥', '卯', '未'] });
   const fact = facts.find((item) => item.name === '曲直卦');
 
@@ -321,27 +321,16 @@ test('大六壬课体登记表应固定十六条来源、稳定键和结构条�
   assert.equal(fact.sourceQuote, '三传亥卯未曰曲直卦。');
 });
 
-test('大六壬核心课体应准确识别初末相冲、传归生处与闭口发用', () => {
-  // 1. 初末相冲课
-  const chongFacts = getLiurenGuaTiFacts({ transmissionBranches: ['子', '辰', '午'] });
-  const chongFact = chongFacts.find((item) => item.name === '初末相冲课');
-  assert.ok(chongFact, '初末相冲课应命中');
-  assert.equal(chongFact.stableKey, 'liuren:verified-guati:chu-mo-xiang-chong');
-  assert.match(chongFact.sourceTitle, /毕法赋/);
-  assert.match(chongFact.sourceQuote, /初末相冲多反覆/);
-
-  // 2. 传归生处课 (日干甲木，末传亥水生木)
-  const shengFacts = getLiurenGuaTiFacts({
-    transmissionBranches: ['申', '午', '亥'],
+test('大六壬课体只保留可核对来源的条件，并识别闭口发用', () => {
+  const structuralFacts = getLiurenGuaTiFacts({
+    transmissionBranches: ['子', '辰', '午'],
     dayStem: '甲',
   });
-  const shengFact = shengFacts.find((item) => item.name === '传归生处课');
-  assert.ok(shengFact, '传归生处课应命中');
-  assert.equal(shengFact.stableKey, 'liuren:verified-guati:chuan-gui-sheng-chu');
-  assert.match(shengFact.sourceTitle, /毕法赋/);
-  assert.match(shengFact.sourceQuote, /传归生处真生旺/);
+  assert.ok(
+    structuralFacts.every((item) => item.name !== '初末相冲课' && item.name !== '传归生处课'),
+  );
 
-  // 3. 闭口课：甲子旬的旬尾酉临旬首子发用。
+  // 甲子旬的旬尾酉临旬首子发用。
   const bikouFacts = getLiurenGuaTiFacts({
     transmissionBranches: ['酉', '亥', '丑'],
     initialGroundBranch: '子',

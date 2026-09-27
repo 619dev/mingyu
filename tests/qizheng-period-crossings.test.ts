@@ -152,6 +152,51 @@ test('七政周期扫描保留同类夹角的正逆向多次出现', () => {
   assert.ok(sextiles.every((event) => !/顺行|逆行/u.test(event.promptText)));
 });
 
+test('流曜在同一采样段停逆并两次越过同一精确角时保留两次吊照', () => {
+  const result = scanQizhengPeriodEvents({
+    natalStars: [{ name: '本命星', longitude: 99.9 }],
+    twelvePalaces: [],
+    startUtcMs: boundaryStart,
+    endUtcMs: boundaryStart + 12 * boundaryHour,
+    timezone: 0,
+    mode: 'monthly',
+    sampleLongitudes: (utcMs) => {
+      const hours = (utcMs - boundaryStart) / boundaryHour;
+      return [{ name: '太阳', longitude: 100 - 0.01 * (hours - 6) ** 2 }];
+    },
+  });
+  const conjunctions = result.events.filter(
+    (event) => event.kind === '精确吊照' && event.aspectType === '同宫',
+  );
+  assert.equal(conjunctions.length, 2);
+  assert.ok(conjunctions[0]!.utcMs < boundaryStart + 6 * boundaryHour);
+  assert.ok(conjunctions[1]!.utcMs > boundaryStart + 6 * boundaryHour);
+  assert.equal(result.events.filter((event) => event.kind === '停逆').length, 1);
+});
+
+test('流曜在同一采样段停逆并两次越过宫界时记录进宫与退宫', () => {
+  const result = scanQizhengPeriodEvents({
+    natalStars: [],
+    twelvePalaces: boundaryPalaces,
+    startUtcMs: boundaryStart,
+    endUtcMs: boundaryStart + 12 * boundaryHour,
+    timezone: 0,
+    mode: 'monthly',
+    sampleLongitudes: (utcMs) => {
+      const hours = (utcMs - boundaryStart) / boundaryHour;
+      return [{ name: '太阳', longitude: 30.1 - 0.01 * (hours - 6) ** 2 }];
+    },
+  });
+  const ingresses = result.events.filter((event) => event.kind === '换宫');
+  assert.equal(ingresses.length, 2);
+  assert.deepEqual(
+    ingresses.map((event) => event.signBranch),
+    ['酉', '戌'],
+  );
+  assert.ok(ingresses[0]!.utcMs < boundaryStart + 6 * boundaryHour);
+  assert.ok(ingresses[1]!.utcMs > boundaryStart + 6 * boundaryHour);
+});
+
 test('周期主轴筛出重点事件后仍按实际发生时序列示', () => {
   const result = scanQizhengPeriodEvents({
     natalStars: [{ name: '本命星', longitude: 28.5 }],

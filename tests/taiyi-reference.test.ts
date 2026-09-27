@@ -35,6 +35,73 @@ test('太乙巽位十六神名称传入盘面证据与任务书', () => {
   assert.match(formatTaiyiInfo(result), /巽大炅/);
 });
 
+test('太乙阳遁二三局按十六神原位区分掩击与囚迫', () => {
+  // 《太乙秘书》阳遁第二局：太乙一宫，始击阴主（戌）击；
+  // 第三局：太乙一宫，天目阴主（戌）辰迫。
+  const second = generateTaiyi({ year: 1973, scope: 'year' });
+  assert.equal(second.bureau, 2);
+  assert.equal(second.taiyiPosition, '乾');
+  assert.equal(second.shiJiPosition, '戌');
+  assert.equal(second.conditions.fiveGenerals.shiJiRelationToTaiyi, '击');
+  assert.equal(second.conditions.fiveGenerals.shiJiNoCoverOrHit, false);
+  assert.equal(
+    second.evidenceAnalysis.conditionFacts.find((fact) => fact.kind === '掩')?.matched,
+    false,
+  );
+  assert.ok(!second.judgments.some((item) => item.startsWith('掩：')));
+  assert.doesNotMatch(second.evidenceAnalysis.promptText, /掩成立/);
+
+  const third = generateTaiyi({ year: 1974, scope: 'year' });
+  assert.equal(third.bureau, 3);
+  assert.equal(third.taiyiPosition, '乾');
+  assert.equal(third.wenChangPosition, '戌');
+  assert.equal(third.conditions.fiveGenerals.wenChangRelationToTaiyi, '迫');
+  assert.equal(third.conditions.fiveGenerals.wenChangNoImprisonOrPressure, false);
+  assert.ok(!third.judgments.some((item) => item.includes('文昌与太乙同宫')));
+  assert.ok(!third.evidenceAnalysis.primaryFacts.some((item) => /囚成立：文昌/u.test(item)));
+
+  const twentyFifth = generateTaiyi({ year: 1996, scope: 'year' });
+  assert.equal(twentyFifth.bureau, 25);
+  assert.equal(twentyFifth.taiyiPosition, '乾');
+  assert.equal(twentyFifth.shiJiPosition, '亥');
+  assert.equal(twentyFifth.conditions.fiveGenerals.shiJiRelationToTaiyi, '击');
+
+  const thirtySecond = generateTaiyi({ year: 2003, scope: 'year' });
+  assert.equal(thirtySecond.bureau, 32);
+  assert.equal(thirtySecond.taiyiPosition, '艮');
+  assert.equal(thirtySecond.shiJiPosition, '子');
+  assert.equal(thirtySecond.conditions.fiveGenerals.shiJiRelationToTaiyi, '击');
+});
+
+test('太乙十六位环首尾相接且三位外不计击', () => {
+  const base = {
+    accumulatedValue: 1,
+    taiyiPosition: '子',
+    taiyiPalace: 8,
+    wenChangPosition: '午',
+    wenChangPalace: 2,
+    lordCount: 7,
+    guestCount: 13,
+    lordGeneral: 7,
+    lordAssistant: 1,
+    guestGeneral: 3,
+    guestAssistant: 9,
+  } as const;
+  const adjacent = evaluateTaiyiConditions({
+    ...base,
+    shiJiPosition: '亥',
+    shiJiPalace: 8,
+  });
+  assert.equal(adjacent.fiveGenerals.shiJiRelationToTaiyi, '击');
+  const distant = evaluateTaiyiConditions({
+    ...base,
+    shiJiPosition: '酉',
+    shiJiPalace: 6,
+  });
+  assert.equal(distant.fiveGenerals.shiJiRelationToTaiyi, undefined);
+  assert.equal(distant.fiveGenerals.shiJiNoCoverOrHit, true);
+});
+
 test('太乙在线证据任务书只列本次成立格局且不重复反证与方法说明', () => {
   const withCover = generateTaiyi({ year: 2004, scope: 'year' });
   assert.match(withCover.evidenceAnalysis.promptText, /掩成立：始击与太乙同宫/);

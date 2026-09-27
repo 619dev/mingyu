@@ -3,8 +3,8 @@ import test from 'node:test';
 import {
   analyzeMeihuaEvidence,
   conditionMeihuaTraditionalText,
-  generateMeihua,
-} from 'mingyu-core/divination/meihua';
+} from '../packages/core/src/divination/meihua-evidence.ts';
+import { generateMeihua } from '../packages/core/src/divination/algorithms/meihua/index.ts';
 import { hexagramsData } from '../packages/core/src/divination/hexagram-data.ts';
 
 const fixedDate = new Date('2025-01-01T08:00:00+08:00');
@@ -74,6 +74,36 @@ test('梅花排盘应内置主互变三阶段结构化证据', () => {
   assert.doesNotMatch(evidence.promptText, /权重[：=]?\d|总分[：=]?\d|成功率[：=]?\d/);
 });
 
+test('梅花起卦证据应核对取数与盘面，并准确表达整除时的余数', () => {
+  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const evidence = data.evidenceAnalysis;
+  const lowerStep = evidence?.calculationFact.steps.find((item) => item.target === '下卦');
+
+  assert.equal(lowerStep?.remainder, 0);
+  assert.equal(lowerStep?.result, 8);
+  assert.match(lowerStep?.promptText ?? '', /除以8，余数为0（余0按8计索引），索引为8/u);
+
+  const inconsistent = structuredClone(data);
+  inconsistent.calculation!.number = 124;
+  inconsistent.evidenceAnalysis = undefined;
+  const rebuilt = analyzeMeihuaEvidence(inconsistent);
+
+  assert.equal(rebuilt.calculationFact.status, '计算不一致');
+  assert.deepEqual(rebuilt.calculationFact.steps, []);
+  assert.match(rebuilt.calculationFact.promptText, /起卦取数核验不一致/u);
+  assert.match(rebuilt.calculationFact.promptText, /数字与时支合数记录128，按输入应为129/u);
+  assert.doesNotMatch(rebuilt.calculationFact.promptText, /除8余/u);
+  assert.equal(rebuilt.summaryFact.status, '部分资料缺失');
+  assert.match(rebuilt.summaryFact.promptText, /起卦计算记录不一致/u);
+  const generationStep = rebuilt.calculationSteps.find((item) => item.stage === '起卦取数核验');
+  const summaryStep = rebuilt.calculationSteps.find((item) => item.stage === '证据汇总');
+  assert.equal(generationStep?.status, '资料不足');
+  assert.equal(generationStep?.result.calculationStatus, '计算不一致');
+  assert.match(generationStep?.promptText ?? '', /起卦取数核验不一致/u);
+  assert.equal(summaryStep?.status, '资料不足');
+  assert.match(summaryStep?.promptText ?? '', /起卦计算记录不一致/u);
+});
+
 test('梅花体互用互应沿用原体所在方位，不得上下颠倒', () => {
   const lowerMoving = generateMeihua(fixedDate, { method: 'number', number: 123 });
   const lowerProcess = analyzeMeihuaEvidence(lowerMoving).stages.find(
@@ -119,7 +149,7 @@ test('梅花起卦算式、六爻结构、卦象来源和已有应期条件应�
 
   assert.ok(evidence);
   assert.ok(evidence.calculationFacts.some((item) => item.includes('数字取数：输入123')));
-  assert.ok(evidence.calculationFacts.some((item) => /上卦=.*除8取余/.test(item)));
+  assert.ok(evidence.calculationFacts.some((item) => /上卦=.*除以8/.test(item)));
   assert.equal(evidence.hexagramFacts.length, 3);
   assert.ok(evidence.hexagramFacts.some((item) => item.includes(data.mainHexagram.name)));
   assert.equal(evidence.yaoFacts.length, 6);
@@ -286,6 +316,43 @@ test('梅花字占证据仅在原始笔画或声类与卦数一致时认定计�
     assert.equal(fact.steps.length, 0);
     assert.doesNotMatch(fact.promptText, /上卦=.*除8|字数取数：/u);
   }
+
+  const inconsistent = generateMeihua(fixedDate, {
+    method: 'character',
+    characterText: '西林',
+    characterStrokeCounts: [7, 8],
+  });
+  inconsistent.calculation!.characterUpperNumber = 6;
+  const inconsistentFact = analyzeMeihuaEvidence({
+    ...inconsistent,
+    evidenceAnalysis: undefined,
+  }).calculationFact;
+  assert.equal(inconsistentFact.status, '计算不一致');
+  assert.equal(inconsistentFact.steps.length, 0);
+  assert.match(inconsistentFact.promptText, /字占上卦取数记录6，按输入应为7/u);
+  assert.doesNotMatch(inconsistentFact.promptText, /上卦=.*除以8|字数取数：/u);
+
+  const missingCache = generateMeihua(fixedDate, {
+    method: 'character',
+    characterText: '西林',
+    characterStrokeCounts: [7, 8],
+  });
+  delete missingCache.calculation!.characterUpperNumber;
+  const missingEvidence = analyzeMeihuaEvidence({
+    ...missingCache,
+    evidenceAnalysis: undefined,
+  });
+  const missingFact = missingEvidence.calculationFact;
+  assert.equal(missingFact.status, '缺少中间参数');
+  assert.match(missingFact.promptText, /字占上卦取数/u);
+  assert.doesNotMatch(missingFact.promptText, /计算不一致|上卦=.*除以8|字数取数：/u);
+  assert.equal(missingEvidence.summaryFact.status, '部分资料缺失');
+  assert.doesNotMatch(missingEvidence.summaryFact.promptText, /计算记录不一致/u);
+  assert.match(
+    missingEvidence.calculationSteps.find((item) => item.stage === '起卦取数核验')?.promptText ??
+      '',
+    /起卦取数资料不足/u,
+  );
 });
 
 test('梅花六十四卦卦辞爻辞与乾坤用辞应完整生成条件化事实', () => {

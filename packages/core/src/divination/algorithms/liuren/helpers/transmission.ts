@@ -262,96 +262,6 @@ const REGISTERED_GUA_TI_RULES: LiurenGuaTiRule[] = [
         : null,
   },
   {
-    id: 'chu-mo-xiang-chong',
-    name: '初末相冲课',
-    category: '三传冲合',
-    sourceTitle: '《六壬大全》卷七·毕法赋',
-    sourceUrl: LIUREN_DAQUAN_VOLUME_SEVEN_URL,
-    sourceQuote: '初末相冲多反覆。',
-    detect(context) {
-      const chu = context.transmissionBranches[0];
-      const mo = context.transmissionBranches[context.transmissionBranches.length - 1];
-      if (!chu || !mo) return null;
-      const chongMap: Record<string, string> = {
-        子: '午',
-        午: '子',
-        丑: '未',
-        未: '丑',
-        寅: '申',
-        申: '寅',
-        卯: '酉',
-        酉: '卯',
-        辰: '戌',
-        戌: '辰',
-        巳: '亥',
-        亥: '巳',
-      };
-      return chongMap[chu] === mo
-        ? {
-            branches: [chu, mo],
-            matchedConditions: [`初传${chu}与末传${mo}相冲，谋事始末多反覆`],
-          }
-        : null;
-    },
-  },
-  {
-    id: 'chuan-gui-sheng-chu',
-    name: '传归生处课',
-    category: '传干生克',
-    sourceTitle: '《六壬大全》卷七·毕法赋',
-    sourceUrl: LIUREN_DAQUAN_VOLUME_SEVEN_URL,
-    sourceQuote: '传归生处真生旺。',
-    detect(context) {
-      if (!context.dayStem) return null;
-      const mo = context.transmissionBranches[context.transmissionBranches.length - 1];
-      if (!mo) return null;
-      const stemWuxing: Record<string, string> = {
-        甲: '木',
-        乙: '木',
-        丙: '火',
-        丁: '火',
-        戊: '土',
-        己: '土',
-        庚: '金',
-        辛: '金',
-        壬: '水',
-        癸: '水',
-      };
-      const branchWuxing: Record<string, string> = {
-        寅: '木',
-        卯: '木',
-        巳: '火',
-        午: '火',
-        辰: '土',
-        戌: '土',
-        丑: '土',
-        未: '土',
-        申: '金',
-        酉: '金',
-        亥: '水',
-        子: '水',
-      };
-      const shengRelation: Record<string, string> = {
-        木: '水',
-        火: '木',
-        土: '火',
-        金: '土',
-        水: '金',
-      };
-      const stemElement = stemWuxing[context.dayStem];
-      const branchElement = branchWuxing[mo];
-      if (stemElement && branchElement && shengRelation[stemElement] === branchElement) {
-        return {
-          branches: [mo],
-          matchedConditions: [
-            `末传${mo}（${branchElement}）生日干${context.dayStem}（${stemElement}），终得生扶归宿`,
-          ],
-        };
-      }
-      return null;
-    },
-  },
-  {
     id: 'bi-kou',
     name: '闭口课',
     category: '闭口发用',
@@ -404,11 +314,7 @@ const REGISTERED_GUA_TI_RULES: LiurenGuaTiRule[] = [
 
 export const REGISTERED_LIUREN_GUA_TI_COUNT = REGISTERED_GUA_TI_RULES.length;
 
-/**
- * 识别三传成局课体。
- * 《六壬指南》列三交、玄胎、稼穑及曲直、从革、炎上、润下等三传课体；
- * 这里仅按三传地支结构打标签，吉凶仍交由后续断课结合用神、天将与旺衰判断。
- */
+/** 根据三传、四课及天将临地等可核对的条件标记课体。 */
 export function getLiurenGuaTiFacts(context: LiurenGuaTiContext): LiurenGuaTiFact[] {
   return REGISTERED_GUA_TI_RULES.flatMap((rule) => {
     const match = rule.detect(context);

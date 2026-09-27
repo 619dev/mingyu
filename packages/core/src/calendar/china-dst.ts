@@ -22,7 +22,7 @@ export const CHINA_DST_YEARS = [1986, 1987, 1988, 1989, 1990, 1991] as const;
 const CHINA_DST_RANGES: ReadonlyArray<{ start: DstBoundary; end: DstBoundary }> = [
   { start: [1986, 5, 4, 3], end: [1986, 9, 14, 2] },
   { start: [1987, 4, 12, 3], end: [1987, 9, 13, 2] },
-  { start: [1988, 4, 10, 3], end: [1988, 9, 11, 2] },
+  { start: [1988, 4, 17, 3], end: [1988, 9, 11, 2] },
   { start: [1989, 4, 16, 3], end: [1989, 9, 17, 2] },
   { start: [1990, 4, 15, 3], end: [1990, 9, 16, 2] },
   { start: [1991, 4, 14, 3], end: [1991, 9, 15, 2] },

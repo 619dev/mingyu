@@ -104,6 +104,9 @@ export function getBirthDateValidationMessage(params: {
   if (params.isLeapMonth !== undefined && typeof params.isLeapMonth !== 'boolean') {
     return '闰月标志必须是布尔值。';
   }
+  if (params.dateType === 'solar' && params.isLeapMonth === true) {
+    return '公历日期不能设置农历闰月。';
+  }
   if (!Number.isInteger(params.year) || params.year < 1900 || params.year > 2100) {
     return '年份需在 1900-2100 之间。';
   }
