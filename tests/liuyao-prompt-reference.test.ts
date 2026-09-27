@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { generateLiuyao } from 'mingyu-core/divination/liuyao';
 import { formatEnhancedDivinationInfo } from 'mingyu-core/prompt';
+import { formatEnhancedDivinationInfo as formatSourceLiuyaoPrompt } from '../packages/core/src/prompt/divination-enhanced.ts';
 
 test('六爻事业用神与世爻不同五行时保留原忌仇神的作用对象', () => {
   const data = generateLiuyao(new Date('2026-05-19T10:30:00+08:00'), {
@@ -50,4 +51,22 @@ test('六爻静卦按实际世应和空爻给出月日生克及冲空对象', ()
   assert.match(text, /第2爻父母午火（本爻空亡；本爻午逢值，子冲午）/);
   assert.doesNotMatch(text, /动变五行：/);
   assert.match(text, /明伏分布：本卦明爻6爻，六亲为兄弟、父母、子孙、妻财、官鬼；伏神0爻/);
+});
+
+test('六爻逐爻表同时呈现化空、回头关系与进神', () => {
+  const date = new Date('2025-01-01T08:00:00+08:00');
+  const voidData = generateLiuyao(date, { method: 'manual', yaos: [6, 6, 6, 6, 6, 6] });
+  const voidText = formatSourceLiuyaoPrompt('liuyao', voidData);
+  const voidLine = voidText.split('\n').find((line) => line.startsWith('  第6爻'));
+  assert.deepEqual(voidData.yaosDetail[5].changeRelations, ['回头生', '化空']);
+  assert.match(voidLine ?? '', /化兄弟戌土（回头生、化空）/);
+  const legacyVoidData = structuredClone(voidData);
+  delete legacyVoidData.yaosDetail[5].changeRelations;
+  assert.match(formatSourceLiuyaoPrompt('liuyao', legacyVoidData), /化兄弟戌土（化空）/);
+
+  const advanceData = generateLiuyao(date, { method: 'manual', yaos: [7, 6, 8, 8, 8, 8] });
+  const advanceText = formatSourceLiuyaoPrompt('liuyao', advanceData);
+  const advanceLine = advanceText.split('\n').find((line) => line.startsWith('  第2爻'));
+  assert.equal(advanceData.yaosDetail[1].changeDirection, '化进神');
+  assert.match(advanceLine ?? '', /化官鬼卯木（比和、化进神）/);
 });

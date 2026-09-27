@@ -457,6 +457,10 @@ function resolveSolarTermTimestamp(term: ReturnType<typeof SolarTerm.fromIndex>)
 }
 
 function resolveWinterSolstice(termYear: number) {
+  // tyme4ts 的冬至 termYear 指向下一公历年，只能由公元 1 至 9999 年的历表确定。
+  if (termYear < 2 || termYear > 10000) {
+    throw new Error('六日逐爻现代比例换算缺少所需的下一冬至历表。');
+  }
   const term = SolarTerm.fromName(termYear, '冬至');
   const solarTime = term.getJulianDay().getSolarTime();
   const civilTime = getSolarTimeParts(solarTime);
@@ -519,7 +523,8 @@ function resolveWinterSolsticeAnchor(
   targetTimestamp: number,
 ) {
   const targetYear = target.localTime.year;
-  const candidates = [targetYear - 1, targetYear, targetYear + 1]
+  const candidates = [targetYear, targetYear + 1]
+    .filter((termYear) => termYear >= 2 && termYear <= 10000)
     .map(resolveWinterSolstice)
     .map((term) => resolveWinterSolsticeDayStart(term, target));
   const anchor = candidates

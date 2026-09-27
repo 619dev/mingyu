@@ -204,8 +204,15 @@ function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: Liu
     item.isChanging && item.isDayClash ? '日辰冲动' : '',
   ].filter(Boolean);
   const lifeStages = formatLiuyaoLifeStages(item);
+  const changeConditions = [
+    ...new Set([
+      ...(item.changeRelations ?? []),
+      ...(item.changedYao?.isVoid ? ['化空'] : []),
+      ...(item.changeDirection ? [item.changeDirection] : []),
+    ]),
+  ];
   const changed = item.changedYao
-    ? `化${item.changedYao.liuqin}${item.changedYao.dizhi}${item.changedYao.wuxing}${item.changedYao.isVoid ? '（变空）' : item.changeRelations?.length ? `（${[...new Set(item.changeRelations)].join('、')}）` : item.changeDirection ? `（${item.changeDirection}）` : ''}`
+    ? `化${item.changedYao.liuqin}${item.changedYao.dizhi}${item.changedYao.wuxing}${changeConditions.length ? `（${changeConditions.join('、')}）` : ''}`
     : '';
   return [
     `原爻${item.yaoType}（${formatLiuyaoRawYao(item)}）`,

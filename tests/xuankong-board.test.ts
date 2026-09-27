@@ -556,6 +556,25 @@ test('兼向测量误差跨中央九度边界时必须拒绝显式替卦', () =>
   );
 });
 
+test('玄空非零测量误差须附角度，不能只凭山名绕过替卦边界核验', () => {
+  for (const guaType of ['下卦', '替卦'] as const) {
+    assert.throws(
+      () =>
+        generateXuanKong({
+          year: 2024,
+          sitMountain: '子',
+          guaType,
+          measurementUncertaintyDegrees: 3,
+        }),
+      /非零测量误差时，必须同时提供坐山或朝向度数/,
+    );
+  }
+  assert.equal(
+    generateXuanKong({ year: 2024, sitMountain: '子', guaType: '替卦' }).guaType,
+    '替卦',
+  );
+});
+
 test('替卦未成四正局仍保留实际盘面的反伏吟组合', () => {
   let checked = 0;
   for (let yun = 1; yun <= 9; yun++) {

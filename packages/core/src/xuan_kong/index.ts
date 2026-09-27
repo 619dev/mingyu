@@ -383,6 +383,9 @@ export function resolveXuanKongOrientation(
   if (!Number.isFinite(uncertainty) || uncertainty < 0 || uncertainty > 45) {
     throw new Error('measurementUncertaintyDegrees 必须在 0-45 之间。');
   }
+  if (uncertainty > 0 && input.sitDegree === undefined && input.facingDegree === undefined) {
+    throw new Error('提供非零测量误差时，必须同时提供坐山或朝向度数。');
+  }
 
   if (input.sitDegree !== undefined || input.facingDegree !== undefined) {
     const sitPos: CompassMountainPosition =

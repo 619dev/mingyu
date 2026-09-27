@@ -916,30 +916,31 @@ export function getAlmanacPengZuDetails(dayStem: string, dayBranch: string) {
 
 validateAlmanacReferenceData();
 
-function getParticipantBranchConflict(
+function getParticipantBranchConflicts(
   candidateBranch: string,
   targetBranch: string,
-): { type: ParticipantBranchConflictType; detail?: string } | null {
-  if (!candidateBranch || !targetBranch) return null;
+): Array<{ type: ParticipantBranchConflictType; detail?: string }> {
+  if (!candidateBranch || !targetBranch) return [];
 
+  const conflicts: Array<{ type: ParticipantBranchConflictType; detail?: string }> = [];
   if (candidateBranch === getOppositeBranch(targetBranch)) {
-    return { type: '冲' };
+    conflicts.push({ type: '冲' });
   }
 
   if (isSanxing(candidateBranch, targetBranch)) {
     const sanxingType = getSanxingType(candidateBranch) || getSanxingType(targetBranch);
-    return { type: '刑', detail: sanxingType || undefined };
+    conflicts.push({ type: '刑', detail: sanxingType || undefined });
   }
 
   if (isLiuhai(candidateBranch, targetBranch)) {
-    return { type: '害' };
+    conflicts.push({ type: '害' });
   }
 
   if (isLiupo(candidateBranch, targetBranch)) {
-    return { type: '破' };
+    conflicts.push({ type: '破' });
   }
 
-  return null;
+  return conflicts;
 }
 
 function getParticipantBranchConflictSummary(
@@ -963,16 +964,15 @@ function getParticipantBranchConflictSummary(
     detail?: string;
   }> = [];
   targets.forEach((target) => {
-    const conflict = getParticipantBranchConflict(candidateBranch, target.branch);
-    if (!conflict) return;
-
-    const detail = conflict.detail ? `（${conflict.detail}）` : '';
-    texts.push(`${conflict.type}${target.label}${target.branch}${detail}`);
-    relations.push({
-      scope: target.scope,
-      targetBranch: target.branch,
-      type: conflict.type,
-      detail: conflict.detail,
+    getParticipantBranchConflicts(candidateBranch, target.branch).forEach((conflict) => {
+      const detail = conflict.detail ? `（${conflict.detail}）` : '';
+      texts.push(`${conflict.type}${target.label}${target.branch}${detail}`);
+      relations.push({
+        scope: target.scope,
+        targetBranch: target.branch,
+        type: conflict.type,
+        detail: conflict.detail,
+      });
     });
   });
 
