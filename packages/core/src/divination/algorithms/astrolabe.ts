@@ -379,6 +379,9 @@ function readOptionalText(value: unknown, fallback: string) {
  */
 export function generateAstrolabe(input: AstrolabeBirthInput): AstrolabeData {
   const standardBirth = localTimestamp(input);
+  if (input.useTrueSolarTime !== undefined && typeof input.useTrueSolarTime !== 'boolean') {
+    throw new Error('useTrueSolarTime 必须是布尔值。');
+  }
   const latitude = requireNumber(input.latitude, '出生地纬度');
   const longitude = requireNumber(input.longitude, '出生地经度');
   if (input.timezone === undefined && !input.timeZoneId) {

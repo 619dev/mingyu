@@ -138,3 +138,50 @@ test('黄历择日最终提示词保留逐日历法和备选时辰依据', () =>
     }
   }
 });
+
+test('黄历事项宜忌与参与人限制在候选日明细中各展开一次', () => {
+  const data = generateAlmanacSelection({
+    topic: 'contract',
+    startDate: '2026-06-01',
+    endDate: '2026-06-15',
+    participants: [
+      {
+        id: 'project-owner',
+        name: '项目负责人',
+        gender: '男',
+        year: '1990',
+        month: '5',
+        day: '15',
+        timeIndex: '6',
+        dateType: 'solar',
+      },
+    ],
+  });
+  const prompt = formatDivinationInfo('almanac', data);
+  const promptLines = prompt.split('\n');
+  const dayLine = (date: string) => {
+    const index = promptLines.findIndex((line) => line.includes(date) && line.startsWith('  第'));
+    return index < 0 ? '' : (promptLines[index + 1] ?? '');
+  };
+  const signingDay = dayLine('2026-06-05');
+  const signingCandidate = data.evidenceAnalysis!.candidates.find(
+    (candidate) => candidate.date === '2026-06-05',
+  );
+
+  assert.ok(signingDay);
+  assert.equal(signingDay.match(/交易/g)?.length, 1);
+  assert.equal(signingDay.match(/立券/g)?.length, 1);
+  assert.ok(signingCandidate?.topicMatchFacts.some((fact) => fact.matchedItems.includes('交易')));
+
+  const conflictDay = dayLine('2026-06-01');
+  const participantNote = data.days.find((item) => item.date === '2026-06-01')?.participantNotes[0];
+  const participantConstraint = data
+    .evidenceAnalysis!.candidates.find((candidate) => candidate.date === '2026-06-01')
+    ?.decisionFact.strongConstraintTexts.find((item) => item.startsWith('项目负责人：'));
+
+  assert.ok(conflictDay);
+  assert.ok(participantNote);
+  assert.ok(participantConstraint);
+  assert.ok(conflictDay.includes(participantConstraint));
+  assert.ok(!conflictDay.includes(participantNote));
+});

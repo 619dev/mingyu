@@ -991,10 +991,8 @@ test('奇门提示词会输出值符值使、旬空马星和格局资料', () =>
   assert.match(prompt, /核心结构：阳遁3局；[^\n]+/);
   assert.match(prompt, /取用主线：/);
   assert.doesNotMatch(prompt, /。、|。；|；。|、、|；；/);
-  assert.match(
-    prompt,
-    /值符值使与时干：值符天蓬落坎一宫；值使休门落坎一宫；时干丁；天盘丁：未见落宫；地盘丁：离九宫/,
-  );
+  assert.match(prompt, /值符值使与时干：值符天蓬落坎一宫；值使休门落坎一宫；时干丁/);
+  assert.match(prompt, /丁：天盘未列；地盘离九宫/);
   assert.match(prompt, /旬空与马星：旬空子空落坎一宫、丑空落艮八宫；马星卯时驿马在巳，落巽四宫/);
   assert.match(prompt, /太白入荧/);
   assert.doesNotMatch(prompt, /主宫评分：|辅宫评分：|评分-?\d+|（-?\d+分|应期范围\d/);
@@ -1092,7 +1090,8 @@ test('六爻提示词会保留世应、动变、空亡、伏神和月日资料',
 
   assert.match(prompt, /核心结构：主卦/);
   assert.match(prompt, /世应：世爻第1爻兄弟子水；应爻第6爻兄弟戌土/);
-  assert.match(prompt, /动变：第1爻兄弟子水/);
+  assert.match(prompt, /六爻全表：[\s\S]*第1爻兄弟子水/);
+  assert.doesNotMatch(prompt, /^动变：/m);
   assert.match(prompt, /旬空戌、亥；命中第6爻兄弟戌土（本爻空亡；本爻戌逢值，辰冲戌）/);
   assert.match(
     prompt,
@@ -1121,7 +1120,8 @@ test('六爻提示词不再按问题词表补充取用参考', () => {
   assert.doesNotMatch(prompt, /取用参考：/);
   assert.doesNotMatch(prompt, /事业职位|事业工作：以官鬼为取用参考/);
   assert.match(prompt, /世应：/);
-  assert.match(prompt, /动变：/);
+  assert.match(prompt, /六爻全表：[\s\S]*第1爻/);
+  assert.doesNotMatch(prompt, /^动变：/m);
   assert.doesNotMatch(prompt, /应爻与动变：|应期资料：/);
 });
 

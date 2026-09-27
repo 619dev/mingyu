@@ -836,9 +836,16 @@ test('奇门终身局阶段只引用本命格局名称，完整条件保留在�
   );
   const baseSection = prompt.split('【终身局基础盘】')[1].split('【个人标记与主题宫】')[0];
   const stageSection = prompt.split('【人生阶段资料】')[1].split('【周期触发与事件簇】')[0];
+  const taskSection = prompt.split('【任务】')[1].split('\n\n【问题】')[0];
   assert.ok(baseSection.includes(pattern.summary));
   assert.ok(stageSection.includes(`${label}「${pattern.name}」`));
   assert.ok(!stageSection.includes(fullFact));
+  assert.match(taskSection, /取象：先按问题确定主体、事项用神、主客与原宫/);
+  assert.match(taskSection, /分层说明原盘现状与条件变化后的方案/);
+  assert.match(taskSection, /终身局取象以本命为根，阶段与流年各用本层已列盘面/);
+  assert.match(taskSection, /先综述全盘态势，再围绕所问事项整理主判断及可观察的应期线索/);
+  assert.doesNotMatch(taskSection, /不视为原盘改动/);
+  assert.doesNotMatch(taskSection, /按事项定用神与主客，以用神宫门星神干核对格局和空迫墓的作用/);
 });
 
 test('奇门终身局 P5：公开 API 接口验证', async () => {

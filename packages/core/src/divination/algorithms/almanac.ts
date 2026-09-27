@@ -2,7 +2,7 @@
  * @file 黄历择日算法
  * @传统依据 《钦定协纪辨方书》《选择要略》等择日资料；日历属性由当前历法数据提供。
  */
-import { NineStar, SolarDay, SolarTime, TwentyEightStar } from 'tyme4ts';
+import { NineStar, SolarDay, SolarTerm, SolarTime, TwentyEightStar } from 'tyme4ts';
 import { baziCalculator } from '../../bazi/baziCalculator';
 import { MONTH_COMMANDER } from '../../bazi/baziDefinitions';
 import { calculateSolarTermsForYear } from '../../calendar/solar-term-evidence';
@@ -168,6 +168,21 @@ function formatDate(date: Date) {
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/** 四绝取四立节气在中国标准时间的公历日期前一日。 */
+function getFourTerminationTerm(date: Date): string | undefined {
+  const dateKey = formatDate(date);
+  const year = date.getUTCFullYear();
+  for (const index of [3, 9, 15, 21]) {
+    const term = SolarTerm.fromIndex(year, index);
+    const termTime = term.getJulianDay().getSolarTime();
+    const previousDay = new Date(
+      createUtcTimestamp(termTime.getYear(), termTime.getMonth() - 1, termTime.getDay() - 1),
+    );
+    if (formatDate(previousDay) === dateKey) return term.getName();
+  }
+  return undefined;
 }
 
 function findKeywordMatches(values: string[], keywords: string[]) {
@@ -1111,6 +1126,7 @@ function buildDayFacts(params: {
   recommends: string[];
   avoids: string[];
   gods: AlmanacGodSource[];
+  fourTerminationTerm?: string;
   participants: AlmanacParticipantProfile[];
 }) {
   const highlights: string[] = [];
@@ -1202,6 +1218,27 @@ function buildDayFacts(params: {
         inputItems: ['四离'],
         keywords: [ALMANAC_TOPIC_LABELS[params.topic]],
         matchedItems: ['四离'],
+        promptText: text,
+        sources: ['《钦定协纪辨方书》卷十「上朔四离四绝晦日」'],
+      }),
+    );
+  }
+
+  // 四绝与四离同载于《钦定协纪辨方书》卷十。祭祀、解除及除旧等列项例外，
+  // 当前预设事项均不能仅凭事项大类等同于这些具体例外；自定义事项留给逐项核对。
+  if (params.topic !== 'custom' && params.fourTerminationTerm) {
+    const text = `四绝日（${params.fourTerminationTerm}前一日）：${ALMANAC_TOPIC_LABELS[params.topic]}属本日避忌事项`;
+    cautions.push(text);
+    topicMatchFacts.push(
+      buildTopicMatchFact({
+        key: `${params.dateKey}:topic:rule-four-terminations`,
+        scope: '候选日',
+        topic: params.topic,
+        sourceType: '值日神煞事项规则',
+        status: '限制',
+        inputItems: [`${params.fourTerminationTerm}前一日`, '四绝'],
+        keywords: [ALMANAC_TOPIC_LABELS[params.topic]],
+        matchedItems: ['四绝'],
         promptText: text,
         sources: ['《钦定协纪辨方书》卷十「上朔四离四绝晦日」'],
       }),
@@ -1422,6 +1459,7 @@ function buildDayCandidate(
     recommends,
     avoids,
     gods: godSources,
+    fourTerminationTerm: getFourTerminationTerm(date),
     participants,
   });
 

@@ -72,14 +72,16 @@ export function calculateZhugeNumber(text: string) {
 }
 
 export function castKongmingHexagram(pattern?: string, options?: RandomOptions) {
-  let resolvedPattern = pattern?.trim();
+  let resolvedPattern: string;
   let randomTrace: ReturnType<ReturnType<typeof createRandomContext>['getTrace']> | undefined;
-  if (!resolvedPattern) {
+  if (pattern === undefined) {
     const context = createRandomContext(options);
     resolvedPattern = Array.from({ length: 5 }, () =>
       randomInt(2, context.random) === 1 ? '●' : '○',
     ).join('');
     randomTrace = context.getTrace();
+  } else {
+    resolvedPattern = pattern.trim();
   }
   const normalized = resolvedPattern.replace(/[阳正公1]/g, '●').replace(/[阴反字0]/g, '○');
   if (!/^[●○]{5}$/.test(normalized)) throw new Error('卦象需由五个阴阳结果组成');

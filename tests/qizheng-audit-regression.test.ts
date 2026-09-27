@@ -155,7 +155,15 @@ test('恩难相位中的四余加括注不改变星曜身份', () => {
     ['火', '紫炁'],
     ['水', '计都'],
   ] as const) {
-    const base = { hour: 12, mingZhu };
+    const base = {
+      birthUtcTimestamp: Date.parse('2024-06-21T12:00:00Z'),
+      sunriseSunset: {
+        status: '全天高于阈值' as const,
+        morningUtcDateTime: null,
+        eveningUtcDateTime: null,
+      },
+      mingZhu,
+    };
     const aspect: QizhengAspect = {
       star1: mingZhu,
       star2: star,

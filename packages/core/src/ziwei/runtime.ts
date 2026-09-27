@@ -506,23 +506,24 @@ function formatBirthDate(year: number, month: number, day: number): string {
 function readPreciseStandardBirthTime(
   input: ZiweiChartInputDraft,
 ): ChartInput['birthTime'] | undefined {
+  const birthHour = input.birthHour === undefined ? '' : String(input.birthHour).trim();
+  const birthMinute = input.birthMinute === undefined ? '' : String(input.birthMinute).trim();
   const birthSecond = input.birthSecond === undefined ? '' : String(input.birthSecond).trim();
-  if (!birthSecond) return undefined;
-  if (input.birthHour === undefined || input.birthMinute === undefined) {
+  if (!birthHour && !birthMinute && !birthSecond) return undefined;
+  if (!birthHour || !birthMinute) {
     throw new Error('精准标准北京时间需要同时提供出生小时和分钟。');
   }
   const time = {
-    hour: readInteger(input.birthHour, '出生小时'),
-    minute: readInteger(input.birthMinute, '出生分钟'),
-    second: readInteger(birthSecond, '出生秒数'),
+    hour: readInteger(birthHour, '出生小时'),
+    minute: readInteger(birthMinute, '出生分钟'),
+    ...(birthSecond ? { second: readInteger(birthSecond, '出生秒数') } : {}),
   };
   if (
     time.hour < 0 ||
     time.hour > 23 ||
     time.minute < 0 ||
     time.minute > 59 ||
-    time.second < 0 ||
-    time.second > 59
+    (time.second !== undefined && (time.second < 0 || time.second > 59))
   ) {
     throw new Error('精准出生时间需使用 0-23 时、0-59 分和 0-59 秒。');
   }

@@ -106,14 +106,14 @@ test('七政本命区间保留太阳换宫和命宫变盘', () => {
   assert.equal(star(range.branches[1]!.representative, '太阳')?.palace, '官禄');
 });
 
-test('七政本命区间按六点边界更新恩难昼夜分金', () => {
-  const start = beijingTimestamp('2024-02-19 05:59:59');
+test('七政本命区间按当地日出星历交点更新恩难昼夜分金', () => {
+  const start = beijingTimestamp('2024-02-19 07:03:08');
   const range = generateQizhengBirthRange(
     inputAt(start, {
       ...BASE_INPUT,
-      hour: 5,
-      minute: 59,
-      second: 59,
+      hour: 7,
+      minute: 3,
+      second: 8,
     }),
     {
       startTimestamp: start,
@@ -122,8 +122,32 @@ test('七政本命区间按六点边界更新恩难昼夜分金', () => {
   );
 
   assert.equal(range.branches.length, 2);
+  assert.equal(range.branches[0]?.sampleCount, 1);
+  assert.equal(range.branches[1]?.sampleCount, 1);
+  const sunrise = Date.parse(
+    range.branches[0]!.representative.calculationContext.solarIllumination.sunriseSunset
+      .morningUtcDateTime!,
+  );
+  assert.ok(start < sunrise && sunrise < start + SECOND);
   assert.equal(range.branches[0]?.representative.enNan?.sect, '夜生');
   assert.equal(range.branches[1]?.representative.enNan?.sect, '昼生');
+});
+
+test('七政本命区间按当地日落星历交点从昼生转入夜生', () => {
+  const start = beijingTimestamp('2024-02-19 17:53:57');
+  const range = generateQizhengBirthRange(inputAt(start), {
+    startTimestamp: start,
+    endTimestamp: start + 2 * SECOND,
+  });
+
+  assert.equal(range.branches.length, 2);
+  const sunset = Date.parse(
+    range.branches[0]!.representative.calculationContext.solarIllumination.sunriseSunset
+      .eveningUtcDateTime!,
+  );
+  assert.ok(start < sunset && sunset < start + SECOND);
+  assert.equal(range.branches[0]?.representative.enNan?.sect, '昼生');
+  assert.equal(range.branches[1]?.representative.enNan?.sect, '夜生');
 });
 
 test('七政本命区间跨二十三点时辰边界重新计算命身宫', () => {

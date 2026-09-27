@@ -19,6 +19,9 @@ test('六爻事业用神与世爻不同五行时保留原忌仇神的作用对�
   assert.doesNotMatch(text, /原神水（水生金）/);
   assert.match(text, /动变五行：本爻未土克变爻子水/);
   assert.match(text, /动变五行：本爻酉金克变爻寅木/);
+  assert.equal(text.split('动变五行：本爻未土克变爻子水').length - 1, 1);
+  assert.equal(text.split('动变五行：本爻酉金克变爻寅木').length - 1, 1);
+  assert.doesNotMatch(text, /^动变：/m);
   assert.doesNotMatch(text, /变爻寅木克本爻酉金|变爻子水生本爻未土/);
 });
 

@@ -30,13 +30,7 @@ function elementRelation(a: string, ae: string, b: string, be: string): string {
 export function formatQimenHourStem(data: QimenData): string {
   const hourStem = data.ganzhi.hour.charAt(0);
   const locatedStem = getDunJiaStem(data.ganzhi.hour);
-  const sky = data.jiuGongGe.filter((palace) => hasTianPanStem(palace, locatedStem));
-  const earth = data.jiuGongGe.filter((palace) => palace.diPan.stem === locatedStem);
-  return [
-    `时干${hourStem}${hourStem === '甲' ? `（${data.ganzhi.hour}遁于${locatedStem}）` : ''}`,
-    `天盘${locatedStem}：${sky.map((palace) => palace.name).join('、') || '未见落宫'}`,
-    `地盘${locatedStem}：${earth.map((palace) => palace.name).join('、') || '未见落宫'}`,
-  ].join('；');
+  return `时干${hourStem}${hourStem === '甲' ? `（${data.ganzhi.hour}遁于${locatedStem}）` : ''}`;
 }
 
 /** 按奇门排盘范围格式化主动干及其六甲遁干落点。 */
@@ -52,17 +46,11 @@ export function formatQimenActiveStem(data: QimenData): string {
   const activeGanZhi = data.ganzhi[scope] ?? data.ganzhi.hour;
   const activeStem = activeGanZhi.charAt(0);
   const visibleStem = getDunJiaStem(activeGanZhi);
-  const sky = data.jiuGongGe.filter((palace) => hasTianPanStem(palace, visibleStem));
-  const earth = data.jiuGongGe.filter((palace) => palace.diPan.stem === visibleStem);
   const label =
     activeStem === visibleStem
       ? `${config.label}${activeStem}`
       : `${config.label}${activeStem}（${activeGanZhi}遁于${visibleStem}）`;
-  return [
-    label,
-    `天盘${visibleStem}：${sky.map((palace) => palace.name).join('、') || '未见落宫'}`,
-    `地盘${visibleStem}：${earth.map((palace) => palace.name).join('、') || '未见落宫'}`,
-  ].join('；');
+  return label;
 }
 
 export function formatQimenRelationFacts(

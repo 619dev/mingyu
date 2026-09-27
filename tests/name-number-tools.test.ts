@@ -342,6 +342,8 @@ test('诸葛神数按三个康熙笔画尾数组合并落入完整384签', () =>
 });
 
 test('孔明神卦完整覆盖32种五钱阴阳组合并支持随机重放', () => {
+  assert.throws(() => castKongmingHexagram(''), /卦象需由五个阴阳结果组成/);
+  assert.throws(() => castKongmingHexagram('  \t  '), /卦象需由五个阴阳结果组成/);
   const numbers = new Set<number>();
   for (let value = 0; value < 32; value += 1) {
     const pattern = value.toString(2).padStart(5, '0').replaceAll('0', '○').replaceAll('1', '●');

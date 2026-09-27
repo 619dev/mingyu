@@ -2364,7 +2364,8 @@ function generateQizhengInternal(
   }
 
   const enNan = evaluateQizhengEnNan({
-    hour: input.hour,
+    birthUtcTimestamp: calculationContext.astronomicalTime.unixMilliseconds,
+    sunriseSunset: calculationContext.solarIllumination.sunriseSunset,
     mingZhu,
     aspects,
   });

@@ -70,11 +70,15 @@ test('黄历择日应内置透明约束与候选证据', () => {
     ),
   );
   assert.equal(evidence.candidates.length, data.days.length);
-  assert.match(evidence.promptText, /【黄历择日透明约束与候选证据】/);
-  assert.match(evidence.promptText, /传统硬限制：/);
-  assert.match(evidence.promptText, /候选分组：/);
-  assert.match(evidence.promptText, /中国标准时间12:00参照月相/);
-  assert.match(evidence.promptText, /月相只作为中国标准时间正午的天文背景，不参与候选排序/);
+  assert.match(
+    evidence.promptText,
+    /【传统依据】[\s\S]*【择日事项】[\s\S]*【候选日期】[\s\S]*【任务】/,
+  );
+  assert.match(evidence.promptText, /中国标准时间正午月相/);
+  assert.doesNotMatch(
+    evidence.promptText,
+    /算法|规则集|计算链|证据链|来源|统一边界|解释限制|不得|不证明/,
+  );
   assert.ok(evidence.candidates.every((candidate) => candidate.astronomicalFacts.length === 2));
   assert.ok(
     evidence.candidates.every(
@@ -148,7 +152,7 @@ test('黄历择日应内置透明约束与候选证据', () => {
         item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => factKeys.has(key)),
     ),
   );
-  assert.match(evidence.promptText, /计算链：[\s\S]*反证汇总：[\s\S]*证据汇总：[\s\S]*解释限制：/);
+  assert.match(evidence.promptText, /候选日期[\s\S]*年柱[\s\S]*宜：[\s\S]*忌：[\s\S]*任务/);
   assert.doesNotMatch(evidence.promptText, /评分[：=]?\d|\d+分|成功率[：=]?\d|匹配率[：=]?\d/);
 });
 
@@ -231,8 +235,8 @@ test('择日证据应保留日课、宿曜、九星、百忌、方位神与逐�
         !('avoids' in item),
     ),
   );
-  assert.match(result.evidenceAnalysis?.promptText ?? '', /原始宜项/);
-  assert.match(result.evidenceAnalysis?.promptText ?? '', /逐时时课|时段/);
+  assert.match(result.evidenceAnalysis?.promptText ?? '', /宜：/);
+  assert.match(result.evidenceAnalysis?.promptText ?? '', /候选时辰/);
   assert.doesNotMatch(
     JSON.stringify(result.evidenceAnalysis?.evidence),
     /"score"\s*:|成功率[：=]?\s*\d|吉凶总分[：=]?\s*\d/,
@@ -255,7 +259,7 @@ test('择日证据应让明确事项忌项决定慎用分组', () => {
 
   assert.equal(candidate?.status, '慎用候选');
   assert.ok(evidence.cautionDates.includes(target.date));
-  assert.match(evidence.promptText, new RegExp(`${target.date}慎用候选`));
+  assert.match(evidence.promptText, new RegExp(`${target.date} 慎用候选`));
 });
 
 test('择日证据在缺少参与人时不得编造个人适配', () => {
@@ -267,9 +271,8 @@ test('择日证据在缺少参与人时不得编造个人适配', () => {
     }),
   );
 
-  assert.match(evidence.promptText, /没有参与人资料时不得编造个人适配结论/);
-  assert.match(evidence.promptText, /现实条件未提供时只列待核验项/);
-  assert.match(evidence.promptText, /不合成为成功率或吉凶总分/);
+  assert.doesNotMatch(evidence.promptText, /参与人关系：|不得|现实条件未提供|成功率|吉凶总分/);
+  assert.match(evidence.promptText, /【任务】/);
 });
 
 test('择日参与人支持与冲突应保留逐项结构化依据', () => {
@@ -453,8 +456,9 @@ test('九星、全年方位神与彭祖百忌不得直接证明灾病、官非�
 
   assert.match(promptText, /传统类象涉及健康、财物与争议议题/);
   assert.match(promptText, /传统方位规则将死符方列为涉及健康与安全类象的回避条件/);
-  assert.match(promptText, /不据此判断生育结果/);
-  assert.match(promptText, /后半句属于传统警语，不作为现实后果保证/);
+  assert.match(promptText, /传统方位规则将福德方列为修造参考/);
+  assert.match(promptText, /丙日传统上避修灶/);
+  assert.doesNotMatch(promptText, /不据此|后半句属于传统警语/);
   assert.doesNotMatch(promptText, /主疾病|主灾病死亡|主哭泣死亡|主添丁生子|必见灾殃|毒气入肠|大凶/);
 });
 
@@ -475,10 +479,7 @@ test('旧黄历只有合并彭祖百忌时也应拆分并去除后果保证', ()
   assert.equal(pengZuFacts.length, 2);
   assert.deepEqual(
     pengZuFacts.map((item) => item.promptText),
-    [
-      '壬日传统上避汲水；后半句属于传统警语，不作为现实后果保证',
-      '申日传统上避安床；后半句属于传统警语，不作为现实后果保证',
-    ],
+    ['壬日传统上避汲水', '申日传统上避安床'],
   );
   assert.doesNotMatch(evidence.promptText, /鬼祟入房|更难提防/);
 });

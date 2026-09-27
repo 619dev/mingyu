@@ -47,6 +47,10 @@ test('星盘底层算法应拒绝无效出生日期和时间', () => {
   assert.throws(() => generateAstrolabe({ ...validInput, hour: '24' }), /出生小时需在 0-23 之间/);
   assert.throws(() => generateAstrolabe({ ...validInput, minute: '60' }), /出生分钟需在 0-59 之间/);
   assert.throws(() => generateAstrolabe({ ...validInput, second: '60' }), /出生秒需在 0-59 之间/);
+  assert.throws(
+    () => generateAstrolabe({ ...validInput, useTrueSolarTime: 'false' as never }),
+    /useTrueSolarTime 必须是布尔值/,
+  );
 });
 
 test('星盘可选秒数应贯穿现代星历、UTC和光照证据，省略时保持原有分钟口径', () => {

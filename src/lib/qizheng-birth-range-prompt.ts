@@ -30,7 +30,7 @@ function formatNatalFacts(data: QizhengResult): string[] {
     `神煞：${data.shensha.map((item) => `${item.name}${item.value}`).join('；')}。`,
     ...(enNan
       ? [
-          `昼夜分金：${enNan.sect}；${enNan.sectSummary}。此处按钟表时间六时至十八时为昼生。`,
+          `昼夜分金：${enNan.sect}；${enNan.sectSummary}。按出生时刻与当地日出日落星历交点划分，太阳上缘阈值负零点八三三度；当日${context.solarIllumination.sunriseSunset.status}。`,
           `命主五行${enNan.mingElement}；恩星${enNan.enStars.join('、')}；难星${enNan.nanStars.join('、')}；仇星${enNan.chouStars.join('、')}；用星${enNan.yongStars.join('、')}。`,
           `恩难交会：${enNan.aspectInteraction.length ? enNan.aspectInteraction.join('；') : '无对应交会'}。`,
         ]

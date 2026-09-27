@@ -13,10 +13,27 @@ import { getDunJiaStem } from '../packages/core/src/divination/algorithms/qimen/
 test('奇门原生提示词绑定符使宫生克、天地盘时干和取用宫干冲', () => {
   const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
   const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
-  assert.match(prompt, /时干丁；天盘丁：离九宫；地盘丁：巽四宫/);
+  assert.match(prompt, /值符值使与时干：[^\n]*时干丁/);
+  assert.match(prompt, /同干定位：[\s\S]*丁：天盘离九宫；地盘巽四宫/);
+  assert.equal(prompt.split('丁：天盘离九宫；地盘巽四宫').length - 1, 1);
+  assert.doesNotMatch(prompt, /天盘丁：离九宫；地盘丁：巽四宫/);
   assert.match(prompt, /值符宫与值使宫五行：值使宫乾六宫金克值符宫巽四宫木/);
   assert.match(prompt, /巽四宫天地盘干：天盘癸水克地盘丁火；天干相冲：癸与丁相冲/);
   assert.doesNotMatch(prompt, /天干五合：癸与丁相合/);
+});
+
+test('奇门时家任务保留取象换象造象流程且不追加重复通用框架', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
+  const task = prompt.split('【任务】\n')[1]?.split('\n\n【问题】')[0] ?? '';
+
+  assert.match(task, /取象：先按问题确定主体、事项用神、主客与原宫/);
+  assert.match(task, /换象：只采用有流派依据的判法/);
+  assert.match(task, /造象：问题涉及调整时/);
+  assert.match(task, /分层说明原盘现状与条件变化后的方案/);
+  assert.doesNotMatch(task, /不视为原盘改动/);
+  assert.match(task, /先综述全盘态势，再围绕所问事项整理主判断及可观察的应期线索/);
+  assert.doesNotMatch(task, /按事项定用神与主客，以用神宫门星神干核对格局和空迫墓的作用/);
 });
 
 test('奇门完整提示词按问题写入复合格局与值符宫应期触发', () => {
@@ -53,7 +70,8 @@ test('奇门甲子时以旬首所遁戊分别定位天盘和地盘', () => {
     const data = generateQimen(new Date('2026-05-20T00:30:00+08:00'), method);
     assert.equal(data.ganzhi.hour, '甲子');
     const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
-    assert.match(prompt, /时干甲（甲子遁于戊）；天盘戊：[一-龥]+；地盘戊：[一-龥]+/);
+    assert.match(prompt, /时干甲（甲子遁于戊）/);
+    assert.match(prompt, /同干定位：[\s\S]*戊：天盘[一-龥]+；地盘[一-龥]+/);
     assert.doesNotMatch(prompt, /时干甲未见落宫/);
   }
 });
@@ -178,9 +196,10 @@ test('转盘与飞盘的换象造象任务保留原盘、转换条件与现实�
     const before = structuredClone(data);
     const prompt = buildDivinationPrompt('qimen', '项目谈判怎样换象与造象？', data);
     assert.match(prompt, /同干定位：/);
-    assert.match(prompt, /换象：.*原象、转换依据、替代象及适用条件/);
-    assert.match(prompt, /造象：.*实际作用路径和可观察的反馈/);
-    assert.match(prompt, /主判断由原用神与宫况支持/);
+    assert.match(prompt, /换象：.*盘层、所追干（含寄干）、起宫与落宫/);
+    assert.match(prompt, /替代象及成立条件；多种解释用可核实的现实信息区分/);
+    assert.match(prompt, /造象：.*盘象依据、作用路径、投入或时机、原盘制约和可观察反馈/);
+    assert.doesNotMatch(prompt, /换象核对：|造象比较：|收束：/);
     assert.deepEqual(data, before);
   }
 });

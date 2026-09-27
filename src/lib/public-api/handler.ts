@@ -6706,6 +6706,23 @@ function readQimenLifetimeStagePolicy(input: JsonRecord): QimenLifetimeInput['st
   return { ...input.stagePolicy, model } as QimenLifetimeInput['stagePolicy'];
 }
 
+function readQimenLifetimeLocation(input: JsonRecord): QimenLifetimeInput['location'] {
+  if (input.location === undefined) return undefined;
+  if (!isRecord(input.location)) {
+    throw new ApiError(400, 'BAD_REQUEST', 'location 必须是包含经度的地点对象。');
+  }
+  const location = input.location;
+  return {
+    longitude: readNumber(location, 'longitude', -180, 180),
+    ...(location.latitude === undefined
+      ? {}
+      : { latitude: readNumber(location, 'latitude', -90, 90) }),
+    ...(location.locationName === undefined
+      ? {}
+      : { locationName: readString(location, 'locationName', '') }),
+  };
+}
+
 function calculateQimenLifetimeApi(input: JsonRecord) {
   assertNoRandomOptions(input, '奇门遁甲是确定性排盘，不接受 seed 或 replay。');
   const birthDateTime = readString(input, 'birthDateTime', '');
@@ -6718,16 +6735,14 @@ function calculateQimenLifetimeApi(input: JsonRecord) {
     ...(input.birthRangeIndex === undefined
       ? {}
       : { birthRangeIndex: readInteger(input, 'birthRangeIndex', 0) }),
-    timeZoneId: typeof input.timeZoneId === 'string' ? input.timeZoneId : undefined,
-    timezone: typeof input.timezone === 'number' ? input.timezone : undefined,
-    location: isRecord(input.location)
-      ? (input.location as QimenLifetimeInput['location'])
-      : undefined,
+    timeZoneId: input.timeZoneId === undefined ? undefined : readString(input, 'timeZoneId', ''),
+    timezone: input.timezone === undefined ? undefined : readNumber(input, 'timezone', -12, 14),
+    location: readQimenLifetimeLocation(input),
     calendarType: readEnum(input, 'calendarType', ['solar', 'lunar'], 'solar') as 'solar' | 'lunar',
-    isLeapMonth: Boolean(input.isLeapMonth),
+    isLeapMonth: readBoolean(input, 'isLeapMonth', false),
     timeStandard: readEnum(input, 'timeStandard', ['civil', 'trueSolar'], 'civil') as
       'civil' | 'trueSolar',
-    applyChinaDst: Boolean(input.applyChinaDst),
+    applyChinaDst: readBoolean(input, 'applyChinaDst', false),
     method: readEnum(input, 'method', ['zhuanpan', 'feipan'], 'zhuanpan') as 'zhuanpan' | 'feipan',
     juMethod: readEnum(input, 'juMethod', ['chaibu', 'zhirun'], 'chaibu') as 'chaibu' | 'zhirun',
     stagePolicy: readQimenLifetimeStagePolicy(input),
@@ -6818,16 +6833,14 @@ function buildQimenLifetimePromptResult(input: JsonRecord) {
     ...(input.birthRangeIndex === undefined
       ? {}
       : { birthRangeIndex: readInteger(input, 'birthRangeIndex', 0) }),
-    timeZoneId: typeof input.timeZoneId === 'string' ? input.timeZoneId : undefined,
-    timezone: typeof input.timezone === 'number' ? input.timezone : undefined,
-    location: isRecord(input.location)
-      ? (input.location as QimenLifetimeInput['location'])
-      : undefined,
+    timeZoneId: input.timeZoneId === undefined ? undefined : readString(input, 'timeZoneId', ''),
+    timezone: input.timezone === undefined ? undefined : readNumber(input, 'timezone', -12, 14),
+    location: readQimenLifetimeLocation(input),
     calendarType: readEnum(input, 'calendarType', ['solar', 'lunar'], 'solar') as 'solar' | 'lunar',
-    isLeapMonth: Boolean(input.isLeapMonth),
+    isLeapMonth: readBoolean(input, 'isLeapMonth', false),
     timeStandard: readEnum(input, 'timeStandard', ['civil', 'trueSolar'], 'civil') as
       'civil' | 'trueSolar',
-    applyChinaDst: Boolean(input.applyChinaDst),
+    applyChinaDst: readBoolean(input, 'applyChinaDst', false),
     method: readEnum(input, 'method', ['zhuanpan', 'feipan'], 'zhuanpan') as 'zhuanpan' | 'feipan',
     juMethod: readEnum(input, 'juMethod', ['chaibu', 'zhirun'], 'chaibu') as 'chaibu' | 'zhirun',
     stagePolicy: readQimenLifetimeStagePolicy(input),

@@ -29,6 +29,48 @@ test('黄历择日：无四离等明确事项规则时只映射历法库原始�
   );
 });
 
+test('四立节气前一日按四绝事项规则进入慎用候选，原始宜项保持原值', () => {
+  for (const [date, term] of [
+    ['2025-02-02', '立春'],
+    ['2025-05-04', '立夏'],
+    ['2025-08-06', '立秋'],
+    ['2025-11-06', '立冬'],
+  ]) {
+    const result = generateAlmanacSelection({
+      topic: 'marriage',
+      startDate: date,
+      endDate: date,
+    });
+    const day = result.days[0];
+    const fact = day.topicMatchFacts?.find((item) => item.key.endsWith(':rule-four-terminations'));
+    const candidate = result.evidenceAnalysis?.candidates[0];
+    assert.ok(fact, date);
+    assert.equal(fact.status, '限制');
+    assert.ok(fact.inputItems.includes(`${term}前一日`));
+    assert.equal(candidate?.status, '慎用候选');
+    assert.ok(candidate?.decisionFact.limitingFactKeys.includes(fact.key));
+    assert.ok(result.evidenceAnalysis?.promptText.includes(fact.promptText));
+  }
+
+  const marriage = generateAlmanacSelection({
+    topic: 'marriage',
+    startDate: '2025-11-06',
+    endDate: '2025-11-06',
+  });
+  assert.ok(marriage.days[0].recommends.includes('嫁娶'));
+  assert.ok(!marriage.days[0].gods.includes('四绝'));
+
+  for (const [topic, date] of [
+    ['marriage', '2025-11-07'],
+    ['custom', '2025-11-06'],
+  ] as const) {
+    const result = generateAlmanacSelection({ topic, startDate: date, endDate: date });
+    assert.ok(
+      !result.days[0].topicMatchFacts?.some((item) => item.key.endsWith(':rule-four-terminations')),
+    );
+  }
+});
+
 test('黄历择日：神煞吉凶直接采用 tyme4ts 原生属性并分别保留', () => {
   const result = generateAlmanacSelection({
     topic: 'marriage',

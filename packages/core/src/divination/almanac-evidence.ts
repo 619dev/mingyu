@@ -12,7 +12,6 @@ import {
   calculateMoonPhaseEvidence,
   type MoonPhaseEvidence,
 } from '../calendar/moon-phase-evidence';
-import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 
 export type AlmanacCandidateStatus = '可用候选' | '条件候选' | '慎用候选';
@@ -292,20 +291,20 @@ const PENGZU_PROMPT_PREFIXES: Array<[RegExp, string]> = [
 export function conditionAlmanacTraditionalText(text: string): string {
   const pengZuPrompt = PENGZU_PROMPT_PREFIXES.find(([pattern]) => pattern.test(text))?.[1];
   if (pengZuPrompt) {
-    return `${pengZuPrompt}；后半句属于传统警语，不作为现实后果保证`;
+    return pengZuPrompt;
   }
 
   return text
     .replace(/犯太岁防宅长大凶/g, '传统方位规则将太岁方列为修造等事项的回避条件')
     .replace(/修太阳能制诸煞(?:，移床此方主添丁)?/g, '传统方位规则将太阳方列为修造、移床的参考方位')
     .replace(/犯丧门主死丧哭泣/g, '传统方位规则将丧门方列为涉及丧葬类象的回避条件')
-    .replace(/修太阴主生女，散病患/g, '传统方位规则将太阴方列为修造参考，不据此判断生育或健康结果')
+    .replace(/修太阴主生女，散病患/g, '传统方位规则将太阴方列为修造参考')
     .replace(/犯官符主口舌官讼/g, '传统方位规则将官符方列为涉及争议与法律事项的回避条件')
     .replace(/犯死符主灾病死亡/g, '传统方位规则将死符方列为涉及健康与安全类象的回避条件')
     .replace(/犯岁破忧宅母/g, '传统方位规则将岁破方列为修造等事项的回避条件')
-    .replace(/修龙德能散瘟疫官讼/g, '传统方位规则将龙德方列为修造参考，不据此判断健康或法律结果')
+    .replace(/修龙德能散瘟疫官讼/g, '传统方位规则将龙德方列为修造参考')
     .replace(/犯白虎主哭泣死亡及小儿凶/g, '传统方位规则将白虎方列为涉及健康与安全类象的回避条件')
-    .replace(/修福德主添丁生子/g, '传统方位规则将福德方列为修造参考，不据此判断生育结果')
+    .replace(/修福德主添丁生子/g, '传统方位规则将福德方列为修造参考')
     .replace(/犯吊客主丧服/g, '传统方位规则将吊客方列为涉及丧葬类象的回避条件')
     .replace(/犯病符主疾病/g, '传统方位规则将病符方列为涉及健康类象的回避条件')
     .replace(/百事不宜，诸事不吉/g, '传统分类列为广泛避忌，仍须按当前事项逐项核验')
@@ -364,7 +363,7 @@ function buildTraditionalFacts(day: AlmanacDayCandidate): AlmanacTraditionalFact
       kind: '全年方位神',
       name: item.god,
       originalText: `${item.god}在${item.branch}${item.direction}`,
-      promptText: `${item.god}在${item.branch}${item.direction}；当前只保留方位，不附未经逐条校勘的吉凶断语`,
+      promptText: `${item.god}在${item.branch}${item.direction}`,
       sources: ['岁支起太岁顺排十二神方位表'],
       branch: item.branch,
       direction: item.direction,
@@ -451,7 +450,7 @@ function getParticipantSupportTexts(
 function isStrongTopicConstraint(fact: AlmanacTopicMatchFact): boolean {
   return (
     fact.status === '限制' &&
-    /:topic:(?:day-avoids|day-general-constraint|rule-day-officer|rule-gods-constraint|rule-four-separations|day-officer-constraint)$/.test(
+    /:topic:(?:day-avoids|day-general-constraint|rule-day-officer|rule-gods-constraint|rule-four-separations|rule-four-terminations|day-officer-constraint)$/.test(
       fact.key,
     )
   );
@@ -1101,6 +1100,52 @@ function formatCandidate(item: AlmanacCandidateEvidence) {
   return `${item.status}；历法事实${item.calendarFact.promptText}；历法边界${item.calendarFact.limitation}；${item.rawTabooFact.promptText}；事项命中${topicFacts || '未见明确支持或限制'}；值日神煞${godFacts || '未见已分级神煞'}；参与人关系${participantFacts || '未提供或未见额外关系'}；状态形成链${item.decisionFact.promptText}；传统规则${item.traditionalRuleFacts.join('；')}；全年方位神${item.directionFacts.join('；') || '未列'}；支持${support.join('、') || '未见独立增强证据'}；限制${constraints.join('、') || '未见明确传统禁忌或参与人冲突'}；天文背景${formatMoonPhaseFact(item.moonPhaseFact)}；时段${hours}`;
 }
 
+function formatCandidateForPrompt(item: AlmanacCandidateEvidence): string {
+  const topicSupport = unique(
+    item.topicMatchFacts
+      .filter((fact) => fact.status === '支持')
+      .flatMap((fact) => fact.matchedItems),
+  );
+  const topicConstraints = unique(
+    item.topicMatchFacts
+      .filter((fact) => fact.status === '限制')
+      .map((fact) =>
+        fact.key.endsWith(':rule-four-terminations') || fact.key.endsWith(':rule-four-separations')
+          ? fact.promptText
+          : fact.matchedItems.join('、'),
+      ),
+  );
+  const participantRelations = unique(
+    item.participantRelationFacts
+      .filter((fact) => fact.status === '支持' || fact.status === '限制')
+      .map((fact) => fact.promptText),
+  );
+  const traditional = item.traditionalFacts
+    .filter((fact) => fact.kind === '二十八宿' || fact.kind === '九星' || fact.kind === '彭祖百忌')
+    .map((fact) =>
+      fact.kind === '彭祖百忌'
+        ? `彭祖百忌${conditionAlmanacTraditionalText(fact.originalText).split('；')[0]}`
+        : `${fact.kind}${fact.name}${fact.fortune ? `（${fact.fortune}）` : ''}`,
+    );
+  const directionGods = item.traditionalFacts
+    .filter((fact) => fact.kind === '全年方位神')
+    .map((fact) => `${fact.name}${fact.branch}${fact.direction}`);
+  const usableHours = item.usableHours.map(
+    (hour) => `${hour.name}${hour.range}（${hour.ganzhi}，${hour.twelveStar}）`,
+  );
+  return [
+    `${item.date} ${item.status}：${item.calendarFact.promptText}`,
+    `宜：${item.rawTabooFact.recommends.join('、') || '未列'}；忌：${item.rawTabooFact.avoids.join('、') || '未列'}`,
+    ...(topicSupport.length ? [`事项支持：${topicSupport.join('、')}`] : []),
+    ...(topicConstraints.length ? [`事项限制：${topicConstraints.join('、')}`] : []),
+    ...(participantRelations.length ? [`参与人关系：${participantRelations.join('；')}`] : []),
+    ...(traditional.length ? [`传统资料：${traditional.join('、')}`] : []),
+    ...(directionGods.length ? [`岁支方位：${directionGods.join('、')}`] : []),
+    ...(usableHours.length ? [`候选时辰：${usableHours.join('、')}`] : []),
+    `中国标准时间正午月相：${item.moonPhaseFact.eightPhaseName}`,
+  ].join('；');
+}
+
 function collectCandidateFactKeys(candidate: AlmanacCandidateEvidence): string[] {
   return unique([
     candidate.calendarFact.key,
@@ -1610,15 +1655,18 @@ export function analyzeAlmanacEvidence(data: AlmanacData): AlmanacEvidenceAnalys
   ];
   const evidence: PromptEvidenceBundle = { title: '黄历择日透明约束与候选证据', items };
   const promptText = [
-    '【黄历择日透明约束与候选证据】',
-    ...formatPromptEvidenceBundle(evidence),
-    `传统硬限制：${hardConstraints.join('；')}`,
-    `现实约束：${realityConstraints.join('；')}`,
-    `候选分组：可用${preferredDates.join('、') || '暂无'}；有条件${conditionalDates.join('、') || '暂无'}；慎用${cautionDates.join('、') || '暂无'}`,
-    `计算链：${calculationChain.join(' → ')}`,
-    `反证汇总：${counterSummaryFact.promptText}；边界：${counterSummaryFact.limitation}`,
-    `证据汇总：${summaryFact.promptText}。`,
-    `解释限制：${limitations.join('；')}。`,
+    '【传统依据】',
+    '《钦定协纪辨方书》的宜忌、四离四绝事项规则，结合建除值日、十二神、二十八宿、九星、彭祖百忌与岁支方位资料。',
+    '【择日事项】',
+    `${data.topicLabel}；日期范围${data.startDate}至${data.endDate}。`,
+    '【候选日期】',
+    ...(candidates.length
+      ? candidates.map(formatCandidateForPrompt)
+      : ['当前范围暂无候选日资料。']),
+    '【任务】',
+    candidates.length
+      ? `依据以上${candidates.length}个候选日的历法资料、事项宜忌、传统规则、参与人关系与时辰资料，比较${data.topicLabel}的日期选择，说明各日期的支持条件、避忌依据和实际安排要点。`
+      : `说明${data.topicLabel}择日所需的候选日资料与实际安排要点。`,
   ].join('\n');
   return {
     key: 'almanac:evidence',

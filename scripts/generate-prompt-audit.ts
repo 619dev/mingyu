@@ -724,7 +724,9 @@ function assertSamplePromptsAreClean(samples: PromptSample[]) {
     leakedMessages.push('缺少奇门遁甲提示词样本');
   } else {
     const palaceText = qimenSample.prompt.split('九宫简表：')[1]?.split('同干定位：')[0] ?? '';
-    const patternText = qimenSample.prompt.split('格局索引：')[1]?.split('复合格局：')[0] ?? '';
+    const patternText = qimenSample.prompt
+      .split('盘面命中格局：')[1]
+      ?.split('复合格局：')[0] ?? '';
     if (!qimenSample.prompt.includes('旬空与马星：') || !palaceText.includes('逢空')) {
       leakedMessages.push('奇门遁甲样本缺少旬空与九宫空亡事实');
     }

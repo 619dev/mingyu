@@ -169,6 +169,24 @@ function formatLiuyaoLifeStages(item: LiuyaoData['yaosDetail'][number]) {
   ].filter(Boolean);
 }
 
+function formatLiuyaoElementChange(item: LiuyaoData['yaosDetail'][number]) {
+  if (!item.changedYao) return '';
+  const original = `本爻${item.najiaDizhi}${item.wuxing}`;
+  const changed = `变爻${item.changedYao.dizhi}${item.changedYao.wuxing}`;
+  const from = item.wuxing;
+  const to = item.changedYao.wuxing;
+  const relation = isSheng(to, from)
+    ? `${changed}生${original}`
+    : isKe(to, from)
+      ? `${changed}克${original}`
+      : isSheng(from, to)
+        ? `${original}生${changed}，${changed}泄${original}`
+        : isKe(from, to)
+          ? `${original}克${changed}`
+          : `${original}与${changed}同五行`;
+  return `动变五行：${relation}`;
+}
+
 function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: LiuyaoData) {
   const monthBranch = getGanzhiBranch(data.ganzhi.month);
   const dayBranch = getGanzhiBranch(data.ganzhi.day);
@@ -188,7 +206,7 @@ function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: Liu
   ].filter(Boolean);
   const lifeStages = formatLiuyaoLifeStages(item);
   const changed = item.changedYao
-    ? `化${item.changedYao.liuqin}${item.changedYao.dizhi}${item.changedYao.wuxing}${item.changeRelations?.length ? `（${[...new Set(item.changeRelations)].join('、')}）` : item.changeDirection ? `（${item.changeDirection}）` : ''}`
+    ? `化${item.changedYao.liuqin}${item.changedYao.dizhi}${item.changedYao.wuxing}${item.changedYao.isVoid ? '（变空）' : item.changeRelations?.length ? `（${[...new Set(item.changeRelations)].join('、')}）` : item.changeDirection ? `（${item.changeDirection}）` : ''}`
     : '';
   return [
     `原爻${item.yaoType}（${formatLiuyaoRawYao(item)}）`,
@@ -197,6 +215,7 @@ function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: Liu
     ...triggerRelations,
     ...activity,
     changed,
+    formatLiuyaoElementChange(item),
   ]
     .filter(Boolean)
     .join('，');
@@ -358,44 +377,6 @@ function formatLiuyaoInfo(
 ) {
   const worldYao = data.yaosDetail.find((item) => item.isWorld);
   const responseYao = data.yaosDetail.find((item) => item.isResponse);
-  const changingLines = data.yaosDetail
-    .filter((item) => item.isChanging)
-    .map((item) => {
-      const changeRelations = item.changeRelations?.length
-        ? [...new Set(item.changeRelations)]
-        : item.changeRelation
-          ? [item.changeRelation]
-          : [];
-      const changedText = item.changedYao
-        ? `化${item.changedYao.liuqin}${item.changedYao.dizhi}${item.changedYao.wuxing}${changeRelations.length ? `（${changeRelations.join('、')}）` : item.changedYao.isVoid ? '（变空）' : ''}${item.changeDirection ? `（${item.changeDirection}）` : ''}`
-        : '无变爻资料';
-      let changeWuxingText = '';
-      if (item.changedYao) {
-        const original = `本爻${item.najiaDizhi}${item.wuxing}`;
-        const changed = `变爻${item.changedYao.dizhi}${item.changedYao.wuxing}`;
-        const from = item.wuxing;
-        const to = item.changedYao.wuxing;
-        changeWuxingText = isSheng(to, from)
-          ? `${changed}生${original}`
-          : isKe(to, from)
-            ? `${changed}克${original}`
-            : isSheng(from, to)
-              ? `${original}生${changed}，${changed}泄${original}`
-              : isKe(from, to)
-                ? `${original}克${changed}`
-                : `${original}与${changed}同五行`;
-      }
-      const breakText = item.isHiddenMove
-        ? '（暗动）'
-        : item.isDayBreak
-          ? '（日破）'
-          : item.isChanging && item.isDayClash
-            ? '（日辰冲动）'
-            : item.isMonthBreak
-              ? '（月破）'
-              : '';
-      return `${formatLiuyaoYaoBrief(item)}${item.isVoid ? '（空）' : ''}${breakText}${changedText}${changeWuxingText ? `；动变五行：${changeWuxingText}` : ''}`;
-    });
   const voidYaoText = data.yaosDetail
     .filter((item) => item.isVoid || item.changedYao?.isVoid)
     .map((item) => {
@@ -466,7 +447,6 @@ function formatLiuyaoInfo(
     Array.isArray(data.hiddenSpirits)
       ? `明伏分布：本卦明爻${data.yaosDetail.length}爻，六亲为${[...new Set(data.yaosDetail.map((item) => item.sixRelative))].join('、')}；伏神${data.hiddenSpirits.length}爻${hiddenSpiritText ? `：${hiddenSpiritText}` : ''}`
       : '',
-    `动变：${changingLines.length ? changingLines.join('、') : '无'}`,
     data.yaosDetail?.length
       ? [
           '六爻全表：',
@@ -957,7 +937,7 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
     palaceLines.length ? '九宫简表：' : '',
     ...palaceLines,
     `同干定位：\n${formatQimenStemLocations(data).join('\n')}`,
-    classicPatternLines.length ? `格局索引：\n${classicPatternLines.join('\n')}` : '',
+    classicPatternLines.length ? `盘面命中格局：\n${classicPatternLines.join('\n')}` : '',
     comboLines.length
       ? `复合格局：\n${comboLines.map((item) => item.replaceAll('；', '；\n')).join('\n')}`
       : '',
@@ -986,8 +966,9 @@ function formatLiurenInfo(data: LiurenData) {
   const voidHits = analysis.transmissions
     .filter((item) => item.isVoid)
     .map((item) => `${item.stage}${item.branch}`);
+  const ordinaryAdjudication = formatLiurenOrdinaryTransmissionAdjudication(data);
   const mainLineText = [
-    data.transmissionRule ? `取传${data.transmissionRule}` : '',
+    data.transmissionRule && !ordinaryAdjudication ? `取传${data.transmissionRule}` : '',
     data.transmissionPattern ? `传态${data.transmissionPattern}` : '',
   ].filter(Boolean);
   const noblemanGroundBranch =
@@ -1028,7 +1009,7 @@ function formatLiurenInfo(data: LiurenData) {
     `核心结构：${plateSummaryText.join('；')}`,
     data.dayStemResidence ? `日干寄宫：${data.ganzhi.day.charAt(0)}寄${data.dayStemResidence}` : '',
     mainLineText.length ? `课传主线：${mainLineText.join('；')}` : '',
-    formatLiurenOrdinaryTransmissionAdjudication(data),
+    ordinaryAdjudication,
     guaTiSection,
     guaTiFacts.length ? `课体判据：\n${guaTiFacts.join('\n')}` : '',
     analysis.transmissions[0]?.isVoid
@@ -1130,6 +1111,31 @@ function formatAlmanacRangeTimestamp(timestamp: number) {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 }
 
+function isParticipantConflictNoteCoveredByConstraints(note: string, constraints: string[]) {
+  const match = /^(.+?)：候选日地支([子丑寅卯辰巳午未申酉戌亥])(.+)，需谨慎$/u.exec(note);
+  if (!match) return false;
+
+  const [, participantName, candidateBranch, relationsText] = match;
+  const relations = [
+    ...relationsText.matchAll(
+      /(冲|刑|害|破)(生肖\/年支|年支|日支)([子丑寅卯辰巳午未申酉戌亥])(?:（([^）]+)）)?/gu,
+    ),
+  ];
+  if (!relations.length) return false;
+
+  return relations.every((relation) => {
+    const [, type, targetLabel, targetBranch, detail] = relation;
+    const normalizedTargetLabel = targetLabel === '生肖/年支' ? '年支' : targetLabel;
+    const relationText = `日支${candidateBranch}与其${normalizedTargetLabel}${targetBranch}${type}`;
+    return constraints.some(
+      (constraint) =>
+        constraint.startsWith(`${participantName}：`) &&
+        constraint.includes(relationText) &&
+        (!detail || constraint.includes(`（${detail}）`)),
+    );
+  });
+}
+
 function formatAlmanacUsefulGods(
   profile: Pick<
     AlmanacData['participants'][number],
@@ -1181,12 +1187,14 @@ function formatAlmanacInfo(data: AlmanacData) {
     );
     const unique = (values: string[]) => [...new Set(values.filter(Boolean))];
     const topicFacts = item.topicMatchFacts ?? [];
+    const allRecommendations = unique(item.recommends);
+    const allAvoids = unique(item.avoids);
     const topicRecommendations = unique(
       topicFacts.filter((fact) => fact.status === '支持').flatMap((fact) => fact.matchedItems),
-    );
+    ).filter((recommendation) => !allRecommendations.includes(recommendation));
     const topicAvoids = unique(
       topicFacts.filter((fact) => fact.status === '限制').flatMap((fact) => fact.matchedItems),
-    );
+    ).filter((avoid) => !allAvoids.includes(avoid));
     const needsLegacyFallback = data.topic === 'custom' || topicFacts.length === 0;
     const recommendationText = topicRecommendations.length
       ? `事项宜${topicRecommendations.join('、')}`
@@ -1198,8 +1206,11 @@ function formatAlmanacInfo(data: AlmanacData) {
       : needsLegacyFallback
         ? `忌${unique(item.avoids).join('、') || '未列'}`
         : '';
+    const strongConstraints = candidate?.decisionFact.strongConstraintTexts ?? [];
     const participantNotes = unique(item.participantNotes).filter(
-      (note) => !/未见.*直接|未命中|未采用/u.test(note),
+      (note) =>
+        !/未见.*直接|未命中|未采用/u.test(note) &&
+        !isParticipantConflictNoteCoveredByConstraints(note, strongConstraints),
     );
     const hours =
       data.timePreferences?.length && candidate?.usableHours.length ? candidate.usableHours : [];
@@ -1216,15 +1227,11 @@ function formatAlmanacInfo(data: AlmanacData) {
       candidate?.status ?? '',
       recommendationText,
       avoidText,
-      !needsLegacyFallback && item.recommends.length
-        ? `宜${unique(item.recommends).join('、')}`
-        : '',
-      !needsLegacyFallback && item.avoids.length ? `忌${unique(item.avoids).join('、')}` : '',
+      !needsLegacyFallback && allRecommendations.length ? `宜${allRecommendations.join('、')}` : '',
+      !needsLegacyFallback && allAvoids.length ? `忌${allAvoids.join('、')}` : '',
       ...formatAlmanacGods(item),
       participantNotes.length ? `参与人${participantNotes.join('；')}` : '',
-      candidate?.decisionFact.strongConstraintTexts.length
-        ? `明确限制${candidate.decisionFact.strongConstraintTexts.join('、')}`
-        : '',
+      strongConstraints.length ? `明确限制${strongConstraints.join('、')}` : '',
       hourText ? `时辰${hourText}` : '',
     ].filter(Boolean);
     return [

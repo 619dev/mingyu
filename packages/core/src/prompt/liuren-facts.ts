@@ -52,7 +52,7 @@ export function formatLiurenOrdinaryTransmissionAdjudication(data: LiurenData): 
   const selectionText =
     adjudication.status === 'selected'
       ? `最终按${adjudication.selectedRule}取${adjudication.selectedInitial}发用`
-      : `普通宗门未取定，转入${data.transmissionRule || '特殊课'}取传`;
+      : `常用取传规则未定，转入${data.transmissionRule || '特殊课'}取传`;
 
-  return `普通宗门裁决：${stageReasons.join('；')}；${selectionText}${candidateText ? `；候选取舍：${candidateText}` : ''}`;
+  return `初传取法：${stageReasons.join('；')}；${selectionText}${candidateText ? `；候选取舍：${candidateText}` : ''}`;
 }

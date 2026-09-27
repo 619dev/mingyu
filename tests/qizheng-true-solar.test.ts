@@ -22,4 +22,37 @@ test('七政真太阳时只校正传统命身宫，天体位置保持同一时�
     trueSolar.stars.map((star) => [star.name, star.longitude, star.xiu]),
     civil.stars.map((star) => [star.name, star.longitude, star.xiu]),
   );
+  assert.equal(trueSolar.enNan?.sect, civil.enNan?.sect);
+});
+
+test('七政昼夜分金按出生地日出日落状态划分极昼极夜，并让提示词保留依据', () => {
+  const location = { latitude: 69.65, longitude: 18.96, timezone: 2 };
+  const summer = generateQizheng({
+    ...location,
+    year: 2024,
+    month: 6,
+    day: 21,
+    hour: 2,
+    minute: 0,
+  });
+  const winter = generateQizheng({
+    ...location,
+    year: 2024,
+    month: 12,
+    day: 21,
+    hour: 12,
+    minute: 0,
+    timezone: 1,
+  });
+
+  assert.equal(summer.calculationContext.solarIllumination.sunriseSunset.status, '全天高于阈值');
+  assert.equal(winter.calculationContext.solarIllumination.sunriseSunset.status, '全天低于阈值');
+  assert.equal(summer.enNan?.sect, '昼生');
+  assert.equal(winter.enNan?.sect, '夜生');
+  assert.match(summer.prompt, /昼生.*日出日落星历交点.*-0\.833°.*全天高于阈值/);
+  assert.match(winter.prompt, /夜生.*日出日落星历交点.*-0\.833°.*全天低于阈值/);
+  assert.doesNotMatch(
+    `${summer.prompt}\n${winter.prompt}`,
+    /太阳高朗为贵|太阴清辉为吉|逢险有救应|须防动荡受挫/,
+  );
 });

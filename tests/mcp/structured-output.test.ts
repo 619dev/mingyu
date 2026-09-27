@@ -4527,7 +4527,8 @@ test('MCP 六爻与大六壬提示词工具保留用户模板范围', async () =
     assert.equal(liuyaoResult.isError, undefined, 'liuyao_prompt 不应返回错误');
     const liuyaoPrompt = String(liuyaoResult.structuredContent?.prompt);
     assert.match(liuyaoPrompt, /占法：六爻/);
-    assert.match(liuyaoPrompt, /世应：[\s\S]*动变：[\s\S]*月日触发：/);
+    assert.match(liuyaoPrompt, /世应：[\s\S]*六爻全表：[\s\S]*月日触发：/);
+    assert.doesNotMatch(liuyaoPrompt, /^动变：/m);
     assert.match(liuyaoPrompt, /【问题范围】\n鬼神怪异/);
     assert.doesNotMatch(liuyaoPrompt, /结构化证据|计算链|证据汇总|解释限制|断卦要点/);
     assertPromptIsPortableTaskText(liuyaoPrompt);
@@ -4546,7 +4547,7 @@ test('MCP 六爻与大六壬提示词工具保留用户模板范围', async () =
     assert.match(liurenPrompt, /乘神生克：初传.+乘天盘.+与日干/);
     assert.match(liurenPrompt, /课传主线：[\s\S]*四课：[\s\S]*三传：/);
     assert.match(liurenPrompt, /【问题范围】\n事业工作/);
-    assert.match(liurenPrompt, /普通宗门裁决：/);
+    assert.match(liurenPrompt, /初传取法：/);
     assert.doesNotMatch(liurenPrompt, /directKe|remoteKe|suppressedByPrior|deferredToSpecial/);
     assert.doesNotMatch(liurenPrompt, /结构化证据|计算链|证据汇总|解释限制|断课要点/);
     assert.doesNotMatch(liurenPrompt, /取用候选：.*权重\d|吉凶总分[：=]?\d/);
@@ -5813,7 +5814,7 @@ test('MCP 紫微、大六壬与星盘提示词入口只输出一次完整重点�
     });
     assert.equal(liurenResponse.isError, undefined);
     const liurenPrompt = (liurenResponse.structuredContent as { prompt: string }).prompt;
-    assert.equal([...liurenPrompt.matchAll(/普通宗门裁决：/gu)].length, 1);
+    assert.equal([...liurenPrompt.matchAll(/初传取法：/gu)].length, 1);
 
     const astrolabeResponse = await client.callTool({
       name: 'astrolabe_prompt',

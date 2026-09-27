@@ -7,6 +7,7 @@
  */
 import type { PromptFactExpectation } from './facts';
 import { resolveSsgwStoryContent } from '../../packages/core/src/divination/ssgw-content';
+import { isKe, isSheng } from '../../packages/core/src/ganzhi';
 import type { SsgwData } from '../../packages/core/src/types/divination';
 
 export type DivinationPromptFact = PromptFactExpectation;
@@ -100,6 +101,48 @@ function yaoBrief(item: AnyRecord): string | undefined {
   return `第${position}爻${relative}${branch}${element}`;
 }
 
+function yaoChangeFacts(item: AnyRecord): string[] {
+  const changed = record(item.changedYao);
+  const brief = yaoBrief(item);
+  if (!brief || !changed) return brief ? [brief] : [];
+
+  const changedRelative = text(changed.liuqin);
+  const changedBranch = text(changed.dizhi);
+  const changedElement = text(changed.wuxing);
+  const originalElement = text(item.wuxing);
+  const originalBranch = firstText(item.najiaDizhi, item.branch, item.dizhi);
+  const result = [brief, '动'];
+
+  if (changedRelative && changedBranch && changedElement) {
+    const suffix =
+      changed.isVoid === true
+        ? '（变空）'
+        : texts(item.changeRelations).length
+          ? `（${unique(texts(item.changeRelations)).join('、')}）`
+          : text(item.changeDirection)
+            ? `（${text(item.changeDirection)}）`
+            : '';
+    result.push(`化${changedRelative}${changedBranch}${changedElement}${suffix}`);
+
+    if (originalBranch && originalElement) {
+      const original = `本爻${originalBranch}${originalElement}`;
+      const converted = `变爻${changedBranch}${changedElement}`;
+      const relation = isSheng(changedElement, originalElement)
+        ? `${converted}生${original}`
+        : isKe(changedElement, originalElement)
+          ? `${converted}克${original}`
+          : isSheng(originalElement, changedElement)
+            ? `${original}生${converted}，${converted}泄${original}`
+            : isKe(originalElement, changedElement)
+              ? `${original}克${converted}`
+              : `${original}与${converted}同五行`;
+      result.push(`动变五行：${relation}`);
+    }
+  }
+
+  return result;
+}
+
 function extractLiuyaoFacts(data: unknown): DivinationPromptFact[] {
   const d = record(data);
   if (!d) return [];
@@ -121,13 +164,12 @@ function extractLiuyaoFacts(data: unknown): DivinationPromptFact[] {
           response ? `应爻${yaoBrief(response)}` : '应爻未列',
         ])
       : null,
-    fact(
-      'liuyao.changing',
-      '动变：',
-      changing.length
-        ? changing.map(yaoBrief).filter((item): item is string => Boolean(item))
-        : ['无'],
-    ),
+    changing.length
+      ? fact('liuyao.changing', '六爻全表：', changing.flatMap(yaoChangeFacts), {
+          scope: { start: '六爻全表：', end: '月日触发：' },
+          unit: 'block',
+        })
+      : null,
     ...yaos.map((item, index) =>
       fact(`liuyao.yao.${index}`, yaoBrief(item) ?? '', [`六神${text(item.sixGod)}`], {
         scope: { start: '六爻全表：', end: '月日触发：' },

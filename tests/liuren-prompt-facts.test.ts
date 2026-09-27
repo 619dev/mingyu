@@ -41,7 +41,7 @@ test('大六壬四课和三传分别绑定实际上下位与前传，十二宫�
     assert.match(text, /初传酉金生一课下位癸水/);
     assert.match(text, /中传丑土生初传酉金/);
     assert.match(text, /末传巳火生中传丑土/);
-    assert.match(text, /普通宗门裁决：/);
+    assert.match(text, /初传取法：/);
     assert.doesNotMatch(text, /directKe|remoteKe|suppressedByPrior|deferredToSpecial/);
     assert.doesNotMatch(text, /上神酉金克下位巳火|初传酉金生中传丑土/);
   }
@@ -127,7 +127,9 @@ test('大六壬完整提示词只补充尚未在盘面显示的判断事实', ()
     buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
     buildAppDivinationPrompt('liuren', '问合作进度', data),
   ]) {
-    assert.match(prompt, /课传主线：/);
+    assert.match(prompt, /课传主线：传态递传/);
+    assert.doesNotMatch(prompt, /课传主线：取传涉害法/);
+    assert.match(prompt, /初传取法：/);
     assert.match(prompt, /取传条件：/);
     assert.match(prompt, /课体判据：/);
     assert.match(prompt, /取用定位：/);

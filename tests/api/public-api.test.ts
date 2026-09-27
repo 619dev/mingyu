@@ -5031,14 +5031,14 @@ test('公开 API 黄历提示词显式分页时应包含当前页全部候选日
       startDate: '2026-06-01',
       endDate: '2026-06-30',
       page: 2,
-      pageSize: 5,
+      pageSize: 12,
       responseMode: 'full',
     }),
   });
 
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
-  assert.equal(body.data.result.days.length, 5);
+  assert.equal(body.data.result.days.length, 12);
   assert.equal(body.data.result.pagination.page, 2);
   assert.equal(body.data.result.evidenceAnalysis.key, 'almanac:evidence');
   assert.equal(body.data.result.evidenceAnalysis.status, '已计算');
@@ -5058,7 +5058,7 @@ test('公开 API 黄历提示词显式分页时应包含当前页全部候选日
         item.limitation.includes('不证明现实吉凶'),
     ),
   );
-  assert.equal(body.data.result.evidenceAnalysis.candidates.length, 5);
+  assert.equal(body.data.result.evidenceAnalysis.candidates.length, 12);
   const candidateFacts = body.data.result.evidenceAnalysis.candidates as Array<{
     date: string;
     calendarFact: { key: string; promptText: string; sources: string[]; limitation: string };
@@ -5199,19 +5199,21 @@ test('公开 API 黄历提示词显式分页时应包含当前页全部候选日
     candidateFacts.map((item) => item.date),
     body.data.result.days.map((item: { date: string }) => item.date),
   );
-  assert.match(body.data.result.evidenceAnalysis.promptText, /【黄历择日透明约束与候选证据】/);
-  assert.match(body.data.result.evidenceAnalysis.promptText, /状态形成链/);
-  assert.match(
-    body.data.result.evidenceAnalysis.promptText,
-    /计算链：[\s\S]*反证汇总：[\s\S]*证据汇总：[\s\S]*解释限制：/,
-  );
+  const evidencePrompt = body.data.result.evidenceAnalysis.promptText as string;
+  assert.match(evidencePrompt, /【传统依据】[\s\S]*【择日事项】[\s\S]*【候选日期】[\s\S]*【任务】/);
+  assert.doesNotMatch(evidencePrompt, /状态形成链|计算链|反证汇总|证据汇总|解释限制|不得/);
   assert.match(body.data.prompt, /候选日期：2026-06-01 至 2026-06-30/);
   const promptCandidateDates = Array.from(
     body.data.prompt.matchAll(/第\d+日：(\d{4}-\d{2}-\d{2})/g),
     (match) => match[1],
   );
   const resultDates = body.data.result.days.map((day: { date: string }) => day.date);
-  assert.equal(promptCandidateDates.length, 5);
+  const evidenceCandidateDates = Array.from(
+    evidencePrompt.matchAll(/^(\d{4}-\d{2}-\d{2}) (?:可用候选|条件候选|慎用候选)：/gm),
+    (match) => match[1],
+  );
+  assert.deepEqual(evidenceCandidateDates, resultDates);
+  assert.equal(promptCandidateDates.length, 12);
   assert.deepEqual(promptCandidateDates, [...resultDates].sort());
 });
 
@@ -5411,7 +5413,7 @@ test('公开 API 六爻与大六壬提示词接口保留用户模板范围', asy
   assert.equal(liuren.response.status, 200);
   assert.equal(liuren.body.ok, true);
   assert.match(liuren.body.data.prompt, /【问题范围】\n事业工作/);
-  assert.match(liuren.body.data.prompt, /普通宗门裁决：/);
+  assert.match(liuren.body.data.prompt, /初传取法：/);
   assert.doesNotMatch(
     liuren.body.data.prompt,
     /directKe|remoteKe|suppressedByPrior|deferredToSpecial/,
