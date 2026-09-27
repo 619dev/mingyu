@@ -144,7 +144,7 @@ export function evaluateWuyunLiuqiPathomechanism(params: {
 
   const pathology = SITIAN_PATHOLOGY[sitian.name];
 
-  const summary = `平气条件：${pingQiBasis}`;
+  const summary = `岁运纪：${movementRegime}${pingQiConditions.length ? `；平气参考条件：${pingQiConditions.join('；')}` : ''}`;
 
   return {
     isPingQi: null,

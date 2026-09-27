@@ -61,7 +61,7 @@ export type HostGuestRelationKind = '同气' | '客生主' | '主生客' | '客�
 export type AnnualConformityName = '天符' | '岁会' | '太乙天符' | '同天符' | '同岁会';
 
 export interface WuyunLiuqiInput {
-  /** 公历年；按该年年中所属年柱换算，避免元旦与立春边界混淆。 */
+  /** 公历年份标签；运气年度从该年大寒节令延续至次年大寒节令前。 */
   year?: number;
   /** 明确指定年干支；首尾空白会修剪，提供后以此为准。 */
   yearGanZhi?: string;
@@ -122,10 +122,10 @@ export interface LiuqiStep {
   order: number;
   label: '初之气' | '二之气' | '三之气' | '四之气' | '五之气' | '终之气';
   solarTerms: string[];
-  /** 节气所在日与下一节气前一日的日期标签；交节当日以 boundaryTime 判定。 */
+  /** 现代节气日期标签；交节当日的节令归属可参照 boundaryTime。 */
   gregorianStart?: string;
   gregorianEnd?: string;
-  /** 节气历表的北京时间交接瞬时；终点归下一步。 */
+  /** 现代节气历表的北京时间交节瞬时，仅用于节令分段，不等同传统六气交司时刻。 */
   boundaryTime?: {
     startTimestamp: number;
     endTimestampExclusive: number;
@@ -354,26 +354,6 @@ function addCivilDays(date: { year: number; month: number; day: number }, days: 
 
 function formatCivilDate(date: { year: number; month: number; day: number }) {
   return `${date.year}-${padDatePart(date.month)}-${padDatePart(date.day)}`;
-}
-
-function parseCivilDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number);
-  return { year, month, day };
-}
-
-function compareCivilDate(
-  left: { year: number; month: number; day: number },
-  right: { year: number; month: number; day: number },
-) {
-  return left.year - right.year || left.month - right.month || left.day - right.day;
-}
-
-function isDateInRange(
-  date: { year: number; month: number; day: number },
-  start: { year: number; month: number; day: number },
-  end: { year: number; month: number; day: number },
-) {
-  return compareCivilDate(date, start) >= 0 && compareCivilDate(date, end) <= 0;
 }
 
 /** 一年二十四节气按六步分主，每步四个节气。 */
@@ -742,8 +722,15 @@ function formatElementDirection(
 }
 
 export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
+  const firstQiBoundary = result.qiSteps[0]?.boundaryTime;
+  const lastQiBoundary = result.qiSteps.at(-1)?.boundaryTime;
+  const annualPeriod =
+    firstQiBoundary && lastQiBoundary
+      ? `${firstQiBoundary.startBeijing}大寒节令起，至${lastQiBoundary.endBeijingExclusive}次年大寒节令前（北京时间，按现代节气交节时刻标示）`
+      : '大寒节令起，至次年大寒节令前';
   return [
-    `年干支：${result.input.yearGanZhi}${result.input.year === undefined ? '' : `（公历 ${result.input.year} 年）`}`,
+    `年干支：${result.input.yearGanZhi}${result.input.year === undefined ? '' : `（公历 ${result.input.year} 年对应的运气年度）`}`,
+    `运气年度：${annualPeriod}`,
     `日期口径：${result.calendarDateStatus === '公历日期已换算' ? '节令边界同时列出公历日期' : '按节气与传统序日表示各步边界'}`,
     `岁运：${result.annualMovement.name}（${result.annualMovement.toneName}），${result.annualMovement.strength}（${result.annualMovement.yinYang}干）`,
     `司天：${result.sitian.name}`,
@@ -751,7 +738,9 @@ export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
     `司天化令：${result.annualClassification.sitianTransformation}；南北政：${result.annualClassification.governance}`,
     `司天与中运：${result.annualRelation.kind}；${result.annualRelation.basis}`,
     `年度五行作用：${formatElementDirection('中运', result.annualMovement.element, `司天${result.sitian.name}`, result.sitian.element)}；${formatElementDirection('中运', result.annualMovement.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}；${formatElementDirection(`司天${result.sitian.name}`, result.sitian.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}`,
-    `年度符会：${result.annualConformities.names.length ? result.annualConformities.names.join('、') : '未形成天符、岁会、太乙天符、同天符或同岁会'}`,
+    ...(result.annualConformities.names.length
+      ? [`年度符会：${result.annualConformities.names.join('、')}`]
+      : []),
     result.pathomechanism
       ? result.pathomechanism.summary
       : evaluateWuyunLiuqiPathomechanism({
@@ -766,31 +755,14 @@ export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
         step.gregorianStart && step.gregorianEnd
           ? `；公历${step.gregorianStart}至${step.gregorianEnd}`
           : '';
-      const current =
-        result.input.year && step.gregorianStart && step.gregorianEnd
-          ? isDateInRange(
-              { year: result.input.year, month: 6, day: 30 },
-              parseCivilDate(step.gregorianStart),
-              parseCivilDate(step.gregorianEnd),
-            )
-            ? '；年中落在此步'
-            : ''
-          : '';
-      return `${step.order}. ${step.label}（${step.periodRule}${dates}${current}）：主运${step.hostMovement.toneName}（${step.hostMovement.element}）；客运${step.guestMovement.toneName}（${step.guestMovement.element}）${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}；${formatElementDirection(`主运${step.hostMovement.toneName}`, step.hostMovement.element, `客运${step.guestMovement.toneName}`, step.guestMovement.element)}`;
+      return `${step.order}. ${step.label}（${step.periodRule}${dates}）：主运${step.hostMovement.toneName}（${step.hostMovement.element}）；客运${step.guestMovement.toneName}（${step.guestMovement.element}）${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}；${formatElementDirection(`主运${step.hostMovement.toneName}`, step.hostMovement.element, `客运${step.guestMovement.toneName}`, step.guestMovement.element)}`;
     }),
     '六步主客气：',
     ...result.qiSteps.map((step) => {
       const dates = step.boundaryTime
-        ? `；北京时间${step.boundaryTime.startBeijing}起，至${step.boundaryTime.endBeijingExclusive}交接`
+        ? `；现代节气交节参考（北京时间）${step.boundaryTime.startBeijing}至${step.boundaryTime.endBeijingExclusive}`
         : '';
-      const current =
-        result.input.year && step.boundaryTime
-          ? Date.UTC(result.input.year, 5, 30, 4, 0, 0) >= step.boundaryTime.startTimestamp &&
-            Date.UTC(result.input.year, 5, 30, 4, 0, 0) < step.boundaryTime.endTimestampExclusive
-            ? '；年中落在此步'
-            : ''
-          : '';
-      return `${step.order}. ${step.label}（${step.solarTerms.join('、')}${dates}${current}）：主气${step.hostQi.name}；客气${step.guestQi.name}${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}；${formatElementDirection(`主气${step.hostQi.name}`, step.hostQi.element, `客气${step.guestQi.name}`, step.guestQi.element)}${step.hostGuestRelation.fireOrder ? `；二火加临：${step.hostGuestRelation.fireOrder}` : ''}`;
+      return `${step.order}. ${step.label}（${step.solarTerms.join('、')}${dates}）：主气${step.hostQi.name}；客气${step.guestQi.name}${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}；${formatElementDirection(`主气${step.hostQi.name}`, step.hostQi.element, `客气${step.guestQi.name}`, step.guestQi.element)}${step.hostGuestRelation.fireOrder ? `；二火加临：${step.hostGuestRelation.fireOrder}` : ''}`;
     }),
   ].join('\n');
 }
@@ -907,7 +879,7 @@ export function calculateWuyunLiuqi(input: WuyunLiuqiInput): WuyunLiuqiResult {
     limitations: [
       '公历交司日期支持1900—2199年；其他年份按节气和传统序日表达五步、六步边界。',
       '五步交司按《运气要诀》所列传统日期序号表达，不把“节气后第几日”换算成现代精确到时分秒的交运时刻。',
-      '六步主客气按节气历表记录北京时间交接瞬时，起点归本步、终点归下一步；公历起止日期仅作传统日期标签。',
+      '六步主客气依《运气要诀》按节令分段；北京时间秒级数值为现代节气交节参考，并非传统六气交司时刻。',
       '结果为年度传统节律结构，不含逐日气候计算。',
       '传统运气模型不能替代地域气象资料、个人健康资料或医疗诊断。',
       '符会与气运关系按吴谦《运气要诀》通行口径核验，不延伸为疾病轻重或现实事件预测。',

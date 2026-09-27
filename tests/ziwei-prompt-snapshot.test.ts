@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EARTHLY_BRANCHES } from '../packages/core/src/ganzhi/data';
+import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
 
 import {
   buildCombinedZiweiCompatibilityPrompt,
@@ -167,6 +168,7 @@ test('紫微提示词快照不得重新接入未校勘的旧格局数据', () =>
   assert.doesNotMatch(snapshot, /命语|iztro|本项目|项目统一|工程|接口|API|MCP/);
   assert.doesNotMatch(snapshot, /星座|金牛座/);
   assert.match(snapshot, /【十二宫资料】/);
+  assert.doesNotMatch(formatZiweiPayloadForPrompt(payload), /命盘格局：|格局：紫府同宫/);
 });
 
 test('紫微提示词快照应输出已校勘格局的条件与古籍依据', () => {
@@ -194,6 +196,14 @@ test('紫微提示词快照应输出已校勘格局的条件与古籍依据', ()
   assert.match(taskBook, /古籍依据：《紫微斗数全书》卷一/);
   assert.doesNotMatch(taskBook, /涉及宫位：命宫|涉及星曜：紫微、天府/);
   assert.doesNotMatch(snapshot, /因此必然|命盘总分|保证实现/);
+  const onlinePromptFacts = formatZiweiPayloadForPrompt(payload);
+  assert.match(onlinePromptFacts, /命盘格局：\n格局：紫府同宫/);
+  assert.match(onlinePromptFacts, /命中条件：紫微与天府同坐命宫/);
+  assert.match(onlinePromptFacts, /古籍依据：《紫微斗数全书》卷一/);
+  assert.doesNotMatch(
+    onlinePromptFacts,
+    /涉及宫位：命宫|涉及星曜：紫微、天府|传统目录|未命中规则|不可唯一复算/,
+  );
 });
 
 test('格局条件未列出具体宫位时保留必要的宫位资料', () => {
@@ -236,6 +246,10 @@ test('紫微提示词快照不得接受只伪造登记前缀的格局', () => {
   });
 
   assert.doesNotMatch(snapshot, /【命盘格局】|伪造格局|伪造条件|伪造来源/);
+  assert.doesNotMatch(
+    formatZiweiPayloadForPrompt(payload),
+    /命盘格局：|伪造格局|伪造条件|伪造来源/,
+  );
 });
 
 test('紫微提示词快照应按登记稳定键去重', () => {
@@ -249,6 +263,7 @@ test('紫微提示词快照应按登记稳定键去重', () => {
   });
 
   assert.equal(snapshot.match(/格局：紫府同宫/g)?.length, 1);
+  assert.equal(formatZiweiPayloadForPrompt(payload).match(/格局：紫府同宫/g)?.length, 1);
 });
 
 test('紫微提示词快照应从十二宫重建登记内容，不信任带合法键的篡改字段', () => {

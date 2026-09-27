@@ -6,7 +6,7 @@ import {
 } from './liuren-facts';
 import { formatLiurenJudgmentFacts } from './liuren-judgment';
 import { buildTaskText } from '../divination/engine/method-text';
-import { formatJinkoujueRelations, formatJinkoujueMovementRules } from './jinkoujue-facts';
+import { formatJinkoujueRelations } from './jinkoujue-facts';
 import { buildLiurenTemplateText } from '../divination/engine/liuren-template';
 import { buildLiuyaoTemplateText } from '../divination/engine/liuyao-template';
 import type { DivinationMethodId } from '../divination/config';
@@ -360,7 +360,6 @@ export function getDivinationSummaryBlocks(
           `动爻：${item.movements.map((movement) => `${movement.name}（${movement.trigger}）`).join('、') || '未触发五动或三动'}`,
           `月将贵人：月将${item.monthLeader}；${item.dayNight}贵人起${item.noblemanBranch}${item.calculation.noblemanDirection}`,
           formatJinkoujueRelations(item),
-          formatJinkoujueMovementRules(),
           item.xunKong.length ? `旬空：${item.xunKong.join('、')}` : '',
         ].filter(Boolean),
       };
@@ -612,7 +611,9 @@ export function getDivinationSummaryBlocks(
           `在泉：${item.zaiquan.name}`,
           `司天化令：${item.annualClassification.sitianTransformation}；${item.annualClassification.governance}`,
           `中运与司天：${item.annualRelation.kind}`,
-          `年度符会：${item.annualConformities.names.length ? item.annualConformities.names.join('、') : '未形成五类符会'}`,
+          item.annualConformities.names.length
+            ? `年度符会：${item.annualConformities.names.join('、')}`
+            : '',
           `五步主客运：${item.movementSteps.map((step) => `${step.label}${step.hostMovement.element}/${step.guestMovement.element}（${step.hostGuestRelation.kind}）`).join('；')}`,
           `六步主客气：${item.qiSteps.map((step) => `${step.label}${step.hostQi.name}/${step.guestQi.name}（${step.hostGuestRelation.kind}）`).join('；')}`,
           item.pathomechanism?.summary ?? '',

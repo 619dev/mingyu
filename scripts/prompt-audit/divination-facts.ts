@@ -835,8 +835,8 @@ function extractXiaoliurenFacts(data: unknown): DivinationPromptFact[] {
       { scope: { start: '起课过程：', end: '定位用途' } },
     ),
     fact('xiaoliuren.location', '定位用途：', [
-      month ? `月宫${text(month.name)}` : undefined,
-      day ? `日宫${text(day.name)}` : undefined,
+      month ? '月宫是初一的起数位置' : undefined,
+      day ? '日宫是子时的起数位置' : undefined,
     ]),
     fact('xiaoliuren.rule', '起课口径：', [
       text(d.rule) === 'duoneng' ? '《多能鄙事》' : '通行俗传小六壬掌诀',
@@ -1210,7 +1210,7 @@ function extractWuyunLiuqiFacts(data: unknown): DivinationPromptFact[] {
   return collect([
     fact('wuyun.year', '年干支：', [
       input?.yearGanZhi,
-      input?.year !== undefined ? `（公历 ${text(input.year)} 年）` : undefined,
+      input?.year !== undefined ? `（公历 ${text(input.year)} 年对应的运气年度）` : undefined,
     ]),
     fact('wuyun.annual-movement', '岁运：', [
       annualMovement?.name,
@@ -1248,7 +1248,7 @@ function extractWuyunLiuqiFacts(data: unknown): DivinationPromptFact[] {
           ...(record(item.boundaryTime)?.startBeijing &&
           record(item.boundaryTime)?.endBeijingExclusive
             ? [
-                `北京时间${record(item.boundaryTime)?.startBeijing}起，至${record(item.boundaryTime)?.endBeijingExclusive}交接`,
+                `现代节气交节参考（北京时间）${record(item.boundaryTime)?.startBeijing}至${record(item.boundaryTime)?.endBeijingExclusive}`,
               ]
             : item.gregorianStart && item.gregorianEnd
               ? [`公历${item.gregorianStart}至${item.gregorianEnd}`]

@@ -7,15 +7,15 @@ import {
 } from '../packages/core/src/taiyi/index.ts';
 import { formatTaiyiInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 
-test('太乙在线任务书保留三门、将目与阴阳配对的实际依据', () => {
+test('太乙在线任务书合并三门、五将与阴阳判断，省略未命中条件', () => {
   const result = generateTaiyi({ year: 2004, scope: 'year' });
   const text = formatTaiyiInfo(result);
-  assert.match(text, /三门取法：按太乙、文昌（主目）判主门具/);
-  assert.match(text, /门位事实：始击（客目）.*客目门位另列/);
-  assert.equal((text.match(/阴阳配对：/g) ?? []).length, 4);
-  assert.ok(text.includes(`算${result.lordCount}为`));
-  assert.ok(text.includes(`算${result.guestCount}为`));
-  assert.match(text, /二目五行：.*日计纳音另论/);
+  assert.match(text, /三门：两门不具；直使生门；太乙生门、文昌（主目）景门/);
+  assert.match(text, /五将：不发/);
+  assert.match(text, /阴阳：不和（太乙-客算、始击-客算）/);
+  assert.doesNotMatch(text, /门位事实：|将目关系：|阴阳配对：|二目五行：/);
+  assert.equal((text.match(/始击与太乙同宫/g) ?? []).length, 1);
+  assert.doesNotMatch(text, /2004-07-01/);
   assert.doesNotMatch(text, /taiyi:|usedFor|complete:|step\.key|三门三门/);
   const legacy = formatTaiyiInfo({ ...result, tacticGuidance: '' });
   assert.doesNotMatch(legacy, /利主不利客|利客不利主/);
@@ -33,6 +33,36 @@ test('太乙巽位十六神名称传入盘面证据与任务书', () => {
   assert.match(result.prompt, /巽大炅/);
   assert.match(result.evidenceAnalysis.promptText, /巽大炅/);
   assert.match(formatTaiyiInfo(result), /巽大炅/);
+});
+
+test('太乙在线证据任务书只列本次成立格局且不重复反证与方法说明', () => {
+  const withCover = generateTaiyi({ year: 2004, scope: 'year' });
+  assert.match(withCover.evidenceAnalysis.promptText, /掩成立：始击与太乙同宫/);
+  assert.doesNotMatch(
+    withCover.evidenceAnalysis.promptText,
+    /2004-07-01|结构化证据|反证核验|证据汇总|解释限制/,
+  );
+  for (const year of [2004, 2026]) {
+    const result = generateTaiyi({ year, scope: 'year' });
+    assert.match(result.evidenceAnalysis.promptText, /囚成立：客大将与太乙同宫/);
+    assert.doesNotMatch(result.evidenceAnalysis.promptText, /文昌或主客大小将至少一项/);
+  }
+
+  const withoutCoverOrImprison = Array.from({ length: 72 }, (_, offset) =>
+    generateTaiyi({ year: 1950 + offset, scope: 'year' }),
+  ).find((item) =>
+    item.evidenceAnalysis.conditionFacts
+      .filter((fact) => fact.kind === '掩' || fact.kind === '囚')
+      .every((fact) => !fact.matched),
+  );
+  assert.ok(withoutCoverOrImprison);
+  assert.doesNotMatch(
+    withoutCoverOrImprison.evidenceAnalysis.promptText,
+    /掩成立|囚成立|未见掩|未见囚|条件未成立/,
+  );
+  for (const label of ['三门', '五将', '阴阳']) {
+    assert.equal(withoutCoverOrImprison.evidenceAnalysis.promptText.split(label).length - 1, 1);
+  }
 });
 
 test('太乙任务书的门将条件只呈现一次并保留独立判断', () => {
@@ -196,6 +226,45 @@ test('太乙独立真值表应覆盖完整七十二局', () => {
   assert.equal(bureaus.size, 72);
   for (let bureau = 1; bureau <= 72; bureau += 1) {
     assert.ok(bureaus.has(bureau), `真值表缺少第 ${bureau} 局`);
+  }
+});
+
+test('太乙主客定算逢整十时按九去余定大将宫', () => {
+  const cases = [
+    {
+      year: 1969,
+      count: 'lordCount',
+      general: 'lordGeneral',
+      assistant: 'lordAssistant',
+      expected: 3,
+    },
+    {
+      year: 1974,
+      count: 'guestCount',
+      general: 'guestGeneral',
+      assistant: 'guestAssistant',
+      expected: 4,
+    },
+    {
+      year: 1975,
+      count: 'setCount',
+      general: 'setGeneral',
+      assistant: 'setAssistant',
+      expected: 1,
+    },
+    {
+      year: 1993,
+      count: 'guestCount',
+      general: 'guestGeneral',
+      assistant: 'guestAssistant',
+      expected: 3,
+    },
+  ] as const;
+  for (const { year, count, general, assistant, expected } of cases) {
+    const result = generateTaiyi({ year, scope: 'year' });
+    assert.equal(result[count] % 10, 0, `${year}年测试值应为整十`);
+    assert.equal(result[general], expected, `${year}年${general}落宫错误`);
+    assert.equal(result[assistant], (expected * 3) % 10, `${year}年${assistant}落宫错误`);
   }
 });
 

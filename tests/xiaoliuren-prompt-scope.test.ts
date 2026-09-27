@@ -18,7 +18,9 @@ test('小六壬双口径在原生提示词中分别绑定定位用途与时宫�
         `定日宫：从月宫赤口${rule === 'duoneng' ? '下一宫' : ''}起初一（${firstDay}），顺数至3日，落${day}`,
       ),
     );
-    assert.ok(prompt.includes(`月宫赤口用于确定初一的起数位置；日宫${day}用于确定子时的起数位置`));
+    assert.ok(prompt.includes('定位用途：月宫是初一的起数位置；日宫是子时的起数位置'));
+    assert.ok(!prompt.includes('定位用途：月宫赤口'));
+    assert.ok(!prompt.includes(`定位用途：日宫${day}`));
     assert.ok(prompt.includes(`占得宫：${primary}`));
     assert.ok(prompt.includes(`歌诀原文：${data.primary.verse}`));
     assert.match(prompt, /总体判断、分项解释与总结保持同一取证范围/);

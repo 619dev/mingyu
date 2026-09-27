@@ -40,7 +40,21 @@ test('金口诀摘要和详细提示不重复展开四位、发用、动爻与�
   assert.match(detailed, /^四位五行依据：/m);
 });
 
-test('金口诀三种提示资料均保留兄弟动的实际双方而非凭名称补判', () => {
+test('金口诀提示词区分固定时支昼夜约定与古本星出没口径', () => {
+  const data = generateJinkoujue({
+    customDate: new Date('2025-03-28T12:00:00+08:00'),
+    method: 'time',
+  });
+
+  for (const format of formatters) {
+    const text = format('jinkoujue', data);
+    assert.match(text, /本次按卯至申昼占、酉至寅夜占的固定时支约定起贵人/);
+    assert.match(text, /《六壬神课金口诀·贵神治旦暮》以星没为旦、星出为暮/);
+    assert.doesNotMatch(text, /未提供地点|无法按星出没时刻判定昼夜/);
+  }
+});
+
+test('金口诀提示资料只列实际动爻，不再重复展开未触发的通用取法', () => {
   const data = generateJinkoujue({
     customDate: new Date('2026-05-19T10:30:00+08:00'),
     method: 'time',
@@ -53,11 +67,8 @@ test('金口诀三种提示资料均保留兄弟动的实际双方而非凭名�
     assert.match(text, /兄弟动（人元火比和地分火）/);
     assert.match(text, /人元火与地分火比和/);
     assert.match(text, /地分火克将神金/);
-    assert.match(text, /三动取法：地分生人元为父母动；人元生地分为子孙动；人元与地分比和为兄弟动/);
-    assert.match(
-      text,
-      /五动取法：人元克地分为妻动；贵神克人元为官动；贵神克将神为贼动；将神克贵神为财动；地分克人元为鬼动/,
-    );
+    assert.match(text, /五动三动：.*兄弟动（人元火比和地分火）/);
+    assert.doesNotMatch(text, /五动取法：|三动取法：/);
     assert.doesNotMatch(text, /贵人被生|将神金与地分火比和/);
   }
 });

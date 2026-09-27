@@ -422,13 +422,13 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
   if (alternativePatterns) result += `${alternativePatterns}\n`;
   if (analysis.mingGe.fulfillment) {
     const nonCandidateFacts = patternFacts.filter((fact) => !fact.startsWith('取格分层候选：'));
-    if (nonCandidateFacts[0] && !nonCandidateFacts[0].startsWith('所取格局：')) {
+    if (
+      analysis.mingGe.specialAdjudication?.status === '成立' &&
+      nonCandidateFacts[0]?.startsWith('特殊格裁决：')
+    ) {
       result += `${nonCandidateFacts[0]}\n`;
     }
     result += `${formatPatternDecisionForPrompt(analysis.mingGe)}\n`;
-    if (hasConfirmedPatternTarget(analysis.mingGe) && analysis.mingGe.fulfillment.contradiction) {
-      result += `相互制约：${analysis.mingGe.fulfillment.contradiction}\n`;
-    }
   }
   if (analysis.usefulGod) {
     const primaryFavorableWuxing =

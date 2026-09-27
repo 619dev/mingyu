@@ -329,7 +329,8 @@ test('五运六气年度资料列出平气条件，不据年干支确认全年�
   assert.ok(result2026.pathomechanism);
   assert.equal(result2026.pathomechanism.isPingQi, null);
   assert.equal(result2026.pathomechanism.movementRegime, '流衍之纪');
-  assert.match(result2026.prompt, /平气条件：/);
+  assert.match(result2026.prompt, /岁运纪：流衍之纪/);
+  assert.doesNotMatch(result2026.prompt, /平气参考条件：|年度符会：/);
   assert.doesNotMatch(result2026.prompt, /五脏受候|心神亢燥|病机偏胜与平气/);
 
   // 丁亥具司天同气资助；交司日时逢壬的干德符及实际平气仍须另核。
@@ -338,6 +339,7 @@ test('五运六气年度资料列出平气条件，不据年干支确认全年�
   assert.equal(resultDingHai.pathomechanism.isPingQi, null);
   assert.equal(resultDingHai.pathomechanism.pingQiType, '具平气条件');
   assert.match(resultDingHai.pathomechanism.pingQiConditions.join('；'), /司天与木运同气/);
+  assert.match(resultDingHai.prompt, /平气参考条件：/);
   assert.match(resultDingHai.pathomechanism.pingQiBasis, /平气成立时称敷和之纪/);
   assert.match(resultDingHai.pathomechanism.pingQiBasis, /交气日时干德符/);
 });

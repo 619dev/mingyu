@@ -52,7 +52,7 @@ test('五运六气2026年公历边界与独立年历的节气日期一致', () =
   }
 });
 
-test('六步主客气按交节瞬时衔接，交节当日不被整日归入新一步', () => {
+test('六步保留现代节气交节参考，提示词不把它写成传统交司时刻', () => {
   const result = calculateWuyunLiuqi({ year: 2026 });
   const first = result.qiSteps[0].boundaryTime;
   const second = result.qiSteps[1].boundaryTime;
@@ -62,8 +62,11 @@ test('六步主客气按交节瞬时衔接，交节当日不被整日归入新�
   assert.match(second.startBeijing, /^2026-03-20 \d{2}:\d{2}:\d{2}$/);
   assert.ok(second.startTimestamp > Date.parse('2026-03-19T16:00:00Z'));
   assert.ok(second.startTimestamp < Date.parse('2026-03-20T16:00:00Z'));
-  assert.match(result.prompt, /初之气.*至2026-03-20 \d{2}:\d{2}:\d{2}交接/);
-  assert.match(result.prompt, /二之气.*北京时间2026-03-20 \d{2}:\d{2}:\d{2}起/);
+  assert.match(result.prompt, /运气年度：2026-01-20 .*大寒节令起，至2027-01-20 .*次年大寒节令前/u);
+  assert.match(result.prompt, /初之气.*现代节气交节参考（北京时间）2026-01-20 .*至2026-03-20 /u);
+  assert.match(result.prompt, /二之气.*现代节气交节参考（北京时间）2026-03-20 /u);
+  assert.doesNotMatch(result.prompt, /年中落在此步|\d{2}:\d{2}:\d{2}交接/u);
+  assert.match(result.limitations.join('；'), /并非传统六气交司时刻/u);
 });
 
 test('五运六气支持的300个公历年各步日期连续且两种划分覆盖同一年段', () => {

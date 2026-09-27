@@ -4381,7 +4381,8 @@ test('公开 API 星盘应附带真太阳时参考且不改写现代星历时刻
         item.ownerFactKeys.every((key: string) => astrolabeFactKeys.has(key)),
     ),
   );
-  assert.match(body.data.evidenceAnalysis.promptText, /证据汇总：[\s\S]*解释限制（方法限制）：/);
+  assert.match(body.data.evidenceAnalysis.promptText, /【盘面资料】[\s\S]*【传统依据】/);
+  assert.doesNotMatch(body.data.evidenceAnalysis.promptText, /证据汇总：|解释限制（方法限制）：/);
   body.data.aspects.forEach(
     (aspect: {
       strength?: number;

@@ -1,4 +1,3 @@
-import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import type { TaiyiModelInfo, TaiyiScope } from '../types/divination';
 import type { TaiyiRuleConditions } from './conditions';
@@ -268,14 +267,18 @@ function buildSixteenGodFacts(data: TaiyiEvidenceInput): TaiyiSixteenGodFact[] {
   }));
 }
 
-function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
-  const imprisonedRoles = [
+function getImprisonedRoles(data: TaiyiEvidenceInput): string[] {
+  return [
     data.wenChangPalace === data.taiyiPalace ? '文昌' : undefined,
     data.lordGeneral === data.taiyiPalace ? '主大将' : undefined,
     data.lordAssistant === data.taiyiPalace ? '主参将' : undefined,
     data.guestGeneral === data.taiyiPalace ? '客大将' : undefined,
     data.guestAssistant === data.taiyiPalace ? '客参将' : undefined,
   ].filter((item): item is string => item !== undefined);
+}
+
+function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
+  const imprisonedRoles = getImprisonedRoles(data);
   const facts: Array<{
     kind: TaiyiConditionFact['kind'];
     matched: boolean;
@@ -522,12 +525,8 @@ function buildSummaryFact(args: {
 export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnalysis {
   const scopeLabel = SCOPE_LABELS[data.scope];
   const isCover = data.shiJiPalace === data.taiyiPalace;
-  const isImprison =
-    data.wenChangPalace === data.taiyiPalace ||
-    data.lordGeneral === data.taiyiPalace ||
-    data.lordAssistant === data.taiyiPalace ||
-    data.guestGeneral === data.taiyiPalace ||
-    data.guestAssistant === data.taiyiPalace;
+  const imprisonedRoles = getImprisonedRoles(data);
+  const isImprison = imprisonedRoles.length > 0;
   const positionFacts = buildPositionFacts(data);
   const forceFacts = buildForceFacts(data);
   const sixteenGodFacts = buildSixteenGodFacts(data);
@@ -666,7 +665,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     `主大将${data.lordGeneral}宫、主参将${data.lordAssistant}宫；客大将${data.guestGeneral}宫、客参将${data.guestAssistant}宫；定大将${data.setGeneral}宫、定参将${data.setAssistant}宫`,
   ];
   if (isCover) primaryFacts.push('掩成立：始击与太乙同宫');
-  if (isImprison) primaryFacts.push('囚成立：文昌或主客大小将至少一项与太乙同宫');
+  if (isImprison) primaryFacts.push(`囚成立：${imprisonedRoles.join('、')}与太乙同宫`);
   primaryFacts.push(
     `${data.conditions.threeGates.status}：直使${data.conditions.threeGates.directGate}；五将${data.conditions.fiveGenerals.launched ? '发' : '不发'}；阴阳${data.conditions.yinYangHarmony.matched ? '和' : '不和'}`,
   );
@@ -766,14 +765,26 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     title: '太乙四计七十二局结构化证据',
     items,
   };
+  const timeText =
+    data.scope === 'year'
+      ? `${data.dateTime.split('-')[0]}年年计`
+      : `${data.dateTime}（东八区）起局的${scopeLabel}`;
+  const specialPositions = primaryFacts.filter((fact) => /^(掩|囚)成立/u.test(fact));
   const promptText = [
-    '【太乙四计七十二局结构化证据】',
-    ...formatPromptEvidenceBundle(evidence),
-    `计算链：${calculationChain.join(' → ')}。`,
-    `算式核验：${calculationSteps.map((step) => `${step.name}：${step.operation}=${step.result}`).join('；')}。`,
-    `反证核验：${counterSummaryFact.promptText}。`,
-    `证据汇总：${summaryFact.promptText}。`,
-    `解释限制（方法限制）：${limitations.join('；')}。`,
+    `【太乙神数${scopeLabel}】`,
+    '【任务】依据本次盘面资料和传统依据，解读太乙、主客定算及门将条件的关系。',
+    `【时间】${timeText}；本计干支${data.ganZhi}。`,
+    '【盘面资料】',
+    `${data.accumulatedLabel}${data.accumulatedValue}，${data.yinYang}第${data.bureau}局。`,
+    ...positionFacts.map((fact) => fact.promptText),
+    `主算${data.lordCount}、客算${data.guestCount}、定算${data.setCount}；主大将${data.lordGeneral}宫、主参将${data.lordAssistant}宫，客大将${data.guestGeneral}宫、客参将${data.guestAssistant}宫，定大将${data.setGeneral}宫、定参将${data.setAssistant}宫。`,
+    `十六神：${data.sixteenGods.map((item) => `${item.branch}${item.god}`).join('、')}。`,
+    ...specialPositions,
+    '【传统依据】',
+    ...(data.scope === 'month' ? ['月计按逐月节气换局。'] : []),
+    '积数按七十二局循环；主客定大将取算数个位，整十以九去余，参将以大将宫数乘三取个位。',
+    `三门${data.conditions.threeGates.status}，直使${data.conditions.threeGates.directGate}；五将${data.conditions.fiveGenerals.launched ? '发' : '不发'}；阴阳${data.conditions.yinYangHarmony.matched ? '和' : '不和'}。`,
+    '【输出要求】结合本次盘面条件，说明主客双方的传统攻守判断及其依据。',
   ].join('\n');
 
   return {

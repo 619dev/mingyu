@@ -621,7 +621,8 @@ export function generateJinkoujue(
       diFenNote: diFenResolved.note,
       monthLeaderRule: '按已交中气定月将',
       yuanDunRule: '五子元遁分别求人元、神干与将干',
-      dayNightRule: '卯至申按昼占、酉至寅按夜占（未提供地点时采用固定时支口径）',
+      dayNightRule:
+        '本次按卯至申昼占、酉至寅夜占的固定时支约定起贵人；《六壬神课金口诀·贵神治旦暮》以星没为旦、星出为暮。',
       noblemanRule: `${dayNight}贵人起${noblemanBranch}，从贵人起十二贵神排至地分${diFen.branch}`,
       noblemanDirection: guiShenResolved.direction,
       guiShenRule: `${guiShenResolved.direction}至地分得${guiShen.god}，贵神本属${guiShenResolved.stem}${guiShenResolved.branch}${guiShenResolved.element}`,

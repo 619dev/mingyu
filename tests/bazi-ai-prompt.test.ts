@@ -257,7 +257,7 @@ test('成化状态在合盘与多派提示词只呈现一次', () => {
     const relationFacts = prompt.split('【双盘关系资料】')[1] ?? '';
     assert.doesNotMatch(relationFacts, /化气判定：成化|取用主体：化神木/);
   }
-  assert.match(
+  assert.doesNotMatch(
     buildBaziCompatibilityPrompt({ result1: formed, result2: other }),
     /化气判定：存在反证/,
   );
@@ -343,6 +343,16 @@ test('格神未成立的真实命盘不把破格候选和救应路径当作提�
   }
 });
 
+test('成败未判定时不把候选破格项写成已发生的格局条件', () => {
+  const result = createBaziResult({ year: 1992, month: 6, day: 15, timeIndex: 6 });
+  assert.equal(result.analysis.mingGe.fulfillment?.status, '未判定');
+  assert.ok(result.analysis.mingGe.fulfillment?.activeBreakers?.length);
+  assert.equal(formatBaziPatternConditions(result), '');
+  const prompt = buildBaziPrompt({ result });
+  assert.match(prompt, /当前成败判定：未判定/);
+  assert.doesNotMatch(prompt, /【格局条件】|破格项：|相互制约：/);
+});
+
 test('格神已成立时保留实际破格干和已成立的救应作用', () => {
   const repaired = createBaziResult({ year: 2016, month: 3, day: 17, timeIndex: 3 });
   assert.equal(repaired.analysis.mingGe.fulfillment?.status, '破而复成');
@@ -354,6 +364,7 @@ test('格神已成立时保留实际破格干和已成立的救应作用', () =>
   assert.ok(prompt.includes(`【格局条件】\n${conditions}`));
   assert.equal(prompt.match(/印星制伤官护官；丙作用于辛/g)?.length, 1);
   assert.doesNotMatch(prompt, /救应路径：印星制伤官护官/);
+  assert.doesNotMatch(prompt, /相互制约：/);
 
   repaired.analysis.usefulGod.decisionEvidence!.controlFunctions = [];
   assert.match(formatBaziPatternConditions(repaired), /救应路径：印星制伤官护官/);

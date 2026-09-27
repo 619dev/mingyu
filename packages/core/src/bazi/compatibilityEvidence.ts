@@ -434,13 +434,10 @@ function calculateUsefulGodCoverage(
 ): BaziUsefulGodCoverage {
   const beneficiaryLabel = beneficiary === 'person1' ? '第一人' : '第二人';
   const transformation = beneficiaryChart.analysis?.mingGe?.transformation;
-  const transformationFacts = transformation
-    ? [
-        transformation.status === '成化'
-          ? `化气判定：成化；取用主体：化神${transformation.element}`
-          : `化气判定：${transformation.status}；化神${transformation.element}；${transformation.basis}`,
-      ]
-    : [];
+  const transformationFacts =
+    transformation?.status === '成化'
+      ? [`化气判定：成化；取用主体：化神${transformation.element}`]
+      : [];
   const favorable = beneficiaryChart.analysis?.usefulGod?.favorableWuxing;
   const unfavorable = beneficiaryChart.analysis?.usefulGod?.unfavorableWuxing;
   const usefulGod = beneficiaryChart.analysis.usefulGod;

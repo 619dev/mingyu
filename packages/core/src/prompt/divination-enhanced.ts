@@ -61,7 +61,6 @@ import { resolveSsgwStoryContent } from '../divination/ssgw-content';
 import { formatTaiyiConditionSummary, formatTaiyiTacticBasis } from '../taiyi';
 import {
   formatJinkoujueRelations,
-  formatJinkoujueMovementRules,
   formatJinkoujueJudgmentFacts,
   formatJinkoujueBihe,
 } from './jinkoujue-facts';
@@ -656,7 +655,7 @@ function formatXiaoliurenInfo(data: XiaoliurenData) {
     `  定月宫：${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月从大安顺数，落${data.sequence.month.name}`,
     `  定日宫：从月宫${data.sequence.month.name}${rule.dayStartOffset ? '下一宫' : ''}起初一（${firstDayPalace.name}），顺数至${data.lunarDay}日，落${data.sequence.day.name}`,
     `  定时宫：从日宫${data.sequence.day.name}起子时，顺数至${data.hourLabel}，落${data.sequence.hour.name}`,
-    `定位用途：月宫${data.sequence.month.name}用于确定初一的起数位置；日宫${data.sequence.day.name}用于确定子时的起数位置`,
+    '定位用途：月宫是初一的起数位置；日宫是子时的起数位置',
     data.calculation
       ? `历法口径：${data.calculation.dayBoundary}；${data.calculation.leapMonthRule}${data.calculation.hourNumber === 1 ? '；子时序数为1，晚子时与早子时各按所在民用日的农历日期起课' : ''}`
       : '',
@@ -1336,29 +1335,34 @@ export function formatTaiyiInfo(data: TaiyiResult) {
     ? `十六神：${data.sixteenGods.map((item) => `${item.branch}${item.god}`).join('、')}`
     : '';
   const conditions = data.conditions;
+  const mainGateRoles = conditions?.threeGates.roles.filter((item) => item.usedForThreeGate) ?? [];
+  const mismatchedPairs =
+    conditions?.yinYangHarmony.pairFacts.filter((item) => !item.matched) ?? [];
+  const elementRelation = conditions?.fiveGenerals.hostGuestElementRelation;
   const conditionLines = conditions
     ? [
-        `三门取法：按${conditions.threeGates.gateScope}判主门具；直使${conditions.threeGates.directGate}，二百四十周期余数${conditions.threeGates.directGateRemainder}；${conditions.threeGates.status}`,
-        ...conditions.threeGates.roles.map(
-          (item) =>
-            `门位事实：${item.role}在${item.position}第${item.palace}宫，${item.gate ?? '中宫无八门'}；${item.usedForThreeGate ? '参与主门具判断' : '客目门位另列'}`,
-        ),
-        `五将条件：始击${conditions.fiveGenerals.shiJiNoCoverOrHit ? '无掩击' : '有掩击'}；文昌${conditions.fiveGenerals.wenChangNoImprisonOrPressure ? '无囚迫' : '有囚迫'}；主客四将${conditions.fiveGenerals.hostGuestNoSamePalaceRelation ? '无同宫关' : '有同宫关'}；五将${conditions.fiveGenerals.launched ? '发' : '不发'}`,
-        ...conditions.fiveGenerals.relations.map(
-          (item) =>
-            `将目关系：${item.left}第${item.leftPalace}宫与${item.right}第${item.rightPalace}宫，${item.kind}（${item.relation}）`,
-        ),
-        `二目五行：文昌${conditions.fiveGenerals.hostGuestElementRelation.hostPosition}属${conditions.fiveGenerals.hostGuestElementRelation.hostElement ?? '待核'}，始击${conditions.fiveGenerals.hostGuestElementRelation.guestPosition}属${conditions.fiveGenerals.hostGuestElementRelation.guestElement ?? '待核'}，${conditions.fiveGenerals.hostGuestElementRelation.relation}；此为二目所在十六神五行关系，日计纳音另论`,
-        `阴阳合判：${conditions.yinYangHarmony.matched ? '和' : '不和'}`,
-        ...conditions.yinYangHarmony.pairFacts.map(
-          (item) =>
-            `阴阳配对：${item.role}，${item.position ?? `第${item.palace}宫`}为${item.polarity}，算${item.count}为${item.countPolarity}；${item.matched ? '阴阳和' : '阴阳不和'}`,
-        ),
+        `三门：${conditions.threeGates.status}；直使${conditions.threeGates.directGate}；${mainGateRoles.map((item) => `${item.role}${item.gate ?? '中宫无八门'}`).join('、')}`,
+        `五将：${conditions.fiveGenerals.launched ? '发' : '不发'}`,
+        `阴阳：${conditions.yinYangHarmony.matched ? '和' : `不和（${mismatchedPairs.map((item) => item.role).join('、')}）`}`,
+        elementRelation?.hostElement &&
+        elementRelation.guestElement &&
+        elementRelation.relation !== '未形成五行相制' &&
+        elementRelation.relation !== '未判定'
+          ? `二目五行：文昌${elementRelation.hostPosition}属${elementRelation.hostElement}，始击${elementRelation.guestPosition}属${elementRelation.guestElement}；${elementRelation.relation}`
+          : '',
       ]
     : [];
+  const dateTime =
+    data.scope === 'year'
+      ? `${data.dateTime.slice(0, 4)}年`
+      : data.scope === 'month'
+        ? `${data.dateTime.slice(0, 7)}月`
+        : data.scope === 'day'
+          ? data.dateTime.slice(0, 10)
+          : data.dateTime;
   return [
     `占法：太乙神数（${scopeLabel}）`,
-    `起局时间：${data.dateTime}；本计干支：${data.ganZhi}；${data.yinYang}第${data.bureau}局`,
+    `起局时间：${dateTime}；本计干支：${data.ganZhi}；${data.yinYang}第${data.bureau}局`,
     `太乙：${data.taiyiPosition}（第${data.taiyiPalace}宫，${data.taiyiGua}卦，${data.taiyiDir}）`,
     `文昌（主目）：${data.wenChangPosition}；始击（客目）：${data.shiJiPosition}；计神：${data.jiShenPosition}`,
     `主客定算：主算${data.lordCount}；客算${data.guestCount}；定算${data.setCount}${data.countNatures?.set ? `（${data.countNatures.set}）` : ''}`,
@@ -1437,7 +1441,6 @@ function formatJinkoujueInfo(data: JinkoujueData) {
     `五动三动：${data.movements.map((item) => `${item.category}${item.name}（${item.trigger}）`).join('；') || '未触发五动或三动'}`,
     formatJinkoujueBihe(data),
     formatJinkoujueRelations(data),
-    formatJinkoujueMovementRules(),
     data.xunKong?.length ? `旬空：${data.xunKong.join('、')}` : '',
     ...formatJinkoujueJudgmentFacts(data, { compact: true }),
   ]

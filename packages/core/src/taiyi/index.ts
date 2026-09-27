@@ -423,10 +423,10 @@ export function evaluateTaiyiTacticGuidance(params: {
   return `${formatTaiyiTacticBasis(params)}；${conditionText}`;
 }
 
-function generalPalaceFromCount(value: number, side: 'lord' | 'guest' | 'set'): number {
-  if (side === 'lord' && value % 10 === 0) return 1;
+function generalPalaceFromCount(value: number): number {
   const remainder = value % 10;
-  return remainder === 0 ? 5 : remainder;
+  // 主、客、定算逢整十以九去之：十、二十、三十、四十分别入一至四宫。
+  return remainder === 0 ? value % 9 : remainder;
 }
 
 function assistantPalaceFromGeneral(general: number): number {
@@ -659,11 +659,11 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
   const [lordCount, guestCount, setCount] = (
     yinYang === '阳遁' ? YEAR_CALCULATIONS : YIN_CALCULATIONS
   )[index];
-  const lordGeneral = generalPalaceFromCount(lordCount, 'lord');
+  const lordGeneral = generalPalaceFromCount(lordCount);
   const lordAssistant = assistantPalaceFromGeneral(lordGeneral);
-  const guestGeneral = generalPalaceFromCount(guestCount, 'guest');
+  const guestGeneral = generalPalaceFromCount(guestCount);
   const guestAssistant = assistantPalaceFromGeneral(guestGeneral);
-  const setGeneral = generalPalaceFromCount(setCount, 'set');
+  const setGeneral = generalPalaceFromCount(setCount);
   const setAssistant = assistantPalaceFromGeneral(setGeneral);
   const yuan = Math.ceil(entryYears / 72);
   const ji = Math.ceil(entryYears / 60);

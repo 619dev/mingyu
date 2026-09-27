@@ -73,7 +73,7 @@ test('核心判断保留本盘旺衰依据并同时呈现特殊格与常规格�
   assert.match(text, new RegExp(`司令${strength.commanderEffect}`));
   assert.match(text, new RegExp(`成局${strength.formationEffect}`));
   assert.ok(ruleBasis.some((fact) => !text.includes(fact)));
-  assert.match(text, /特殊格裁决：从儿格不成立/);
+  assert.doesNotMatch(text, /特殊格裁决：从儿格不成立|特殊格反证：/);
   assert.match(text, /格局: 食神格/);
   assert.match(text, /^当前成败判定：成格/m);
   assert.doesNotMatch(text, /所取格局：/);

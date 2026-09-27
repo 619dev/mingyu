@@ -371,7 +371,7 @@ test('taiyi: 年家七十二局立成（依古籍与 Kintaiyi 逐局表校订）
   assert.doesNotMatch(r.prompt, /结构化证据|观察层级|证据汇总|计算链|解释限制/);
   assert.equal(r.evidenceAnalysis.key, 'taiyi:evidence');
   assert.equal(r.evidenceAnalysis.status, '已计算');
-  assert.match(r.evidenceAnalysis.promptText, /【太乙四计七十二局结构化证据】/);
+  assert.match(r.evidenceAnalysis.promptText, /【太乙神数年计】/);
   assert.deepEqual(
     r.evidenceAnalysis.calculationSteps.map((step) => step.name),
     ['360周期余数', '72数段', '60数段', '局数', '三门', '五将', '阴阳和'],
@@ -512,11 +512,13 @@ test('taiyi: 年家七十二局立成（依古籍与 Kintaiyi 逐局表校订）
   assert.ok(r.evidenceAnalysis.conditionFacts.some((item) => item.kind === '三门'));
   assert.ok(r.evidenceAnalysis.conditionFacts.some((item) => item.kind === '五将'));
   assert.ok(r.evidenceAnalysis.conditionFacts.some((item) => item.kind === '阴阳和'));
-  assert.match(r.evidenceAnalysis.promptText, /算式核验：.*360周期余数.*72数段.*60数段.*局数/);
+  assert.match(r.evidenceAnalysis.promptText, /【传统依据】/);
   assert.ok(r.evidenceAnalysis.primaryFacts.some((item) => item.startsWith('掩成立')));
   assert.ok(!r.evidenceAnalysis.counterEvidence.some((item) => item.startsWith('未见囚')));
-  assert.match(r.evidenceAnalysis.promptText, /传统规则模型/);
-  assert.match(r.evidenceAnalysis.promptText, /证据汇总：[\s\S]*解释限制（方法限制）：/);
+  assert.doesNotMatch(
+    r.evidenceAnalysis.promptText,
+    /算式核验：|证据汇总：|解释限制（方法限制）：/,
+  );
   assert.doesNotMatch(r.evidenceAnalysis.promptText, /宜先守后动|不宜轻进/);
   assert.doesNotMatch(
     r.evidenceAnalysis.promptText,
@@ -549,7 +551,7 @@ test('taiyi: 年家七十二局立成（依古籍与 Kintaiyi 逐局表校订）
   );
 });
 
-test('taiyi: 未见掩囚时应明确输出反证而非省略', () => {
+test('taiyi: 未见掩囚保留结构化反证并从提示词省略', () => {
   const result = Array.from({ length: 72 }, (_, offset) =>
     core.taiyi.generateTaiyi({ year: 1950 + offset }),
   ).find(
@@ -559,7 +561,7 @@ test('taiyi: 未见掩囚时应明确输出反证而非省略', () => {
   assert.ok(result);
   assert.ok(result.evidenceAnalysis.counterEvidence.some((item) => item.startsWith('未见掩')));
   assert.ok(result.evidenceAnalysis.counterEvidence.some((item) => item.startsWith('未见囚')));
-  assert.match(result.evidenceAnalysis.promptText, /反证核验：未见掩/);
+  assert.doesNotMatch(result.evidenceAnalysis.promptText, /反证核验：|未见掩|未见囚/);
   assert.equal(result.evidenceAnalysis.counterSummaryFact.status, '存在未命中条件');
   assert.equal(
     result.evidenceAnalysis.counterSummaryFact.factKeys.length,

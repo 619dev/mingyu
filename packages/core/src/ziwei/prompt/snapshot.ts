@@ -83,7 +83,7 @@ function buildTaskBookBasicInfo(payload: AnalysisPayloadV1) {
   };
 }
 
-function buildPatternSummary(payload: AnalysisPayloadV1) {
+export function buildZiweiMatchedPatternSummary(payload: AnalysisPayloadV1) {
   const birthYearHeavenlyStem = /^[甲乙丙丁戊己庚辛壬癸]/u.exec(
     payload.basic_info.chinese_date,
   )?.[0];
@@ -141,7 +141,7 @@ export function buildPromptContextSnapshot(params: {
             )
           : undefined,
     },
-    命盘格局: buildPatternSummary(payload),
+    命盘格局: buildZiweiMatchedPatternSummary(payload),
     运限结构: buildScopeStructureSummary(payload),
     重点宫位摘要: focusPalaces.map((item) => buildPalaceSummary(payload, item)),
     全盘宫位索引: buildPalaceIndex(payload),
@@ -198,7 +198,7 @@ export function buildZiweiTaskBookSnapshot(params: {
   const focusTaskBundle = buildFocusTaskBundle(payload, reportContext);
   const focusPalaces = focusTaskBundle.focusPalaces;
   const isOrigin = payload.active_scope.scope === 'origin';
-  const patternSummary = buildPatternSummary(payload);
+  const patternSummary = buildZiweiMatchedPatternSummary(payload);
   const yunxianFocus = buildScopeHitSummary(payload);
   const focusBody = `宫位：${focusPalaces.map((item) => formatPalaceName(item.name)).join('、')}`;
   const palaceBody = payload.palaces

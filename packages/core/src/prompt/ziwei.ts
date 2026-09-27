@@ -16,6 +16,8 @@ import { formatBaziSchoolsPrompt, normalizeBaziPromptSchools } from './bazi-scho
 import { getThematicTopicConfig } from './thematic';
 import { getPromptMutagenItems } from '../ziwei/prompt/mutagen';
 import { formatPalaceRelations } from '../ziwei/prompt/builders';
+import { formatObjectList } from '../ziwei/prompt/formatters';
+import { buildZiweiMatchedPatternSummary } from '../ziwei/prompt/snapshot';
 import {
   buildPromptDocument,
   buildPromptSection,
@@ -296,10 +298,13 @@ export function formatZiweiPayloadForPrompt(
     : payload.palaces;
   const selectedPalaces = palaces.length ? palaces : payload.palaces;
   const isOriginScope = active.scope === 'origin';
+  const includeBasicInfo = options.includeBasicInfo ?? true;
+  const matchedPatterns = includeBasicInfo
+    ? formatObjectList(buildZiweiMatchedPatternSummary(payload))
+    : '';
   const bodyPalace = payload.palaces.find((p) => p.is_body_palace);
   const bodyPalaceName = payload.basic_info.hidden_palaces?.body_palace_name || bodyPalace?.name;
   const bodyAxis = getBodyPalaceAxisSummary(bodyPalaceName);
-  const includeBasicInfo = options.includeBasicInfo ?? true;
 
   return [
     `分析范围：${active.label || SCOPE_LABELS[active.scope]}`,
@@ -321,6 +326,7 @@ export function formatZiweiPayloadForPrompt(
       (palace) =>
         `  ${formatPalace(palace, isOriginScope)}\n  宫位关系：${formatPalaceRelations(payload, palace)}`,
     ),
+    matchedPatterns ? `命盘格局：\n${matchedPatterns}` : '',
     evidencePrimary.length ? '证据资料：' : '',
     ...evidencePrimary.map((item) => `  ${item}`),
     evidenceAppendix.length ? '证据附录：' : '',

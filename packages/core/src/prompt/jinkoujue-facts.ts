@@ -8,13 +8,6 @@ export function formatJinkoujueBihe(data: JinkoujueData): string {
     : '';
 }
 
-export function formatJinkoujueMovementRules(): string {
-  return [
-    '五动取法：人元克地分为妻动；贵神克人元为官动；贵神克将神为贼动；将神克贵神为财动；地分克人元为鬼动。',
-    '三动取法：地分生人元为父母动；人元生地分为子孙动；人元与地分比和为兄弟动。',
-  ].join('\n');
-}
-
 export function formatJinkoujueRelations(data: JinkoujueData): string {
   const p = data.positions;
   const pairs: Array<[JinkoujueFourPosition, JinkoujueFourPosition, string]> = [

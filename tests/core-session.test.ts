@@ -22,10 +22,7 @@ test('统一占法会话应覆盖时间课、摘要、提示词和稳定序列�
   assert.equal(session.summary.title, '小六壬起课结果');
   assert.match(session.formattedResult, /占得宫/);
   assert.match(session.formattedResult, /起课过程/);
-  assert.match(
-    session.formattedResult,
-    /定位用途：月宫.+用于确定初一的起数位置；日宫.+用于确定子时的起数位置/,
-  );
+  assert.match(session.formattedResult, /定位用途：月宫是初一的起数位置；日宫是子时的起数位置/);
   assert.ok(
     session.formattedResult.includes(
       `占得宫：${(session.data as import('../packages/core/src/types/divination').XiaoliurenData).primary.name}`,

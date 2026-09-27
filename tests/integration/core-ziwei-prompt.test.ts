@@ -146,6 +146,10 @@ test('紫微提示词应完整输出夫妻宫主星、辅曜与宫干飞化自�
   assert.match(prompt, /主星：/);
   assert.match(prompt, /宫干支/);
   assert.match(prompt, /宫干飞化：/);
+  assert.match(prompt, /命盘格局：\n格局：/u);
+  assert.match(prompt, /命中条件：/u);
+  assert.equal(prompt.match(/命盘格局：/gu)?.length, 1);
+  assert.doesNotMatch(prompt, /传统目录\d+项|未命中规则|不可唯一复算边界/u);
 
   const combinedPrompt = buildCombinedZiweiPrompt(
     runtime.payloadByScope.origin,

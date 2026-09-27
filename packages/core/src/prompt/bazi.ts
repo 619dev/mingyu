@@ -166,19 +166,12 @@ export function formatBaziTopicFocus(topic: BaziPromptTopic) {
 }
 
 export function formatBaziPatternConditions(result: BaziChartResult): string {
-  const transformation = result.analysis?.mingGe?.transformation;
   const fulfillment = result.analysis?.mingGe?.fulfillment;
   const specialAdjudication = result.analysis?.mingGe?.specialAdjudication;
   const facts: string[] = [];
 
   // 排盘正文已有所取格局、成败和判定理由，此处只补充影响结论的实际作用。
-  if (transformation && transformation.status !== '成化' && !fulfillment && !specialAdjudication) {
-    facts.push(
-      `化气判定：${transformation.status}；化神${transformation.element}；${transformation.basis}`,
-    );
-  }
-
-  if (specialAdjudication && (specialAdjudication.status === '成立' || !fulfillment)) {
+  if (specialAdjudication?.status === '成立') {
     if (!fulfillment) {
       const pattern = result.analysis.mingGe;
       const basis = pattern.basis ?? '';
@@ -214,14 +207,11 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
           .map((item) => `顺局作用：${item}`),
       );
     }
-    if (specialAdjudication.status === '不成立' && specialAdjudication.blockers.length) {
-      facts.push(`特殊格反证：${specialAdjudication.blockers.join('；')}`);
-    }
   }
 
   if (
     fulfillment &&
-    fulfillment.status !== '成格' &&
+    (fulfillment.status === '破格' || fulfillment.status === '破而复成') &&
     hasConfirmedPatternTarget(result.analysis.mingGe)
   ) {
     const decisionDetail = fulfillment.decisionDetail || fulfillment.summary;
