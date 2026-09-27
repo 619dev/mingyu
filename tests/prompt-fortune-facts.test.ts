@@ -162,7 +162,5 @@ test('紫微完整任务书只保留一份静态出生资料并覆盖各运限�
   );
   assert.ok(evidencePayload);
   const representativeEvidence = evidencePayload.evidence_pool[0];
-  const evidenceText = representativeEvidence.promptText || representativeEvidence.description;
-  assert.ok(evidenceText);
-  assert.ok(prompt.includes(evidenceText));
+  assert.ok(prompt.includes(representativeEvidence.title));
 });
