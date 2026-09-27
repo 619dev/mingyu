@@ -326,6 +326,41 @@ test('从儿格缺少明确财气承接依据时仍保留本盘五行流向', ()
   assert.match(formatBaziPatternConditions(result), /从儿五行流向：食伤土生财金/);
 });
 
+test('曲直格依据已包含亥卯未木局与成立事实时不再另列格局条件', () => {
+  for (const input of [
+    { year: 1980, month: 1, day: 3, timeIndex: 3 },
+    { year: 2026, month: 11, day: 17, timeIndex: 3 },
+  ]) {
+    const result = createBaziResult(input);
+    assert.equal(result.analysis.mingGe.specialAdjudication?.kind, '曲直格');
+    assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
+    assert.equal(formatBaziPatternConditions(result), '');
+    const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+    for (const prompt of [
+      buildBaziPrompt({ result }),
+      buildBaziPromptForResult({ result }),
+      buildPromptFromConfig(
+        '请分析事业方向。',
+        { id: 'ai-career', prompt: '测试', scopeLabel: '事业' },
+        result,
+      ).user,
+      buildBaziCompatibilityPrompt({ result1: result, result2: other }),
+      getCompatibilityPrompt('请分析双方关系。', result, other).user,
+    ]) {
+      assert.match(prompt, /格局: 曲直格（《三命通会》卷六亥卯未曲直法条件成立/);
+      assert.doesNotMatch(prompt, /【(?:第一人)?格局条件】|特殊格裁决：曲直格成立/);
+      assert.doesNotMatch(prompt, /取用依据:/);
+    }
+    for (const prompt of [
+      buildBaziPrompt({ result, school: 'ziping' }),
+      buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+    ]) {
+      assert.equal(prompt.match(/特殊格裁决：曲直格成立/g)?.length, 1);
+      assert.doesNotMatch(prompt, /【格局条件】|取用依据:/);
+    }
+  }
+});
+
 test('格神未成立的真实命盘不把破格候选和救应路径当作提示词结论', () => {
   for (const input of [
     { year: 1980, month: 3, day: 15, timeIndex: 3 },
@@ -353,20 +388,32 @@ test('成败未判定时不把候选破格项写成已发生的格局条件', ()
   assert.doesNotMatch(prompt, /【格局条件】|破格项：|相互制约：/);
 });
 
-test('格神已成立时保留实际破格干和已成立的救应作用', () => {
+test('破而复成的破格与救应已见于核心判断和取用时不重复列格局条件', () => {
   const repaired = createBaziResult({ year: 2016, month: 3, day: 17, timeIndex: 3 });
   assert.equal(repaired.analysis.mingGe.fulfillment?.status, '破而复成');
-  const conditions = formatBaziPatternConditions(repaired);
-  assert.ok(conditions.includes('破格项：伤官见官（辛伤官（月柱））'));
-  assert.doesNotMatch(conditions, /救应路径：印星制伤官护官/);
-  assert.doesNotMatch(conditions, /资料不足|不满足|仅见隔位/);
-  const prompt = buildBaziPrompt({ result: repaired });
-  assert.ok(prompt.includes(`【格局条件】\n${conditions}`));
-  assert.equal(prompt.match(/印星制伤官护官；丙作用于辛/g)?.length, 1);
-  assert.doesNotMatch(prompt, /救应路径：印星制伤官护官/);
-  assert.doesNotMatch(prompt, /相互制约：/);
+  assert.equal(formatBaziPatternConditions(repaired), '');
+  const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  for (const prompt of [
+    buildBaziPrompt({ result: repaired }),
+    buildBaziPrompt({ result: repaired, school: 'ziping' }),
+    buildBaziPrompt({ result: repaired, schools: ['ziping', 'mangpai'] }),
+    buildBaziPromptForResult({ result: repaired }),
+    buildPromptFromConfig(
+      '请分析事业方向。',
+      { id: 'ai-career', prompt: '测试', scopeLabel: '事业' },
+      repaired,
+    ).user,
+    buildBaziCompatibilityPrompt({ result1: repaired, result2: other }),
+    getCompatibilityPrompt('请分析双方关系。', repaired, other).user,
+  ]) {
+    assert.doesNotMatch(prompt, /【(?:第一人)?格局条件】|破格项：|救应路径：/);
+    assert.equal(prompt.match(/伤官见官/g)?.length, 1);
+    assert.equal(prompt.match(/印星制伤官护官；丙作用于辛/g)?.length, 1);
+    assert.match(prompt, /月柱: 辛卯 \[伤官\]/);
+  }
 
   repaired.analysis.usefulGod.decisionEvidence!.controlFunctions = [];
+  assert.match(formatBaziPatternConditions(repaired), /破格项：伤官见官（辛伤官（月柱））/);
   assert.match(formatBaziPatternConditions(repaired), /救应路径：印星制伤官护官/);
 
   const broken = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
@@ -578,7 +625,8 @@ test('八字提示词未选择年限时输出本命资料且不输出岁运重�
   assert.match(prompt.user, /分析对象：本命盘/);
   assert.match(prompt.user, /旺衰: [^\n]+（[^\n]+）/);
   assert.match(prompt.user, /格局: [^\n]+（[^\n]+）/);
-  assert.match(prompt.user, /取用依据:/);
+  assert.match(prompt.user, /取用主线:/);
+  assert.doesNotMatch(prompt.user, /取用依据:/);
   assert.match(prompt.user, /【本命辅助】/);
   assert.match(prompt.user, /命宫:.+\| 身宫:.+\| 胎元:.+\| 胎息:/);
   assert.match(prompt.user, /十神构成（天干与藏干）:/);

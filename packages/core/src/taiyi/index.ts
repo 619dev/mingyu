@@ -777,7 +777,11 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
     `十六神：${sixteenGods.map((item) => `${item.branch}${item.god}`).join('、')}。`,
     ...(() => {
       const specialJudgments = judgments.filter(
-        (item) => !/^(主算|客算|定算)\s*\d+\s*为/u.test(item) && item !== conditionSummary,
+        (item) =>
+          !/^(主算|客算|定算)\s*\d+\s*为/u.test(item) &&
+          item !== conditionSummary &&
+          item !== '主大将或主参将居中宫。' &&
+          item !== '客大将或客参将居中宫。',
       );
       return specialJudgments.length ? [`判断：${specialJudgments.join('；')}`] : [];
     })(),

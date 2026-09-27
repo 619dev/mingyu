@@ -7,6 +7,7 @@ import {
 import {
   calculateZodiacYearFortune,
   getZodiacYearFortune,
+  getYearTaiSui,
 } from '../packages/core/src/zodiac/index.ts';
 
 const stems = [...'甲乙丙丁戊己庚辛壬癸'];
@@ -114,4 +115,10 @@ test('生肖公历流年按甲子锚点循环且名称与地支入口一致', ()
       getZodiacYearFortune(branches[i], '丙午'),
     );
   }
+});
+
+test('丁卯值年太岁星君应使用常见名沉兴', () => {
+  // 道教总庙三清宫“六十甲子太岁星君名称”列丁卯太岁沉兴大将军。
+  // https://www.sanching.org.tw/me70
+  assert.deepEqual(getYearTaiSui('丁卯'), { yearBranch: '卯', star: '沉兴' });
 });

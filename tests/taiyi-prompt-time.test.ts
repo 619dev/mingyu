@@ -28,3 +28,9 @@ test('太乙年计以目标年份表达，避免把内部年中取样时刻当�
   assert.match(result.prompt, /分析目标：2026年年计。/);
   assert.doesNotMatch(result.prompt, /分析目标：.*起局/);
 });
+
+test('太乙提示词以将参宫位呈现中宫事实，不重复生成同义判断', () => {
+  const result = generateTaiyi({ scope: 'hour', date: new Date('2026-07-11T06:35:00Z') });
+  assert.match(result.prompt, /将参：主大将5中宫、主参将5中宫/);
+  assert.doesNotMatch(result.prompt, /判断：[^\n]*主大将或主参将居中宫/);
+});

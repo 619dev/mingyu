@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { buildBaziPersonInput, calculateBaziChartFromInput } from 'mingyu-core/bazi';
 import { createBirthPlaceIndex } from 'mingyu-core/location';
-import { clampNumericField, validateBirthInput } from 'mingyu-core/profile';
+import { clampNumericField, validateBirthInput, type BirthInputFields } from 'mingyu-core/profile';
 
 test('npm 八字输入适配器应接受普通 JSON 和表单文本', () => {
   const input = buildBaziPersonInput({
@@ -176,6 +176,57 @@ test('npm 出生输入校验应返回字段级错误并复用真太阳时边界'
     { ok: false, field: 'day', message: '本人日期需在 1-29 之间' },
   );
   assert.deepEqual(validateBirthInput({ year: '1990', month: '5', day: '15' }), { ok: true });
+  assert.deepEqual(
+    validateBirthInput({
+      year: '2023',
+      month: '2',
+      day: '1',
+      dateType: 'lunar',
+      isLeapMonth: true,
+    }),
+    { ok: true },
+  );
+  assert.deepEqual(
+    validateBirthInput({
+      year: '2024',
+      month: '2',
+      day: '1',
+      dateType: 'lunar',
+      isLeapMonth: true,
+    }),
+    {
+      ok: false,
+      field: 'day',
+      message: '出生资料农历日期不存在，请检查月份、日期和闰月设置',
+    },
+  );
+  assert.deepEqual(
+    validateBirthInput({
+      year: '2024',
+      month: '2',
+      day: '1',
+      dateType: 'solar',
+      isLeapMonth: true,
+    }),
+    {
+      ok: false,
+      field: 'isLeapMonth',
+      message: '出生资料公历日期不能设置农历闰月',
+    },
+  );
+  const commonFields = { year: '2024', month: '2', day: '1' };
+  assert.deepEqual(
+    validateBirthInput({ ...commonFields, dateType: 'gregorian' } as BirthInputFields),
+    { ok: false, field: 'dateType', message: '出生资料日期类型必须是 solar 或 lunar' },
+  );
+  assert.deepEqual(
+    validateBirthInput({ ...commonFields, isLeapMonth: 'true' } as BirthInputFields),
+    { ok: false, field: 'isLeapMonth', message: '出生资料闰月标志必须是布尔值' },
+  );
+  assert.deepEqual(
+    validateBirthInput({ ...commonFields, useTrueSolarTime: 'true' } as BirthInputFields),
+    { ok: false, field: 'useTrueSolarTime', message: '出生资料真太阳时标志必须是布尔值' },
+  );
   assert.deepEqual(
     validateBirthInput({
       year: '1990',

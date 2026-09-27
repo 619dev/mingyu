@@ -166,7 +166,12 @@ export function buildZiweiReadableSnapshot(params: {
     buildEvidenceSummary(params.payload, focusPalaces, params.reportContext),
   );
   const focusBody = formatObjectList(snapshot.重点宫位摘要);
-  const palaceBody = formatObjectList(snapshot.全盘宫位索引);
+  const focusPalaceNames = new Set(focusPalaces.map((palace) => formatPalaceName(palace.name)));
+  const palaceBody = formatObjectList(
+    snapshot.全盘宫位索引.map((palace) =>
+      focusPalaceNames.has(palace.宫位) ? { 宫位: palace.宫位 } : palace,
+    ),
+  );
 
   return [
     '【分析背景】',

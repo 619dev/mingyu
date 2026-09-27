@@ -206,6 +206,38 @@ test('紫微提示词快照应输出已校勘格局的条件与古籍依据', ()
   );
 });
 
+test('真实紫微盘的重点宫星只在详细资料列出一次，十二宫索引保留完整宫位', async () => {
+  const runtime = await calculateZiweiChart(
+    {
+      name: '紫微宫星去重核验',
+      gender: '女',
+      dateType: 'solar',
+      birthDate: '1990-05-15',
+      birthTimeIndex: 4,
+      algorithm: 'default',
+    },
+    { scopes: ['origin'] },
+  );
+  const snapshot = buildZiweiReadableSnapshot({
+    payload: runtime.payloadByScope.origin,
+    reportContext: createReportContext(),
+  });
+  const focusSection = snapshot.split('【重点宫位资料】\n')[1]?.split('\n【十二宫资料】')[0] ?? '';
+  const indexSection = snapshot.split('【十二宫资料】\n')[1] ?? '';
+  const focusPalace = focusSection.match(/宫位：([^\n]+)/u)?.[1];
+  assert.ok(focusPalace);
+  assert.match(focusSection, /主星：/u);
+  const palaceIndex = indexSection.split('\n\n');
+  assert.equal(palaceIndex.length, 12);
+  assert.equal(
+    palaceIndex.find(
+      (item) => item.startsWith(`宫位：${focusPalace}\n`) || item === `宫位：${focusPalace}`,
+    ),
+    `宫位：${focusPalace}`,
+  );
+  assert.ok(palaceIndex.some((item) => item.includes('主星：')));
+});
+
 test('格局条件未列出具体宫位时保留必要的宫位资料', () => {
   const payload = createPayload();
   payload.palaces[1].minor_stars.push({ name: '左辅', kind: 'minor' });

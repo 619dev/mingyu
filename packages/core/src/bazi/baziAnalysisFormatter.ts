@@ -476,10 +476,6 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
       !analysis.usefulGod.decisionEvidence?.transformation
     ) {
       result += `取用主线: ${analysis.usefulGod.primaryReason}\n`;
-      result +=
-        analysis.usefulGod.incrementStatus === '待判'
-          ? `取用依据: 日主旺衰${analysis.dayMasterStrength.status}，${analysis.mingGe.pattern}当前${analysis.mingGe.fulfillment?.status || '待核'}；增补五行喜忌结合司令、根气与制化作用待判\n`
-          : `取用依据: 以${analysis.usefulGod.primaryReason}为主，结合旺衰${analysis.dayMasterStrength.status}与格局${analysis.mingGe.pattern}综合取用\n`;
     }
     if (includeRules && baziResult.climate && baziResult.climate.nature !== '未见明显偏向') {
       result += `水火分布参考: ${baziResult.climate.summary}\n`;

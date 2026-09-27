@@ -13,6 +13,13 @@ test('生肖证据复验应标记缺失的犯太岁关系', () => {
   );
   assert.equal(analysis.summaryFact.status, '证据链有缺口');
   assert.match(analysis.summaryFact.promptText, /犯太岁关系重算结果与传入资料不一致/);
+  const conflict = analysis.relations.find((relation) => relation.relation === '冲太岁');
+  assert.ok(conflict);
+  assert.deepEqual(
+    conflict.operands.map((operand) => operand.value),
+    ['子', '午'],
+  );
+  assert.doesNotMatch(analysis.promptText, /冲太岁.*流年年支未/);
 });
 
 test('生肖证据复验应校验犯太岁关系的流年地支', () => {
@@ -55,7 +62,37 @@ test('生肖证据复验应核对生肖名称、流年干支拆分与五行关�
     const analysis = analyzeZodiacEvidence(data);
     assert.equal(analysis.summaryFact.status, '证据链有缺口');
     assert.match(analysis.summaryFact.promptText, reason);
+    assert.equal(
+      analysis.relations.find((relation) => relation.category === '年干五行')?.relation,
+      getZodiacYearFortune(data.zodiacBranch, data.yearGanZhi).elementRelation.label,
+    );
+    assert.doesNotMatch(analysis.promptText, /结构化类型为同类/);
   }
+
+  const wrongNoble = analyzeZodiacEvidence({
+    ...getZodiacYearFortune('寅', '丙午'),
+    noble: '六合贵人',
+  });
+  assert.equal(wrongNoble.summaryFact.status, '证据链有缺口');
+  assert.equal(
+    wrongNoble.relations.find((relation) => relation.category === '地支助缘')?.relation,
+    '三合贵人（火局）',
+  );
+  assert.doesNotMatch(wrongNoble.promptText, /六合贵人/);
+
+  const wrongYearBranch = analyzeZodiacEvidence({
+    ...getZodiacYearFortune('子', '丙午'),
+    yearGanZhi: '甲子',
+  });
+  assert.equal(wrongYearBranch.summaryFact.status, '证据链有缺口');
+  assert.ok(
+    wrongYearBranch.relations.some(
+      (relation) =>
+        relation.relation === '值太岁' &&
+        relation.operands.some((operand) => operand.label === '流年年支' && operand.value === '子'),
+    ),
+  );
+  assert.doesNotMatch(wrongYearBranch.promptText, /冲太岁/);
 });
 
 test('生肖五行五类关系的证据复验保持完整', () => {

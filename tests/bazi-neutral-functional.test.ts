@@ -52,10 +52,8 @@ test('中和正印成格记录原局庚印作用，参考调候不补造整五�
   );
   assert.match(formatUsefulGodFunctions(usefulGod).join('；'), /原局格神作用：庚正印/);
   assert.match(formatBaziForPrompt(chart), /增补五行喜忌: 待判/);
-  assert.match(
-    formatBaziForPrompt(chart),
-    /取用依据: 日主旺衰中和，正印格当前成格；增补五行喜忌结合司令、根气与制化作用待判/,
-  );
+  assert.match(formatBaziForPrompt(chart), /取用主线: 中和待判/);
+  assert.doesNotMatch(formatBaziForPrompt(chart), /取用依据:/);
 });
 
 test('同一天干在年、月两柱均参与成格时保留各自柱位', () => {

@@ -281,6 +281,9 @@ export function InputPage() {
     setForm((current) => ({
       ...current,
       [fieldKey]: value as QueryInputState[keyof QueryInputState],
+      ...(key === 'dateType' && value === 'solar'
+        ? { [getFieldKey(role, 'isLeapMonth')]: false }
+        : {}),
       ...(REVERSE_SOURCE_INVALIDATING_FIELDS.includes(key)
         ? { [getFieldKey(role, 'reverseSource')]: '' }
         : {}),
@@ -368,6 +371,7 @@ export function InputPage() {
     const birthPlaceText = isPartner ? form.partnerBirthPlace : form.birthPlace;
     const birthLongitude = isPartner ? form.partnerBirthLongitude : form.birthLongitude;
     const dateType = isPartner ? form.partnerDateType : form.dateType;
+    const isLeapMonth = isPartner ? form.partnerIsLeapMonth : form.isLeapMonth;
     const hasPreciseStandardTime = birthSecond !== '';
 
     if (
@@ -401,6 +405,7 @@ export function InputPage() {
         month,
         day,
         dateType,
+        isLeapMonth,
         useTrueSolarTime: validateAsPreciseBirthData,
         birthHour,
         birthMinute,

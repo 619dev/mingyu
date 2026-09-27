@@ -4,7 +4,10 @@ import {
   formatBaziUsefulGodCoverageForPrompt,
   type BaziChartResult,
 } from '../bazi/index';
-import { hasConfirmedPatternTarget } from '../bazi/baziAnalysisFormatter';
+import {
+  formatPatternDecisionForPrompt,
+  hasConfirmedPatternTarget,
+} from '../bazi/baziAnalysisFormatter';
 import type { FortuneSelectionContext } from '../bazi/fortuneSelection';
 import { formatBaziFullFortune, formatBaziFortuneSelection } from './bazi-fortune';
 import { formatPromptCurrentTime } from './current-time';
@@ -175,11 +178,17 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
     if (!fulfillment) {
       const pattern = result.analysis.mingGe;
       const basis = pattern.basis ?? '';
+      const routeAlreadySummarized =
+        Boolean(specialAdjudication.route && basis.includes(specialAdjudication.route)) ||
+        (specialAdjudication.kind === '曲直格' &&
+          specialAdjudication.route === '亥卯未木局' &&
+          basis.includes('亥卯未曲直法') &&
+          basis.includes('木局'));
       const decisionAlreadySummarized =
         specialAdjudication.status === '成立' &&
         pattern.pattern === specialAdjudication.kind &&
         basis.includes('成立') &&
-        Boolean(specialAdjudication.route && basis.includes(specialAdjudication.route)) &&
+        routeAlreadySummarized &&
         Boolean(specialAdjudication.method && basis.includes(specialAdjudication.method));
       const statedSpecialDetails = [specialAdjudication.route, specialAdjudication.method].filter(
         (detail) => detail && !basis.includes(detail),
@@ -215,6 +224,7 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
     hasConfirmedPatternTarget(result.analysis.mingGe)
   ) {
     const decisionDetail = fulfillment.decisionDetail || fulfillment.summary;
+    const statedDecision = formatPatternDecisionForPrompt(result.analysis.mingGe);
     const statedBreakers =
       result.analysis.usefulGod?.decisionEvidence?.patternBreakerRestrictions ?? [];
     for (const breaker of fulfillment.activeBreakers ?? []) {
@@ -231,29 +241,43 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
       ) {
         continue;
       }
+      const path =
+        breaker.repairStatus === '满足'
+          ? fulfillment.pathEvaluations?.find(
+              (item) =>
+                breaker.repairPathKeys.includes(item.key) && item.status === breaker.repairStatus,
+            )
+          : undefined;
+      const pathAlreadyStated =
+        path &&
+        result.analysis.usefulGod?.decisionEvidence?.controlFunctions?.some(
+          (item) =>
+            item.status === '满足' &&
+            item.sourceStems.length > 0 &&
+            item.targetStems.length > 0 &&
+            item.label === path.label &&
+            item.sourceStems.length === path.sourceStems.length &&
+            item.sourceStems.every((stem) => path.sourceStems.includes(stem)) &&
+            item.targetStems.length === path.targetStems.length &&
+            item.targetStems.every((stem) => path.targetStems.includes(stem)),
+        );
+      if (
+        path &&
+        pathAlreadyStated &&
+        statedDecision.includes(breaker.label) &&
+        breaker.stems.length > 0 &&
+        breaker.stems.every(
+          (stem) => path.sourceStems.includes(stem.stem) || path.targetStems.includes(stem.stem),
+        )
+      ) {
+        continue;
+      }
       const stems = breaker.stems
         .map((item) => `${item.stem}${item.tenGod}（${item.pillarName}）`)
         .join('、');
       facts.push(`破格项：${breaker.label}${stems ? `（${stems}）` : ''}`);
       if (breaker.repairStatus === '满足') {
-        const path = fulfillment.pathEvaluations?.find(
-          (item) =>
-            breaker.repairPathKeys.includes(item.key) && item.status === breaker.repairStatus,
-        );
-        const alreadyStated =
-          path &&
-          result.analysis.usefulGod?.decisionEvidence?.controlFunctions?.some(
-            (item) =>
-              item.status === '满足' &&
-              item.sourceStems.length > 0 &&
-              item.targetStems.length > 0 &&
-              item.label === path.label &&
-              item.sourceStems.length === path.sourceStems.length &&
-              item.sourceStems.every((stem) => path.sourceStems.includes(stem)) &&
-              item.targetStems.length === path.targetStems.length &&
-              item.targetStems.every((stem) => path.targetStems.includes(stem)),
-          );
-        if (path && !decisionDetail.includes(path.detail) && !alreadyStated) {
+        if (path && !decisionDetail.includes(path.detail) && !pathAlreadyStated) {
           facts.push(
             path.source.length && path.target.length
               ? `救应路径：${path.label}；${path.source.join('、')}作用于${path.target.join('、')}（${path.position}、根气可用）`

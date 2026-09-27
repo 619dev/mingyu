@@ -41,7 +41,7 @@ export const TAI_SUI_STARS: Readonly<Record<string, string>> = Object.freeze({
   甲子: '金辨',
   乙丑: '陈材',
   丙寅: '耿章',
-  丁卯: '沈悌',
+  丁卯: '沉兴',
   戊辰: '赵达',
   己巳: '郭灿',
   庚午: '王济',
