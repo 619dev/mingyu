@@ -24,6 +24,32 @@ test('住宅门向与额外坐向必须描述同一住宅，不能分别用于�
   }
 });
 
+test('住宅合参保留跨宅卦误差候选测量结果', () => {
+  const result = generateResidentialFengshui({
+    birthYear: 1990,
+    gender: 'male',
+    year: 2024,
+    doorToInteriorDegree: 64,
+    northReference: 'magnetic',
+    magneticDeclinationDegrees: 1,
+    measurementUncertaintyDegrees: 3,
+  });
+
+  assert.ok(result.bazhai && 'directionMeasurement' in result.bazhai);
+  assert.equal(result.bazhai.directionMeasurement.stability, '宅卦不稳定');
+  assert.deepEqual(
+    result.bazhai.directionMeasurement.candidateDirections.map((item) => [
+      item.sitMountain,
+      item.houseGua,
+      item.housePalace.length,
+    ]),
+    [
+      ['寅', '艮', 8],
+      ['甲', '震', 8],
+    ],
+  );
+});
+
 test('缺少宅运年份时仍按已有朝向或坐向独立计算八宅宅卦', () => {
   for (const orientation of [
     { sitMountain: '子' },
@@ -222,12 +248,9 @@ test('住宅风水门向度数会同步八宅与玄空山向', () => {
   assert.ok(result.xuankong);
   assert.ok(result.agreements.length >= 1);
   assert.ok(result.advice.length >= 1);
-  const measurement = (
-    result.bazhai as { directionMeasurement?: { sitMountain: string; facingMountain: string } }
-  ).directionMeasurement;
-  assert.ok(measurement);
-  assert.equal(result.xuankong?.sitMountain, measurement?.sitMountain);
-  assert.equal(result.xuankong?.facingMountain, measurement?.facingMountain);
+  assert.ok(result.bazhai && 'directionMeasurement' in result.bazhai);
+  assert.equal(result.xuankong?.sitMountain, result.bazhai.directionMeasurement.sitMountain);
+  assert.equal(result.xuankong?.facingMountain, result.bazhai.directionMeasurement.facingMountain);
   assert.match(result.prompt, /玄空完整盘面：/);
   assert.match(result.prompt, /三盘九宫：/);
   assert.match(result.prompt, /八宅完整盘面：/);

@@ -47,9 +47,12 @@ export function buildFrontendInstantObserver(input: {
   birthLongitude: string;
   birthLatitude: string;
 }): InstantObserver | undefined {
+  if (!input.birthPlace.trim() || !input.birthLongitude.trim() || !input.birthLatitude.trim()) {
+    return undefined;
+  }
   const longitude = Number(input.birthLongitude);
   const latitude = Number(input.birthLatitude);
-  if (!input.birthPlace.trim() || !Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
     return undefined;
   }
   return {

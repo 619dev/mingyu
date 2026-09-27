@@ -40,6 +40,32 @@ test('网页即时盘按类型和时间口径决定是否需要地点', () => {
   assert.equal(observer.timeZoneId, 'Asia/Shanghai');
 });
 
+test('网页即时盘不能把空坐标当作零度观测点', () => {
+  assert.equal(
+    buildFrontendInstantObserver({
+      birthPlace: '北京市东城区',
+      birthLongitude: '',
+      birthLatitude: '39.929',
+    }),
+    undefined,
+  );
+  assert.equal(
+    buildFrontendInstantObserver({
+      birthPlace: '北京市东城区',
+      birthLongitude: '116.416',
+      birthLatitude: ' ',
+    }),
+    undefined,
+  );
+  const zero = buildFrontendInstantObserver({
+    birthPlace: '零度地点',
+    birthLongitude: '0',
+    birthLatitude: '0',
+  });
+  assert.equal(zero?.longitude, 0);
+  assert.equal(zero?.latitude, 0);
+});
+
 test('网页八字即时盘提示词只描述当前时刻事件盘', () => {
   const result = calculateBaziChartFromInput({
     gender: 'male',

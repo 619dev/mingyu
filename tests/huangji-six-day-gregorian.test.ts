@@ -237,7 +237,7 @@ test('现代比例模型支持固定时区与 IANA，并分别保留真实瞬时
   assert.ok(iana.calendar.yearLengthSeconds > 364 * 86400);
 });
 
-test('现代比例模型提示词回显冬至锚点、实际岁周与限制说明', () => {
+test('现代比例模型提示词将冬至锚点与比例口径列入排盘资料', () => {
   const result = calculateHuangjiJingshi({
     sixDayDate: parseProportionalSixDay('2025-12-22T05:03:05+08:00'),
     question: '此时的主要变化是什么？',
@@ -249,6 +249,9 @@ test('现代比例模型提示词回显冬至锚点、实际岁周与限制说�
   assert.match(result.prompt, /当地子半/);
   assert.match(result.prompt, /实际跨度/);
   assert.match(result.prompt, /逻辑位置/);
-  assert.match(result.prompt, /不宣称是古籍唯一算法/);
+  const traditionalBasis = result.prompt.split('【传统依据】\n')[1]?.split('\n\n【排盘资料】')[0];
+  assert.ok(traditionalBasis);
+  assert.doesNotMatch(traditionalBasis, /现代冬至岁周换算|实际跨度|比例映射/u);
+  assert.match(result.prompt, /【排盘资料】\n六日逐爻公历时间：[\s\S]*现代冬至岁周换算模型：/u);
   assert.match(result.prompt, /【问题】\n此时的主要变化是什么？/);
 });

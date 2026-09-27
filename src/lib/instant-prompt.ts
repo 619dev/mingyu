@@ -62,7 +62,6 @@ function formatInstantBaziData(result: BaziChartResult) {
     `起盘时刻：${result.solarDate.year}年${result.solarDate.month}月${result.solarDate.day}日 ${result.timeInfo.name}`,
     `农历：${lunar.year}年${lunar.monthName}${lunar.dayName}；生肖：${result.zodiac}`,
     `日元：${result.dayMaster.gan}${result.dayMaster.element}（${result.dayMaster.yinYang}）`,
-    `日柱${result.pillars.day.ganZhi}所属旬空：${dayEmptyBranches.join('、') || '无'}`,
     result.hiddenStems.month?.[0] ? `月支本气：${result.hiddenStems.month[0]}` : '',
     result.monthCommander ? `月令司权：${result.monthCommander}` : '',
     ...pillarLines,
@@ -81,7 +80,7 @@ function formatZiweiStar(star: ZiweiPayload['palaces'][number]['major_stars'][nu
   return [
     star.name,
     star.brightness ? `（${star.brightness}）` : '',
-    star.birth_mutagen ? `化${star.birth_mutagen}` : '',
+    star.birth_mutagen ? `（起盘年干化${star.birth_mutagen}）` : '',
   ]
     .filter(Boolean)
     .join('');
@@ -97,27 +96,22 @@ function formatInstantZiweiData(payload: ZiweiPayload) {
       ? `；${palace.self_mutagens.map((item) => `自化${item}`).join('、')}`
       : '';
     const flyingMutagens = palace.mutaged_palaces
-      ?.filter((item) => item.palace_name)
+      ?.filter(
+        (item) =>
+          item.palace_name &&
+          !(item.palace_name === palace.name && palace.self_mutagens?.includes(item.mutagen)),
+      )
       .map((item) => `化${item.mutagen}入${item.palace_name}`);
     return `${palace.name}（${palace.heavenly_stem}${palace.earthly_branch}）${
       palace.is_body_palace ? '，身宫' : ''
     }：${stars || '无主星'}${selfMutagens}${flyingMutagens?.length ? `；宫干飞化${flyingMutagens.join('、')}` : ''}\n宫位关系：${formatPalaceRelations(payload, palace)}`;
   });
-  const mutagens = payload.palaces
-    .flatMap((palace) =>
-      [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars]
-        .filter((star) => star.birth_mutagen)
-        .map((star) => `${star.name}化${star.birth_mutagen}入${palace.name}`),
-    )
-    .join('；');
-
   return [
     `起盘时刻：${basic.solar_date}；农历：${basic.lunar_date}；时辰：${basic.birth_time_label}`,
     basic.four_pillars
       ? `四柱：${basic.four_pillars.year_pillar} ${basic.four_pillars.month_pillar} ${basic.four_pillars.day_pillar} ${basic.four_pillars.hour_pillar}`
       : '',
     `五行局：${basic.five_elements_class}；命主星：${basic.soul}；身主星：${basic.body}`,
-    mutagens ? `起盘年干四化：${mutagens}` : '',
     ...palaceLines,
   ]
     .filter(Boolean)

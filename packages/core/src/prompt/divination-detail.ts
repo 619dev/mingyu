@@ -266,6 +266,7 @@ function formatHuangjiDetail(data: HuangjiJingshiResult) {
     `值年卦关系：本卦${forecast.hexagrams.annual.name}；互卦${forecast.relatedHexagrams.mutual.name}；错卦${forecast.relatedHexagrams.opposite.name}；综卦${forecast.relatedHexagrams.reversed.name}`,
     ...(dateTime
       ? [
+          '年月日时映射：每节气按十五日定位，超过十五日的尾段沿用第十五日；日卦按月经卦下的六十卦序顺行。',
           `皇极历位：${dateTime.civilTime.dateTime}，${dateTime.calendar.activeSolarTerm}，${dateTime.calendar.monthBranch}月第${dateTime.calendar.dayOfMonth}日，时段${dateTime.calendar.hourRange}`,
           `年月日时层级：月经卦${dateTime.hexagrams.monthJing.name}；旬纬卦${dateTime.hexagrams.xunWei.name}；日卦${dateTime.hexagrams.daily.name}；时经卦${dateTime.hexagrams.hourJing.name}`,
         ]

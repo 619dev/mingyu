@@ -299,7 +299,11 @@ test('八宅测量应换算磁北并识别跨宅卦边界的不稳定候选', ()
   );
   assert.match(result.evidenceAnalysis.promptText, /候选明细.*寅山申向.*甲山庚向/s);
   assert.match(result.directionMeasurement.promptText, /磁偏角 1°/);
-  assert.match(result.directionMeasurement.promptText, /不能只采用单一八宅盘|并列候选盘/);
+  assert.match(result.directionMeasurement.promptText, /测量稳定性为宅卦不稳定/);
+  assert.match(result.directionMeasurement.promptText, /误差候选.*寅山申向.*甲山庚向/s);
+  assert.match(result.directionMeasurement.promptText, /候选寅山申向：艮宅八宫为/);
+  assert.match(result.directionMeasurement.promptText, /候选甲山庚向：震宅八宫为/);
+  assert.doesNotMatch(result.directionMeasurement.promptText, /不能只采用单一八宅盘/);
   assert.ok(
     result.evidenceAnalysis.counterEvidence.some((item) =>
       item.includes('中心读数不能作为唯一宅卦主证'),

@@ -30,18 +30,42 @@ function buildBazi(status: string, hasYangRen = true): BaziChartResult {
   } as unknown as BaziChartResult;
 }
 
+const PALACE_NAMES = [
+  '命宫',
+  '兄弟宫',
+  '夫妻宫',
+  '子女宫',
+  '财帛宫',
+  '疾厄宫',
+  '迁移宫',
+  '交友宫',
+  '官禄宫',
+  '田宅宫',
+  '福德宫',
+  '父母宫',
+];
+
+function completePalaces(first: Record<string, unknown>): Record<string, unknown>[] {
+  return PALACE_NAMES.map((name, index) => ({
+    name,
+    index,
+    is_body_palace: false,
+    major_stars: [],
+    minor_stars: [],
+    ...(index === 0 ? first : {}),
+  }));
+}
+
 function buildZiwei(hasShaStar = true): ZiweiRuntime {
   return {
     payloadByScope: {
       origin: {
-        palaces: [
-          {
-            name: '命宫',
-            is_body_palace: false,
-            major_stars: [],
-            minor_stars: hasShaStar ? [{ name: '擎羊' }] : [],
-          },
-        ],
+        palaces: completePalaces({
+          name: '命宫',
+          is_body_palace: false,
+          major_stars: [],
+          minor_stars: hasShaStar ? [{ name: '擎羊' }] : [],
+        }),
       },
     },
   } as unknown as ZiweiRuntime;
@@ -51,21 +75,19 @@ function buildGuiZiwei(options: { brightness?: string; palaceName?: string } = {
   return {
     payloadByScope: {
       origin: {
-        palaces: [
-          {
-            name: options.palaceName ?? '命宫',
-            index: 0,
-            is_body_palace: false,
-            major_stars: [
-              {
-                name: '天魁',
-                kind: '辅星',
-                ...(options.brightness ? { brightness: options.brightness } : {}),
-              },
-            ],
-            minor_stars: [],
-          },
-        ],
+        palaces: completePalaces({
+          name: options.palaceName ?? '命宫',
+          index: 0,
+          is_body_palace: false,
+          major_stars: [
+            {
+              name: '天魁',
+              kind: '辅星',
+              ...(options.brightness ? { brightness: options.brightness } : {}),
+            },
+          ],
+          minor_stars: [],
+        }),
       },
     },
   } as unknown as ZiweiRuntime;
@@ -147,6 +169,34 @@ test('缺少紫微原盘时不把未核验的星曜与运限判为未命中', ()
     }
     assert.match(result.judgment, /紫微原盘资料缺失.*未核验/);
   }
+});
+
+test('十二宫缺位时保留已见星曜，但不宣称双盘条件已满足', () => {
+  const shaZiwei = buildZiwei();
+  shaZiwei.payloadByScope.origin.palaces.pop();
+  const sha = evaluateShaYaoCorroboration(buildBazi('身强'), shaZiwei);
+  assert.equal(sha.ziweiShaEvidence.length, 1);
+  assert.equal(sha.isHarmonized, false);
+  assert.equal(sha.ziweiCheckStatus, 'origin-missing');
+  assert.equal(
+    sha.effectConditions.find((item) => item.key === 'ziwei.origin')?.status,
+    '资料不足',
+  );
+  assert.equal(
+    sha.effectConditions.find((item) => item.key === 'ziwei.sha-star-position')?.status,
+    '资料不足',
+  );
+  assert.match(sha.judgment, /十二宫资料不完整.*未核验/);
+
+  const guiZiwei = buildGuiZiwei();
+  guiZiwei.payloadByScope.origin.palaces[1].index = 0;
+  const gui = evaluateGuiRenCorroboration(buildGuiBazi(), guiZiwei);
+  assert.equal(gui.ziweiGuiEvidence.length, 1);
+  assert.equal(gui.isDoubleBlessed, false);
+  assert.equal(
+    gui.effectConditions.find((item) => item.key === 'ziwei.origin')?.status,
+    '资料不足',
+  );
 });
 
 test('贵人合参保留八字柱位、紫微宫位与星曜状态，不把共现写成终身断语', () => {
@@ -236,6 +286,18 @@ test('合参缺少八字神煞资料时应保留无法核验状态', () => {
     '资料不足',
   );
   assert.match(gui.judgment, /资料未提供.*无法核验天乙/);
+});
+
+test('八字神煞缺少任一柱时不把局部命中误报为完整双盘条件', () => {
+  const bazi = buildBazi('身强');
+  delete (bazi.shensha as { hour?: unknown }).hour;
+  const result = evaluateShaYaoCorroboration(bazi, buildZiwei());
+  assert.equal(result.hasBaziYangRen, false);
+  assert.equal(result.isHarmonized, false);
+  assert.equal(
+    result.effectConditions.find((item) => item.key === 'bazi.yang-ren-position')?.status,
+    '资料不足',
+  );
 });
 
 test('合参区分亮度已列与落陷制约，运限按宫位及四化星曜双重定位', () => {

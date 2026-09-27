@@ -10,6 +10,7 @@ import {
 } from '@core/huangji-jingshi';
 import { calculateHuangjiDateTimeForecast } from '../packages/core/src/huangji-jingshi/datetime.ts';
 import { formatHuangjiInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 test('皇极经世换算常量应满足元会运世层级恒等式', () => {
@@ -159,6 +160,15 @@ test('皇极经世年月日时盘应由值年卦继续推至月经、旬纬、�
   assert.match(dateTime.sources[0].title, /皇极经世书绪言.*卷三/);
   assert.match(result.prompt, /每个节气按十五个皇极日定位/);
   assert.match(result.prompt, /每六十日变一爻得月经卦/);
+  const traditionalBasis = result.prompt.split('【传统依据】\n')[1]?.split('\n\n【排盘资料】')[0];
+  assert.ok(traditionalBasis);
+  assert.doesNotMatch(traditionalBasis, /每个节气按十五|月经卦每十日|日卦从月经卦/u);
+  assert.match(result.prompt, /【排盘资料】\n本次年月日时映射口径：/u);
+  assert.match(formatted, /年月日时映射：每节气按十五日定位/u);
+  assert.match(
+    formatDetailedDivinationInfo('huangji', result),
+    /年月日时映射：每节气按十五日定位/u,
+  );
   assert.doesNotMatch(result.prompt, /黄畿.*分形同构规则/);
   assert.equal(result.input.mode, '年月日时');
   assert.equal(result.input.year, 2026);

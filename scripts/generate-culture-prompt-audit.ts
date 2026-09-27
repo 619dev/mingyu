@@ -132,12 +132,16 @@ export async function buildCulturePromptSamples(): Promise<CulturePromptSample[]
         })),
         ...name.gridDerivations.map((grid) => ({
           id: `姓名.${grid.key}`,
-          owner: '五格：',
+          owner: '五格数理参考：',
           values: [
             `${grid.name}${name.grids[grid.key].num}（${name.grids[grid.key].wuxing}、${name.grids[grid.key].keywords}）；${grid.rule}：${grid.expression}`,
           ],
         })),
-        { id: '姓名.三才', owner: '三才：', values: [name.sancai.combo, name.sancai.text] },
+        {
+          id: '姓名.三才',
+          owner: '三才取象（姓名学数理参考）：',
+          values: [name.sancai.combo, name.sancai.text],
+        },
       ],
       required: [
         '曾姓氏读音参考：zēng',

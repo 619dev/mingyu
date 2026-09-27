@@ -171,10 +171,11 @@ export function evaluateQizhengEnNan(params: {
     const counterpartCanonical = resolveCanonicalStar(counterpart);
     if (!counterpartCanonical) continue;
     const counterpartElement = STAR_WUXING[counterpartCanonical]!;
+    const relation = aspect.type === '同宫' ? '合相' : aspect.type;
     if (counterpartElement === nanElement) {
-      aspectInteraction.push(`难星${counterpart}与命主形成${aspect.type}吊照`);
+      aspectInteraction.push(`难星${counterpart}与命主形成${relation}吊照`);
     } else if (counterpartElement === enElement) {
-      aspectInteraction.push(`恩星${counterpart}与命主形成${aspect.type}吊照`);
+      aspectInteraction.push(`恩星${counterpart}与命主形成${relation}吊照`);
     }
   }
 

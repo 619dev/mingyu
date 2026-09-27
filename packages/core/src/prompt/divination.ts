@@ -245,19 +245,6 @@ function formatLiurenFocusSummary(data: LiurenData) {
     .join('，')}`;
 }
 
-function formatLiurenDetailSummary(data: LiurenData) {
-  const lessons = data.fourLessons?.length
-    ? `四课关系：${data.fourLessons.map((item) => `${item.name}${item.upper}/${item.lower} ${item.relation}`).join('；')}`
-    : '四课关系：未标注';
-  const transmissions = data.threeTransmissions?.length
-    ? `三传主线：${data.threeTransmissions.map((item, index) => `${item.stage || ['初传', '中传', '末传'][index] || '传'}${item.branch}`).join(' → ')}`
-    : '三传主线：未标注';
-  const nobleman = data.noblemanBranch
-    ? `贵人：${data.noblemanBranch}${data.noblemanGroundBranch ? `临${data.noblemanGroundBranch}` : ''}`
-    : '贵人：未知';
-  return [lessons, transmissions, nobleman];
-}
-
 function formatTarotFocusSummary(data: TarotData) {
   return data.cards
     .slice(0, 3)
@@ -411,7 +398,7 @@ export function getDivinationSummaryBlocks(
         ],
         lines: [
           wrapMainEvidence(formatLiurenFocusSummary(item)),
-          `昼夜：${item.dayNight || '未记录'}；贵人${item.noblemanBranch || '未记录'}`,
+          `昼夜：${item.dayNight || '未记录'}；贵人${item.noblemanBranch || '未记录'}${item.noblemanGroundBranch ? `临${item.noblemanGroundBranch}` : ''}`,
           `日干寄宫：${item.dayStemResidence ? `${item.ganzhi.day.charAt(0)}寄${item.dayStemResidence}` : '未知'}`,
           `旬空：${item.xunKong?.length ? item.xunKong.join('、') : '未知'}`,
           `取传法：${item.transmissionRule || '未记录'}；传态：${item.transmissionPattern || '未记录'}`,
@@ -420,7 +407,6 @@ export function getDivinationSummaryBlocks(
           `三传：${item.threeTransmissions.map((_, index) => formatLiurenTransmission(item, index)).join(' → ')}`,
           `课体：${item.guaTi?.join('、') || '无'}`,
           `神煞：${item.shenShaSummary?.length ? item.shenShaSummary.join('；') : '无'}`,
-          ...formatLiurenDetailSummary(item),
         ].filter(Boolean),
       };
     }

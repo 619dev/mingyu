@@ -11,6 +11,7 @@ import {
   birthProfileToQizhengInput,
   calculateBaziFromBirthProfile,
   normalizeBirthProfile,
+  resolveBirthProfileLocation,
 } from '../packages/core/src/profile/index';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
 import {
@@ -59,6 +60,31 @@ test('统一出生档案缺少时间时应在排盘前拒绝', () => {
       error instanceof BirthProfileError &&
       error.code === 'TIME_REQUIRED' &&
       error.message === '请提供明确的出生时辰，或完整的出生小时和分钟。',
+  );
+});
+
+test('自定义出生坐标缺少时区时应拒绝，行政区仍可使用已知时区', () => {
+  assert.throws(
+    () =>
+      normalizeBirthProfile({
+        gender: 'female',
+        calendarType: 'solar',
+        year: 1990,
+        month: 5,
+        day: 15,
+        hour: 12,
+        minute: 0,
+        location: { name: '纽约', longitude: -74.006, latitude: 40.7128 },
+      }),
+    (error: unknown) =>
+      error instanceof BirthProfileError &&
+      error.code === 'TIMEZONE_REQUIRED' &&
+      error.field === 'location.timezone',
+  );
+  assert.equal(resolveBirthProfileLocation({ regionId: '110101' })?.timezone, 8);
+  assert.equal(
+    resolveBirthProfileLocation({ longitude: -74.006, timeZoneId: 'America/New_York' })?.timezone,
+    undefined,
   );
 });
 

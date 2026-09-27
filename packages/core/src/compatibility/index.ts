@@ -248,9 +248,9 @@ function addPairRelations(
   if (systems.includes('bazi')) {
     if (!primaryChart.bazi || !partnerChart.bazi) throw new Error('八字合盘资料生成失败。');
     bundle.bazi = analyzeBaziCompatibility(primaryChart.bazi, partnerChart.bazi, {
+      ...options.bazi,
       person1Name: primaryChart.profile.name,
       person2Name: partnerChart.profile.name,
-      ...options.bazi,
     });
   }
 
@@ -275,11 +275,11 @@ function addPairRelations(
       primaryChart.ziwei.payloadByScope.origin,
       partnerChart.ziwei.payloadByScope.origin,
       {
+        ...options.ziwei,
         person1Name: primaryChart.profile.name,
         person2Name: partnerChart.profile.name,
         astrolabe1: primaryChart.ziwei.astrolabe,
         astrolabe2: partnerChart.ziwei.astrolabe,
-        ...options.ziwei,
       },
     );
   }

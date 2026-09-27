@@ -189,3 +189,32 @@ test('恩难相位中的四余加括注不改变星曜身份', () => {
     );
   }
 });
+
+test('恩难相位以合相描述零度吊照，不把跨宫关系写成同宫', () => {
+  const result = evaluateQizhengEnNan({
+    birthUtcTimestamp: Date.parse('2024-06-21T12:00:00Z'),
+    sunriseSunset: {
+      status: '全天高于阈值',
+      morningUtcDateTime: null,
+      eveningUtcDateTime: null,
+    },
+    mingZhu: '火',
+    aspects: [
+      {
+        star1: '荧惑(火)',
+        star2: '月孛(水余)',
+        type: '同宫',
+        exactAngle: 0,
+        actualAngle: 2,
+        orb: 2,
+        allowedOrb: 8,
+        orbRatio: 0.25,
+        closeness: '紧密',
+        precisionClass: '同层现代天文',
+        source: '固定几何样本',
+      },
+    ],
+  });
+  assert.ok(result.aspectInteraction.some((item) => item.includes('合相吊照')));
+  assert.ok(result.aspectInteraction.every((item) => !item.includes('同宫吊照')));
+});

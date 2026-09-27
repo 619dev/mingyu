@@ -52,7 +52,7 @@ export interface ShaYaoCorroborationResult {
   effectConditions: CorroborationCondition[];
   isHarmonized: boolean; // 是否具备权柄相济的结构线索，不等于制化已经完成
   judgment: string;
-  /** 紫微原盘核验状态：checked=已按关键宫核验；origin-missing=原盘缺失未核验 */
+  /** 紫微原盘核验状态：checked=已按关键宫核验；origin-missing=十二宫缺失或不完整 */
   ziweiCheckStatus: 'checked' | 'origin-missing';
 }
 
@@ -68,7 +68,7 @@ export interface GuiRenCorroborationResult {
   /** 双盘资料同时出现的结构线索，不表示终身福力或现实结果。 */
   isDoubleBlessed: boolean;
   judgment: string;
-  /** 紫微原盘核验状态：checked=已按关键宫核验；origin-missing=原盘缺失未核验 */
+  /** 紫微原盘核验状态：checked=已按关键宫核验；origin-missing=十二宫缺失或不完整 */
   ziweiCheckStatus: 'checked' | 'origin-missing';
 }
 
@@ -86,6 +86,19 @@ function stripPalaceSuffix(name: string): string {
 
 function matchesKeyPalace(name: string, keys: Set<string>): boolean {
   return keys.has(name) || keys.has(stripPalaceSuffix(name));
+}
+
+/** 十二宫索引和名称均完整，才可把未列星曜解释为未命中。 */
+export function hasCompleteZiweiOrigin(ziwei: ZiweiRuntime): boolean {
+  const palaces = ziwei.payloadByScope.origin?.palaces;
+  return (
+    palaces?.length === 12 &&
+    new Set(palaces.map((palace) => palace.index)).size === 12 &&
+    palaces.every(
+      (palace) => Number.isInteger(palace.index) && palace.index >= 0 && palace.index < 12,
+    ) &&
+    new Set(palaces.map((palace) => stripPalaceSuffix(palace.name))).size === 12
+  );
 }
 
 const PILLAR_NAMES = {
@@ -106,7 +119,13 @@ function findBaziShenShaEvidence(
   rule: BaziBranchEvidence['rule'],
 ): BaziBranchEvidence[] | undefined {
   const shensha = bazi.shensha;
-  if (!shensha) return undefined;
+  if (
+    !shensha ||
+    (Object.keys(PILLAR_NAMES) as Array<keyof typeof PILLAR_NAMES>).some(
+      (pillar) => !Array.isArray(shensha[pillar]),
+    )
+  )
+    return undefined;
   return (Object.keys(PILLAR_NAMES) as Array<keyof typeof PILLAR_NAMES>)
     .filter((pillar) => shensha[pillar]?.includes(rule))
     .map((pillar) => ({
@@ -189,7 +208,11 @@ function buildStarStateCondition(
   hasOrigin: boolean,
 ): CorroborationCondition {
   if (!hasOrigin) {
-    return { key, status: '资料不足', detail: `紫微本命十二宫资料缺失，无法核验${label}状态。` };
+    return {
+      key,
+      status: '资料不足',
+      detail: `紫微本命十二宫资料缺失或不完整，无法核验${label}状态。`,
+    };
   }
   if (!evidence.length) {
     return { key, status: '不满足', detail: `未在关键宫记录${label}。` };
@@ -222,13 +245,13 @@ function buildStarStateCondition(
   };
 }
 
-function buildOriginCondition(origin: boolean): CorroborationCondition {
-  return origin
+function buildOriginCondition(complete: boolean, present: boolean): CorroborationCondition {
+  return complete
     ? { key: 'ziwei.origin', status: '满足', detail: '紫微本命十二宫资料已提供。' }
     : {
         key: 'ziwei.origin',
         status: '资料不足',
-        detail: '紫微本命十二宫资料缺失，无法完成双盘核验。',
+        detail: `紫微本命十二宫资料${present ? '不完整' : '缺失'}，无法完成双盘核验。`,
       };
 }
 
@@ -241,7 +264,7 @@ function buildTimingCondition(
     return {
       key: 'timing.period',
       status: '资料不足',
-      detail: '紫微本命十二宫资料缺失，无法将运限与本命目标星曜核对。',
+      detail: '紫微本命十二宫资料缺失或不完整，无法将运限与本命目标星曜核对。',
     };
   }
   const scopes = Object.values(ziwei.payloadByScope).filter(
@@ -303,13 +326,15 @@ export function evaluateShaYaoCorroboration(
   const hasBaziYangRen = baziYangRenPositions.length > 0;
 
   const origin = ziwei.payloadByScope.origin;
+  const completeOrigin = hasCompleteZiweiOrigin(ziwei);
+  const originIssue = origin ? '紫微原盘十二宫资料不完整' : '紫微原盘资料缺失';
   const SHA_STAR_SET = new Set(['擎羊', '陀罗', '火星', '铃星']);
   const ziweiShaEvidence = buildZiweiStarEvidence(origin?.palaces, SHA_KEY_PALACES, SHA_STAR_SET);
   const ziweiShaStars = formatLegacyZiweiStars(ziweiShaEvidence);
 
   const strengthStatus = bazi.analysis?.dayMasterStrength?.status || '未知';
   const isWang = isStrongDayMasterStatus(strengthStatus);
-  const isHarmonized = hasBaziYangRen && isWang && ziweiShaEvidence.length > 0;
+  const isHarmonized = completeOrigin && hasBaziYangRen && isWang && ziweiShaEvidence.length > 0;
   const effectConditions: CorroborationCondition[] = [
     {
       key: 'bazi.yang-ren-position',
@@ -325,31 +350,31 @@ export function evaluateShaYaoCorroboration(
       status: strengthStatus === '未知' ? '资料不足' : isWang ? '满足' : '不满足',
       detail: `八字日主强弱状态为${strengthStatus}；权柄相济线索需要可核验的身强状态。`,
     },
-    buildOriginCondition(Boolean(origin)),
+    buildOriginCondition(completeOrigin, Boolean(origin)),
     {
       key: 'ziwei.sha-star-position',
-      status: !origin ? '资料不足' : ziweiShaEvidence.length ? '满足' : '不满足',
-      detail: !origin
-        ? '紫微本命十二宫资料缺失，无法核验关键宫煞曜。'
+      status: !completeOrigin ? '资料不足' : ziweiShaEvidence.length ? '满足' : '不满足',
+      detail: !completeOrigin
+        ? `${originIssue}，无法完整核验关键宫煞曜。`
         : ziweiShaEvidence.length
           ? `紫微关键宫记录${formatZiweiEvidence(ziweiShaEvidence)}。`
           : '紫微关键宫未记录擎羊、陀罗、火星或铃星。',
     },
-    buildStarStateCondition('ziwei.sha-star-state', ziweiShaEvidence, '紫微煞曜', Boolean(origin)),
-    buildTimingCondition(ziwei, ziweiShaEvidence, Boolean(origin)),
+    buildStarStateCondition('ziwei.sha-star-state', ziweiShaEvidence, '紫微煞曜', completeOrigin),
+    buildTimingCondition(ziwei, ziweiShaEvidence, completeOrigin),
   ];
 
   let judgment: string;
   if (!baziShenShaAvailable) {
-    judgment = !origin
-      ? '紫微原盘资料缺失，煞曜同参未核验；八字神煞资料未提供，无法核验羊刃位置'
+    judgment = !completeOrigin
+      ? `${originIssue}，煞曜同参未核验；八字神煞资料未提供，无法核验羊刃位置`
       : ziweiShaEvidence.length > 0
         ? `紫微${formatZiweiEvidence(ziweiShaEvidence)}；八字神煞资料未提供，无法核验羊刃位置，仅保留紫微宫位与星曜线索`
         : '八字神煞资料未提供，无法核验羊刃位置；紫微关键宫也未记录目标煞曜';
-  } else if (!origin) {
+  } else if (!completeOrigin) {
     judgment = hasBaziYangRen
-      ? `紫微原盘资料缺失，煞曜同参未核验；八字羊刃命中${formatBaziEvidence(baziYangRenPositions)}，仅保留单盘位置事实`
-      : '紫微原盘资料缺失，煞曜同参未核验；八字四柱也未命中羊刃位置';
+      ? `${originIssue}，煞曜同参未核验；八字羊刃命中${formatBaziEvidence(baziYangRenPositions)}，仅保留单盘位置事实`
+      : `${originIssue}，煞曜同参未核验；八字四柱也未命中羊刃位置`;
   } else if (hasBaziYangRen && ziweiShaEvidence.length > 0) {
     if (isHarmonized) {
       judgment = `八字羊刃见于${formatBaziEvidence(baziYangRenPositions)}且日主状态为${strengthStatus}；紫微${formatZiweiEvidence(ziweiShaEvidence)}，权柄相济作为待合参的结构主题。${effectConditions
@@ -377,7 +402,7 @@ export function evaluateShaYaoCorroboration(
     effectConditions,
     isHarmonized,
     judgment,
-    ziweiCheckStatus: origin ? 'checked' : 'origin-missing',
+    ziweiCheckStatus: completeOrigin ? 'checked' : 'origin-missing',
   };
 }
 
@@ -394,11 +419,13 @@ export function evaluateGuiRenCorroboration(
   const hasBaziTianYi = baziTianYiPositions.length > 0;
 
   const origin = ziwei.payloadByScope.origin;
+  const completeOrigin = hasCompleteZiweiOrigin(ziwei);
+  const originIssue = origin ? '紫微原盘十二宫资料不完整' : '紫微原盘资料缺失';
   const GUI_STAR_SET = new Set(['左辅', '右弼', '天魁', '天钺']);
   const ziweiGuiEvidence = buildZiweiStarEvidence(origin?.palaces, GUI_KEY_PALACES, GUI_STAR_SET);
   const ziweiGuiStars = formatLegacyZiweiStars(ziweiGuiEvidence);
 
-  const isDoubleBlessed = hasBaziTianYi && ziweiGuiEvidence.length > 0;
+  const isDoubleBlessed = completeOrigin && hasBaziTianYi && ziweiGuiEvidence.length > 0;
   const effectConditions: CorroborationCondition[] = [
     {
       key: 'bazi.tianyi-position',
@@ -409,36 +436,31 @@ export function evaluateGuiRenCorroboration(
           ? `按当前八字神煞口径，天乙贵人命中${formatBaziEvidence(baziTianYiPositions)}。`
           : '按当前八字神煞口径，四柱未记录天乙贵人。',
     },
-    buildOriginCondition(Boolean(origin)),
+    buildOriginCondition(completeOrigin, Boolean(origin)),
     {
       key: 'ziwei.gui-star-position',
-      status: !origin ? '资料不足' : ziweiGuiEvidence.length ? '满足' : '不满足',
-      detail: !origin
-        ? '紫微本命十二宫资料缺失，无法核验关键宫贵人星。'
+      status: !completeOrigin ? '资料不足' : ziweiGuiEvidence.length ? '满足' : '不满足',
+      detail: !completeOrigin
+        ? `${originIssue}，无法完整核验关键宫贵人星。`
         : ziweiGuiEvidence.length
           ? `紫微关键宫记录${formatZiweiEvidence(ziweiGuiEvidence)}。`
           : '紫微关键宫未记录左辅、右弼、天魁或天钺。',
     },
-    buildStarStateCondition(
-      'ziwei.gui-star-state',
-      ziweiGuiEvidence,
-      '紫微贵人星',
-      Boolean(origin),
-    ),
-    buildTimingCondition(ziwei, ziweiGuiEvidence, Boolean(origin)),
+    buildStarStateCondition('ziwei.gui-star-state', ziweiGuiEvidence, '紫微贵人星', completeOrigin),
+    buildTimingCondition(ziwei, ziweiGuiEvidence, completeOrigin),
   ];
   let judgment: string;
 
   if (!baziShenShaAvailable) {
-    judgment = !origin
-      ? '紫微原盘资料缺失，贵人吉曜同参未核验；八字神煞资料未提供，无法核验天乙位置'
+    judgment = !completeOrigin
+      ? `${originIssue}，贵人吉曜同参未核验；八字神煞资料未提供，无法核验天乙位置`
       : ziweiGuiEvidence.length > 0
         ? `紫微${formatZiweiEvidence(ziweiGuiEvidence)}；八字神煞资料未提供，无法核验天乙位置，仅保留紫微宫位与星曜线索`
         : '八字神煞资料未提供，无法核验天乙位置；紫微关键宫也未记录目标贵人星';
-  } else if (!origin) {
+  } else if (!completeOrigin) {
     judgment = hasBaziTianYi
-      ? `紫微原盘资料缺失，贵人吉曜同参未核验；八字天乙位于${formatBaziEvidence(baziTianYiPositions)}，仅保留单盘位置线索`
-      : '紫微原盘资料缺失，贵人吉曜同参未核验；八字四柱也未记录天乙位置';
+      ? `${originIssue}，贵人吉曜同参未核验；八字天乙位于${formatBaziEvidence(baziTianYiPositions)}，仅保留单盘位置线索`
+      : `${originIssue}，贵人吉曜同参未核验；八字四柱也未记录天乙位置`;
   } else if (isDoubleBlessed) {
     judgment = `八字天乙位于${formatBaziEvidence(baziTianYiPositions)}；紫微${formatZiweiEvidence(ziweiGuiEvidence)}，形成双盘贵人结构线索。${effectConditions
       .slice(-2)
@@ -461,7 +483,7 @@ export function evaluateGuiRenCorroboration(
     effectConditions,
     isDoubleBlessed,
     judgment,
-    ziweiCheckStatus: origin ? 'checked' : 'origin-missing',
+    ziweiCheckStatus: completeOrigin ? 'checked' : 'origin-missing',
   };
 }
 

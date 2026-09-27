@@ -123,6 +123,34 @@ test('真太阳时即时盘必须提供地点并返回校正结果', async () =>
   assert.ok(response.trueSolarTime?.correctedDateTime);
 });
 
+test('即时盘保留 IANA 秒级历史偏移，按给定瞬时点生成真太阳时', () => {
+  const customDate = new Date('1900-02-04T05:51:31.000Z');
+  const context = buildInstantChartContext({
+    type: 'bazi',
+    customDate,
+    timeStandard: 'true-solar',
+    observer: { longitude: 2.35, timeZoneId: 'Europe/Paris' },
+  });
+
+  assert.equal(context.wallClock.offsetHours! * 3_600_000, 561_000);
+  assert.deepEqual(
+    [
+      context.wallClock.year,
+      context.wallClock.month,
+      context.wallClock.day,
+      context.wallClock.hour,
+      context.wallClock.minute,
+      context.wallClock.second,
+    ],
+    [1900, 2, 4, 6, 0, 52],
+  );
+  assert.equal(context.trueSolarTime?.timezoneEvidence?.offsetConflict, false);
+  assert.equal(
+    context.trueSolarTime?.timezoneEvidence?.selectedUtcDateTime,
+    customDate.toISOString(),
+  );
+});
+
 test('星盘和七政四余即时盘始终要求完整观测地点', async () => {
   await assert.rejects(
     () =>

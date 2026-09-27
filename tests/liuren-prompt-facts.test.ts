@@ -7,6 +7,7 @@ import {
 import {
   buildDivinationPrompt,
   formatDivinationInfo,
+  getDivinationSummaryBlocks,
 } from '../packages/core/src/prompt/divination';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
@@ -48,6 +49,20 @@ test('大六壬四课和三传分别绑定实际上下位与前传，十二宫�
   const enhanced = formatEnhancedDivinationInfo('liuren', data);
   assert.match(enhanced, /地盘卯上临天盘未乘朱雀/);
   assert.match(enhanced, /地盘未上临天盘亥乘天空/);
+});
+
+test('大六壬概览只列一组四课与三传，贵人临地仍保留', () => {
+  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const lines = getDivinationSummaryBlocks('liuren', data).lines;
+  assert.equal(lines.filter((line) => line.startsWith('四课：')).length, 1);
+  assert.equal(lines.filter((line) => line.startsWith('三传：')).length, 1);
+  assert.ok(
+    lines.some((line) => line.includes(`贵人${data.noblemanBranch}临${data.noblemanGroundBranch}`)),
+  );
+  assert.ok(!lines.some((line) => line.startsWith('四课关系：') || line.startsWith('三传主线：')));
+  const prompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
+  assert.doesNotMatch(prompt, /四课关系：|三传主线：/);
+  assert.match(prompt, new RegExp(`贵人${data.noblemanBranch}临${data.noblemanGroundBranch}`));
 });
 
 test('大六壬遥克提示词应说明直接克未命中且不得夹带贼克身份', () => {

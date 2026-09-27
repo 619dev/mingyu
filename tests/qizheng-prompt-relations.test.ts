@@ -74,4 +74,13 @@ test('七政正文区分跨宫合相与同宫位置，并保留角距和偏差�
     result.aspects.find((aspect) => aspect.star1 === '太阳' && aspect.star2 === '辰星(水)')?.type,
     '同宫',
   );
+  const crossPalace = result.evidenceAnalysis.aspectFacts.find(
+    (aspect) => aspect.star1 === '太阳' && aspect.star2 === '辰星(水)',
+  );
+  assert.match(crossPalace?.promptText ?? '', /太阳与辰星\(水\)合相：/u);
+  assert.doesNotMatch(crossPalace?.promptText ?? '', /太阳与辰星\(水\)同宫：/u);
+  assert.match(crossPalace?.sources[0] ?? '', /合相容许度/u);
+  const evidence = result.evidenceAnalysis;
+  assert.equal(evidence.promptText.split(evidence.summaryFact.promptText).length - 1, 1);
+  assert.equal(evidence.promptText.split(evidence.counterSummaryFact.promptText).length - 1, 1);
 });

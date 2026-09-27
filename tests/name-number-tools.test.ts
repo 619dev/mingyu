@@ -174,6 +174,14 @@ test('姓名与起名提示词携带真实字义和五格算式并使用完整�
     assert.ok(prompt.includes(grid.name));
     assert.ok(prompt.includes(grid.expression));
   }
+  assert.match(
+    prompt,
+    /《左传·桓公六年》命名五法\n原文：名有五：有信，有义，有象，有假，有类。以名生为信，以德名为义，以类命为象，取于物为假，取于父为类。/,
+  );
+  assert.match(prompt, /《礼记·曲礼上》原文：名子者不以国，不以日月，不以隐疾，不以山川。/);
+  assert.match(prompt, /五格、三才按姓名学数理取象列作参考/);
+  assert.match(prompt, /五格数理参考：/);
+  assert.match(prompt, /三才取象（姓名学数理参考）：/);
   assert.match(prompt, /左传·桓公六年/);
   assert.match(prompt, /礼记·曲礼上/);
   for (const relation of analysis.sancaiEvidence.relations)
@@ -339,6 +347,33 @@ test('诸葛神数按三个康熙笔画尾数组合并落入完整384签', () =>
   assert.ok(result.number >= 1 && result.number <= 384);
   assert.equal(result.sign.number, result.number);
   assert.ok(result.sign.poem.length > 0);
+});
+
+test('诸葛神数384签循环边界与孔明神卦本表首尾序号可复算', () => {
+  const zhugeCases = [
+    { text: '山其不', rawNumber: 384, number: 384 },
+    { text: '山其主', rawNumber: 385, number: 1 },
+    { text: '重重重', rawNumber: 999, number: 231 },
+  ];
+  for (const item of zhugeCases) {
+    const result = calculateZhugeNumber(item.text);
+    assert.equal(result.rawNumber, item.rawNumber);
+    assert.equal(result.number, item.number);
+    assert.equal(result.sign.number, item.number);
+  }
+
+  const kongmingCases = [
+    ['●●●●●', 1, '星震卦'],
+    ['●○○○○', 2, '从革卦'],
+    ['○●○○○', 3, '曲直卦'],
+    ['●○●●●', 31, '后吉卦'],
+    ['○○○○○', 32, '无数卦'],
+  ] as const;
+  for (const [pattern, number, name] of kongmingCases) {
+    const result = castKongmingHexagram(pattern);
+    assert.equal(result.number, number);
+    assert.equal(result.name, name);
+  }
 });
 
 test('孔明神卦完整覆盖32种五钱阴阳组合并支持随机重放', () => {

@@ -56,7 +56,7 @@ test('即时八字按日旬核对落空，并区分藏干与明透柱位', () =>
     const decade = Math.floor(cycle.indexOf(chart.pillars.day.ganZhi) / 10);
     const empty = emptyByDecade[decade];
     seenDecades.add(decade);
-    assert.ok(prompt.includes(`日柱${chart.pillars.day.ganZhi}所属旬空：${[...empty].join('、')}`));
+    assert.doesNotMatch(prompt, /日柱[^：\n]+所属旬空：/);
     let hits = 0;
     for (const [index, key] of keys.entries()) {
       const pillar = chart.pillars[key];
@@ -129,7 +129,7 @@ test('紫微即时盘与合参区分命主身主和命身宫内主星', async ()
   ];
   for (const prompt of prompts) {
     assert.match(prompt, /盘面年月日时均为本次事件的起盘时间/);
-    assert.match(prompt, /起盘年干四化：/);
+    assert.doesNotMatch(prompt, /起盘年干四化：/);
     assert.doesNotMatch(prompt, /生年四化：/);
     assert.match(prompt, /命主星：贪狼；身主星：火星/);
     assert.match(prompt, /命宫（庚子）：武曲（旺）、天府（庙）/);
@@ -141,11 +141,23 @@ test('紫微即时盘与合参区分命主身主和命身宫内主星', async ()
       /本宫官禄宫（辰）；三合会照[^\n]*；对宫夫妻宫（戌）；两侧邻宫田宅宫（卯）、仆役宫（巳）/,
     );
     for (const palace of payload.palaces) {
+      const palaceLine = prompt.split('\n').find((line) => line.startsWith(`${palace.name}（`))!;
+      for (const star of [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars]) {
+        if (star.birth_mutagen) {
+          assert.match(
+            palaceLine,
+            new RegExp(`${star.name}[^、；\\n]*起盘年干化${star.birth_mutagen}`),
+          );
+        }
+      }
       for (const mutagen of palace.self_mutagens ?? []) {
-        assert.ok(prompt.includes(`自化${mutagen}`));
+        assert.ok(palaceLine.includes(`自化${mutagen}`));
       }
       for (const item of palace.mutaged_palaces ?? []) {
-        if (item.palace_name) assert.ok(prompt.includes(`化${item.mutagen}入${item.palace_name}`));
+        if (!item.palace_name) continue;
+        const repeatedSelf =
+          item.palace_name === palace.name && palace.self_mutagens?.includes(item.mutagen);
+        assert.equal(palaceLine.includes(`化${item.mutagen}入${item.palace_name}`), !repeatedSelf);
       }
     }
   }

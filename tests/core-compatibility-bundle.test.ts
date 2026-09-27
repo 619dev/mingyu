@@ -46,3 +46,20 @@ test('合盘 Bundle 应拒绝未知系统而不是静默忽略', async () => {
     /不支持的合盘系统/,
   );
 });
+
+test('双人档案姓名与方向覆盖下层分析选项中的旧姓名', async () => {
+  const bundle = await calculateCompatibilityBundle(primary, partner, {
+    systems: ['bazi', 'ziwei'],
+    bazi: { person1Name: '旧对方', person2Name: '旧主方' },
+    ziwei: { person1Name: '旧对方', person2Name: '旧主方' },
+    chart: {
+      ziwei: {
+        scopes: ['origin'],
+        skipAnalysis: true,
+        horoscopeContext: { dateStr: '2025-01-01', hourIndex: 6 },
+      },
+    },
+  });
+  assert.deepEqual(bundle.bazi?.people, { person1: primary.name, person2: partner.name });
+  assert.deepEqual(bundle.ziwei?.people, { person1: primary.name, person2: partner.name });
+});

@@ -131,7 +131,11 @@ test('统一出生档案缺少完整出生地时不生成七政四余默认北�
     (error: unknown) => error instanceof BirthProfileError && error.code === 'LATITUDE_REQUIRED',
   );
   assert.throws(
-    () => birthProfileToQizhengInput({ ...withoutLocation, location: { longitude: 87.6 } }),
+    () =>
+      birthProfileToQizhengInput({
+        ...withoutLocation,
+        location: { longitude: 87.6, timezone: 8 },
+      }),
     (error: unknown) => error instanceof BirthProfileError && error.code === 'LATITUDE_REQUIRED',
   );
   const regionOnly = birthProfileToQizhengInput({

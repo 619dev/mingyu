@@ -10,6 +10,7 @@ import {
   analyzeBaZhaiByDoorDegree,
   analyzeBaZhaiBySitDegree,
   type BaZhaiInput,
+  type BaZhaiDoorDegreeResult,
   type BaZhaiResult,
 } from '../ba_zhai';
 import {
@@ -63,7 +64,7 @@ export interface ResidentialFengshuiResult {
     orientationText: string;
     xuankongStatus: '已排盘' | '缺少山向' | '缺少建造年或起运年';
   };
-  bazhai: BaZhaiResult | null;
+  bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null;
   xuankong: XuanKongResult | null;
   agreements: ResidentialFengshuiAgreement[];
   advice: string[];
@@ -154,7 +155,7 @@ function resolveResidentialOrientation(
 function buildBazhai(
   input: ResidentialFengshuiInput,
   orientation?: ResidentialOrientation,
-): BaZhaiResult | null {
+): BaZhaiResult | BaZhaiDoorDegreeResult | null {
   if (!hasPersonInput(input)) return null;
   const base: BaZhaiInput = {
     ...(input.birthYear != null ? { birthYear: input.birthYear } : {}),
@@ -358,7 +359,7 @@ function buildEvidencePrompt(params: {
 function buildPrompt(result: {
   orientationText: string;
   houseYear: number | null;
-  bazhai: BaZhaiResult | null;
+  bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null;
   xuankong: XuanKongResult | null;
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'];
 }) {

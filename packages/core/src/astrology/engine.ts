@@ -424,6 +424,8 @@ function createPoint(
 }
 
 function isOutOfSign(first: number, second: number, angle: number): boolean {
+  // 只有整星座跨度的相位才有确定的星座关系；谐波相位不能四舍五入成相邻宫数。
+  if (angle % 30 !== 0) return false;
   const signDistance = Math.abs(
     Math.floor(normalize(first) / 30) - Math.floor(normalize(second) / 30),
   );

@@ -1189,13 +1189,13 @@ function formatNameAnalysis(result: ReturnType<typeof analyzeChineseName>) {
     ...[...new Set(result.chars.map((item) => item.strokeNote).filter(Boolean))].map(
       (note) => `笔画用法：${note}`,
     ),
-    `五格：${result.gridDerivations
+    `五格数理参考：${result.gridDerivations
       .map((derivation) => {
         const item = result.grids[derivation.key];
         return `${derivation.name}${item.num}（${item.wuxing}、${item.keywords}）；${derivation.rule}：${derivation.expression}`;
       })
       .join('；')}`,
-    `三才：${result.sancai.combo}；${result.sancai.text}`,
+    `三才取象（姓名学数理参考）：${result.sancai.combo}；${result.sancai.text}`,
     `三才取数：${result.sancaiEvidence.positions.map((position) => position.explanation).join('；')}`,
     `三才生克：${result.sancaiEvidence.relations.map((relation) => relation.explanation).join('；')}`,
     result.preferredElements.length

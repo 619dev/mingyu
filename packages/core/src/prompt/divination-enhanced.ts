@@ -1395,6 +1395,9 @@ export function formatHuangjiInfo(data: HuangjiJingshiResult) {
   return [
     '占法：皇极经世',
     dateTime
+      ? '年月日时映射：每节气按十五日定位，超过十五日的尾段沿用第十五日；日卦按月经卦下的六十卦序顺行。'
+      : '',
+    dateTime
       ? `起盘时间：${dateTime.civilTime.dateTime}（${dateTime.civilTime.timezone}）；皇极历${dateTime.calendar.monthBranch}月第${dateTime.calendar.dayOfMonth}日；节气${dateTime.calendar.activeSolarTerm}`
       : sixDay
         ? `起盘时间：${sixDay.civilTime.dateTime}（UTC${sixDay.civilTime.timezone >= 0 ? '+' : ''}${sixDay.civilTime.timezone}）`

@@ -461,25 +461,10 @@ function analyzeBaZhaiByMeasurement(
     label,
     promptText: [
       `${method === '站在大门处面向屋内测量' ? '测量方式：站在大门处面向屋内，指南针读数' : '住宅坐山度数'}为 ${doorToInteriorDegree}°；北向基准为${measurement.reference === 'magnetic' ? `磁北，磁偏角 ${measurement.declination}°（东偏为正）` : measurement.reference === 'true' ? '真北' : '未声明'}。`,
-      `真北口径${method === '站在大门处面向屋内测量' ? '入户' : '坐山'}方向为 ${measurement.trueNorthDegree}°，测量误差 ±${measurement.uncertainty}°。`,
+      `真北口径${method === '站在大门处面向屋内测量' ? '入户' : '坐山'}方向为 ${measurement.trueNorthDegree}°，测量误差 ±${measurement.uncertainty}°，距最近二十四山分界 ${measurement.nearestBoundaryDistanceDegrees}°。`,
       `中心读数换算后住宅坐山 ${sit.degree}° 为${sit.mountain}山，传统朝向 ${facing.degree}° 为${facing.mountain}向，结果为${label}。`,
       `误差候选：${candidateDirections.map((item) => `${item.label}（${item.houseGua}宅、${item.houseGroup}、命宅${item.match}）`).join('、')}。`,
       `测量稳定性为${measurement.stability}，候选坐向${candidateDirections.map((item) => item.label).join('、')}。`,
-      ...(measurement.warnings.length
-        ? [
-            `测量边界：${measurement.warnings
-              .map((warning) =>
-                warning.includes('候选盘')
-                  ? '测量误差范围跨越宅卦边界，并列候选盘'
-                  : warning.includes('磁北')
-                    ? '北向基准未声明，按原始读数处理'
-                    : warning.includes('二十四山')
-                      ? '测量误差范围跨越二十四山边界，候选山向仍属同一宅卦'
-                      : warning,
-              )
-              .join('；')}`,
-          ]
-        : []),
       ...(measurement.stability === '宅卦不稳定'
         ? candidateDirections.map(
             (item) =>

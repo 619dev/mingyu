@@ -101,6 +101,7 @@ export type BirthProfileDiagnosticCode =
   | 'LOCATION_REQUIRED_FOR_TRUE_SOLAR_TIME'
   | 'LOCATION_NOT_FOUND'
   | 'LOCATION_COORDINATES_REQUIRED'
+  | 'TIMEZONE_REQUIRED'
   | 'LATITUDE_REQUIRED'
   | 'GENDER_REQUIRED'
   | 'TIME_REQUIRED'
@@ -206,6 +207,14 @@ export function resolveBirthProfileLocation(
       message: '出生地点需要提供有效行政区代码或经度。',
     });
   }
+  if (location.timezone === undefined && !location.timeZoneId && !region) {
+    throw new BirthProfileError({
+      code: 'TIMEZONE_REQUIRED',
+      level: 'error',
+      field: 'location.timezone',
+      message: '自定义出生地点需要提供 timezone 或 timeZoneId。',
+    });
+  }
 
   const latitude = location.latitude ?? region?.latitude;
   const hasExplicitLongitude = location.longitude !== undefined;
@@ -221,7 +230,7 @@ export function resolveBirthProfileLocation(
     name: location.name ?? region?.displayName,
     longitude: location.longitude ?? region!.longitude,
     latitude,
-    timezone: location.timezone ?? (location.timeZoneId ? undefined : (region?.timezone ?? 8)),
+    timezone: location.timezone ?? (location.timeZoneId ? undefined : region?.timezone),
     ...(location.timeZoneId ? { timeZoneId: location.timeZoneId.trim() } : {}),
     coordinateAccuracy,
   };

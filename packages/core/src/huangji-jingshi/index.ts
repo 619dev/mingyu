@@ -339,16 +339,18 @@ export function buildHuangjiJingshiPrompt(
         ? sixDayDateTimeLines
         : [];
     const dateTimeBasis = sixDayCycle
-      ? sixDayCycle.model === '书绪言六日逐爻·显式历元'
-        ? '具体时点以真实带时区公历时间与经校定的当地子半历元适配六日逐爻坐标；值年背景按目标真实瞬时的北京时间冬至换年。传统依据为每卦六日七分与每四小时一爻，公历日期差直接对应三百六十日正数中的已过日数，再依每六日一经卦、每日一爻、每四小时一爻取象。'
-        : '具体时点采用明确标注的现代冬至岁周比例换算：以实际冬至瞬时确定所属岁周，以冬至所在当地公历日子半至下一冬至当地公历日子半的实际跨度映射三百六十逻辑日；传统取象仍沿用每六日一经卦、每日一爻、每四小时一爻。该现代比例口径不宣称是古籍唯一算法。'
+      ? '《皇极经世书绪言》卷一记冬至甲子日子半起复，每六日一经卦、每日一爻、每四小时一爻；卷八上论三百六十日正数与六日余分。'
       : dateTimeForecast
-        ? '具体时点以冬至换年，每个节气按十五个皇极日定位，超过十五日的尾段归第十五日；值年卦每六十日变一爻得月经卦，月经卦每十日变一爻得旬纬卦，日卦从月经卦依六十卦序逐日顺行，日卦自子半起每四小时变一爻得时经卦。'
+        ? '《皇极经世书绪言》卷三给出年月日时分直卦的经纬层级，卷一给出子半起每四小时一爻的时段。'
         : '';
+    const dateTimeMapping = dateTimeForecast
+      ? '本次年月日时映射口径：以冬至换年，每个节气按十五个皇极日定位，超过十五日的尾段沿用第十五日；值年卦每六十日变一爻得月经卦，月经卦每十日变一爻得旬纬卦，日卦从月经卦依六十卦序逐日顺行，日卦自子半起每四小时变一爻得时经卦。'
+      : undefined;
     const prompt = [
       `【传统依据】\n${forecast.model.model}以${formatHuangjiCivilYear(position.yuan.startYear)}为本元起点，以${forecast.model.annualAnchorYear}年${forecast.model.annualAnchorHexagram}卦为甲子值年锚点，值年卦按先天圆图去除乾、坤、坎、离后的六十卦顺序轮转。${dateTimeBasis}`,
       [
         '【排盘资料】',
+        ...(dateTimeMapping ? [dateTimeMapping] : []),
         ...dateTimeLines,
         `目标年份：${formatHuangjiCivilYear(input.year)}（${annual.ganzhi}）`,
         `周期位置：本元第${forecast.hui.indexInYuan}会（${forecast.hui.branch}会），${formatHuangjiCivilYear(forecast.hui.startYear)}至${formatHuangjiCivilYear(forecast.hui.endYear)}`,

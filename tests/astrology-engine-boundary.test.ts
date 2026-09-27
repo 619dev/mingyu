@@ -178,6 +178,34 @@ test('显式未指定相位容许度沿用默认值并保持有限强度', () =>
   );
 });
 
+test('非整星座跨度的精确谐波相位不误标越星座相位', () => {
+  const quintile = calculateAspects([
+    { name: '甲', longitude: 29 },
+    { name: '乙', longitude: 101 },
+  ]).aspects.find((aspect) => aspect.type === AspectType.Quintile);
+  assert.equal(quintile?.deviation, 0);
+  assert.equal(quintile?.isOutOfSign, false);
+
+  const sextile = calculateAspects([
+    { name: '甲', longitude: 29 },
+    { name: '乙', longitude: 90 },
+  ]).aspects.find((aspect) => aspect.type === AspectType.Sextile);
+  assert.equal(sextile?.isOutOfSign, true);
+});
+
+test('行运禁用越星座相位时仍保留精确五分相', (context) => {
+  const jd = 2451545;
+  const moon = astrologyEngine.position('moon', jd);
+  context.mock.method(astrologyEngine, 'position', () => ({ ...moon, lon: 29 }));
+  const result = calculateTransits([{ name: '本命点', longitude: 101, type: 'planet' }], jd, {
+    aspectTypes: [AspectType.Quintile],
+    transitingBodies: [CelestialBody.Moon],
+    includeOutOfSign: false,
+  });
+  assert.equal(result.transits.length, 1);
+  assert.equal(result.transits[0].isOutOfSign, false);
+});
+
 test('交点与真莉莉丝保留星历速度和逆行状态，南北交点运动一致', () => {
   for (const year of [1990, 2008, 2026]) {
     const input = {

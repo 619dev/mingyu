@@ -4047,6 +4047,7 @@ function buildMetaphysicsPrompt(
   basePrompt: string,
   input: JsonRecord,
   method: 'zodiac' | 'taiyi' | 'qizheng' | 'xuankong' | 'residential',
+  measurement?: string,
 ): string {
   const question =
     readString(input, 'question', '').trim() || '请综合解读本次排盘的重点、风险与行动建议。';
@@ -4059,6 +4060,7 @@ function buildMetaphysicsPrompt(
     input.promptScope === undefined ? undefined : readString(input, 'promptScope', '').trim();
   return buildSharedMetaphysicsPrompt(basePrompt, question, {
     method,
+    measurement,
     schools,
     topicId,
     subtopicId,
@@ -4715,9 +4717,13 @@ function calculateResidentialApi(input: JsonRecord) {
 function buildResidentialPrompt(input: JsonRecord) {
   const result = calculateResidentialApi(input);
   const selection = readSharedPromptSelection(input, 'residential', 'promptScope');
+  const measurement =
+    result.bazhai && 'directionMeasurement' in result.bazhai
+      ? result.bazhai.directionMeasurement.promptText
+      : undefined;
   return buildPromptApiResult({
     responseMode: readPromptResponseMode(input),
-    prompt: buildMetaphysicsPrompt(result.prompt, input, 'residential'),
+    prompt: buildMetaphysicsPrompt(result.prompt, input, 'residential', measurement),
     fullResult: result,
     resultSummary: selection ? { selection } : undefined,
   });

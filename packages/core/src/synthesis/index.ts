@@ -15,6 +15,7 @@ import {
   evaluateBaziZiweiCorroboration,
   evaluateShaYaoCorroboration,
   evaluateGuiRenCorroboration,
+  hasCompleteZiweiOrigin,
   type BaziZiweiCorroborationResult,
   type ShaYaoCorroborationResult,
   type GuiRenCorroborationResult,
@@ -482,6 +483,9 @@ export function buildBaziZiweiSynthesis(params: {
     if (!theme.ziweiEvidence.length) gaps.push(`${theme.label}缺少紫微资料`);
     return gaps;
   });
+  if (!hasCompleteZiweiOrigin(params.ziwei)) {
+    missingFacts.push('紫微本命十二宫资料缺失或不完整');
+  }
   if (!baziFacts.luck.length) missingFacts.push('运限基准日期缺少对应八字大运或童限');
   if (!baziFacts.annual.length) missingFacts.push('运限基准年份缺少对应八字流年');
 

@@ -1,5 +1,6 @@
 import { calculateBaziChartFromInput, type BaziChartResult } from '../bazi/index';
 import { getTimeIndexFromClock } from '../calendar/dateUtils';
+import { getHistoricalTimezoneOffsetAt } from '../calendar/historical-timezone';
 import {
   convertTrueSolarTime,
   type TrueSolarTimeConversionResult,
@@ -215,24 +216,6 @@ function getWallClockPartsInOffset(date: Date, timezone: number): InstantWallClo
   };
 }
 
-/** 读取指定时刻在目标 IANA 时区的实际偏移（小时，含夏令时）。 */
-function getTimeZoneOffsetHours(date: Date, timeZoneId: string): number | undefined {
-  try {
-    const name = new Intl.DateTimeFormat('en-US', {
-      timeZone: timeZoneId,
-      timeZoneName: 'longOffset',
-    })
-      .formatToParts(date)
-      .find((part) => part.type === 'timeZoneName')?.value;
-    const match = /GMT([+-])(\d{1,2}):(\d{2})/.exec(name ?? '');
-    if (!match) return 0; // GMT/UTC 时区返回无符号 "GMT"
-    const sign = match[1] === '+' ? 1 : -1;
-    return sign * (Number(match[2]) + Number(match[3]) / 60);
-  } catch {
-    return undefined;
-  }
-}
-
 function getWallClockPartsInTimeZone(date: Date, timeZoneId: string): InstantWallClockParts {
   let formatter: Intl.DateTimeFormat;
   try {
@@ -263,7 +246,7 @@ function getWallClockPartsInTimeZone(date: Date, timeZoneId: string): InstantWal
     minute: parts.minute,
     second: parts.second,
     // 记录原时刻的实际偏移，回拨重复区间由此区分，不得在后续换算中默选
-    offsetHours: getTimeZoneOffsetHours(date, timeZoneId),
+    offsetHours: getHistoricalTimezoneOffsetAt(date, timeZoneId),
   };
 }
 

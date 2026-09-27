@@ -529,7 +529,7 @@ function buildQizhengAspects(stars: QizhengStar[]): QizhengAspect[] {
           stars[second].precisionClass === '现代天文计算'
             ? '同层现代天文'
             : '混合模型',
-        source: `${stars[first].name}与${stars[second].name}目标日期黄经最小夹角及${matched.type}容许度`,
+        source: `${stars[first].name}与${stars[second].name}目标日期黄经最小夹角及${matched.type === '同宫' ? '合相' : matched.type}容许度`,
       });
     }
   }
@@ -1562,7 +1562,7 @@ function buildQizhengEvidence(
     orbRatio: aspect.orbRatio,
     closeness: aspect.closeness,
     precisionClass: aspect.precisionClass,
-    promptText: `${aspect.star1}与${aspect.star2}${aspect.type}：实际夹角${aspect.actualAngle.toFixed(2)}°，精确角${aspect.exactAngle.toFixed(2)}°，允许容许度${aspect.allowedOrb.toFixed(2)}°，距精确角偏差${aspect.orb.toFixed(2)}°，归一化容许度位置${aspect.orbRatio.toFixed(2)}，${aspect.closeness}等级，${aspect.precisionClass}${aspect.precisionClass === '混合模型' ? '；不得因角度接近而提升为现代天文同精度证据' : ''}`,
+    promptText: `${aspect.star1}与${aspect.star2}${aspect.type === '同宫' ? '合相' : aspect.type}：实际夹角${aspect.actualAngle.toFixed(2)}°，精确角${aspect.exactAngle.toFixed(2)}°，允许容许度${aspect.allowedOrb.toFixed(2)}°，距精确角偏差${aspect.orb.toFixed(2)}°，归一化容许度位置${aspect.orbRatio.toFixed(2)}，${aspect.closeness}等级，${aspect.precisionClass}${aspect.precisionClass === '混合模型' ? '；不得因角度接近而提升为现代天文同精度证据' : ''}`,
     sources: [aspect.source, '目标日期黄经最小夹角与当前吊照容许度表'],
     limitation: ASPECT_FACT_LIMITATION,
   }));
@@ -1685,10 +1685,6 @@ function buildQizhengEvidence(
   const promptText = [
     '【七政四余计算来源与证据分层】',
     ...formatPromptEvidenceBundle(evidence),
-    `计算链：${calculationChain.join(' → ')}。`,
-    `反证汇总：${counterSummaryFact.promptText}。`,
-    `证据汇总：${summaryFact.promptText}。`,
-    `解释限制：${limitations.join('；')}。`,
   ].join('\n');
   return {
     key: 'qizheng:evidence',
@@ -2140,7 +2136,7 @@ function overlayQizhengFlowingStars(
           flowStar.precisionClass === '现代天文计算' && natalStar.precisionClass === '现代天文计算'
             ? '同层现代天文'
             : '混合模型',
-        source: `流曜${flowStar.name}与本命${natalStar.name}黄经最小夹角及${matched.type}容许度`,
+        source: `流曜${flowStar.name}与本命${natalStar.name}黄经最小夹角及${matched.type === '同宫' ? '合相' : matched.type}容许度`,
       });
     }
   }

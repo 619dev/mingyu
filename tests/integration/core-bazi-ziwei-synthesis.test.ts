@@ -150,3 +150,24 @@ test('八字紫微跨体系合参互证应准确分析羊刃煞曜与天乙贵�
   assert.match(reading.synthesis.corroboration.summary, /八字紫微互证：/);
   assert.match(reading.promptText, /八字紫微互证：/);
 });
+
+test('紫微原盘十二宫不完整时合参不能报告资料完整', async () => {
+  const reading = await getCombinedReading();
+  assert.ok(reading.bundle.bazi);
+  assert.ok(reading.bundle.ziwei);
+  const origin = reading.bundle.ziwei.payloadByScope.origin;
+  assert.ok(origin);
+  const synthesis = buildBaziZiweiSynthesis({
+    bazi: reading.bundle.bazi,
+    ziwei: {
+      ...reading.bundle.ziwei,
+      payloadByScope: {
+        ...reading.bundle.ziwei.payloadByScope,
+        origin: { ...origin, palaces: origin.palaces.slice(0, 11) },
+      },
+    },
+  });
+  assert.equal(synthesis.status, '资料有缺口');
+  assert.ok(synthesis.missingFacts.includes('紫微本命十二宫资料缺失或不完整'));
+  assert.equal(synthesis.corroboration?.shaYao.ziweiCheckStatus, 'origin-missing');
+});

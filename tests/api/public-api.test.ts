@@ -6760,6 +6760,36 @@ test('公开 API 住宅风水合参接口返回八宅与玄空分层结果', asy
   assert.match(body.data.prompt, /这套房怎么看？/);
 });
 
+test('公开住宅提示词保留八宅跨宅卦测量候选盘', async () => {
+  const { response, body } = await callApi('metaphysics/residential/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      birthYear: 1990,
+      gender: 'male',
+      year: 2024,
+      doorToInteriorDegree: 64,
+      northReference: 'magnetic',
+      magneticDeclinationDegrees: 1,
+      measurementUncertaintyDegrees: 3,
+      responseMode: 'full',
+      question: '这套住宅的八宅与玄空资料如何分别解读？',
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(body.data.result.bazhai.directionMeasurement.stability, '宅卦不稳定');
+  assert.match(body.data.prompt, /八宅完整盘面：[\s\S]*?宅卦：艮/);
+  assert.match(
+    body.data.prompt,
+    /误差候选：寅山申向（艮宅、西四命、命宅相冲）、甲山庚向（震宅、东四命、命宅相合）/,
+  );
+  assert.match(body.data.prompt, /候选寅山申向：艮宅八宫为/);
+  assert.match(body.data.prompt, /候选甲山庚向：震宅八宫为/);
+  assert.match(body.data.prompt, /测量误差 ±3°/);
+  assert.match(body.data.prompt, /【问题】\n这套住宅的八宅与玄空资料如何分别解读？/);
+});
+
 test('住宅与玄空公开接口使用专用流运请求 schema', async () => {
   const { response, body } = await callApi('openapi.json');
 

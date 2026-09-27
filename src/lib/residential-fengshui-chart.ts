@@ -147,8 +147,9 @@ export function calculateResidentialChart(input: ResidentialChartInput = {}): {
 } {
   const result = generateResidentialFengshui(toCoreInput(input));
   const measurement =
-    (result.bazhai as { directionMeasurement?: ResidentialMeasurement } | null)
-      ?.directionMeasurement ?? null;
+    result.bazhai && 'directionMeasurement' in result.bazhai
+      ? result.bazhai.directionMeasurement
+      : null;
   return {
     result,
     measurement,
