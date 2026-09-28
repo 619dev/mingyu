@@ -134,8 +134,12 @@ test('八字《穷通宝鉴》月令调候喜忌查询正确', () => {
 });
 
 test('调候典籍只返回日干与月支直接对应的条目', () => {
-  assert.equal(getBaziQiongtongAdvice('乙', '辰'), undefined);
-  assert.equal(getBaziQiongtongAdvice('庚', '酉'), undefined);
+  const yiChen = getBaziQiongtongAdvice('乙', '辰');
+  assert.equal(yiChen?.monthBranch, '辰');
+  assert.match(yiChen?.classicVerse ?? '', /^三月乙木，阳气愈炽，先癸后丙/u);
+  const gengYou = getBaziQiongtongAdvice('庚', '酉');
+  assert.equal(gengYou?.monthBranch, '酉');
+  assert.match(gengYou?.classicVerse ?? '', /^八月庚金，刚锐未退，用丁用甲/u);
   assert.equal(getBaziQiongtongAdvice('乙', '寅')?.monthBranch, '寅');
   assert.equal(getBaziQiongtongAdvice('庚', '申')?.monthBranch, '申');
 });

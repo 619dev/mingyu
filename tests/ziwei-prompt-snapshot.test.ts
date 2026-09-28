@@ -269,7 +269,7 @@ test('真实紫微盘的重点宫星只在详细资料列出一次，十二宫�
   assert.ok(palaceIndex.some((item) => item.includes('主星：')));
 });
 
-test('真实紫微盘证据保留主辅等级，省略标题已说明的重复释义', async () => {
+test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注星曜亮度', async () => {
   const runtime = await calculateZiweiChart(
     {
       name: '证据去重核验',
@@ -281,15 +281,30 @@ test('真实紫微盘证据保留主辅等级，省略标题已说明的重复�
     },
     { scopes: ['origin'] },
   );
-  const prompt = formatZiweiPayloadForPrompt(runtime.payloadByScope.origin);
+  const payload = runtime.payloadByScope.origin;
+  const prompt = formatZiweiPayloadForPrompt(payload);
 
-  assert.match(prompt, /【主证】命宫主星为天机\n/);
-  assert.match(prompt, /【主证】福德三方四正见化忌\n/);
-  assert.match(prompt, /【主证】父母化忌入命宫\n/);
-  assert.doesNotMatch(prompt, /命宫主星为天机：命宫登记主星天机/);
-  assert.doesNotMatch(prompt, /福德三方四正见化忌：福德及其三方四正宫位中可见化忌信息/);
-  assert.doesNotMatch(prompt, /父母化忌入命宫：父母化忌落命宫宫/);
-  assert.match(prompt, /福德见生年化科：太阴在福德带有生年化科/);
+  assert.ok(payload.evidence_pool.length > 0);
+  assert.match(prompt, /命宫；[^\n]*主星：天机/);
+  assert.match(prompt, /福德宫；[^\n]*太阴，亮度：陷，生年化科/);
+  assert.match(prompt, /福德宫；[^\n]*标签：[^\n]*三方四正见化忌/);
+  assert.match(prompt, /父母宫；[^\n]*宫干飞化：[^\n]*化忌入命宫/);
+  assert.match(prompt, /身宫落宫：财帛宫/);
+  assert.doesNotMatch(prompt, /庙旺陷|庙旺平|命身主轴：|重现实利禄与财富运作/);
+  assert.doesNotMatch(
+    prompt,
+    /【主证】命宫主星为天机|【主证】福德三方四正见化忌|【主证】父母化忌入命宫/,
+  );
+  assert.doesNotMatch(prompt, /证据资料：|证据附录：/);
+
+  const focusedPrompt = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
+  assert.match(focusedPrompt, /【主证】父母化忌入命宫/);
+  assert.doesNotMatch(focusedPrompt, /【主证】命宫主星为天机/);
+});
+
+test('紫微在线提示词无四化事实时不输出资料状态占位', () => {
+  const prompt = formatZiweiPayloadForPrompt(createPayload());
+  assert.doesNotMatch(prompt, /生年四化：|当前四化：|未记录生年四化|未记录当前四化/);
 });
 
 test('格局条件未列出具体宫位时保留必要的宫位资料', () => {

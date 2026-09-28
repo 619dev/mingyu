@@ -59,7 +59,7 @@ test('npm 提示词入口应覆盖紫微任务书、紫微合盘和八字紫微�
 
   assert.match(taskBook, /【任务】/);
   assert.match(taskBook, /事业财运/);
-  assert.match(taskBook, /命身主轴/);
+  assert.match(taskBook, /身宫落宫：/);
   assert.match(compatibility, /【双盘关系资料】/);
   assert.match(compatibility, /【多派合参】/);
   assert.match(baziZiwei, /【八字盘面资料】/);

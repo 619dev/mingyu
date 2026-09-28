@@ -91,10 +91,26 @@ test('命录五合六合依实盘条件展示合绊、争合与成化', () => {
   }
 });
 
-test('命录不把同季其他月份的调候条文列为本月评注', () => {
+test('命录只将当前月直录的调候条文列为本月评注', () => {
   for (const sample of [
-    { year: 1990, month: 4, day: 10, dayMaster: '乙', monthBranch: '辰' },
-    { year: 1990, month: 9, day: 12, dayMaster: '庚', monthBranch: '酉' },
+    {
+      year: 1990,
+      month: 4,
+      day: 10,
+      dayMaster: '乙',
+      monthBranch: '辰',
+      verse: '三月乙木，阳气愈炽，先癸后丙。',
+      adjacentVerse: /二月乙木|四月乙木/u,
+    },
+    {
+      year: 1990,
+      month: 9,
+      day: 12,
+      dayMaster: '庚',
+      monthBranch: '酉',
+      verse: '八月庚金，刚锐未退，用丁用甲，丙不可少。',
+      adjacentVerse: /七月庚金|九月庚金/u,
+    },
   ]) {
     const result = baziCalculator.calculateBazi({
       year: sample.year,
@@ -108,7 +124,10 @@ test('命录不把同季其他月份的调候条文列为本月评注', () => {
     });
     assert.equal(result.dayMaster.gan, sample.dayMaster);
     assert.equal(result.pillars.month.zhi, sample.monthBranch);
-    assert.equal(buildEnhancedPatternUsefulGodSection(result).qiongtongAdvice, undefined);
+    const advice = buildEnhancedPatternUsefulGodSection(result).qiongtongAdvice;
+    assert.equal(advice?.title, `${sample.dayMaster}生于${sample.monthBranch}月`);
+    assert.deepEqual(advice?.quotes, [sample.verse]);
+    assert.doesNotMatch(advice?.quotes.join('；') ?? '', sample.adjacentVerse);
   }
 });
 

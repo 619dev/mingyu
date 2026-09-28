@@ -98,6 +98,22 @@ test('自定义出生坐标缺少时区时应拒绝，行政区仍可使用已�
   assert.equal(resolveBirthProfileLocation({ regionId: '110101' })?.timezone, 8);
   assert.throws(() => resolveBirthProfileLocation(null as never), /出生地点必须是地点资料对象/);
   assert.throws(
+    () => resolveBirthProfileLocation({ longitude: Number.NaN, timezone: 8 }),
+    /出生地经度需在 -180 到 180 之间/,
+  );
+  assert.throws(
+    () => resolveBirthProfileLocation({ longitude: -74.006, latitude: 91, timezone: -5 }),
+    /出生地纬度需在 -90 到 90 之间/,
+  );
+  assert.throws(
+    () => resolveBirthProfileLocation({ longitude: -74.006, timezone: Number.POSITIVE_INFINITY }),
+    /时区需在 -12 到 14 之间/,
+  );
+  assert.throws(
+    () => resolveBirthProfileLocation({ longitude: -74.006, timeZoneId: ' ' }),
+    /IANA 时区名不能为空/,
+  );
+  assert.throws(
     () =>
       resolveBirthProfileLocation({
         regionId: '999999',

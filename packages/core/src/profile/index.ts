@@ -152,6 +152,27 @@ function assertFiniteInRange(value: number, label: string, min: number, max: num
   }
 }
 
+function assertBirthProfileLocationShape(location: BirthProfileLocation): void {
+  if (!location || typeof location !== 'object' || Array.isArray(location)) {
+    throw new TypeError('出生地点必须是地点资料对象。');
+  }
+  if (location.longitude !== undefined) {
+    assertFiniteInRange(location.longitude, '出生地经度', -180, 180);
+  }
+  if (location.latitude !== undefined) {
+    assertFiniteInRange(location.latitude, '出生地纬度', -90, 90);
+  }
+  if (location.timezone !== undefined) {
+    assertFiniteInRange(location.timezone, '时区', -12, 14);
+  }
+  if (
+    location.timeZoneId !== undefined &&
+    (typeof location.timeZoneId !== 'string' || !location.timeZoneId.trim())
+  ) {
+    throw new TypeError('IANA 时区名不能为空。');
+  }
+}
+
 function assertProfileShape(profile: BirthProfile): void {
   if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
     throw new TypeError('出生档案必须是对象。');
@@ -166,28 +187,7 @@ function assertProfileShape(profile: BirthProfile): void {
   assertIntegerInRange(profile.month, '出生月份', 1, 12);
   assertIntegerInRange(profile.day, '出生日期', 1, 31);
   if (profile.location !== undefined) {
-    if (
-      !profile.location ||
-      typeof profile.location !== 'object' ||
-      Array.isArray(profile.location)
-    ) {
-      throw new TypeError('出生地点必须是地点资料对象。');
-    }
-    if (profile.location.longitude !== undefined) {
-      assertFiniteInRange(profile.location.longitude, '出生地经度', -180, 180);
-    }
-    if (profile.location.latitude !== undefined) {
-      assertFiniteInRange(profile.location.latitude, '出生地纬度', -90, 90);
-    }
-    if (profile.location.timezone !== undefined) {
-      assertFiniteInRange(profile.location.timezone, '时区', -12, 14);
-    }
-    if (
-      profile.location.timeZoneId !== undefined &&
-      (typeof profile.location.timeZoneId !== 'string' || !profile.location.timeZoneId.trim())
-    ) {
-      throw new TypeError('IANA 时区名不能为空。');
-    }
+    assertBirthProfileLocationShape(profile.location);
   }
 }
 
@@ -196,9 +196,7 @@ export function resolveBirthProfileLocation(
   location?: BirthProfileLocation,
 ): ResolvedBirthProfileLocation | undefined {
   if (location === undefined) return undefined;
-  if (!location || typeof location !== 'object' || Array.isArray(location)) {
-    throw new TypeError('出生地点必须是地点资料对象。');
-  }
+  assertBirthProfileLocationShape(location);
   const region = location.regionId ? resolveBirthPlace(location.regionId) : null;
 
   if (location.regionId && !region) {

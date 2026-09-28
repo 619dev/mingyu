@@ -23,7 +23,6 @@ test('乙酉条保留白露与秋分后的不同取用条件', () => {
   assert.match(entry.classicVerse, /秋分后.*宜用丙，癸水次之/u);
   assert.match(entry.seasonSummary, /秋分前.*秋分后/u);
   assert.match(entry.modernExplanation, /白露后.*秋分后/u);
-  assert.equal(getBaziQiongtongAdvice('乙', '申'), undefined);
 });
 
 test('丙子引文保留壬戊原文且不再列甲为通用取用', () => {
@@ -190,6 +189,46 @@ test('戊土缺月按明确单月或合写月份原文取用', () => {
   );
   assert.match(getBaziQiongtongAdvice('戊', '申')!.modernExplanation, /支成水局时.*甲泄水/u);
   assert.match(getBaziQiongtongAdvice('戊', '酉')!.classicVerse, /不必木疏/u);
+});
+
+test('十干十二月调候资料均能由实盘查询并进入释义', () => {
+  const branches = ['丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥', '子'];
+  const covered = new Set<string>();
+  for (let month = 1; month <= 12; month += 1) {
+    for (let day = 10; day <= 19; day += 1) {
+      const chart = baziCalculator.calculateBazi({
+        year: 2024,
+        month,
+        day,
+        timeIndex: 6,
+        gender: 'male',
+        useTrueSolarTime: false,
+      });
+      const stem = chart.dayMaster.gan;
+      const branch = chart.pillars.month.zhi;
+      assert.equal(branch, branches[month - 1]);
+      const key = `${stem}+${branch}`;
+      assert.equal(covered.has(key), false);
+      covered.add(key);
+      const entry = getBaziQiongtongAdvice(stem, branch);
+      assert.ok(entry, key);
+      assert.equal(entry.dayMaster, stem);
+      assert.equal(entry.monthBranch, branch);
+      const section = buildEnhancedPatternUsefulGodSection(chart);
+      assert.deepEqual(section.qiongtongAdvice?.quotes, [entry.classicVerse]);
+      assert.equal(section.qiongtongAdvice?.summary, entry.modernExplanation);
+    }
+  }
+  assert.equal(covered.size, 120);
+
+  assert.match(getBaziQiongtongAdvice('乙', '丑')!.classicVerse, /^冬月之木/u);
+  assert.match(getBaziQiongtongAdvice('己', '亥')!.modernExplanation, /初冬壬旺时取戊/u);
+  assert.match(getBaziQiongtongAdvice('己', '戌')!.modernExplanation, /土盛时另以甲木/u);
+  assert.match(getBaziQiongtongAdvice('庚', '未')!.modernExplanation, /土局.*甲先丁后/u);
+  assert.match(getBaziQiongtongAdvice('辛', '未')!.modernExplanation, /戊土出干时另以甲木/u);
+  assert.match(getBaziQiongtongAdvice('壬', '酉')!.modernExplanation, /无甲才.*另用金.*庚若破甲/u);
+  assert.match(getBaziQiongtongAdvice('癸', '辰')!.modernExplanation, /清明后.*谷雨后/u);
+  assert.match(getBaziQiongtongAdvice('癸', '未')!.modernExplanation, /上半月.*下半月/u);
 });
 
 test('午月丙丁实盘不把条件荐干写成通用调候结论', () => {

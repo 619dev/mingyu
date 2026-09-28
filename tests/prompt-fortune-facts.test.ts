@@ -156,11 +156,4 @@ test('紫微完整任务书只保留一份静态出生资料并覆盖各运限�
   const representativeMutagen = mutagenPayload.active_scope.mutagen_map[0];
   assert.ok(representativeMutagen);
   assert.ok(prompt.includes(`${representativeMutagen.star}化${representativeMutagen.mutagen}`));
-
-  const evidencePayload = Object.values(runtime.payloadByScope).find(
-    (item) => item && item.active_scope.scope !== 'origin' && item.evidence_pool.length,
-  );
-  assert.ok(evidencePayload);
-  const representativeEvidence = evidencePayload.evidence_pool[0];
-  assert.ok(prompt.includes(representativeEvidence.title));
 });

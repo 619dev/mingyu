@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeQimenEvidence, generateQimen } from 'mingyu-core/divination/qimen';
 import { generateQimen as generateQimenFromSource } from '../packages/core/src/divination/algorithms/qimen/index';
+import { formatQimenPatternBasis } from '../packages/core/src/divination/qimen-evidence';
 import {
   evaluateQimenPatternFulfillment,
   formatQimenPatternConditionSummary,
@@ -145,11 +146,17 @@ test('奇门在线提示词只输出任务、盘面与传统依据并去掉重�
   const classicMenPo = evidence.patternFacts.find(
     (item) => item.kind === '经典格局' && item.name === '门迫',
   );
+  const hostGuestPattern = evidence.patternFacts.find((item) => item.name === '星宫主客');
   const basicMenPoFacts = evidence.patternFacts.filter(
     (item) => item.kind === '基础格局' && item.name.startsWith('门迫'),
   );
 
   assert.ok(classicMenPo);
+  assert.ok(hostGuestPattern);
+  assert.ok(classicMenPo.originalText.includes('主此宫事务受阻'));
+  assert.equal(classicMenPo.promptText, '惊门（金）克巽四宫（木）');
+  assert.equal(formatQimenPatternBasis(classicMenPo), classicMenPo.promptText);
+  assert.match(hostGuestPattern.promptText, /主客取向/);
   assert.ok(basicMenPoFacts.length > 0);
   for (const fact of basicMenPoFacts) {
     assert.deepEqual(
@@ -167,12 +174,73 @@ test('奇门在线提示词只输出任务、盘面与传统依据并去掉重�
   assert.match(prompt, /马星（驿马落乾六宫）/);
   assert.doesNotMatch(prompt, /来源[：:]|标签[：:]|限制[：:]|边界[：:]|组成来源|规则命中|qimen:/);
   assert.equal(prompt.split('惊门（金）克巽四宫（木）').length - 1, 1);
-  assert.equal(prompt.split(classicMenPo.promptText).length - 1, 1);
+  assert.doesNotMatch(prompt, /主此宫事务受阻|主破败损失|所谋之事有贵人暗助|百事可为/);
+  assert.equal(
+    evidence.evidence.items.filter((item) => item.title === '基础格局：门迫（巽四宫惊门）').length,
+    0,
+  );
+  assert.equal(evidence.evidence.items.filter((item) => item.title === '经典格局：门迫').length, 1);
+  const menPoCandidate = evidence.candidates.find((item) => item.gong === 4);
+  assert.equal(menPoCandidate?.constraints.filter((item) => item.includes('门迫')).length, 1);
+  const menPoPalace = evidence.palaceFacts.find((item) => item.gong === 4);
+  assert.equal(
+    menPoPalace?.patternFactKeys.filter((key) => key.startsWith('basic:') && key.includes('门迫'))
+      .length,
+    0,
+  );
 
   const onlinePrompt = formatEnhancedDivinationInfo('qimen', data, '工作进展如何？');
   assert.doesNotMatch(onlinePrompt, /来源[：:]|标签[：:]|限制[：:]/);
   assert.match(onlinePrompt, /盘面命中格局：/);
   assert.match(onlinePrompt, /门迫（凶格）：惊门（金）克巽四宫（木）/);
+  assert.doesNotMatch(onlinePrompt, /主此宫事务受阻|主破败损失|所谋之事有贵人暗助|百事可为/);
+});
+
+test('奇门格局无可用事实依据时不输出空冒号并保留主客结构词', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const palace = data.jiuGongGe.find((item) => item.gong === 4)!;
+  const tag = `主断格（${palace.name}）`;
+  data.patternDetails = [{ tag, summary: '主此事必成。' }];
+
+  const evidence = analyzeQimenEvidence(data);
+  const fact = evidence.patternFacts.find((item) => item.name === tag);
+  const candidate = evidence.candidates.find((item) => item.gong === palace.gong);
+  const patternLine = evidence.promptText.split('\n').find((line) => line.includes(tag));
+  const patternItem = evidence.evidence.items.find((item) => item.title === `基础格局：${tag}`);
+
+  assert.ok(fact);
+  assert.equal(fact.promptText, tag);
+  assert.equal(formatQimenPatternBasis(fact), fact.promptText);
+  assert.ok(candidate?.patterns.includes(tag));
+  assert.match(patternLine ?? '', new RegExp(`中性格局：${tag}$`));
+  assert.equal(
+    candidate?.patterns.find((item) => item.startsWith(tag)),
+    tag,
+  );
+  assert.ok(patternItem?.detail.includes('传统分类：中性'));
+  assert.doesNotMatch(patternItem?.detail ?? '', /^；/);
+});
+
+test('奇门全局特殊条件不重复记作每个候选宫反证', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const specialCondition = '当前时辰特殊条件仅供全局核验';
+  data.specialConditions = {
+    isLiuJiaHour: false,
+    isLiuGuiHour: false,
+    isShiGanRuMu: false,
+    isWuBuYuShi: false,
+    description: specialCondition,
+  };
+
+  const evidence = analyzeQimenEvidence(data);
+
+  assert.ok(evidence.candidates.length > 1);
+  assert.ok(evidence.promptText.includes(`特殊条件：${specialCondition}`));
+  assert.ok(evidence.candidates.every((item) => !item.constraints.includes(specialCondition)));
+  assert.equal(
+    evidence.counterEvidenceFacts.filter((item) => item.detail === specialCondition).length,
+    0,
+  );
 });
 
 test('Issue #204：结构化依据中的节令背景应采用正式定局三元', () => {

@@ -178,12 +178,19 @@ test('紫微即时盘与合参区分命主身主和命身宫内主星', async ()
   }
   const evidencePrompt = formatZiweiPayloadForPrompt(payload);
   assert.ok(payload.evidence_pool.length > 0);
+  for (const item of payload.evidence_pool.filter((fact) => fact.type === 'palace_major_stars')) {
+    const palace = payload.palaces.find((candidate) => candidate.index === item.palace_indexes[0]);
+    assert.ok(palace, item.title);
+    const palaceLine = evidencePrompt
+      .split('\n')
+      .find((line) =>
+        line.trimStart().startsWith(`${palace.name}${palace.name.endsWith('宫') ? '' : '宫'}`),
+      );
+    assert.ok(palaceLine?.includes('主星：'), item.title);
+    for (const star of palace.major_stars) assert.ok(palaceLine.includes(star.name), item.title);
+    assert.ok(!evidencePrompt.includes(`【${item.level}】${item.title}\n`), item.title);
+  }
   for (const item of payload.evidence_pool) {
-    assert.ok(
-      evidencePrompt.includes(item.description) ||
-        evidencePrompt.includes(`【${item.level}】${item.title}\n`),
-      item.title,
-    );
     assert.ok(!evidencePrompt.includes(`${item.title}：${item.title}：`), item.title);
   }
   const trineGroups = ['申子辰', '亥卯未', '寅午戌', '巳酉丑'];

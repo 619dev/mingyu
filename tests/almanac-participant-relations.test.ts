@@ -48,6 +48,35 @@ test('寅日与巳年参与人同时命中刑害，逐日事实与公开证据�
   assert.match(result.evidenceAnalysis!.promptText, /与其年支巳害/u);
 });
 
+test('参与人仅提供时分时按零秒跨立春排盘，传统时辰输入保持原口径', () => {
+  const participants = [
+    { id: 'before', birthHour: '16', birthMinute: '26' },
+    { id: 'after', birthHour: '16', birthMinute: '28' },
+    { id: 'shichen', timeIndex: '8' },
+  ].map((entry) => ({
+    ...entry,
+    name: entry.id,
+    gender: '男' as const,
+    year: '2024',
+    month: '2',
+    day: '4',
+    dateType: 'solar' as const,
+  }));
+  const result = generateAlmanacSelection({
+    topic: 'custom',
+    startDate: '2026-06-09',
+    endDate: '2026-06-09',
+    participants,
+  });
+  const byId = new Map(result.participants.map((item) => [item.id, item]));
+
+  assert.equal(byId.get('before')?.pillars.year, '癸卯');
+  assert.equal(byId.get('before')?.pillars.month, '乙丑');
+  assert.equal(byId.get('after')?.pillars.year, '甲辰');
+  assert.equal(byId.get('after')?.pillars.month, '丙寅');
+  assert.deepEqual(byId.get('shichen')?.pillars, byId.get('before')?.pillars);
+});
+
 test('出生区间内稳定的寅巳刑害分别覆盖完整半开区间', () => {
   const startTimestamp = Date.parse('2024-02-11T15:00:00+08:00');
   const endTimestamp = Date.parse('2024-02-11T17:00:00+08:00');

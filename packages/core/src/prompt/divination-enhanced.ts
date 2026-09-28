@@ -31,6 +31,7 @@ import type {
   JinkoujueData,
 } from '../types/divination';
 import { analyzeQimenEvidence } from '../divination/algorithms/qimen';
+import { formatQimenPatternBasis } from '../divination/qimen-evidence';
 import { analyzeAlmanacEvidence, formatAlmanacGods } from '../divination/algorithms/almanac';
 import {
   LIUCHONG_MAP,
@@ -821,19 +822,12 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
         : item.traditionalTone === '风险'
           ? '凶格'
           : '中性格局';
-    const clauses = item.promptText.split(/[，；]/u).map((clause) => clause.replace(/。$/u, ''));
-    const basis = [
-      clauses[0],
-      ...clauses
-        .slice(1)
-        .filter((clause) => /甲|旬|遁|星奇游/u.test(clause) && !/主|百事|吉利/u.test(clause)),
-    ]
-      .filter(Boolean)
-      .join('；');
+    const basis = formatQimenPatternBasis(item);
     const missingPalaces = item.palaces
       .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
       .filter((name) => !basis.includes(name));
-    return `${item.name}（${tone}${missingPalaces.length ? `，${missingPalaces.join('、')}` : ''}）：${basis}`;
+    const basisText = basis === item.name ? '' : `：${basis}`;
+    return `${item.name}（${tone}${missingPalaces.length ? `，${missingPalaces.join('、')}` : ''}）${basisText}`;
   });
   const questionContext = [
     question,

@@ -699,9 +699,7 @@ function createParticipantProfiles(
           : {
               birthHour: birthInput.birthHour,
               birthMinute: birthInput.birthMinute,
-              ...(birthInput.birthSecond === undefined
-                ? {}
-                : { birthSecond: birthInput.birthSecond }),
+              birthSecond: birthInput.birthSecond ?? 0,
             }),
         ...(birthInput.birthPlace === undefined ? {} : { birthPlace: birthInput.birthPlace }),
         ...(birthInput.birthLongitude === undefined
