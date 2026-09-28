@@ -27,6 +27,17 @@ test('程序模拟三钱保留计算样本和随机轨迹', () => {
   assert.equal(evidence.randomFact.status, '可重放');
 });
 
+test('六爻三钱重放必须恰好用尽输入样本', () => {
+  const original = generateLiuyao(date, { method: 'coins', seed: '六爻重放边界' });
+  const samples = original.meta!.random!.samples;
+  const replayed = generateLiuyao(date, { method: 'coins', replay: samples });
+  assert.deepEqual(replayed.yaoArray, original.yaoArray);
+  assert.throws(
+    () => generateLiuyao(date, { method: 'coins', replay: [...samples, 0] }),
+    /重放样本有剩余/,
+  );
+});
+
 test('六爻手工爻值和铜钱记录拒绝空数组项并返回可读的输入错误', () => {
   assert.throws(
     () => generateLiuyao(date, { method: 'manual', yaos: null as unknown as number[] }),

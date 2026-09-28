@@ -162,9 +162,21 @@ function buildPalaceFacts(data: XiaoliurenData): XiaoliurenPalaceFact[] {
   ];
 }
 
+export function formatXiaoliurenCalendarBoundary(data: XiaoliurenData): string {
+  return [
+    data.hourIndex === 12 ? '晚子时四柱日干支按子初换日，起课农历日到东八区零点才换日' : '',
+    data.termReferenceTimestamp !== undefined
+      ? '起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻'
+      : '',
+  ]
+    .filter(Boolean)
+    .join('；');
+}
+
 export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvidenceAnalysis {
   const calculationSteps = buildCalculationSteps(data);
   const complete = calculationSteps.length === 3;
+  const calendarBoundary = formatXiaoliurenCalendarBoundary(data);
   const palaceFacts = buildPalaceFacts(data);
   const primaryFact = palaceFacts[2];
   if (!primaryFact) {
@@ -186,7 +198,7 @@ export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvide
       ? calculationSteps.map((step) => step.formula).join('；')
       : '结果未附完整的月、日、时逐宫顺数参数，不能复核落宫。',
     sources: [resolveXiaoliurenRule(data.rule).source, '农历与时辰由统一历法模块换算'],
-    limitation: `${INTERPRETATION_LIMITATION}；${CALENDAR_LIMITATION}`,
+    limitation: `${INTERPRETATION_LIMITATION}；${CALENDAR_LIMITATION}${calendarBoundary ? `；${calendarBoundary}` : ''}`,
   };
 
   const limitationFacts: XiaoliurenLimitationFact[] = [
@@ -215,7 +227,7 @@ export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvide
       key: 'xiaoliuren:limitation:calendar',
       type: '历法边界',
       ownerFactKeys: [calculationFact.key],
-      promptText: CALENDAR_LIMITATION,
+      promptText: `${CALENDAR_LIMITATION}${calendarBoundary ? `；${calendarBoundary}` : ''}`,
       sources: ['当前排盘口径'],
     },
     {
@@ -285,6 +297,7 @@ export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvide
     '',
     '【排盘资料】',
     `农历：${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月${data.lunarDay}日，${data.hourLabel}`,
+    ...(calendarBoundary ? [`历法取时：${calendarBoundary}`] : []),
     `顺数轨迹：月宫${data.sequence.month.name}；日宫${data.sequence.day.name}；时宫${data.sequence.hour.name}`,
     `占得宫：${data.primary.name}`,
     `歌诀原文：${data.primary.verse}`,

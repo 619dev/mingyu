@@ -340,8 +340,8 @@ test('纽约夏令时跳时日的周期事件按每个 UTC 瞬时实际偏移格
     mode: 'daily',
     sampleLongitudes: (utcMs) => [{ name: '太阳', longitude: 28.5 + (utcMs - startUtcMs) / hour }],
   });
-  assert.equal(result.startDateTime, '2024-03-10 01:00');
-  assert.equal(result.endDateTime, '2024-03-10 04:00');
+  assert.equal(result.startDateTime, '2024-03-10 01:00 UTC-05:00');
+  assert.equal(result.endDateTime, '2024-03-10 04:00 UTC-04:00');
   const ingress = result.events.find((event) => event.kind === '换宫');
   assert.ok(ingress);
   assert.ok(Math.abs(ingress.utcMs - Date.UTC(2024, 2, 10, 7, 30)) < 1000);
@@ -353,13 +353,38 @@ test('纽约夏令时跳时日的周期事件按每个 UTC 瞬时实际偏移格
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(new Date(ingress.utcMs));
+  }).formatToParts(new Date(Math.round(ingress.utcMs / 1000) * 1000));
   const part = (type: string) => localParts.find((item) => item.type === type)?.value;
   assert.equal(
     ingress.dateTime,
-    `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`,
+    `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')} UTC-04:00`,
   );
   assert.match(ingress.promptText, /^2024-03-10 03:/);
+});
+
+test('纽约夏令时回拨的两个 01:30 换宫事件在提示词中保留各自 UTC 偏移', () => {
+  const hour = 3_600_000;
+  const startUtcMs = Date.UTC(2024, 10, 3, 5);
+  const result = scanQizhengPeriodEvents({
+    natalStars: [],
+    twelvePalaces: [],
+    startUtcMs,
+    endUtcMs: startUtcMs + 2 * hour,
+    timezone: -4,
+    timeZoneId: 'America/New_York',
+    mode: 'daily',
+    sampleLongitudes: (utcMs) => {
+      const hours = (utcMs - startUtcMs) / hour;
+      return [{ name: '太阳', longitude: hours <= 1 ? 29 + 2 * hours : 33 - 2 * hours }];
+    },
+  });
+  const ingresses = result.events.filter((event) => event.kind === '换宫');
+  assert.equal(ingresses.length, 2);
+  assert.deepEqual(
+    ingresses.map((event) => event.dateTime),
+    ['2024-11-03 01:30 UTC-04:00', '2024-11-03 01:30 UTC-05:00'],
+  );
+  assert.ok(ingresses.every((event) => result.promptText.includes(event.dateTime)));
 });
 
 test('纽约三月流月周期按两个 IANA 午夜解析并跨越夏令时少一小时', () => {
@@ -395,14 +420,28 @@ test('纽约三月流月周期按两个 IANA 午夜解析并跨越夏令时少�
       (event) => event.utcMs >= expectedStartUtc && event.utcMs <= expectedEndUtc,
     ),
   );
-  assert.equal(period.startDateTime, '2024-03-01 00:00');
-  assert.equal(period.endDateTime, '2024-04-01 00:00');
+  assert.equal(period.startDateTime, '2024-03-01 00:00 UTC-05:00');
+  assert.equal(period.endDateTime, '2024-04-01 00:00 UTC-04:00');
 });
 
 test('纽约跳时和回拨日的扫描周期均止于次日当地午夜', () => {
   for (const target of [
-    { month: 3, day: 10, hours: 23, startUtc: Date.UTC(2024, 2, 10, 5) },
-    { month: 11, day: 3, hours: 25, startUtc: Date.UTC(2024, 10, 3, 4) },
+    {
+      month: 3,
+      day: 10,
+      hours: 23,
+      startUtc: Date.UTC(2024, 2, 10, 5),
+      startOffset: '-05:00',
+      endOffset: '-04:00',
+    },
+    {
+      month: 11,
+      day: 3,
+      hours: 25,
+      startUtc: Date.UTC(2024, 10, 3, 4),
+      startOffset: '-04:00',
+      endOffset: '-05:00',
+    },
   ]) {
     const period = generateQizheng({
       ...NEW_YORK_SUMMER_BIRTH,
@@ -414,11 +453,11 @@ test('纽约跳时和回拨日的扫描周期均止于次日当地午夜', () =>
     const month = String(target.month).padStart(2, '0');
     assert.equal(
       period.startDateTime,
-      `2024-${month}-${String(target.day).padStart(2, '0')} 00:00`,
+      `2024-${month}-${String(target.day).padStart(2, '0')} 00:00 UTC${target.startOffset}`,
     );
     assert.equal(
       period.endDateTime,
-      `2024-${month}-${String(target.day + 1).padStart(2, '0')} 00:00`,
+      `2024-${month}-${String(target.day + 1).padStart(2, '0')} 00:00 UTC${target.endOffset}`,
     );
     assert.ok(period.events.length > 0);
     assert.ok(
@@ -448,8 +487,8 @@ test('圣地亚哥午夜跳时日从首个真实时刻扫描至次日零时', ()
   const period = result.flowingStars?.periodEvents;
   assert.ok(period);
   assert.equal(period.mode, 'daily');
-  assert.equal(period.startDateTime, '2024-09-08 01:00');
-  assert.equal(period.endDateTime, '2024-09-09 00:00');
+  assert.equal(period.startDateTime, '2024-09-08 01:00 UTC-03:00');
+  assert.equal(period.endDateTime, '2024-09-09 00:00 UTC-03:00');
   const startUtc = Date.UTC(2024, 8, 8, 4);
   const endUtc = Date.UTC(2024, 8, 9, 3);
   assert.ok(period.events.every((event) => event.utcMs >= startUtc && event.utcMs < endUtc));

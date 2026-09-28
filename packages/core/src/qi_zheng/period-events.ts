@@ -106,10 +106,16 @@ function isWithinHalfOpenWindow(utcMs: number, startUtcMs: number, endUtcMs: num
 }
 
 function formatUtc(utcMs: number, timezone: number, timeZoneId?: string) {
-  const instant = new Date(utcMs);
+  // 求根时间保留毫秒精度，分钟标签先四舍五入到秒，避免精确整分落到上一分钟。
+  const instant = new Date(Math.round(utcMs / 1000) * 1000);
   const actualTimezone = timeZoneId ? getHistoricalTimezoneOffsetAt(instant, timeZoneId) : timezone;
   const local = getCivilDateTimeAtFixedOffset(instant, actualTimezone);
-  return `${local.year}-${pad(local.month)}-${pad(local.day)} ${pad(local.hour)}:${pad(local.minute)}`;
+  const offsetSeconds = Math.round(Math.abs(actualTimezone) * 3600);
+  const offsetHours = Math.floor(offsetSeconds / 3600);
+  const offsetMinutes = Math.floor((offsetSeconds % 3600) / 60);
+  const remainingSeconds = offsetSeconds % 60;
+  const offset = `UTC${actualTimezone >= 0 ? '+' : '-'}${pad(offsetHours)}:${pad(offsetMinutes)}${remainingSeconds ? `:${pad(remainingSeconds)}` : ''}`;
+  return `${local.year}-${pad(local.month)}-${pad(local.day)} ${pad(local.hour)}:${pad(local.minute)} ${offset}`;
 }
 
 function signIndexOf(longitude: number) {
@@ -134,7 +140,7 @@ function refineCrossing(
   let left = startUtc;
   let right = endUtc;
   let leftValue = evaluate(left);
-  for (let index = 0; index < 18; index += 1) {
+  for (let index = 0; index < 24; index += 1) {
     const mid = (left + right) / 2;
     const midValue = evaluate(mid);
     if (leftValue === 0) return left;

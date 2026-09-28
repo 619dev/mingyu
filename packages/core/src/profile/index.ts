@@ -12,6 +12,8 @@ import {
   type TrueSolarTimeEvidenceFields,
 } from '../calendar/true-solar-time';
 import { getShichenByIndex, getTimeIndexFromClock } from '../calendar/dateUtils';
+import { checkChinaDst } from '../calendar/china-dst';
+import { resolveCivilTime } from '../calendar/civil-time';
 import { baziCalculator } from '../bazi/baziCalculator';
 import type { BaziChartResult, Person } from '../bazi/baziTypes';
 import type { AlmanacParticipantInput, AstrolabeBirthInput } from '../types/divination';
@@ -121,6 +123,7 @@ export interface NormalizedBirthProfile {
   timeInputMode: BirthTimeInputMode;
   timePrecision: BirthTimePrecision;
   usedTrueSolarTime: boolean;
+  usedChinaDstCorrection: boolean;
   trueSolarEvidence?: TrueSolarTimeEvidenceFields;
   timeEvidence: BirthTimeEvidence;
   diagnostics: BirthProfileDiagnostic[];
@@ -188,6 +191,9 @@ function assertProfileShape(profile: BirthProfile): void {
   assertIntegerInRange(profile.day, '出生日期', 1, 31);
   if (profile.location !== undefined) {
     assertBirthProfileLocationShape(profile.location);
+  }
+  if (profile.applyChinaDst !== undefined && typeof profile.applyChinaDst !== 'boolean') {
+    throw new TypeError('applyChinaDst 必须是布尔值。');
   }
 }
 
@@ -433,6 +439,7 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
       timeInputMode: timeInput.inputMode,
       timePrecision: timeEvidence.precision,
       usedTrueSolarTime: true,
+      usedChinaDstCorrection: resolved.chinaDst.applied,
       trueSolarEvidence,
       timeEvidence,
       diagnostics,
@@ -449,7 +456,61 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
     second,
     isLeapMonth: profile.isLeapMonth,
   });
-  const selectedShichen = getShichenByIndex(timeInput.timeIndex);
+  // 仅精准钟表时间可还原历史夏令时的唯一瞬时；传统时辰没有可校正的分钟。
+  const applyChinaDst =
+    profile.applyChinaDst === true && timeInput.inputMode === 'precise-clock-time';
+  if (applyChinaDst && resolvedLocation?.timeZoneId) {
+    throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
+  }
+  if (
+    applyChinaDst &&
+    resolvedLocation?.timezone !== undefined &&
+    resolvedLocation.timezone !== 8
+  ) {
+    throw new Error('中国历史夏令时校正仅适用于东八区钟表时间。');
+  }
+  const dst = applyChinaDst
+    ? checkChinaDst(
+        solarClockTime.year,
+        solarClockTime.month,
+        solarClockTime.day,
+        solarClockTime.hour,
+        solarClockTime.minute,
+      )
+    : undefined;
+  if (dst?.nonexistent) {
+    throw new Error('该中国历史钟表时间处于夏令时跳时缺口，实际并不存在。');
+  }
+  if (dst?.ambiguous) {
+    throw new Error('该中国历史钟表时间处于夏令时回拨重复时段，无法唯一定时。');
+  }
+  const effectiveTime = dst?.inDst
+    ? (() => {
+        const shifted = new Date(
+          Date.UTC(
+            solarClockTime.year,
+            solarClockTime.month - 1,
+            solarClockTime.day,
+            solarClockTime.hour,
+            solarClockTime.minute + dst.offsetMinutes,
+            solarClockTime.second,
+          ),
+        );
+        return {
+          year: shifted.getUTCFullYear(),
+          month: shifted.getUTCMonth() + 1,
+          day: shifted.getUTCDate(),
+          hour: shifted.getUTCHours(),
+          minute: shifted.getUTCMinutes(),
+          second: shifted.getUTCSeconds(),
+        };
+      })()
+    : solarClockTime;
+  const selectedShichen = getShichenByIndex(
+    dst?.inDst
+      ? getTimeIndexFromClock(effectiveTime.hour, effectiveTime.minute)
+      : timeInput.timeIndex,
+  );
   if (!selectedShichen) throw new Error('出生时辰状态异常。');
   const timeEvidence = buildBirthTimeEvidence({
     inputMode: timeInput.inputMode,
@@ -465,7 +526,16 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
     inputSecond: profile.second,
     selectedShichen,
     solarClockTime,
-    effectiveTime: solarClockTime,
+    effectiveTime,
+    ...(dst?.inDst
+      ? {
+          chinaDstEvidence: {
+            offsetMinutes: dst.offsetMinutes,
+            standardTimezone: 8,
+            utcDateTime: resolveCivilTime({ ...effectiveTime, timezone: 8 }).utcDateTime,
+          },
+        }
+      : {}),
     usedTrueSolarTime: false,
     requestedTrueSolarTime: profile.useTrueSolarTime ?? false,
     diagnostics,
@@ -474,11 +544,12 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
     profile,
     resolvedLocation,
     solarClockTime,
-    effectiveTime: solarClockTime,
-    timeIndex: timeInput.timeIndex,
+    effectiveTime,
+    timeIndex: selectedShichen.index,
     timeInputMode: timeInput.inputMode,
     timePrecision: timeEvidence.precision,
     usedTrueSolarTime: false,
+    usedChinaDstCorrection: dst?.inDst ?? false,
     timeEvidence,
     diagnostics,
   };
@@ -549,13 +620,14 @@ export function birthProfileToZiweiChartInput(profile: BirthProfile): ChartInput
   requireReady(normalized, genderDiagnostic);
 
   const useTrueSolarTime = profile.useTrueSolarTime === true;
-  const date = useTrueSolarTime ? normalized.effectiveTime : undefined;
+  const date =
+    useTrueSolarTime || normalized.usedChinaDstCorrection ? normalized.effectiveTime : undefined;
   const preciseBirthTime =
     normalized.timeInputMode === 'precise-clock-time' ? normalized.effectiveTime : undefined;
   return {
     name: profile.name ?? '',
     gender: profile.gender === 'male' ? '男' : '女',
-    dateType: useTrueSolarTime ? 'solar' : profile.calendarType,
+    dateType: date ? 'solar' : profile.calendarType,
     birthDate: date
       ? formatBirthDate(date.year, date.month, date.day)
       : formatBirthDate(profile.year, profile.month, profile.day),
@@ -570,7 +642,7 @@ export function birthProfileToZiweiChartInput(profile: BirthProfile): ChartInput
         }
       : {}),
     trueSolarEvidence: normalized.trueSolarEvidence,
-    isLeapMonth: useTrueSolarTime ? false : profile.isLeapMonth,
+    isLeapMonth: date ? false : profile.isLeapMonth,
     fixLeap: true,
     algorithm: 'default',
     yearDivide: 'normal',
@@ -612,7 +684,7 @@ export function birthProfileToAstrolabeInput(profile: BirthProfile): AstrolabeBi
         }
       : undefined;
   requireReady(normalized, preciseTimeDiagnostic ?? locationDiagnostic ?? genderDiagnostic);
-  const clock = normalized.solarClockTime;
+  const clock = profile.useTrueSolarTime ? normalized.solarClockTime : normalized.effectiveTime;
   if (!location || location.latitude === undefined) throw new Error('出生地状态异常。');
   return {
     name: profile.name ?? '',
@@ -637,9 +709,8 @@ export function birthProfileToAstrolabeInput(profile: BirthProfile): AstrolabeBi
 /**
  * 将统一出生档案转换为七政四余输入。
  *
- * 七政四余只接受公历时刻，因此农历档案先沿用统一档案的公历钟表时间。
- * 启用真太阳时后，把原始民用时间交给七政四余自身校正，避免重复校正；
- * 这与八字、紫微适配器的输出口径不同，调用方不应混用已校正时间。
+ * 七政四余只接受公历时刻。真太阳时模式传原始民用钟表时间，由七政自身
+ * 校正传统宫位；普通模式传已还原历史夏令时的标准时间，供天文时刻和宫位共用。
  */
 export function birthProfileToQizhengInput(profile: BirthProfile): QizhengInput {
   const normalized = normalizeBirthProfile(profile);
@@ -653,7 +724,7 @@ export function birthProfileToQizhengInput(profile: BirthProfile): QizhengInput 
         }
       : undefined;
   requireReady(normalized, preciseTimeDiagnostic);
-  const clock = normalized.solarClockTime;
+  const clock = profile.useTrueSolarTime ? normalized.solarClockTime : normalized.effectiveTime;
   const location = normalized.resolvedLocation;
   if (!location || location.latitude === undefined) {
     throw new BirthProfileError({
@@ -695,21 +766,21 @@ export function birthProfileToAlmanacParticipant(
         }
       : undefined;
   requireReady(normalized, genderDiagnostic);
-  const clock = normalized.solarClockTime;
   const effective = normalized.effectiveTime;
   const useTrueSolarTime = profile.useTrueSolarTime === true;
   const location = normalized.resolvedLocation;
-  // 择日算法接收的是参与人最终四柱；真太阳时已在统一档案中校正，输出校正后的精确公历时刻，避免重复校正。
-  const participantTime = useTrueSolarTime ? effective : clock;
+  // 择日算法接收最终四柱时间；统一档案已完成所需校正，此处直接传入结果。
+  const participantTime = effective;
+  const useCorrectedDate = useTrueSolarTime || normalized.usedChinaDstCorrection;
   return {
     id,
     name: profile.name ?? '参与人',
     gender: profile.gender === 'male' ? '男' : '女',
-    year: String(useTrueSolarTime ? effective.year : profile.year),
-    month: String(useTrueSolarTime ? effective.month : profile.month),
-    day: String(useTrueSolarTime ? effective.day : profile.day),
+    year: String(useCorrectedDate ? effective.year : profile.year),
+    month: String(useCorrectedDate ? effective.month : profile.month),
+    day: String(useCorrectedDate ? effective.day : profile.day),
     timeIndex: String(normalized.timeIndex),
-    dateType: useTrueSolarTime ? 'solar' : profile.calendarType,
+    dateType: useCorrectedDate ? 'solar' : profile.calendarType,
     ...(normalized.timeInputMode === 'precise-clock-time'
       ? {
           birthHour: String(participantTime.hour),

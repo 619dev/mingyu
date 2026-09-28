@@ -296,7 +296,21 @@ test('破格救应已在核心判断列明时省略重复格局条件', () => {
   assert.doesNotMatch(prompt, /【格局条件】/);
 
   result.analysis.usefulGod.decisionEvidence!.patternBreakerRestrictions = [];
-  assert.match(formatBaziPatternConditions(result), /破格项：伤官见官/);
+  assert.equal(formatBaziPatternConditions(result), '');
+  for (const text of [
+    buildBaziPrompt({ result }),
+    buildPromptFromConfig(
+      '分析当前格局。',
+      { id: 'ai-career', prompt: '分析事业。', scopeLabel: '事业' },
+      result,
+    ).user,
+  ]) {
+    assert.doesNotMatch(text, /【格局条件】|破格项：伤官见官/);
+    assert.match(text, /干级所忌：丁/);
+  }
+  result.analysis.mingGe.fulfillment!.decisionDetail =
+    result.analysis.mingGe.fulfillment!.decisionDetail!.replace('伤官见官', '原局受损');
+  assert.match(formatBaziPatternConditions(result), /破格项：伤官见官（丁伤官（时柱））/);
 });
 
 test('救应资料不足时已列明的破格项不重复写入格局条件', () => {
@@ -492,8 +506,22 @@ test('破而复成的破格与救应已见于核心判断和取用时不重复�
   }
 
   repaired.analysis.usefulGod.decisionEvidence!.controlFunctions = [];
-  assert.match(formatBaziPatternConditions(repaired), /破格项：伤官见官（辛伤官（月柱））/);
-  assert.match(formatBaziPatternConditions(repaired), /救应路径：印星制伤官护官/);
+  const remainingConditions = formatBaziPatternConditions(repaired);
+  assert.doesNotMatch(remainingConditions, /破格项：伤官见官/);
+  assert.match(remainingConditions, /救应路径：印星制伤官护官/);
+  for (const prompt of [
+    buildBaziPrompt({ result: repaired }),
+    buildPromptFromConfig(
+      '分析当前格局。',
+      { id: 'ai-career', prompt: '分析事业。', scopeLabel: '事业' },
+      repaired,
+    ).user,
+    buildBaziCompatibilityPrompt({ result1: repaired, result2: other }),
+    getCompatibilityPrompt('请分析双方关系。', repaired, other).user,
+  ]) {
+    assert.doesNotMatch(prompt, /破格项：伤官见官/);
+    assert.match(prompt, /救应路径：印星制伤官护官/);
+  }
 
   const broken = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
   assert.equal(broken.analysis.mingGe.fulfillment?.status, '破格');

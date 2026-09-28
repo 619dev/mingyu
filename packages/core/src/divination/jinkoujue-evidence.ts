@@ -9,7 +9,7 @@ import {
 } from '../shared/random';
 import type { JinkoujueData, JinkoujueFourPosition, JinkoujueMovement } from '../types/divination';
 import { MingyuCoreError } from '../shared/result';
-import { EARTHLY_BRANCHES } from '../ganzhi';
+import { EARTHLY_BRANCHES, isKe, isSheng } from '../ganzhi';
 
 export interface JinkoujuePositionFact {
   key: string;
@@ -179,6 +179,117 @@ function buildRelationFact(
 }
 
 export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidenceAnalysis {
+  const { diFen, jiangShen, guiShen, renYuan } = data.positions;
+  if (
+    diFen.branch !== data.diFenBranch ||
+    renYuan.branch !== diFen.branch ||
+    data.divinationBranch !== data.ganzhi.hour.charAt(1)
+  ) {
+    throw new Error(
+      data.method === 'random'
+        ? '金口诀随机轨迹与起课数字或地分不一致，无法生成证据。'
+        : '金口诀地分与四位不一致，无法生成证据。',
+    );
+  }
+  const monthLeaderIndex = EARTHLY_BRANCHES.indexOf(
+    data.monthLeader as (typeof EARTHLY_BRANCHES)[number],
+  );
+  const hourBranchIndex = EARTHLY_BRANCHES.indexOf(
+    data.divinationBranch as (typeof EARTHLY_BRANCHES)[number],
+  );
+  const diFenIndex = EARTHLY_BRANCHES.indexOf(diFen.branch as (typeof EARTHLY_BRANCHES)[number]);
+  if (
+    monthLeaderIndex < 0 ||
+    hourBranchIndex < 0 ||
+    diFenIndex < 0 ||
+    jiangShen.branch !==
+      EARTHLY_BRANCHES[(monthLeaderIndex + diFenIndex - hourBranchIndex + 12) % 12]
+  ) {
+    throw new Error('金口诀将神与月将加时不一致，无法生成证据。');
+  }
+  const movementRules = [
+    {
+      category: '五动',
+      name: '妻动',
+      from: renYuan,
+      to: diFen,
+      relation: '克',
+      matched: isKe(renYuan.element, diFen.element),
+    },
+    {
+      category: '五动',
+      name: '官动',
+      from: guiShen,
+      to: renYuan,
+      relation: '克',
+      matched: isKe(guiShen.element, renYuan.element),
+    },
+    {
+      category: '五动',
+      name: '贼动',
+      from: guiShen,
+      to: jiangShen,
+      relation: '克',
+      matched: isKe(guiShen.element, jiangShen.element),
+    },
+    {
+      category: '五动',
+      name: '财动',
+      from: jiangShen,
+      to: guiShen,
+      relation: '克',
+      matched: isKe(jiangShen.element, guiShen.element),
+    },
+    {
+      category: '五动',
+      name: '鬼动',
+      from: diFen,
+      to: renYuan,
+      relation: '克',
+      matched: isKe(diFen.element, renYuan.element),
+    },
+    {
+      category: '三动',
+      name: '父母动',
+      from: diFen,
+      to: renYuan,
+      relation: '生',
+      matched: isSheng(diFen.element, renYuan.element),
+    },
+    {
+      category: '三动',
+      name: '子孙动',
+      from: renYuan,
+      to: diFen,
+      relation: '生',
+      matched: isSheng(renYuan.element, diFen.element),
+    },
+    {
+      category: '三动',
+      name: '兄弟动',
+      from: renYuan,
+      to: diFen,
+      relation: '比和',
+      matched: renYuan.element === diFen.element,
+    },
+  ].filter((rule) => rule.matched);
+  if (
+    movementRules.length !== data.movements.length ||
+    data.movements.some((item, index) => {
+      const expected = movementRules[index];
+      return (
+        item.category !== expected.category ||
+        item.name !== expected.name ||
+        item.from !== expected.from.name ||
+        item.to !== expected.to.name ||
+        item.relation !== expected.relation ||
+        item.trigger !==
+          `${expected.from.name}${expected.from.element}${expected.relation}${expected.to.name}${expected.to.element}`
+      );
+    })
+  ) {
+    throw new Error('金口诀动爻与四位五行不一致，无法生成证据。');
+  }
   const positions = [
     data.positions.diFen,
     data.positions.jiangShen,

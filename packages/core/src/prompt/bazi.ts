@@ -228,16 +228,11 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
     const statedBreakers =
       result.analysis.usefulGod?.decisionEvidence?.patternBreakerRestrictions ?? [];
     for (const breaker of fulfillment.activeBreakers ?? []) {
-      if (
-        breaker.repairStatus === '资料不足' &&
+      const breakerInDecision =
         statedDecision.includes(breaker.label) &&
         breaker.stems.length > 0 &&
-        breaker.stems.every((stem) => result.pillars[stem.pillar].gan === stem.stem)
-      ) {
-        continue;
-      }
-      if (
-        breaker.repairStatus === '不满足' &&
+        breaker.stems.every((stem) => result.pillars[stem.pillar].gan === stem.stem);
+      const breakerInUsefulGod =
         breaker.stems.length > 0 &&
         statedBreakers.some(
           (stated) =>
@@ -245,10 +240,7 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
             breaker.stems.every((stem) =>
               stated.stems.some((item) => item.stem === stem.stem && item.pillar === stem.pillar),
             ),
-        )
-      ) {
-        continue;
-      }
+        );
       const path =
         breaker.repairStatus === '满足'
           ? fulfillment.pathEvaluations?.find(
@@ -269,21 +261,12 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
             item.targetStems.length === path.targetStems.length &&
             item.targetStems.every((stem) => path.targetStems.includes(stem)),
         );
-      if (
-        path &&
-        pathAlreadyStated &&
-        statedDecision.includes(breaker.label) &&
-        breaker.stems.length > 0 &&
-        breaker.stems.every(
-          (stem) => path.sourceStems.includes(stem.stem) || path.targetStems.includes(stem.stem),
-        )
-      ) {
-        continue;
+      if (!breakerInDecision && !breakerInUsefulGod) {
+        const stems = breaker.stems
+          .map((item) => `${item.stem}${item.tenGod}（${item.pillarName}）`)
+          .join('、');
+        facts.push(`破格项：${breaker.label}${stems ? `（${stems}）` : ''}`);
       }
-      const stems = breaker.stems
-        .map((item) => `${item.stem}${item.tenGod}（${item.pillarName}）`)
-        .join('、');
-      facts.push(`破格项：${breaker.label}${stems ? `（${stems}）` : ''}`);
       if (breaker.repairStatus === '满足') {
         if (path && !decisionDetail.includes(path.detail) && !pathAlreadyStated) {
           facts.push(

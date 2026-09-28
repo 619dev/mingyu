@@ -91,10 +91,32 @@ test('小六壬早晚子时各按民用日期起课，闰月提示与实际农�
     const prompt = buildDivinationPrompt('xiaoliuren', '请做整体解读。', data);
     assert.match(prompt, /东八区民用日零点换日/);
     assert.match(prompt, /晚子时与早子时各按所在民用日的农历日期起课/);
+    if (data.hourLabel === '晚子时') {
+      assert.match(prompt, /晚子时四柱日干支按子初换日/);
+    } else {
+      assert.doesNotMatch(prompt, /晚子时四柱日干支按子初换日/);
+    }
   }
   const leap = generateXiaoliuren({ customDate: new Date('2025-07-25T08:00:00+08:00') });
   assert.equal(leap.isLeapMonth, true);
   const prompt = buildDivinationPrompt('xiaoliuren', '请做整体解读。', leap);
   assert.match(prompt, /农历闰6月1日/);
   assert.match(prompt, /闰月沿用同名月序/);
+});
+
+test('小六壬真太阳时跨民用日期时提示词说明农历日与四柱取时口径', () => {
+  const data = generateXiaoliuren({
+    customDate: new Date('2025-06-29T21:15:00+08:00'),
+    termReferenceDate: new Date('2025-06-30T00:20:00+08:00'),
+  });
+  for (const prompt of [
+    buildDivinationPrompt('xiaoliuren', '请分析当前课。', data),
+    buildCoreDivinationPrompt({ method: 'xiaoliuren', data, question: '请分析当前课。' }),
+  ]) {
+    assert.match(prompt, /起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻/);
+  }
+  assert.match(
+    buildDivinationPrompt('xiaoliuren', '请分析当前课。', data),
+    /农历：乙巳年 六月初六 亥时/,
+  );
 });

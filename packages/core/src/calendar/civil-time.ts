@@ -238,11 +238,15 @@ export function resolveCivilDayStart(
   }
   try {
     const midnightEvidence = resolveHistoricalTimezone({ ...midnight, timeZoneId });
-    return resolveCivilTime({
+    const start = resolveCivilTime({
       ...midnight,
       timeZoneId,
-      timezone: midnightEvidence.resolvedOffsetHours,
+      timezone: input.timezone ?? midnightEvidence.resolvedOffsetHours,
     });
+    if (start.utcTimestamp !== midnightEvidence.selectedUtcTimestamp) {
+      throw new Error(`${timeZoneId} 的当地公历日应从最早的午夜时刻开始。`);
+    }
+    return start;
   } catch (error) {
     if (!(error instanceof Error) || !error.message.includes('不存在，通常由夏令时跳时造成')) {
       throw error;
@@ -284,6 +288,6 @@ export function resolveCivilDayStart(
   return resolveCivilTime({
     ...localTime,
     timeZoneId,
-    timezone: getHistoricalTimezoneOffsetAt(new Date(after), timeZoneId),
+    timezone: input.timezone ?? getHistoricalTimezoneOffsetAt(new Date(after), timeZoneId),
   });
 }

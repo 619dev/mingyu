@@ -11,10 +11,14 @@ import { getBranchWuxing, getStemWuxing, isKe, isSheng } from '../ganzhi';
 import {
   buildHeavenlyPlate,
   DIZHI,
+  describeRelation,
+  getDayStemResidence,
   getNoblemanBranch,
+  getPlateItemByBranch,
   TIANJIANG,
   TIANGAN,
 } from './algorithms/liuren/helpers/plate';
+import { buildFourLessons } from './algorithms/liuren/helpers/lessons';
 import {
   formatLiurenOrdinaryStage,
   getLiurenOrdinaryCandidateStatusLabel,
@@ -1302,6 +1306,46 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
   ];
   const platePositionFacts = buildPlatePositionFacts(data);
   const plateFact = buildPlateCoverageFact(data, platePositionFacts);
+  if (plateFact.status === '完整') {
+    const dayStem = data.ganzhi.day.charAt(0);
+    const dayBranch = data.ganzhi.day.charAt(1);
+    const dayStemResidence = getDayStemResidence(dayStem);
+    const expectedLessons = buildFourLessons({
+      heavenlyPlate: data.heavenlyPlate,
+      dayStem,
+      dayBranch,
+      dayStemResidence,
+      xunKong,
+    });
+    if (
+      data.dayStemResidence !== dayStemResidence ||
+      data.fourLessons.some((lesson, index) => {
+        const expected = expectedLessons[index];
+        return (
+          lesson.name !== expected.name ||
+          lesson.upper !== expected.upper ||
+          lesson.lower !== expected.lower ||
+          lesson.god !== expected.god ||
+          lesson.relation !== expected.relation
+        );
+      })
+    ) {
+      throw new Error('大六壬四课与天地盘不一致，无法生成证据。');
+    }
+    if (
+      data.threeTransmissions.some((transmission, index) => {
+        const plateItem = getPlateItemByBranch(data.heavenlyPlate, transmission.branch);
+        const previous = index === 0 ? dayStem : data.threeTransmissions[index - 1].branch;
+        return (
+          transmission.god !== plateItem.god ||
+          transmission.relation !== describeRelation(transmission.branch, previous) ||
+          transmission.dayRelation !== describeRelation(transmission.branch, dayBranch)
+        );
+      })
+    ) {
+      throw new Error('大六壬三传与天地盘不一致，无法生成证据。');
+    }
+  }
   const plateFacts = platePositionFacts.map(
     (item) => `地盘${item.earthBranch}上见天盘${item.heavenBranch}乘${item.god}`,
   );

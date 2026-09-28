@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import { calculateBaziChartFromInput, getTenGodForBranch } from 'mingyu-core/bazi';
 import {
   buildFrontendInstantObserver,
+  buildInstantQueryInput,
   buildInstantResultPath,
   instantChartNeedsObserver,
 } from '@/lib/instant-chart';
 import { buildInstantBaziPrompt } from '@/lib/instant-prompt';
+import { buildPersonFromInput, calculateFullBaziChart } from '@/lib/full-chart-engine/bazi';
+import { parseInputState } from '@/lib/query-state';
 
 const now = new Date('2026-08-24T12:30:00+08:00');
 const observer = buildFrontendInstantObserver({
@@ -28,6 +31,25 @@ test('网页即时盘不携带性别和案例编号', () => {
   assert.equal(url.searchParams.get('its'), 'beijing');
   assert.equal(url.searchParams.has('g'), false);
   assert.equal(url.searchParams.has('rid'), false);
+});
+
+test('网页即时盘跨节气时保留同一时刻的时分秒', () => {
+  const before = new Date('2025-05-05T05:57:12.000Z');
+  const after = new Date('2025-05-05T05:57:14.000Z');
+  const chartAt = (instant: Date) => {
+    const input = buildInstantQueryInput({ type: 'bazi', timeStandard: 'beijing', now: instant });
+    assert.equal(input.birthHour, '13');
+    assert.equal(input.birthMinute, '57');
+    assert.equal(input.birthSecond, String(instant.getUTCSeconds()));
+    const path = buildInstantResultPath({ type: 'bazi', timeStandard: 'beijing', now: instant });
+    const restored = parseInputState(new URL(path, 'https://aov.cc').searchParams);
+    assert.equal(restored.birthSecond, input.birthSecond);
+    return calculateFullBaziChart(buildPersonFromInput(restored)).pillars.month.ganZhi;
+  };
+
+  const beforeMonth = chartAt(before);
+  const afterMonth = chartAt(after);
+  assert.notEqual(beforeMonth, afterMonth);
 });
 
 test('网页即时盘按类型和时间口径决定是否需要地点', () => {
@@ -54,6 +76,22 @@ test('网页即时盘不能把空坐标当作零度观测点', () => {
       birthPlace: '北京市东城区',
       birthLongitude: '116.416',
       birthLatitude: ' ',
+    }),
+    undefined,
+  );
+  assert.equal(
+    buildFrontendInstantObserver({
+      birthPlace: '坐标范围外',
+      birthLongitude: '181',
+      birthLatitude: '39.929',
+    }),
+    undefined,
+  );
+  assert.equal(
+    buildFrontendInstantObserver({
+      birthPlace: '坐标范围外',
+      birthLongitude: '116.416',
+      birthLatitude: '-91',
     }),
     undefined,
   );

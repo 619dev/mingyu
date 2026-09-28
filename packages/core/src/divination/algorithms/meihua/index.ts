@@ -38,6 +38,27 @@ import { analyzeMeihuaEvidence } from '../../meihua-evidence';
 const trigrams = trigramsByIndex;
 const VALID_WUXING = new Set(['木', '火', '土', '金', '水']);
 const MOVING_YAO_NAMES = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻'] as const;
+const MEIHUA_INPUT_FIELDS = [
+  'number',
+  'soundCount',
+  'characterText',
+  'characterCount',
+  'characterTones',
+  'characterStrokeCounts',
+  'characterLeftStrokes',
+  'characterRightStrokes',
+  'direction',
+  'objectType',
+] as const;
+const MEIHUA_METHOD_INPUTS: Record<NonNullable<MeihuaSettings['method']>, readonly string[]> = {
+  time: [],
+  timeTrigram: [],
+  number: ['number'],
+  sound: ['soundCount'],
+  character: MEIHUA_INPUT_FIELDS.filter((field) => field.startsWith('character')),
+  direction: ['direction', 'objectType'],
+  random: [],
+};
 
 /**
  * 体用生克关系判定字串
@@ -266,6 +287,16 @@ export function generateMeihua(
   );
   const { lunar } = timeInfo;
   const method = settings?.method ?? 'time';
+  const acceptedInputs = Object.prototype.hasOwnProperty.call(MEIHUA_METHOD_INPUTS, method)
+    ? MEIHUA_METHOD_INPUTS[method]
+    : undefined;
+  if (acceptedInputs) {
+    for (const field of MEIHUA_INPUT_FIELDS) {
+      if (settings?.[field] !== undefined && !acceptedInputs.includes(field)) {
+        throw new Error(`梅花易数${method}起卦不接受 ${field}。`);
+      }
+    }
+  }
   if (method !== 'random' && hasRandomOptions(settings)) {
     throw new Error('梅花易数仅随机起卦接受 seed、replay 或自定义随机源。');
   }

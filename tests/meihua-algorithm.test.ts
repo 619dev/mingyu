@@ -41,6 +41,10 @@ test('梅花随机轨迹重放应识别缺失、多余、篡改及拒绝采样',
   assert.equal(data.calculation?.lowerTrigramIndex, 3);
   assert.equal(data.movingYao.position, 4);
   assert.equal(analyzeMeihuaEvidence(data).randomFact.sampleCount, 4);
+  assert.throws(
+    () => generateMeihua(SAMPLE_DATE, { method: 'random', replay: [...samples, 0] }),
+    /重放样本有剩余/,
+  );
   const wrongHexagram = structuredClone(data);
   wrongHexagram.mainHexagram.upper = '坤';
   assert.throws(() => analyzeMeihuaEvidence(wrongHexagram), /随机轨迹与起卦计算记录不一致/);
@@ -49,7 +53,7 @@ test('梅花随机轨迹重放应识别缺失、多余、篡改及拒绝采样',
     changed.meta!.random!.samples = invalid;
     assert.throws(
       () => analyzeMeihuaEvidence(changed),
-      /随机重放样本已用尽|随机轨迹与起卦计算记录不一致/,
+      /随机重放样本已用尽|随机重放样本有剩余|随机轨迹与起卦计算记录不一致/,
     );
   }
 });
@@ -310,6 +314,21 @@ test('梅花：未知起卦方式应明确报错，不应静默退回时间卦',
   );
 });
 
+test('梅花各起卦方式应拒绝与本次取数无关的输入', () => {
+  assert.throws(
+    () => generateMeihua(SAMPLE_DATE, { method: 'number', number: 123, soundCount: 3 }),
+    /number起卦不接受 soundCount/,
+  );
+  assert.throws(
+    () => generateMeihua(SAMPLE_DATE, { method: 'time', number: 123 }),
+    /time起卦不接受 number/,
+  );
+  assert.throws(
+    () => generateMeihua(SAMPLE_DATE, { method: 'random', seed: '一', direction: 'south' }),
+    /random起卦不接受 direction/,
+  );
+});
+
 test('梅花：仅随机起卦应把重放轨迹接入统一证据', () => {
   const randomData = generateMeihua(SAMPLE_DATE, { method: 'random', seed: '梅花证据样例' });
   const numberData = generateMeihua(SAMPLE_DATE, { method: 'number', number: 123 });
@@ -451,6 +470,16 @@ test('梅花：字数起卦应按分段规则支持笔画、传统四声与纯�
         characterStrokeCounts: [Number.MAX_SAFE_INTEGER, 1],
       }),
     /总取数超出安全整数范围/,
+  );
+  assert.throws(
+    () =>
+      generateMeihua(SAMPLE_DATE, {
+        method: 'character',
+        characterText: '西林',
+        characterStrokeCounts: [7, 8],
+        characterLeftStrokes: 3,
+      }),
+    /左右分笔数只适用于单字起卦/,
   );
 });
 

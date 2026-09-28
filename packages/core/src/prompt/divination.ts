@@ -15,7 +15,10 @@ import {
   analyzeLenormandEvidence,
   conditionLenormandTraditionalText,
 } from '../divination/algorithms/lenormand';
-import { analyzeXiaoliurenEvidence } from '../divination/xiaoliuren-evidence';
+import {
+  analyzeXiaoliurenEvidence,
+  formatXiaoliurenCalendarBoundary,
+} from '../divination/xiaoliuren-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -328,7 +331,7 @@ export function getDivinationSummaryBlocks(
         lines: [
           wrapMainEvidence(evidence.primaryFact.promptText),
           `顺数轨迹：月宫${item.sequence.month.name}；日宫${item.sequence.day.name}；时宫${item.sequence.hour.name}`,
-          `历法口径：${item.calculation.dayBoundary}；${item.calculation.leapMonthRule}`,
+          `历法口径：${[item.calculation.dayBoundary, item.calculation.leapMonthRule, formatXiaoliurenCalendarBoundary(item)].filter(Boolean).join('；')}`,
         ].filter(Boolean),
       };
     }

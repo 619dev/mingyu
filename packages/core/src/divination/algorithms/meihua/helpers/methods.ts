@@ -303,6 +303,12 @@ export function resolveCharacterMethod(settings: MeihuaSettings): MeihuaMethodRe
   if (textCharacters && textCharacters.length !== characterCount) {
     throw new Error('字数起卦的 characterCount 必须与 characterText 的字符数一致');
   }
+  if (
+    characterCount !== 1 &&
+    (settings.characterLeftStrokes !== undefined || settings.characterRightStrokes !== undefined)
+  ) {
+    throw new Error('左右分笔数只适用于单字起卦');
+  }
 
   const tones = settings.characterTones;
   if (tones !== undefined) {
@@ -453,12 +459,16 @@ export function resolveRandomMethod(options?: RandomOptions): MeihuaMethodResult
   const upperTrigramIndex = randomInt(8, rng) + 1;
   const lowerTrigramIndex = randomInt(8, rng) + 1;
   const movingYaoIndex = randomInt(6, rng) + 1;
+  const randomTrace = context.getTrace();
+  if (options?.replay && options.replay.length !== randomTrace.samples.length) {
+    throw new Error('梅花随机重放样本有剩余，记录与本次起卦过程不一致。');
+  }
 
   return {
     upperTrigramIndex,
     lowerTrigramIndex,
     movingYaoIndex,
-    randomTrace: context.getTrace(),
+    randomTrace,
     calculation: {
       method: '随机起卦法',
       methodKey: 'random',

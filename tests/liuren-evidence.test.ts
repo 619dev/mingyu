@@ -349,6 +349,20 @@ test('大六壬天地盘十二支与天将齐全但对应错位时不标为完�
   }
 });
 
+test('大六壬四课与完整天地盘错位时不生成互相矛盾的提示词证据', () => {
+  const data = generateLiuren(fixedDate);
+  data.fourLessons[0].upper = data.fourLessons[0].upper === '子' ? '丑' : '子';
+
+  assert.throws(() => analyzeLiurenEvidence(data), /四课与天地盘不一致/);
+});
+
+test('大六壬三传天将与完整天地盘错位时不生成互相矛盾的提示词证据', () => {
+  const data = generateLiuren(fixedDate);
+  data.threeTransmissions[0].god = data.threeTransmissions[0].god === '贵人' ? '螣蛇' : '贵人';
+
+  assert.throws(() => analyzeLiurenEvidence(data), /三传与天地盘不一致/);
+});
+
 test('大六壬贵人与日干或地盘位置不一致时不标为完整', () => {
   for (const field of ['noblemanBranch', 'noblemanGroundBranch'] as const) {
     const data = generateLiuren(fixedDate);

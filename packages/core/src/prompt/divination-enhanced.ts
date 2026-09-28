@@ -14,6 +14,7 @@ import {
   formatQimenStemLocations,
 } from './qimen-facts';
 import { resolveXiaoliurenRule } from '../divination/xiaoliuren-rules';
+import { formatXiaoliurenCalendarBoundary } from '../divination/xiaoliuren-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -655,6 +656,18 @@ function formatMeihuaInfo(data: MeihuaData) {
 
 function formatXiaoliurenInfo(data: XiaoliurenData) {
   const rule = resolveXiaoliurenRule(data.rule);
+  const calendarBasis = data.calculation
+    ? [
+        data.calculation.dayBoundary,
+        data.calculation.leapMonthRule,
+        data.calculation.hourNumber === 1
+          ? '子时序数为1，晚子时与早子时各按所在民用日的农历日期起课'
+          : '',
+        formatXiaoliurenCalendarBoundary(data),
+      ]
+        .filter(Boolean)
+        .join('；')
+    : '';
   const firstDayPalace = data.palaceOrder.find(
     (palace) => palace.index === (data.sequence.month.index + rule.dayStartOffset) % 6,
   );
@@ -667,9 +680,7 @@ function formatXiaoliurenInfo(data: XiaoliurenData) {
     `  定日宫：从月宫${data.sequence.month.name}${rule.dayStartOffset ? '下一宫' : ''}起初一（${firstDayPalace.name}），顺数至${data.lunarDay}日，落${data.sequence.day.name}`,
     `  定时宫：从日宫${data.sequence.day.name}起子时，顺数至${data.hourLabel}，落${data.sequence.hour.name}`,
     '定位用途：月宫是初一的起数位置；日宫是子时的起数位置',
-    data.calculation
-      ? `历法口径：${data.calculation.dayBoundary}；${data.calculation.leapMonthRule}${data.calculation.hourNumber === 1 ? '；子时序数为1，晚子时与早子时各按所在民用日的农历日期起课' : ''}`
-      : '',
+    calendarBasis ? `历法口径：${calendarBasis}` : '',
     '时点范围：本课说明当前起课时点的占得宫；其他日期或时辰的宫位采用对应农历月日与时辰重新顺数',
     `起课口径：${rule.source}`,
     `占得宫：${data.primary.name}`,

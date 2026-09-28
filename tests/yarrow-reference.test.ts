@@ -60,6 +60,11 @@ test('蓍草保留拒绝采样后的完整轨迹并拒绝多余样本', () => {
   const extra = structuredClone(result);
   extra.meta!.random!.samples.push(0);
   assert.throws(() => analyzeLiuyaoEvidence(extra), /不一致/);
+  assert.throws(
+    () => generateLiuyao(date, { method: 'yarrow', replay: [...samples, 0] }),
+    /重放样本有剩余/,
+  );
+  assert.throws(() => generateYarrow({ replay: [...samples, 0] }), /重放样本有剩余/);
 });
 
 test('蓍草六爻排盘保留来源并核验过程与随机样本', () => {

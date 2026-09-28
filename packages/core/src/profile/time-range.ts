@@ -125,6 +125,16 @@ export function validateBirthProfileTimeRange(
 ): BirthProfileTimeRange {
   assertStandardBirthProfile(profile);
   const totalSamples = assertRangePolicy(range);
+  if (
+    profile.birthTimeRange !== undefined &&
+    (profile.birthTimeRange.startTimestamp !== range.startTimestamp ||
+      profile.birthTimeRange.endTimestamp !== range.endTimestamp ||
+      profile.birthTimeRange.endExclusive !== range.endExclusive ||
+      profile.birthTimeRange.timezone !== range.timezone ||
+      profile.birthTimeRange.offsetHours !== range.offsetHours)
+  ) {
+    throw new RangeError('出生档案记录的时间范围与实际取样范围不一致。');
+  }
 
   // normalizeBirthProfile 只接受不带范围元数据的单点档案，避免新字段形成
   // 递归校验；范围本身仍由本函数按固定政策完整核对。
@@ -160,7 +170,7 @@ export function birthProfileAtRangeTimestamp(
   range: BirthProfileTimeRange,
   timestamp: number,
 ): BirthProfile {
-  assertStandardBirthProfile(profile);
+  validateBirthProfileTimeRange(profile, range);
   assertSampleTimestamp(range, timestamp);
   const local = getCivilDateTimeAtFixedOffset(new Date(timestamp), CHINA_OFFSET_HOURS);
   const {

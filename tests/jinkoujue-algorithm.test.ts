@@ -61,6 +61,29 @@ test('金口诀随机记录应重放拒绝采样并核对起课数字与地分',
   changed.positions.diFen.branch = '子';
   assert.throws(() => analyzeJinkoujueEvidence(changed), /随机轨迹与起课数字或地分不一致/);
 });
+
+test('金口诀证据拒绝地分与人元、月将加时及五动条件错位', () => {
+  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const wrongDiFen = structuredClone(source);
+  wrongDiFen.positions.diFen.branch = '子';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongDiFen), /地分与四位不一致/);
+
+  const wrongJiang = structuredClone(source);
+  wrongJiang.positions.jiangShen.branch = '子';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongJiang), /将神与月将加时不一致/);
+
+  const wrongMovement = structuredClone(source);
+  wrongMovement.movements.push({
+    category: '五动',
+    name: '鬼动',
+    from: '地分',
+    to: '人元',
+    relation: '克',
+    trigger: '地分金克人元木',
+    source: '《六壬神课金口诀古本》“五动爻诵”',
+  });
+  assert.throws(() => analyzeJinkoujueEvidence(wrongMovement), /动爻与四位五行不一致/);
+});
 const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 const TIANJIANG = [

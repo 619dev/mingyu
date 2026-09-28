@@ -24,6 +24,14 @@ test('小六壬真太阳时跨民用零点时，农历日按实际东八区日�
   assert.equal(chart.isLeapMonth, civil.isLeapMonth);
   assert.equal(chart.hourIndex, clockOnly.hourIndex);
   assert.equal(chart.termReferenceTimestamp, actual.getTime());
+  assert.match(
+    chart.evidenceAnalysis!.promptText,
+    /起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻/,
+  );
+  assert.match(
+    chart.evidenceAnalysis!.limitationFacts.find((fact) => fact.type === '历法边界')!.promptText,
+    /起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻/,
+  );
   const lunarLine = (data: typeof chart) =>
     buildTimeInfoText(data).split('\n')[1]?.split(' ').slice(0, -1).join(' ');
   assert.equal(lunarLine(chart), lunarLine(civil));
@@ -156,6 +164,13 @@ test('小六壬：晚子时按子一计数，但农历日到零点才换日', ()
   assert.equal(chou.hourLabel, '丑时');
   assert.equal(chou.calculation.hourNumber, 2);
   assert.equal(lateZi.calculation.dayBoundary, '东八区民用日零点换日');
+  assert.notEqual(lateZi.ganzhi.day, beforeZi.ganzhi.day);
+  assert.equal(lateZi.ganzhi.day, earlyZi.ganzhi.day);
+  assert.match(
+    lateZi.evidenceAnalysis!.promptText,
+    /晚子时四柱日干支按子初换日，起课农历日到东八区零点才换日/,
+  );
+  assert.doesNotMatch(earlyZi.evidenceAnalysis!.promptText, /晚子时四柱日干支按子初换日/);
 });
 
 test('小六壬：闰月沿用同名月序并显式标注口径', () => {

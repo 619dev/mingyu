@@ -876,10 +876,14 @@ function generateCoinYaos(
     coinThrows.push({ coins, total });
     yaos.push(total);
   }
+  const randomTrace = context.getTrace();
+  if (options.replay && options.replay.length !== randomTrace.samples.length) {
+    throw new Error('六爻随机重放样本有剩余，记录与本次起卦过程不一致。');
+  }
   return {
     yaos,
     generation: { method, coinThrows },
-    randomTrace: context.getTrace(),
+    randomTrace,
   };
 }
 

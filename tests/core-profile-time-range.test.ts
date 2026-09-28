@@ -88,6 +88,26 @@ test('逐秒样本保留跨日字段并清除范围与陈旧时辰索引', () =>
   );
 });
 
+test('逐秒取样拒绝与区间起点不符的档案，避免生成伪造的出生证据', () => {
+  assert.throws(
+    () => birthProfileAtRangeTimestamp({ ...PROFILE, minute: 58 }, RANGE, START + SECOND),
+    /起点北京时间墙钟字段/u,
+  );
+  assert.throws(
+    () => birthProfileAtRangeTimestamp({ ...PROFILE, calendarType: 'lunar' }, RANGE, START),
+    /公历输入/u,
+  );
+  assert.throws(
+    () =>
+      birthProfileAtRangeTimestamp(
+        PROFILE,
+        { ...RANGE, endTimestamp: RANGE.endTimestamp + SECOND },
+        RANGE.endTimestamp,
+      ),
+    /记录的时间范围与实际取样范围不一致/u,
+  );
+});
+
 test('范围校验拒绝起点冲突、真太阳时、夏令时和非半开政策', () => {
   assert.throws(
     () => validateBirthProfileTimeRange({ ...PROFILE, minute: 58 }, RANGE),
