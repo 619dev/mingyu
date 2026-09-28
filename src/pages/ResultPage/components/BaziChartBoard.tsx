@@ -1234,7 +1234,7 @@ export const BaziChartBoard = memo(function BaziChartBoard(props: {
               <p className="traditional-classic-advice">
                 {`【调候要领】${qiongtongAdvice.modernExplanation}`}
                 {qiongtongAdvice.primaryGods?.length
-                  ? `\n【条文取用候选】${qiongtongAdvice.primaryGods.join('、')}`
+                  ? `\n【条文取用候选（依原文条件）】${qiongtongAdvice.primaryGods.join('、')}`
                   : ''}
                 {qiongtongAdvice.taboos?.length
                   ? `\n【条文所忌】${qiongtongAdvice.taboos.join('、')}`

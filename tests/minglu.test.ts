@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator.ts';
 import { buildMingluArticle, formsPairRelation } from '../packages/core/src/minglu/index.ts';
 import { MINGLU_GLOSSARY_DATABASE } from '../packages/core/src/minglu/glossary-data.ts';
 import { getBaZhaiPalace } from '../packages/core/src/direction/index.ts';
+import { MingluCrossSynthesisSection } from '../src/pages/ResultPage/components/MingluWiki/MingluCrossSynthesisSection';
 import {
   buildBeginnerGuide,
   buildEnhancedFiveElementsSection,
@@ -12,6 +15,81 @@ import {
   buildEnhancedPatternUsefulGodSection,
   buildEnhancedTenGodsSection,
 } from '../packages/core/src/minglu/bazi-enhancer.ts';
+import { MingluInteractionsSection } from '../src/pages/ResultPage/components/MingluWiki/MingluInteractionsSection';
+
+test('命录五合六合依实盘条件展示合绊、争合与成化', () => {
+  const samples = [
+    {
+      date: [1990, 1, 7, 5],
+      category: '地支六合',
+      name: '巳申六合',
+      status: '合而不化',
+      transformElement: undefined,
+    },
+    {
+      date: [1990, 9, 5, 6],
+      category: '天干五合',
+      name: '戊癸相合',
+      status: '合而不化',
+      transformElement: undefined,
+    },
+    {
+      date: [1994, 1, 3, 0],
+      category: '天干五合',
+      name: '甲己相合',
+      status: '争合不专',
+      transformElement: undefined,
+    },
+    {
+      date: [1994, 3, 17, 4],
+      category: '天干五合',
+      name: '丁壬相合',
+      status: '成化',
+      transformElement: '木',
+    },
+    {
+      date: [1994, 3, 17, 4],
+      category: '地支六合',
+      name: '卯戌六合',
+      status: '逢冲破合',
+      transformElement: undefined,
+    },
+  ] as const;
+  for (const sample of samples) {
+    const [year, month, day, timeIndex] = sample.date;
+    const chart = baziCalculator.calculateBazi({
+      year,
+      month,
+      day,
+      timeIndex,
+      gender: 'male',
+      useTrueSolarTime: false,
+    });
+    const items = buildEnhancedInteractions(chart);
+    const item = items.find(
+      (entry) =>
+        entry.category === sample.category &&
+        entry.name === sample.name &&
+        (sample.name !== '巳申六合' || entry.involvedPillars.join('、') === '日柱、时柱'),
+    );
+    assert.ok(item, `${sample.date.join('-')} ${sample.name}`);
+    assert.equal(item.conditionStatus, sample.status);
+    assert.equal(item.transformElement, sample.transformElement);
+    assert.equal(item.nature, '中性');
+    assert.doesNotMatch(item.name, /合化|六合化/u);
+    assert.doesNotMatch(item.description, /厚德重信|安定稳固|晚景光明/u);
+    if (sample.status !== '成化') {
+      assert.doesNotMatch(item.conditionEvidence?.join('；') ?? '', /合化[木火土金水]/u);
+      if (sample.category === '天干五合') {
+        assert.ok(item.conditionEvidence?.some((evidence) => evidence.startsWith('月令')));
+      }
+    }
+    const html = renderToStaticMarkup(createElement(MingluInteractionsSection, { items: [item] }));
+    assert.match(html, new RegExp(sample.name, 'u'));
+    assert.match(html, new RegExp(sample.status, 'u'));
+    assert.equal(html.includes('对应五行：'), sample.status === '成化');
+  }
+});
 
 test('命录不把同季其他月份的调候条文列为本月评注', () => {
   for (const sample of [
@@ -57,6 +135,22 @@ test('命录应正确生成全息百科大报告与所有补齐计算', () => {
     person,
     baziResult,
   });
+
+  const themes = article.crossSynthesisSection!;
+  assert.deepEqual(
+    themes.map((theme) => theme.themeId),
+    ['temperament', 'career-wealth', 'timing-cycles'],
+  );
+  assert.ok(themes.every((theme) => theme.ziweiEvidence.length === 0));
+  assert.ok(themes.every((theme) => !theme.astrolabeEvidence?.length));
+  assert.ok(themes.every((theme) => theme.crossVerificationNotes.length === 0));
+  assert.deepEqual(themes.find((theme) => theme.themeId === 'timing-cycles')?.baziEvidence, [
+    `起运岁数：约${article.luckChronicleSection.startAge}岁起运`,
+    `首步大运：${article.luckChronicleSection.cycles.find((cycle) => !cycle.isXiaoyun)?.ganZhi}运（约${article.luckChronicleSection.startAge}岁起始）`,
+  ]);
+  const themeHtml = renderToStaticMarkup(createElement(MingluCrossSynthesisSection, { themes }));
+  assert.match(themeHtml, /第十二章：盘面主题资料/);
+  assert.doesNotMatch(themeHtml, /紫微资料|占星资料|互证|同步对齐|行运重在时位相应/);
 
   // 1. 元数据验证
   assert.ok(article.metadata);
@@ -197,6 +291,7 @@ test('命录缺时辰只保留已确定柱与候选场景，不套用空日主�
   assert.equal(article.fiveElementsSection.dayMasterStrength.status, '未知（待补时）');
   assert.equal(article.luckChronicleSection.direction, '待补时');
   assert.deepEqual(article.luckChronicleSection.cycles, []);
+  assert.ok(article.crossSynthesisSection?.every((theme) => theme.themeId !== 'timing-cycles'));
   assert.deepEqual(article.interactionsSection, []);
   assert.match(article.beginnerGuide?.strengthPlain ?? '', /旺衰、格局与喜忌暂不判定/);
 });

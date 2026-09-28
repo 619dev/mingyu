@@ -33,6 +33,31 @@ test('丙子引文保留壬戊原文且不再列甲为通用取用', () => {
   assert.deepEqual(entry.primaryGods, ['壬', '戊']);
 });
 
+test('午月丙丁实盘不把条件荐干写成通用调候结论', () => {
+  const cases = [
+    { day: 10, stem: '丙', primaryGods: ['壬'] },
+    { day: 11, stem: '丁', primaryGods: [] },
+  ];
+  for (const { day, stem, primaryGods } of cases) {
+    const chart = baziCalculator.calculateBazi({
+      year: 1990,
+      month: 6,
+      day,
+      timeIndex: 5,
+      gender: 'male',
+      useTrueSolarTime: false,
+    });
+    assert.equal(chart.dayMaster.gan, stem);
+    assert.equal(chart.pillars.month.zhi, '午');
+    assert.deepEqual(
+      getBaziQiongtongAdvice(chart.dayMaster.gan, chart.pillars.month.zhi)?.primaryGods,
+      primaryGods,
+    );
+  }
+  assert.match(getBaziQiongtongAdvice('丁', '午')?.modernExplanation ?? '', /火局.*无火局/u);
+  assert.match(getBaziQiongtongAdvice('丁', '酉')?.classicVerse ?? '', /^八月甲丙庚皆用/u);
+});
+
 test('命录调候释义补充取用作用，甲巳原文只展示一次', () => {
   const result = baziCalculator.calculateBazi({
     year: 1990,

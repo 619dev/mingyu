@@ -556,7 +556,7 @@ export interface MingluFengshuiSectionData {
   };
 }
 
-// 12. 跨术数全景互证
+// 12. 盘面主题资料
 export interface MingluCrossSynthesisThemeData {
   themeId: string;
   title: string;

@@ -803,6 +803,24 @@ test('古籍查询支持自然语言日主与月令，并返回稳定条文来�
   assert.ok(qiongtong.sourceIds?.some((id) => id.startsWith('BAZI_QIONGTONG_TABLE:')));
 });
 
+test('调候古籍检索区分本月直引、条件荐干与暂无本月条文', async () => {
+  const bingWu = await lookupReadingClassics('bazi', '穷通宝鉴丙火生于午月');
+  assert.deepEqual(bingWu.sourceIds, ['BAZI_QIONGTONG_TABLE:丙+午']);
+  assert.match(bingWu.text, /条文参考：五月亦耑用壬/u);
+  assert.match(bingWu.text, /条文取用候选（依原文条件）：壬/u);
+  assert.doesNotMatch(bingWu.text, /条文取用候选（依原文条件）：壬；庚/u);
+
+  const dingWu = await lookupReadingClassics('bazi', '穷通宝鉴丁火生于午月');
+  assert.deepEqual(dingWu.sourceIds, ['BAZI_QIONGTONG_TABLE:丁+午']);
+  assert.match(dingWu.text, /火局.*无火局/u);
+  assert.doesNotMatch(dingWu.text, /条文取用候选/u);
+
+  const missing = await lookupReadingClassics('bazi', '穷通宝鉴乙木生于辰月');
+  assert.equal(missing.usable, false);
+  assert.deepEqual(missing.sourceIds, []);
+  assert.match(missing.text, /未找到乙日辰月的《穷通宝鉴》本月条文/u);
+});
+
 test('补算使用真实公开契约且只返回完整提示词', async (t) => {
   const original = globalThis.fetch;
   globalThis.fetch = (async (input, init) =>

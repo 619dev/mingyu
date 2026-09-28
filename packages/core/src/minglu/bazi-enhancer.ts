@@ -76,33 +76,28 @@ function unknownTimeSummary(baziResult: BaziChartResult) {
 const STEM_COMBOS = [
   {
     pair: ['甲', '己'],
-    name: '甲己合化土',
-    targetWuxing: '土',
-    desc: '中正之合，厚德重信，尊崇礼义，宽和稳重。',
+    name: '甲己相合',
+    desc: '甲己两干构成五合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['乙', '庚'],
-    name: '乙庚合化金',
-    targetWuxing: '金',
-    desc: '仁义之合，刚柔相济，果敢坚决，重诺守信。',
+    name: '乙庚相合',
+    desc: '乙庚两干构成五合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['丙', '辛'],
-    name: '丙辛合化水',
-    targetWuxing: '水',
-    desc: '威制之合，智谋权变，仪表端庄，灵动通达。',
+    name: '丙辛相合',
+    desc: '丙辛两干构成五合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['丁', '壬'],
-    name: '丁壬合化木',
-    targetWuxing: '木',
-    desc: '仁寿之合，多情重义，温和慈爱，生机生发。',
+    name: '丁壬相合',
+    desc: '丁壬两干构成五合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['戊', '癸'],
-    name: '戊癸合化火',
-    targetWuxing: '火',
-    desc: '无情之合，聪明俊朗，老少相配，热情内敛。',
+    name: '戊癸相合',
+    desc: '戊癸两干构成五合关系，具体作用依本局条件判定。',
   },
 ];
 
@@ -234,39 +229,33 @@ const BRANCH_BANHE = [
 const BRANCH_LIUHE = [
   {
     pair: ['子', '丑'],
-    name: '子丑六合化土',
-    wuxing: '土',
-    desc: '泥水相涵，亲和忠厚，善结善缘。',
+    name: '子丑六合',
+    desc: '子丑两支构成六合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['寅', '亥'],
-    name: '寅亥六合化木',
-    wuxing: '木',
-    desc: '水生木发，破中有合，生机勃勃。',
+    name: '寅亥六合',
+    desc: '寅亥两支构成六合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['卯', '戌'],
-    name: '卯戌六合化火',
-    wuxing: '火',
-    desc: '春入深秋，热情内敛，晚景光明。',
+    name: '卯戌六合',
+    desc: '卯戌两支构成六合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['辰', '酉'],
-    name: '辰酉六合化金',
-    wuxing: '金',
-    desc: '湿土生金，相辅相成，贵气相投。',
+    name: '辰酉六合',
+    desc: '辰酉两支构成六合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['巳', '申'],
-    name: '巳申六合化水',
-    wuxing: '水',
-    desc: '刑中有合，智勇兼备，权谋机变。',
+    name: '巳申六合',
+    desc: '巳申两支构成六合关系，具体作用依本局条件判定。',
   },
   {
     pair: ['午', '未'],
-    name: '午未六合化火土',
-    wuxing: '土',
-    desc: '日月同辉，尊贵高洁，温厚明朗。',
+    name: '午未六合',
+    desc: '午未两支构成六合关系，具体作用依本局条件判定。',
   },
 ];
 
@@ -901,10 +890,9 @@ export function buildEnhancedInteractions(baziResult: BaziChartResult): MingluIn
           name: match.name,
           involvedPillars: [pillarEntries[i].label, pillarEntries[j].label],
           involvedStemsBranches: [g1, g2],
-          transformElement: match.targetWuxing,
-          nature: '吉',
+          nature: '中性',
           description: match.desc,
-          influence: `${pillarEntries[i].label}${g1}与${pillarEntries[j].label}${g2}相合，增进两柱情义；此处为结构之合，成化与否须依日干参与、紧贴与化神透干另行判定。`,
+          influence: `${pillarEntries[i].label}${g1}与${pillarEntries[j].label}${g2}具五合关系，依本局条件核对实际作用。`,
           anchorId: `interaction-stem-he-${i}-${j}`,
         });
       }
@@ -1015,10 +1003,9 @@ export function buildEnhancedInteractions(baziResult: BaziChartResult): MingluIn
           name: match.name,
           involvedPillars: [allZhis[i].label, allZhis[j].label],
           involvedStemsBranches: [z1, z2],
-          transformElement: match.wuxing,
-          nature: '吉',
+          nature: '中性',
           description: match.desc,
-          influence: `${allZhis[i].label}${z1}与${allZhis[j].label}${z2}六合有情，增进安定稳固；能否解冲化气，须依月令旺衰另行判定。`,
+          influence: `${allZhis[i].label}${z1}与${allZhis[j].label}${z2}具六合关系，依本局条件核对实际作用。`,
           anchorId: `interaction-liuhe-${i}-${j}`,
         });
       }
@@ -1212,9 +1199,17 @@ export function buildEnhancedInteractions(baziResult: BaziChartResult): MingluIn
     if (harmony)
       return {
         ...item,
+        transformElement: harmony.isTransformed ? harmony.transformElement : undefined,
         nature: '中性' as const,
         conditionStatus: harmony.level,
-        conditionEvidence: harmony.evidence,
+        conditionEvidence:
+          harmony.type === '天干五合' && !harmony.isTransformed
+            ? harmony.evidence.filter(
+                (evidence) =>
+                  evidence !==
+                  `${item.involvedStemsBranches.join('')}合化${harmony.transformElement}，化神为${harmony.transformStem}`,
+              )
+            : harmony.evidence,
         influence: harmony.consequences.join('；'),
       };
     const formation = completeFormations.find(

@@ -1,6 +1,6 @@
 /**
  * @file 命录全息聚合器 (Minglu Article Builder)
- * @description 将八字、紫微、占星、风水及跨术数互证数据整合成具备全量目录、交叉索引与百科词典的 MingluArticle。
+ * @description 将八字、紫微、占星、风水及跨术数盘面资料整合成具备全量目录、交叉索引与百科词典的 MingluArticle。
  */
 
 import type {
@@ -51,6 +51,16 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
 
   // 3. 可选占星增强
   const astrolabeSection = astrolabeData ? buildEnhancedAstrolabeSection(astrolabeData) : undefined;
+  const careerAstrolabeEvidence = astrolabeSection
+    ? [
+        ...astrolabeSection.angles
+          .filter((angle) => angle.name === 'Midheaven')
+          .map((angle) => `天顶位于${angle.sign}`),
+        ...astrolabeSection.houses
+          .filter((house) => house.house === 2 || house.house === 10)
+          .map((house) => `第${house.house}宫宫头位于${house.sign}`),
+      ]
+    : [];
 
   // 4. 可选风水数据
   let fengshuiSection = undefined;
@@ -97,12 +107,12 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
     };
   }
 
-  // 5. 跨术数互证
+  // 5. 跨术数盘面资料
   const crossSynthesisSection: MingluCrossSynthesisThemeData[] = [
     {
       themeId: 'temperament',
-      title: '性情禀赋与心理结构',
-      focus: '八字日主十神与紫微命身星曜、占星日月上升之相互印证。',
+      title: '本命盘面要素',
+      focus: `${[unknownTime ? '八字已确定柱' : '八字日主与格局', ...(ziweiSection ? ['紫微命身'] : []), ...(astrolabeSection ? ['占星日月上升'] : [])].join('、')}的本命资料。`,
       baziEvidence: unknownTime
         ? [unknownTimeNotice, '已确定的柱保留为基础资料，日主十神与格局待补时。']
         : [
@@ -119,24 +129,23 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
             }`,
             `身主${ziweiSection.bodyMaster}，命主${ziweiSection.soulMaster}`,
           ]
-        : ['紫微排盘未载入'],
+        : [],
       astrolabeEvidence: astrolabeSection
         ? [
-            `太阳落${astrolabeSection.points.find((p) => p.name === 'Sun')?.sign || '—'}`,
-            `月亮落${astrolabeSection.points.find((p) => p.name === 'Moon')?.sign || '—'}`,
-            `上升点位于${astrolabeSection.angles.find((a) => a.name === 'Ascendant')?.sign || '—'}`,
+            ...astrolabeSection.points
+              .filter((point) => point.name === 'Sun' || point.name === 'Moon')
+              .map((point) => `${point.name === 'Sun' ? '太阳' : '月亮'}落${point.sign}`),
+            ...astrolabeSection.angles
+              .filter((angle) => angle.name === 'Ascendant')
+              .map((angle) => `上升点位于${angle.sign}`),
           ]
         : undefined,
-      crossVerificationNotes: [
-        unknownTime ? unknownTimeNotice : '八字日元与十神体现内在能量结构与处事原则。',
-        ziweiSection ? '紫微星系呈现外在气度与人际行事风采，与八字格局互为表里。' : '',
-        astrolabeSection ? '占星日月升三位一体对应八字精气神，可与八字结构对照阅读。' : '',
-      ].filter(Boolean),
+      crossVerificationNotes: [],
     },
     {
       themeId: 'career-wealth',
-      title: '事业抱负与财富格局',
-      focus: '八字财官印食伤与紫微官禄财帛田宅、占星中天第二第十宫之印证。',
+      title: '事业与财富相关盘面',
+      focus: `${[unknownTime ? '八字已确定柱' : '八字喜忌', ...(ziweiSection ? ['紫微官禄财帛宫'] : []), ...(careerAstrolabeEvidence.length ? ['占星本命资料'] : [])].join('、')}的本命资料。`,
       baziEvidence: unknownTime
         ? [unknownTimeNotice, '喜用五行与财官印食伤作用待出生时分确定后再核验。']
         : [
@@ -152,41 +161,35 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
               ziweiSection.palaces
                 .find((p) => p.name.includes('官禄'))
                 ?.majorStars.map((s) => s.name)
-                .join('、') || '诸星'
+                .join('、') || '无主星'
             }`,
             `财帛宫坐${
               ziweiSection.palaces
                 .find((p) => p.name.includes('财帛'))
                 ?.majorStars.map((s) => s.name)
-                .join('、') || '诸星'
+                .join('、') || '无主星'
             }`,
           ]
-        : ['紫微排盘未载入'],
-      crossVerificationNotes: [
-        unknownTime ? unknownTimeNotice : '八字喜用神指明顺应天地之行业与取财路径。',
-        ziweiSection ? '紫微三方四正展现具体职场平台与财富蓄积形态。' : '',
-      ].filter(Boolean),
+        : [],
+      astrolabeEvidence: careerAstrolabeEvidence.length ? careerAstrolabeEvidence : undefined,
+      crossVerificationNotes: [],
     },
     {
       themeId: 'timing-cycles',
-      title: '大运岁运与行运脉络',
-      focus: '八字大运流年与紫微十年大限、占星行星推运之同步对齐。',
+      title: '起运与运限资料',
+      focus: '八字起运岁数与首步大运。',
       baziEvidence: unknownTime
-        ? [unknownTimeNotice, '命身宫、起运与岁运资料待出生时分确定后再展开。']
+        ? []
         : [
             `起运岁数：约${luckChronicleSection.startAge}岁起运`,
             `首步大运：${
               luckChronicleSection.cycles.find((c) => !c.isXiaoyun)?.ganZhi || '—'
             }运（约${luckChronicleSection.startAge}岁起始）`,
           ],
-      ziweiEvidence: ziweiSection
-        ? [`大限按十年步进，起于命宫，顺逆依阳男阴女局数推求。`]
-        : ['紫微大限未载入'],
-      crossVerificationNotes: [
-        unknownTime ? unknownTimeNotice : '行运重在时位相应，逢吉运则乘势而上，逢磨砺则沉潜蓄势。',
-      ],
+      ziweiEvidence: [],
+      crossVerificationNotes: [],
     },
-  ];
+  ].filter((theme) => theme.baziEvidence.length > 0);
 
   // 6. 元数据组装
   const metadata: MingluMetadata = {
@@ -444,10 +447,10 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
 
   tableOfContents.push({
     id: 'section-synthesis',
-    title: '第十二章：跨术数命理全景互证',
+    title: '第十二章：盘面主题资料',
     anchorId: 'cross-synthesis-section',
     level: 1,
-    badge: '多维印证',
+    badge: '主题资料',
   });
 
   tableOfContents.push({

@@ -162,7 +162,14 @@ test('皇极经世年月日时盘应由值年卦继续推至月经、旬纬、�
   assert.match(result.prompt, /每六十日变一爻得月经卦/);
   const traditionalBasis = result.prompt.split('【传统依据】\n')[1]?.split('\n\n【排盘资料】')[0];
   assert.ok(traditionalBasis);
-  assert.doesNotMatch(traditionalBasis, /每个节气按十五|月经卦每十日|日卦从月经卦/u);
+  assert.doesNotMatch(
+    traditionalBasis,
+    /公元纪年换算坐标|公元前67017年|1984年鼎卦|每个节气按十五|月经卦每十日|日卦从月经卦/u,
+  );
+  assert.match(
+    result.prompt,
+    /【排盘资料】\n本次年月日时映射口径：[\s\S]*公元纪年换算坐标：以公元前67017年为本元起点/u,
+  );
   assert.match(result.prompt, /【排盘资料】\n本次年月日时映射口径：/u);
   assert.match(formatted, /年月日时映射：每节气按十五日定位/u);
   assert.match(

@@ -71,4 +71,19 @@ test('梅花主卦生体而变卦克体时，参考卡保留结果阶段的反�
   const html = renderToStaticMarkup(createElement(TraditionalDivinationBoard, { session }));
   assert.match(html, /变卦天火同人：用克体/u);
   assert.match(html, /原文为主卦体用关系的传统参考/u);
+
+  const relationCards = html.slice(
+    html.indexOf('traditional-meihua-detail'),
+    html.indexOf('traditional-meihua-yaos'),
+  );
+  for (const label of ['主卦体用', '互卦体用', '变卦体用']) {
+    assert.equal(relationCards.split(`<span>${label}</span>`).length - 1, 1);
+  }
+  assert.match(
+    relationCards,
+    /<span>主卦体用<\/span><strong>用生体<\/strong><small>体[^<]+ · 用[^<]+<\/small>/u,
+  );
+  assert.match(relationCards, /<span>变卦体用<\/span><strong>用克体<\/strong>/u);
+  assert.doesNotMatch(relationCards, /<small>[^<]*用克体[^<]*<\/small>/u);
+  assert.doesNotMatch(html, /变后格局|互卦关系/u);
 });

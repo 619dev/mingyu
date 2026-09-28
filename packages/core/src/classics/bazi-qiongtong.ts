@@ -200,9 +200,10 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     dayMaster: '丙',
     monthBranch: '午',
     seasonSummary: '五月火炎，原文专用壬水。',
-    primaryGods: ['壬', '庚'],
-    classicVerse: '四月耑用壬水，金为佐。五月亦耑用壬。',
-    modernExplanation: '壬水辅映丙火，庚金可发水源；炎上格须按其条件另论。',
+    primaryGods: ['壬'],
+    classicVerse: '五月亦耑用壬。',
+    modernExplanation:
+      '本月专用壬水；庚金可发水源，原文亦有无庚而壬透的分支；炎上格须按其条件另论。',
     taboos: [],
   },
   // 出处：三秋丙火·七月。
@@ -242,10 +243,12 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
   '丁+午': {
     dayMaster: '丁',
     monthBranch: '午',
-    seasonSummary: '五月丁火建禄，庚壬两透为一分支。',
-    primaryGods: ['壬', '庚'],
-    classicVerse: '五月丁火，时归建禄，不宜乱用甲木。',
-    modernExplanation: '庚金发水源、壬水解炎；癸透及无火局而水透另有分支。',
+    seasonSummary: '五月丁火建禄，取用随火局与透水条件而变。',
+    primaryGods: [],
+    classicVerse:
+      '五月丁火，时归建禄，不宜乱用甲木。\n若干支无火局，有水透干，须用甲木，又要庚噼甲方明。',
+    modernExplanation:
+      '支成火局且火透时，原文论庚壬两透；干支无火局而水透时，另用甲木并取庚劈甲；癸透亦另有分支。',
     taboos: ['乱用甲木'],
   },
   // 出处：三秋丁火·八月。
@@ -254,8 +257,7 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     monthBranch: '酉',
     seasonSummary: '三秋丁火退气，甲木为主、庚金劈甲。',
     primaryGods: ['甲', '庚', '丙'],
-    classicVerse:
-      '三秋丁火，退气柔弱，耑用甲木，金虽乘旺司权，无伤丁之理，仍取庚噼甲，为引火之物，或借丙暖金晒木，不虑丙夺丁火。',
+    classicVerse: '八月甲丙庚皆用，七八月或无甲木，乙亦可用',
     modernExplanation: '甲木引丁，庚金劈甲；丙火可暖金晒木。',
     taboos: [],
   },

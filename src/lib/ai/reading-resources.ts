@@ -67,7 +67,7 @@ const LABELS: Record<string, string> = {
   nature: '性质',
   dayMaster: '日主',
   monthBranch: '月令',
-  primaryGods: '条文取用',
+  primaryGods: '条文取用候选（依原文条件）',
   seasonSummary: '月令概要',
   name: '名称',
   star: '星曜',
@@ -462,7 +462,9 @@ export async function lookupReadingClassics(
     sourceIds: selected.map((item) => item.identity),
     text: selected.length
       ? `${selected.map((item) => item.text).join('\n\n')}${unique.length > 5 ? `\n另有${unique.length - 5}条相关条文，可使用更具体的名称查询。` : ''}`
-      : '本次检索未找到对应条文，可依据已附盘面和传统资料继续解读。',
+      : normalized.book === 'qiongtong' && normalized.dayMaster && normalized.monthBranch
+        ? `本次检索未找到${normalized.dayMaster}日${normalized.monthBranch}月的《穷通宝鉴》本月条文；该月调候典籍依据留待核对。`
+        : '本次检索未找到对应条文，可依据已附盘面和传统资料继续解读。',
   };
 }
 

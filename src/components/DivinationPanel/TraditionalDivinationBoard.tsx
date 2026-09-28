@@ -1096,14 +1096,6 @@ function MeihuaTraditionalBoard({
           ['动爻', `第${data.movingYao.position}爻（${data.movingYao.yaoName}）`],
         ]}
       />
-      <TraditionalFacts
-        items={[
-          ['体用生克', `${data.analysis.tiYongRelation} · ${data.analysis.tiSeasonState}`],
-          ['变后格局', data.analysis.changedTiYongRelation],
-          ['互卦体用', `${data.analysis.inter1Relation} · ${data.analysis.inter2Relation}`],
-        ]}
-      />
-
       <div className="traditional-hexagram-triad">
         <MiniHexagram
           label="主卦·本"
@@ -1121,18 +1113,21 @@ function MeihuaTraditionalBoard({
 
       <div className="traditional-meihua-detail">
         <div className="traditional-meihua-relation">
-          <span>体用关系</span>
+          <span>主卦体用</span>
           <strong>{data.analysis.tiYongRelation}</strong>
           <small>
-            {data.analysis.tiSeasonState} · {data.analysis.yongSeasonState}
+            体{data.analysis.tiSeasonState} · 用{data.analysis.yongSeasonState}
           </small>
         </div>
         <div className="traditional-meihua-relation">
-          <span>互卦关系</span>
+          <span>互卦体用</span>
           <strong>
             {data.analysis.inter1Relation} · {data.analysis.inter2Relation}
           </strong>
-          <small>{data.analysis.changedRelation}</small>
+        </div>
+        <div className="traditional-meihua-relation">
+          <span>变卦体用</span>
+          <strong>{data.analysis.changedTiYongRelation}</strong>
         </div>
       </div>
 

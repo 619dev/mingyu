@@ -93,4 +93,51 @@ test('命录紫微按实际星曜分类保留十二宫全部星曜及辅星生�
       0,
     ),
   );
+  const careerTheme = article.crossSynthesisSection?.find(
+    (theme) => theme.themeId === 'career-wealth',
+  );
+  assert.ok(careerTheme?.ziweiEvidence.length);
+  for (const [label, keyword] of [
+    ['官禄宫', '官禄'],
+    ['财帛宫', '财帛'],
+  ] as const) {
+    const palace = article.ziweiSection?.palaces.find((item) => item.name.includes(keyword));
+    assert.ok(palace);
+    assert.ok(
+      careerTheme.ziweiEvidence.includes(
+        `${label}坐${palace.majorStars.map((star) => star.name).join('、') || '无主星'}`,
+      ),
+    );
+  }
+  const emptyRuntime = {
+    ...runtime,
+    payloadByScope: {
+      ...runtime.payloadByScope,
+      origin: {
+        ...source,
+        palaces: source.palaces.map((palace) =>
+          palace.name.includes('官禄') || palace.name.includes('财帛')
+            ? { ...palace, major_stars: [] }
+            : palace,
+        ),
+      },
+    },
+  };
+  const emptyArticle = buildMingluArticle({
+    person: { name: '星曜核验', gender: 'male' },
+    baziResult: baziCalculator.calculateBazi({
+      year: 1991,
+      month: 5,
+      day: 15,
+      timeIndex: 1,
+      gender: 'male',
+      isLunar: false,
+    }),
+    ziweiRuntime: emptyRuntime,
+  });
+  assert.deepEqual(
+    emptyArticle.crossSynthesisSection?.find((theme) => theme.themeId === 'career-wealth')
+      ?.ziweiEvidence,
+    ['官禄宫坐无主星', '财帛宫坐无主星'],
+  );
 });
