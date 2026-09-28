@@ -1304,18 +1304,15 @@ function extractZodiacFacts(data: unknown): DivinationPromptFact[] {
     害太岁: '相害',
     破太岁: '相破',
   };
-  const taiSuiValues = conflicts.length
-    ? conflicts.map((item) => {
-        const type = text(item.type) || '';
-        const withBranch = text(item.with) || '';
-        return `${type}（生肖年支${text(d.zodiacBranch) || ''}与流年年支${withBranch}${conflictLabel[type] || ''}）`;
-      })
-    : ['未命中值、冲、刑、害、破关系'];
+  const taiSuiValues = conflicts.map((item) => {
+    const type = text(item.type) || '';
+    const withBranch = text(item.with) || '';
+    return `${type}（生肖年支${text(d.zodiacBranch) || ''}与流年年支${withBranch}${conflictLabel[type] || ''}）`;
+  });
   return collect([
-    fact('zodiac.core', '参与关系的资料：', [
-      d.zodiacBranch ? `出生年支${text(d.zodiacBranch)}` : undefined,
-      d.yearGanZhi
-        ? `目标流年年干${text(d.yearGanZhi)?.charAt(0)}、年支${text(d.yearBranch)}`
+    fact('zodiac.core', '遇', [
+      d.zodiac && d.zodiacBranch && d.yearGanZhi
+        ? `${text(d.zodiac)}（${text(d.zodiacBranch)}）遇${text(d.yearGanZhi)}年`
         : undefined,
     ]),
     fact('zodiac.summary', '五行关系：', [d.relation, elementRelation?.kind]),
