@@ -6231,6 +6231,103 @@ test('公开 API 七政省略坐标时标出北京参考地点', async () => {
   assert.match(promptResponse.body.data.prompt, /计算参考地点：北京（纬度39\.9°，经度116\.4°）/);
   assert.doesNotMatch(promptResponse.body.data.prompt, /出生地点：纬度39\.9°，经度116\.4°/);
 });
+
+test('公开 API 排盘入口拒绝显式传入的空白 IANA 时区', async () => {
+  const astrolabe = {
+    name: '本人',
+    gender: '女',
+    year: 1995,
+    month: 5,
+    day: 20,
+    hour: 12,
+    minute: 30,
+    latitude: 39.9042,
+    longitude: 116.4074,
+    timezone: 8,
+  };
+  const qimenLifetime = {
+    birthDateTime: '1990-01-01T12:00:00',
+    timezone: 8,
+    timeZoneId: ' ',
+  };
+  const huangjiSixDay = {
+    sixDayDateTime: '2024-01-01T12:00:00',
+    calendarModel: 'six-day-seven-part',
+    timezone: 8,
+    timeZoneId: ' ',
+  };
+  const requests: Array<{ path: string; input: Record<string, unknown> }> = [
+    {
+      path: 'instant/calculate',
+      input: {
+        type: 'astrolabe',
+        observer: { longitude: 116.4, timezone: 8, timeZoneId: ' ' },
+      },
+    },
+    { path: 'metaphysics/huangji-jingshi/calculate', input: huangjiSixDay },
+    {
+      path: 'metaphysics/huangji-jingshi/prompt',
+      input: { ...huangjiSixDay, question: '请解释此盘。' },
+    },
+    {
+      path: 'metaphysics/qizheng/calculate',
+      input: { year: 2024, month: 6, day: 15, hour: 12, timezone: 8, timeZoneId: ' ' },
+    },
+    {
+      path: 'metaphysics/qizheng/prompt',
+      input: {
+        year: 2024,
+        month: 6,
+        day: 15,
+        hour: 12,
+        timezone: 8,
+        timeZoneId: ' ',
+        question: '请解释此盘。',
+      },
+    },
+    { path: 'divination/qimen/lifetime', input: qimenLifetime },
+    {
+      path: 'divination/qimen/lifetime/prompt',
+      input: { ...qimenLifetime, question: '请解释此盘。' },
+    },
+    { path: 'divination/astrolabe', input: { ...astrolabe, timeZoneId: ' ' } },
+    {
+      path: 'divination/astrolabe/synastry',
+      input: {
+        person1: { ...astrolabe, timeZoneId: ' ' },
+        person2: { ...astrolabe, name: '对方', timeZoneId: 'Asia/Shanghai' },
+      },
+    },
+    {
+      path: 'name/generate',
+      input: {
+        surname: '李',
+        limit: 1,
+        birth: {
+          gender: 'male',
+          year: 2024,
+          month: 2,
+          day: 19,
+          timeIndex: 6,
+          dateType: 'solar',
+          timezone: 8,
+          timeZoneId: ' ',
+        },
+      },
+    },
+  ];
+
+  for (const { path, input } of requests) {
+    const { response, body } = await callApi(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 400, path);
+    assert.match(body.error.message, /timeZoneId 不能为空/u, path);
+  }
+});
+
 test('公开 API 太乙应返回年计七十二局立成结果', async () => {
   const { response, body } = await callApi('metaphysics/taiyi/calculate', {
     method: 'POST',

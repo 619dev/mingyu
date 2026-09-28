@@ -1,4 +1,5 @@
 import type { BaziChartResult } from '../bazi/baziTypes';
+import { getBaziMonthIndexByCivilDate } from '../bazi/calendarTool';
 import { createCivilDate, getLuckCycleForCivilDate } from '../bazi/luckTiming';
 import {
   calculateBirthChartBundle,
@@ -243,9 +244,13 @@ function createBaziFacts(
     .join('；');
   const useful = chart.analysis.usefulGod;
   const currentCycle = getLuckCycleForCivilDate(chart.luckInfo.cycles, timingReference.date);
+  let termYear = timingReference.fact.year;
+  if (getBaziMonthIndexByCivilDate(termYear, timingReference.date) === undefined) {
+    termYear -= 1;
+  }
   const annual =
-    chart.liunian
-      ?.filter((item) => item.year === timingReference.fact.year)
+    currentCycle?.years
+      .filter((item) => item.year === termYear)
       .map((item) => `${item.year}年${item.ganZhi}，干支十神${item.tenGod}/${item.tenGodZhi}`) ??
     [];
 

@@ -282,7 +282,7 @@ function buildTrueSolarTimeEvidence(
       dependsOnStepKeys: [dstStepKey],
       inputs: { standardDateTime: input.standardDateTime },
       result: { equationOfTimeMinutes: input.equationOfTimeMinutes },
-      promptText: `按标准日期计算均时差${input.equationOfTimeMinutes.toFixed(3)}分钟`,
+      promptText: `按当地平太阳日期计算均时差${input.equationOfTimeMinutes.toFixed(3)}分钟`,
       sources: ['基于年内日序的均时差近似公式'],
       limitation: TRUE_SOLAR_STEP_LIMITATION,
     },
@@ -634,11 +634,6 @@ export function calculateTrueSolarTime(
   assertNumberInRange(longitude, '经度', -180, 180);
   assertNumberInRange(standardMeridian, '标准经线', -180, 210);
 
-  const equationOfTimeMinutes = calculateEquationOfTimeMinutes(
-    standardTime.year,
-    standardTime.month,
-    standardTime.day,
-  );
   // 经度是环绕角：UTC+14 的 210° 标准经线与西经 150° 是同一条经线。
   const rawLongitudeDifference = longitude - standardMeridian;
   const longitudeDifference =
@@ -646,6 +641,24 @@ export function calculateTrueSolarTime(
       ? ((rawLongitudeDifference + 540) % 360) - 180
       : rawLongitudeDifference;
   const longitudeCorrectionMinutes = longitudeDifference * 4;
+  // 同一瞬时点可能以夏令钟表或标准时表示；先落到当地平太阳日，
+  // 再取日粒度均时差，避免跨午夜时两种时区口径选到相邻两日。
+  const meanSolarDate = new Date(
+    Date.UTC(
+      standardTime.year,
+      standardTime.month - 1,
+      standardTime.day,
+      standardTime.hour,
+      standardTime.minute,
+      second,
+    ) +
+      longitudeCorrectionMinutes * 60000,
+  );
+  const equationOfTimeMinutes = calculateEquationOfTimeMinutes(
+    meanSolarDate.getUTCFullYear(),
+    meanSolarDate.getUTCMonth() + 1,
+    meanSolarDate.getUTCDate(),
+  );
   const totalCorrectionMinutes = equationOfTimeMinutes + longitudeCorrectionMinutes;
 
   const correctedDate = new Date(

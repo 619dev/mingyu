@@ -320,6 +320,7 @@ export const YILIN_EDITION: YilinEditionMetadata = {
 };
 
 export function normalizeYilinHexagramName(value: string): YilinHexagramName | undefined {
+  if (typeof value !== 'string') return undefined;
   const normalized = value.trim();
   if (!normalized) return undefined;
   if ((YILIN_HEXAGRAM_ORDER as readonly string[]).includes(normalized)) {

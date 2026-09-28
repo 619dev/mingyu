@@ -172,6 +172,28 @@ test('真太阳时应按 IANA 历史时区解析偏移并保留证据', () => {
   assertTrueSolarEvidence(result);
 });
 
+test('夏令时跨午夜时 IANA 与标准时加历史夏令时两种口径应得到相同真太阳时', () => {
+  const localDateTime = '1990-07-01T00:30:00';
+  const longitude = 121.47;
+  const historicalZone = convertTrueSolarTime({
+    localDateTime,
+    longitude,
+    timeZoneId: 'Asia/Shanghai',
+  });
+  const standardOffset = convertTrueSolarTime({
+    localDateTime,
+    longitude,
+    timezone: 8,
+    applyChinaDst: true,
+  });
+
+  assert.equal(historicalZone.timezoneEvidence?.selectedUtcDateTime, '1990-06-30T15:30:00.000Z');
+  assert.equal(standardOffset.standardDateTime, '1990-06-30T23:30:00');
+  assert.equal(historicalZone.equationOfTimeMinutes, standardOffset.equationOfTimeMinutes);
+  assert.equal(historicalZone.correctedDateTime, standardOffset.correctedDateTime);
+  assert.equal(historicalZone.shichen.name, standardOffset.shichen.name);
+});
+
 test('真太阳时应严格处理 IANA 跳时、回拨消歧和冲突组合', () => {
   assert.throws(
     () =>

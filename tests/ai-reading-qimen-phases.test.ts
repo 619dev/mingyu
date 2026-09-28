@@ -85,6 +85,7 @@ function hasTriggerDateInPrompt(
   item: { date: string; dateTime?: string; ganzhi?: string },
 ) {
   if (item.dateTime && text.includes(item.dateTime)) return true;
+  if (text.includes(item.date)) return true;
   const match = item.date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/u);
   if (!match) return text.includes(item.date);
   const monthLabel = `${match[1]}年${match[2].padStart(2, '0')}月`;

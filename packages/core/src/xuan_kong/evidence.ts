@@ -255,7 +255,9 @@ export function analyzeXuanKongEvidence(
       measurement.sitDegree !== undefined && measurement.facingDegree !== undefined
         ? `坐山${measurement.sitDegree}°、朝向${measurement.facingDegree}°、误差±${measurement.uncertaintyDegrees ?? '未知'}°`
         : '',
-      `边界原因：${measurement.boundaryReasons?.join('、') || '具体边界原因未提供'}`,
+      measurement.boundaryReasons?.length
+        ? `边界原因：${measurement.boundaryReasons.join('、')}`
+        : '',
       measurement.nearestBoundaryDistanceDegrees !== undefined
         ? `距二十四山分界${measurement.nearestBoundaryDistanceDegrees}°`
         : '',

@@ -376,7 +376,32 @@ function formatLifetimeTriggerDate(item: AnyRecord): string | undefined {
   return detail ? `${dateTime}（${detail}）` : dateTime;
 }
 
-function formatLifetimeTriggerLines(items: AnyRecord[]): string[] {
+function formatLifetimeTriggerLines(items: AnyRecord[], compactDaily = false): string[] {
+  if (
+    compactDaily &&
+    items.length > 0 &&
+    items.every(
+      (item) =>
+        !text(item.dateTime) &&
+        text(item.ganzhi) &&
+        text(item.relation) &&
+        /^\d{4}-\d{2}-\d{2}$/u.test(text(item.date) || ''),
+    )
+  ) {
+    const relations = unique(items.map((item) => text(item.relation)).filter(Boolean));
+    if (relations.length === 1) {
+      const datesByGanzhi = new Map<string, string[]>();
+      for (const item of items) {
+        const ganzhi = text(item.ganzhi)!;
+        const dates = datesByGanzhi.get(ganzhi) ?? [];
+        dates.push(text(item.date)!);
+        datesByGanzhi.set(ganzhi, dates);
+      }
+      const entries = [...datesByGanzhi].map(([ganzhi, dates]) => `${ganzhi}：${dates.join('、')}`);
+      return [`可复核日期：${entries.join('；')}；日干支关系：${relations[0]}`];
+    }
+  }
+
   type DateGroup = { month: string; relation: string; entries: string[] };
   type Output = { kind: 'group'; group: DateGroup } | { kind: 'single'; text: string };
   const outputs: Output[] = [];
@@ -687,7 +712,8 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
               .join('、')
           : '';
         const stageFact = stageIndices ? `涉及阶段${stageIndices}` : undefined;
-        const triggerDateLines = formatLifetimeTriggerLines(records(event.triggerDates));
+        const triggerDates = records(event.triggerDates);
+        const triggerDateLines = formatLifetimeTriggerLines(triggerDates, dailyCount > 0);
         return [
           fact(
             `qimen-lifetime.event.${index}.header`,

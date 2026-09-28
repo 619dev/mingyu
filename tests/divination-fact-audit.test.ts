@@ -36,7 +36,7 @@ test('实际奇门九宫的天地盘归属互换后，同样的奇仪仍在也�
   assert.ok(auditPromptFacts(changed, facts).missing.some((id) => id.startsWith('qimen.palace.')));
 });
 
-test('奇门终身局精简后仍逐日核对干支与关系归属', () => {
+test('奇门终身局精简后仍核对完整干支日期分组与关系归属', () => {
   const { data, prompt } = generateQimenLifetimePrompt({
     birthDateTime: '1990-05-15T14:30:00+08:00',
     periodRange: { startDate: '2026-01-01', endDate: '2026-12-31' },
@@ -45,24 +45,42 @@ test('奇门终身局精简后仍逐日核对干支与关系归属', () => {
   assert.deepEqual(auditPromptFacts(prompt, facts).missing, []);
 
   const cluster = data.eventClusters?.find((item) => item.key.includes(':day:'));
-  const date = cluster?.triggerDates?.[0];
+  const firstDate = cluster?.triggerDates?.[0];
+  const date = cluster?.triggerDates?.find(
+    (item, index) => index > 0 && item.ganzhi === firstDate?.ganzhi,
+  );
   assert.ok(date?.ganzhi && date.relation);
-  const [year, month, day] = date.date.split('-');
   const dateLine = prompt
     .split('\n')
     .find(
       (line) =>
-        line.includes(`可复核日期：${year}年${month}月`) &&
-        line.includes(`${day}日（${date.ganzhi}）`) &&
+        line.includes(`可复核日期：`) &&
+        line.includes(date.date) &&
+        line.includes(`${date.ganzhi}：`) &&
         line.includes(`日干支关系：${date.relation}`),
     );
   assert.ok(dateLine);
-  const changed = prompt.replace(
-    dateLine,
-    dateLine.replace(`${day}日（${date.ganzhi}）`, `${day}日（虚构干支）`),
-  );
+  const groupedDates = dateLine
+    .slice('  可复核日期：'.length)
+    .split(`；日干支关系：${date.relation}`)[0]!
+    .split('；');
+  const ownGroupIndex = groupedDates.findIndex((group) => group.startsWith(`${date.ganzhi}：`));
+  const wrongGroupIndex = groupedDates.findIndex((group) => !group.startsWith(`${date.ganzhi}：`));
+  assert.ok(ownGroupIndex >= 0 && wrongGroupIndex >= 0, '应找到本干支组和另一干支组');
+  const ownDates = groupedDates[ownGroupIndex]!.slice(`${date.ganzhi}：`.length).split('、');
+  const ownDateIndex = ownDates.indexOf(date.date);
+  assert.ok(ownDateIndex >= 0, '非首日期应位于其对应的干支组内');
+  ownDates.splice(ownDateIndex, 1);
+  const wrongGanzhi = groupedDates[wrongGroupIndex]!.split('：')[0]!;
+  const wrongDates = groupedDates[wrongGroupIndex]!.slice(`${wrongGanzhi}：`.length).split('、');
+  wrongDates.push(date.date);
+  groupedDates[ownGroupIndex] = `${date.ganzhi}：${ownDates.join('、')}`;
+  groupedDates[wrongGroupIndex] = `${wrongGanzhi}：${wrongDates.join('、')}`;
+  const changedLine = `  可复核日期：${groupedDates.join('；')}；日干支关系：${date.relation}`;
+  const changed = prompt.replace(dateLine, changedLine);
   assert.ok(
     auditPromptFacts(changed, facts).missing.some((id) => id.startsWith('qimen-lifetime.event.')),
+    '将同一干支组的非首日期移到其他组后应审计失败',
   );
 });
 

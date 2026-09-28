@@ -48,6 +48,25 @@ function formatTriggerDates(items: TriggerDate[]): string[] {
   });
 }
 
+function formatDailyTriggerDates(items: TriggerDate[]): string[] {
+  const isCompactable = items.every(
+    (item) =>
+      !item.dateTime && item.ganzhi && item.relation && /^\d{4}-\d{2}-\d{2}$/u.test(item.date),
+  );
+  const relations = [...new Set(items.map((item) => item.relation).filter(Boolean))];
+  if (!isCompactable || relations.length !== 1) return formatTriggerDates(items);
+
+  const datesByGanzhi = new Map<string, string[]>();
+  for (const item of items) {
+    const dates = datesByGanzhi.get(item.ganzhi!) ?? [];
+    dates.push(item.date);
+    datesByGanzhi.set(item.ganzhi!, dates);
+  }
+  const entries = [...datesByGanzhi].map(([ganzhi, dates]) => `${ganzhi}：${dates.join('、')}`);
+
+  return [`  可复核日期：${entries.join('；')}；日干支关系：${relations[0]}`];
+}
+
 /**
  * 构建终身局自包含提示词任务书
  */
@@ -260,7 +279,11 @@ export function buildLifetimePrompt(
         `${ec.timeSpan}${ec.stageIndices?.length ? `（涉及阶段${ec.stageIndices.map((index) => index + 1).join('、')}）` : ec.stageIndex === undefined ? '（阶段表范围外）' : ''} ${isDailyRelation ? `共${triggerDates.length}个日辰` : ec.triggerFact}（节奏：${ec.rhythm}）`,
       );
       if (triggerDates.length > 0) {
-        lines.push(...formatTriggerDates(triggerDates));
+        lines.push(
+          ...(isDailyRelation
+            ? formatDailyTriggerDates(triggerDates)
+            : formatTriggerDates(triggerDates)),
+        );
       }
       if (!isDailyRelation) lines.push(`  动态交互：${ec.interactionAnalysis}`);
       if (!isDailyRelation && ec.supportEvidence.length > 0) {

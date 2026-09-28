@@ -168,6 +168,33 @@ test('男命大运序列和交运时间应符合仓库固定真值', () => {
   assert.ok(dayunCycles.length > 0);
 });
 
+test('精确出生秒数应在交运时间说明与首运边界保持一致', () => {
+  const result = baziCalculator.calculateBazi({
+    year: 1990,
+    month: 1,
+    day: 1,
+    timeIndex: 12,
+    gender: 'male',
+    isLunar: false,
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+    birthHour: 23,
+    birthMinute: 30,
+    birthSecond: 59,
+  });
+  const firstDayun = result.luckInfo.cycles.find((cycle) => !cycle.isXiaoyun);
+
+  assert.deepEqual(firstDayun?.startSolarTime, {
+    year: 1998,
+    month: 7,
+    day: 2,
+    hour: 19,
+    minute: 34,
+    second: 59,
+  });
+  assert.match(result.luckInfo.handoverInfo, /1998年7月2日 19:34:59/);
+});
+
 test('女命大运逆行序列应符合仓库固定真值', () => {
   const input = {
     year: 2012,

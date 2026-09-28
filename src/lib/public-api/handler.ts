@@ -3579,9 +3579,9 @@ function readNamingBirthInput(input: JsonRecord): NamingBirthInput | undefined {
       ? { birthLongitude: optNumber(birth, 'birthLongitude', -180, 180) }
       : {}),
     ...(birth.timezone !== undefined ? { timezone: optNumber(birth, 'timezone', -12, 14) } : {}),
-    ...(birth.timeZoneId !== undefined && typeof birth.timeZoneId === 'string'
-      ? { timeZoneId: birth.timeZoneId }
-      : {}),
+    ...(birth.timeZoneId === undefined
+      ? {}
+      : { timeZoneId: readRequiredString(birth, 'timeZoneId') }),
     ...(birth.applyChinaDst !== undefined
       ? { applyChinaDst: readBoolean(birth, 'applyChinaDst', false) }
       : {}),
@@ -3686,7 +3686,8 @@ async function calculateInstantChartApi(input: JsonRecord) {
     const value = input.observer;
     const latitude = optNumber(value, 'latitude', -90, 90);
     const timezone = optNumber(value, 'timezone', -12, 14);
-    const timeZoneId = readString(value, 'timeZoneId', '').trim();
+    const timeZoneId =
+      value.timeZoneId === undefined ? undefined : readRequiredString(value, 'timeZoneId').trim();
     const locationName = readString(value, 'locationName', '').trim();
     observer = {
       longitude: readNumberLike(value, 'longitude', -180, 180),
@@ -4380,7 +4381,7 @@ function calculateHuangjiJingshiApi(input: JsonRecord) {
   const sixDayTimeZoneId =
     sixDayDateTime === undefined || input.timeZoneId === undefined
       ? undefined
-      : readString(input, 'timeZoneId', '').trim();
+      : readRequiredString(input, 'timeZoneId').trim();
   const question = readString(input, 'question', '').trim();
   let sixDayDate: ReturnType<typeof huangjiJingshi.parseHuangjiSixDayDateTime> | undefined;
   if (sixDayDateTime !== undefined) {
@@ -4564,7 +4565,7 @@ function calculateQizhengApi(input: JsonRecord) {
   const longitude = optNumber(input, 'longitude', -180, 180);
   const timezone = optNumber(input, 'timezone', -12, 14);
   const timeZoneId =
-    input.timeZoneId === undefined ? undefined : readString(input, 'timeZoneId', '');
+    input.timeZoneId === undefined ? undefined : readRequiredString(input, 'timeZoneId');
   const useTrueSolarTime = readBoolean(input, 'useTrueSolarTime', false);
   const gender =
     input.gender === undefined ? undefined : readEnum(input, 'gender', ['male', 'female'] as const);
@@ -6764,7 +6765,8 @@ function calculateQimenLifetimeApi(input: JsonRecord) {
     ...(input.birthRangeIndex === undefined
       ? {}
       : { birthRangeIndex: readInteger(input, 'birthRangeIndex', 0) }),
-    timeZoneId: input.timeZoneId === undefined ? undefined : readString(input, 'timeZoneId', ''),
+    timeZoneId:
+      input.timeZoneId === undefined ? undefined : readRequiredString(input, 'timeZoneId'),
     timezone: input.timezone === undefined ? undefined : readNumber(input, 'timezone', -12, 14),
     location: readQimenLifetimeLocation(input),
     calendarType: readEnum(input, 'calendarType', ['solar', 'lunar'], 'solar') as 'solar' | 'lunar',
@@ -6862,7 +6864,8 @@ function buildQimenLifetimePromptResult(input: JsonRecord) {
     ...(input.birthRangeIndex === undefined
       ? {}
       : { birthRangeIndex: readInteger(input, 'birthRangeIndex', 0) }),
-    timeZoneId: input.timeZoneId === undefined ? undefined : readString(input, 'timeZoneId', ''),
+    timeZoneId:
+      input.timeZoneId === undefined ? undefined : readRequiredString(input, 'timeZoneId'),
     timezone: input.timezone === undefined ? undefined : readNumber(input, 'timezone', -12, 14),
     location: readQimenLifetimeLocation(input),
     calendarType: readEnum(input, 'calendarType', ['solar', 'lunar'], 'solar') as 'solar' | 'lunar',
@@ -7141,7 +7144,7 @@ function calculateAstrolabe(input: JsonRecord) {
   const birthDate = readBirthDate(input, { dateType: 'solar' });
   const timezone = optNumber(input, 'timezone', -12, 14);
   const timeZoneId =
-    input.timeZoneId === undefined ? undefined : readString(input, 'timeZoneId', '');
+    input.timeZoneId === undefined ? undefined : readRequiredString(input, 'timeZoneId');
   if (timezone === undefined && !timeZoneId) {
     throw new ApiError(400, 'BAD_REQUEST', 'timezone 与 timeZoneId 至少需要提供一项。');
   }

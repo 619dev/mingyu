@@ -207,6 +207,7 @@ export interface TarotDrawFact {
   recordedCardCount: number;
   orderFactKeys: string[];
   mismatchIndexes: number[];
+  metadataMismatches: string[];
   missingIndexes: number[];
   extraIndexes: number[];
   promptText: string;
@@ -435,12 +436,20 @@ function buildDrawFact(data: TarotData, drawOrderFacts: TarotDrawOrderFact[]): T
     ...missingIndexes,
     ...extraIndexes,
   ].filter((item, index, values) => values.indexOf(item) === index);
+  const metadataMismatches =
+    data.draw && data.draw.deckSize !== tarotCards.length
+      ? [`牌组规模应为${tarotCards.length}张，记录为${String(data.draw.deckSize)}张`]
+      : [];
   const status: TarotDrawFact['status'] =
     !data.draw || order.length !== data.cards.length
       ? '来源链缺失'
-      : mismatchIndexes.length
+      : mismatchIndexes.length || metadataMismatches.length
         ? '来源链不一致'
         : '可核验';
+  const mismatchDetails = [
+    mismatchIndexes.length ? `第${mismatchIndexes.join('、')}张来源记录与牌面不一致` : '',
+    metadataMismatches.length ? `来源记录不一致项：${metadataMismatches.join('、')}` : '',
+  ].filter(Boolean);
   return {
     key: `draw:tarot:${data.spreadType}`,
     status,
@@ -452,10 +461,11 @@ function buildDrawFact(data: TarotData, drawOrderFacts: TarotDrawOrderFact[]): T
     recordedCardCount: order.length,
     orderFactKeys: drawOrderFacts.map((item) => item.key),
     mismatchIndexes,
+    metadataMismatches,
     missingIndexes,
     extraIndexes,
     promptText: data.draw
-      ? `牌组规模：${data.draw.deckSize}张；${isManual ? '录入方式' : isInteractive ? '抽取方式' : '洗牌方法'}：${data.draw.method}；正逆位规则：${data.draw.orientationRule}；${drawOrderFacts.map((item) => item.promptText).join('；')}${status === '来源链缺失' ? `；当前仅记录${order.length}/${data.cards.length}张来源顺序，不能完整核验` : status === '来源链不一致' ? `；第${mismatchIndexes.join('、')}张来源记录与牌面不一致` : ''}`
+      ? `牌组规模：${data.draw.deckSize}张；${isManual ? '录入方式' : isInteractive ? '抽取方式' : '洗牌方法'}：${data.draw.method}；正逆位规则：${data.draw.orientationRule}；${drawOrderFacts.map((item) => item.promptText).join('；')}${status === '来源链缺失' ? `；当前仅记录${order.length}/${data.cards.length}张来源顺序，不能完整核验` : ''}${mismatchDetails.length ? `；${mismatchDetails.join('；')}` : ''}`
       : `现有资料未附洗牌与抽取顺序，仅保留${data.cards.length}张已确定牌面，不能反推完整抽牌来源链`,
     sources: isManual
       ? ['78张塔罗牌组', '用户按牌位逐张录入的牌号与正逆位记录']

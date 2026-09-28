@@ -412,6 +412,21 @@ test('塔罗抽牌序号或牌面被篡改时应标记来源链不一致', () =>
   );
 });
 
+test('塔罗抽牌记录中的牌组规模不符时不得标记为可核验', () => {
+  const data = drawTarotSpread('three', { seed: '塔罗牌组规模核验' });
+  const tampered: TarotData = structuredClone(data);
+  tampered.draw!.deckSize = 77;
+  tampered.evidenceAnalysis = undefined;
+  const evidence = analyzeTarotEvidence(tampered);
+
+  assert.equal(evidence.randomFact.status, '可重放');
+  assert.equal(evidence.drawFact.status, '来源链不一致');
+  assert.deepEqual(evidence.drawFact.mismatchIndexes, []);
+  assert.deepEqual(evidence.drawFact.metadataMismatches, ['牌组规模应为78张，记录为77张']);
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+  assert.match(evidence.drawFact.promptText, /牌组规模：77张.*应为78张，记录为77张/);
+});
+
 test('塔罗牌位、顺序和牌号异常时应给出可定位的覆盖事实', () => {
   const data = drawTarotSpread('three', {
     manualCards: [1, 2, 3].map((id) => ({ id, reversed: false })),

@@ -406,7 +406,8 @@ export class LuckCalculator {
    * 根据起运月份推算交运时机
    */
   private getHandoverInfo(firstCycleStartTime: SolarDateTimeInfo): string {
-    return `首运于公历 ${formatSolarDateTime(firstCycleStartTime, true)}（北京时间 UTC+8）交脱大运，此后每隔十年于该日前后换运`;
+    const second = String(firstCycleStartTime.second).padStart(2, '0');
+    return `首运于公历 ${formatSolarDateTime(firstCycleStartTime, true)}:${second}（北京时间 UTC+8）交脱大运，此后每隔十年于该日前后换运`;
   }
 
   private hasPositiveSolarRange(

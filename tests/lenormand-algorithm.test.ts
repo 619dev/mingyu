@@ -629,6 +629,21 @@ test('雷诺曼抽牌序号、牌面或布局落点不一致时应明确标记',
   );
 });
 
+test('雷诺曼抽牌记录中的牌组规模不符时不得标记为可核验', () => {
+  const data = drawLenormandSpread('three', { seed: '雷诺曼牌组规模核验' });
+  const tampered: LenormandData = structuredClone(data);
+  tampered.draw!.deckSize = 35;
+  tampered.evidenceAnalysis = undefined;
+  const evidence = analyzeLenormandEvidence(tampered);
+
+  assert.equal(evidence.randomFact.status, '可重放');
+  assert.equal(evidence.drawFact.status, '来源链不一致');
+  assert.deepEqual(evidence.drawFact.mismatchIndexes, []);
+  assert.deepEqual(evidence.drawFact.metadataMismatches, ['牌组规模应为36张，记录为35张']);
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+  assert.match(evidence.drawFact.promptText, /牌组规模：35张.*应为36张，记录为35张/);
+});
+
 test('雷诺曼牌位、顺序和牌号异常时应给出可定位的覆盖事实', () => {
   const result = drawLenormandSpread('three', { manualCardIds: [1, 2, 3] });
   const tampered: LenormandData = structuredClone(result);

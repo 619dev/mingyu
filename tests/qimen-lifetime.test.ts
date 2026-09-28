@@ -749,32 +749,21 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
     ?.flatMap((cluster) => cluster.triggerDates ?? [])
     .find((fact) => fact.ganzhi);
   assert.ok(promptDateFact?.date, '提示词应带具体日级日期事实');
-  const [promptFactYear, promptFactMonth, promptFactDay] = promptDateFact!.date.split('-');
-  assert.match(prompt, new RegExp(`${promptFactYear}年${promptFactMonth}月.*${promptFactDay}日`));
+  assert.ok(prompt.includes(promptDateFact!.date), '提示词应保留可复核的完整日期');
   const promptDateLines = prompt.split('\n').filter((line) => line.includes('可复核日期：'));
-  const dailyFacts =
-    data.eventClusters
-      ?.flatMap((cluster) => cluster.triggerDates ?? [])
-      .filter((fact) => fact.ganzhi && fact.relation) ?? [];
-  for (const fact of dailyFacts) {
-    const [year, month, day] = fact.date.split('-');
-    const line = promptDateLines.find(
-      (candidate) =>
-        candidate.includes(`${year}年${month}月`) &&
-        candidate.includes(`${day}日（${fact.ganzhi}）`) &&
-        candidate.includes(`日干支关系：${fact.relation}`),
-    );
-    assert.ok(line, `提示词应保留 ${fact.date} ${fact.ganzhi} ${fact.relation}`);
-    assert.equal(
-      line!.split(`日干支关系：${fact.relation}`).length - 1,
-      1,
-      '同一月份同一关系只应输出一次关系说明',
-    );
-  }
   const dailyClusters =
     data.eventClusters?.filter((cluster) => cluster.key.includes(':day:')) ?? [];
   assert.ok(dailyClusters.length > 0);
   for (const cluster of dailyClusters) {
+    const firstDate = cluster.triggerDates![0]!;
+    const datesByGanzhi = new Map<string, string[]>();
+    for (const fact of cluster.triggerDates!) {
+      const dates = datesByGanzhi.get(fact.ganzhi!) ?? [];
+      dates.push(fact.date);
+      datesByGanzhi.set(fact.ganzhi!, dates);
+    }
+    const entries = [...datesByGanzhi].map(([ganzhi, dates]) => `${ganzhi}：${dates.join('、')}`);
+    const expectedDateLine = `  可复核日期：${entries.join('；')}；日干支关系：${firstDate.relation}`;
     assert.ok(
       prompt
         .split('\n')
@@ -783,6 +772,12 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
             line.startsWith(cluster.timeSpan) &&
             line.includes(`共${cluster.triggerDates!.length}个日辰`),
         ),
+    );
+    assert.ok(promptDateLines.includes(expectedDateLine), '同一日辰事件簇应保留完整干支分组与日期');
+    assert.equal(
+      expectedDateLine.split(`日干支关系：${firstDate.relation}`).length - 1,
+      1,
+      '同一事件簇只应输出一次关系说明',
     );
   }
   assert.doesNotMatch(prompt, /按当地民用日读取日支与本命/);

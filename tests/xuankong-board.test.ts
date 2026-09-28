@@ -179,6 +179,7 @@ test('玄空正处4.5度中央九度分界时保留下卦并提示下卦/替卦�
   assert.equal(result.measurement?.candidateMountains, undefined);
   assert.equal(result.engine.mode, '下卦');
   assert.match(result.measurement?.warnings.join('') ?? '', /正处中央九度分界/);
+  assert.match(result.prompt, /边界原因：中央九度分界/);
   assert.match(result.prompt, /正处中央九度分界/);
   assert.match(result.prompt, /复测确认位于中央九度内时用下卦，核定兼向外侧三度时可选替卦/);
   assert.doesNotMatch(result.prompt, /候选山向/);
@@ -190,7 +191,8 @@ test('玄空兼向稳定区准确表述分界状态，细小非零距离不写�
   const jianXiang = generateXuanKong({ year: 2024, sitDegree: 6 });
   assert.equal(jianXiang.measurement?.isJianXiang, true);
   assert.equal(jianXiang.measurement?.stability, '稳定');
-  assert.match(jianXiang.prompt, /当前测量未触及二十四山或中央九度分界/);
+  assert.doesNotMatch(jianXiang.prompt, /边界原因/);
+  assert.doesNotMatch(jianXiang.evidenceAnalysis.promptText, /边界原因/);
   assert.doesNotMatch(jianXiang.prompt, /中央九度稳定区间/);
 
   const nearBoundary = generateXuanKong({ year: 2024, sitDegree: 7.496 });
