@@ -2354,7 +2354,7 @@ function generateQizhengInternal(
     `出生时间：${input.year}年${input.month}月${input.day}日 ${String(input.hour).padStart(2, '0')}:${String(input.minute ?? 0).padStart(2, '0')}${input.second ? `:${String(input.second).padStart(2, '0')}` : ''}。`,
     `${locationLabel}：${locationText}；时区UTC${tz >= 0 ? '+' : ''}${tz}${input.timeZoneId ? `（${input.timeZoneId}）` : ''}；${calculationContext.palaceTimeNote}。`,
     `七政：太阳、太阴、水、金、火、木、土；四余：罗睺、计都、月孛、紫炁。`,
-    `十二宫：${twelvePalaces.map((item) => `${item.palace}在${item.signBranch}宫`).join('、')}。`,
+    `十二宫：${twelvePalaces.map((item) => `${item.palace}在${item.signBranch}宫`).join('、')}；身宫落${getQizhengSignBranch(shenGong)}宫。`,
     ...stars.map(
       (s) =>
         `${s.kind} ${s.name}：在${s.xiu}宿${s.xiuDegree.toFixed(2)}度，落${s.signBranch}宫${s.palace}${s.dignity && s.dignity !== '—' ? '（' + s.dignity + '）' : ''}${s.retrograde ? '（逆）' : ''}`,
@@ -2372,7 +2372,6 @@ function generateQizhengInternal(
             .join('；')
         : '未见容许度内的主要合相、六合、四正、三方或对照'
     }。`,
-    `命宫在${TWELVE_PALACES[0]}（${getQizhengSignBranch(mingGong)}宫），命主${mingZhu}；身宫在${getQizhengSignBranch(shenGong)}宫。`,
     enNan.summary,
     `神煞：天乙贵人${shensha[0].value}、驿马${shensha[1].value}、劫煞${shensha[2].value}、咸池${shensha[3].value}、华盖${shensha[4].value}、孤辰${shensha[5].value}、寡宿${shensha[6].value}。`,
     '星历口径：七政、罗睺、计都、月孛按星历位置；紫炁按古法均速。',
@@ -2380,7 +2379,7 @@ function generateQizhengInternal(
     ...(flowingStars ? formatQizhengFlowingPrompt(flowingStars, stars) : []),
     timeLords || flowingStars
       ? '本命盘为出生时点根基；目标时段结合流曜、小限与太岁分析。'
-      : '本盘为出生时点静态结构，只解读根基、落宿、落宫和吊照。',
+      : '本命盘以出生时点的星曜位置、落宿、落宫和吊照分析先天结构。',
   ].join('\n');
 
   return {

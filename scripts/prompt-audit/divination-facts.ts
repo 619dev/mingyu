@@ -154,7 +154,7 @@ function extractLiuyaoFacts(data: unknown): DivinationPromptFact[] {
   const facts = collect([
     fact('liuyao.core', '核心结构：', [
       text(d.originalName) ? `主卦${text(d.originalName)}` : undefined,
-      `变卦${text(d.changedName) || '无'}`,
+      `变卦${records(d.changingYaos).length ? text(d.changedName) || '未列' : '无'}`,
       `互卦${text(d.interName) || '无'}`,
     ]),
     fact('liuyao.palace-stage', '八宫卦位：', [d.palaceStage]),

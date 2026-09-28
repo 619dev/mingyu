@@ -65,7 +65,7 @@ export function buildLifetimePrompt(
 
   // 1. 【当前时间】
   if (options.includeCurrentTime !== false) {
-    const now = TimeManager.getWallClockParts();
+    const now = TimeManager.getWallClockParts(new Date(), 480);
     const nowStr = `${now.year}-${String(now.month).padStart(2, '0')}-${String(now.day).padStart(2, '0')} ${String(now.hour).padStart(2, '0')}:${String(now.minute).padStart(2, '0')}`;
     lines.push(`【当前时间】`);
     lines.push(`${nowStr}（UTC+08:00）\n`);

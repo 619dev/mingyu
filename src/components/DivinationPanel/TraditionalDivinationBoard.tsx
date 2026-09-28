@@ -852,8 +852,11 @@ function LiuyaoTraditionalBoard({
       <TraditionalFacts
         items={[
           ['本卦定局', data.hexagramRelations?.original || '本卦'],
-          ['变卦定局', data.changedName ? data.hexagramRelations?.changed || '之卦' : '静卦无变'],
-          ['卦式特征', data.specialPattern || (data.changedName ? '动变卦' : '六爻静卦')],
+          [
+            '变卦定局',
+            data.changingYaos.length ? data.hexagramRelations?.changed || '之卦' : '静卦无变',
+          ],
+          ['卦式特征', data.specialPattern || (data.changingYaos.length ? '动变卦' : '六爻静卦')],
         ]}
       />
 
@@ -3937,7 +3940,7 @@ export function formatDivinationSessionShareText(session: DivinationSession): st
       }
       const d = branch.data;
       lines.push(`本卦：${d.originalName}`);
-      if (d.changedName) lines.push(`变卦：${d.changedName}`);
+      if (d.changingYaos.length && d.changedName) lines.push(`变卦：${d.changedName}`);
       const worldYao = d.yaosDetail.find((item) => item.isWorld);
       if (worldYao) lines.push(`世爻：第${worldYao.position}爻 ${worldYao.sixRelative}`);
       lines.push(`四柱：${d.ganzhi.year} ${d.ganzhi.month} ${d.ganzhi.day} ${d.ganzhi.hour}`);

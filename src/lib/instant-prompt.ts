@@ -1,5 +1,6 @@
 import { getTenGodForBranch, type BaziChartResult } from 'mingyu-core/bazi';
 import type { QizhengResult } from 'mingyu-core/qizheng';
+import { formatInstantQizhengPrompt } from 'mingyu-core/instant';
 import type { ZiweiRuntime } from 'mingyu-core/ziwei';
 import type { AstrolabeData } from '@/types/divination';
 import { formatAstrolabeAspectSections } from 'mingyu-core/divination/astrolabe-scope';
@@ -157,14 +158,9 @@ function formatInstantAstrolabeData(data: AstrolabeData) {
 }
 
 function formatInstantQizhengData(result: QizhengResult) {
-  return result.prompt
-    .replace('【七政四余 · 果老星宗】\n', '')
-    .replace('出生时间：', '起盘时间：')
-    .replace(
-      '本盘为出生时点静态结构，只解读根基、落宿、落宫和吊照。',
-      '本盘为起盘时点的事件结构，结合落宿、落宫和吊照判断所问事项的当前条件。',
-    )
-    .replace(/命主([^；\n]+)；/u, '命宫主星$1；');
+  return formatInstantQizhengPrompt(result)
+    .replace('【七政四余即时盘 · 果老星宗】\n', '')
+    .replace('\n本盘记录起盘时刻的星曜位置、落宿、落宫和吊照。', '');
 }
 
 export function buildInstantBaziPrompt(

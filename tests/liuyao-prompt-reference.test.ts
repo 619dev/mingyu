@@ -1,8 +1,38 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { generateLiuyao } from 'mingyu-core/divination/liuyao';
-import { formatEnhancedDivinationInfo } from 'mingyu-core/prompt';
+import { formatEnhancedDivinationInfo, getDivinationSummaryBlocks } from 'mingyu-core/prompt';
 import { formatEnhancedDivinationInfo as formatSourceLiuyaoPrompt } from '../packages/core/src/prompt/divination-enhanced.ts';
+
+test('六爻静卦不把未变化的本卦写成变卦', () => {
+  const staticData = generateLiuyao(new Date('2025-01-01T08:00:00+08:00'), {
+    method: 'manual',
+    yaos: [7, 7, 7, 7, 7, 7],
+  });
+  assert.equal(staticData.originalName, '乾为天');
+  assert.equal(staticData.changedName, '乾为天');
+  assert.equal(staticData.changingYaos.length, 0);
+  assert.match(
+    formatEnhancedDivinationInfo('liuyao', staticData),
+    /主卦乾为天（乾宫）；变卦无；互卦/,
+  );
+  assert.ok(getDivinationSummaryBlocks('liuyao', staticData).tags.includes('变卦：无'));
+
+  const movingData = generateLiuyao(new Date('2025-01-01T08:00:00+08:00'), {
+    method: 'manual',
+    yaos: [9, 7, 7, 7, 7, 7],
+  });
+  assert.equal(movingData.changingYaos.length, 1);
+  assert.match(
+    formatEnhancedDivinationInfo('liuyao', movingData),
+    new RegExp(`主卦乾为天（乾宫）；变卦${movingData.changedName}；互卦`),
+  );
+  assert.ok(
+    getDivinationSummaryBlocks('liuyao', movingData).tags.includes(
+      `变卦：${movingData.changedName}`,
+    ),
+  );
+});
 
 test('六爻事业用神与世爻不同五行时保留原忌仇神的作用对象', () => {
   const data = generateLiuyao(new Date('2026-05-19T10:30:00+08:00'), {

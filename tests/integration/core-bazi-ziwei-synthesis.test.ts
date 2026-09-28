@@ -76,6 +76,7 @@ test('八字紫微合参应按主题保留两套结构化资料', async () => {
   assert.doesNotMatch(timing?.baziEvidence.map((fact) => fact.detail).join('\n') ?? '', /2027年/);
   assert.match(reading.promptText, /八字与紫微斗数合参/);
   assert.match(reading.promptText, /【运限基准】\n2026-08-07 申时/);
+  assert.doesNotMatch(reading.promptText, /时辰索引/);
   assert.match(reading.promptText, /命局总纲/);
   assert.match(reading.promptText, /大运与流年/);
   assert.doesNotMatch(reading.promptText, /匹配率|吉凶概率|项目|API|内部字段/);

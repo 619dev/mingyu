@@ -435,7 +435,7 @@ function formatLiuyaoInfo(
   return [
     '占法：六爻',
     ...(data.generation?.method === 'yarrow' ? evidenceAnalysis.generationFacts : []),
-    `核心结构：主卦${data.originalName}${data.palace?.name ? `（${data.palace.name}宫）` : ''}；变卦${data.changedName || '无'}；互卦${data.interName || '无'}${data.specialPattern ? `；卦式${data.specialPattern}${formatLiuyaoSpecialAdvice(data) ? `：${formatLiuyaoSpecialAdvice(data)}` : ''}` : ''}`,
+    `核心结构：主卦${data.originalName}${data.palace?.name ? `（${data.palace.name}宫）` : ''}；变卦${data.changingYaos.length ? data.changedName || '未列' : '无'}；互卦${data.interName || '无'}${data.specialPattern ? `；卦式${data.specialPattern}${formatLiuyaoSpecialAdvice(data) ? `：${formatLiuyaoSpecialAdvice(data)}` : ''}` : ''}`,
     data.palaceStage ? `八宫卦位：${data.palaceStage}` : '',
     data.guaShen?.branch
       ? `卦身：在【${data.guaShen.branch}】，居第${data.guaShen.position}爻${data.guaShen.sixRelative ? `，六亲${data.guaShen.sixRelative}` : ''}`

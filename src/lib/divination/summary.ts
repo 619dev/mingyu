@@ -67,7 +67,7 @@ export function getDivinationSessionSummary(session: DivinationSession): Divinat
         formatLiuyaoRangeOrigin(session.liuyaoRange),
         ...session.liuyaoRange.branches.map(
           (branch) =>
-            `${formatLiuyaoRangeInterval(branch.startTimestamp, branch.endTimestamp)}：本卦${branch.data.originalName}，变卦${branch.data.changedName || '无'}；${formatLiuyaoRangeBackground(branch)}`,
+            `${formatLiuyaoRangeInterval(branch.startTimestamp, branch.endTimestamp)}：本卦${branch.data.originalName}，变卦${branch.data.changingYaos.length ? branch.data.changedName || '未列' : '无'}；${formatLiuyaoRangeBackground(branch)}`,
         ),
       ],
     };

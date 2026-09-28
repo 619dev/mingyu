@@ -603,7 +603,7 @@ export function formatBaziZiweiSynthesisForPrompt(
     options.question ? `重点回应：${options.question}` : '',
     '',
     '【运限基准】',
-    `${synthesis.timingReference.dateStr} ${synthesis.timingReference.shichen}（时辰索引${synthesis.timingReference.hourIndex}）`,
+    `${synthesis.timingReference.dateStr} ${synthesis.timingReference.shichen}`,
     '',
     '【合参导引】',
     '两盘印证：八字重原局五行气数与岁运引动，紫微重星曜气象与四化落宫；同向结论为主干断点，口径差异为内外张力。',

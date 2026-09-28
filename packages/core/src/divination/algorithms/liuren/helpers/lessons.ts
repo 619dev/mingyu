@@ -1077,8 +1077,9 @@ function getLessonPairKey(lesson: LiurenLesson) {
  * 《六壬指南》把“不备”限定为四课首尾相同，或二、三课相同。
  * 只比较上神会把不同的课对误合并，进而把昴星误判为别责。
  */
-function isThreeLessonPattern(lessons: LiurenLesson[]) {
-  const first = getLessonPairKey(lessons[0]);
+function isThreeLessonPattern(lessons: LiurenLesson[], dayStemResidence: string) {
+  // 一课下位写日干，比较重复课时须还原为日干寄宫。
+  const first = `${lessons[0].upper}/${dayStemResidence}`;
   const second = getLessonPairKey(lessons[1]);
   const third = getLessonPairKey(lessons[2]);
   const fourth = getLessonPairKey(lessons[3]);
@@ -1210,7 +1211,8 @@ function resolveSpecialTransmission(
     };
   }
 
-  if (!isThreeLessonPattern(lessons)) {
+  const hasThreeLessons = isThreeLessonPattern(lessons, context.dayStemResidence);
+  if (!hasThreeLessons) {
     const initial = isYangDay
       ? getUpperByUnder(context.heavenlyPlate, '酉')
       : getUnderByUpper(context.heavenlyPlate, '酉');
@@ -1222,7 +1224,7 @@ function resolveSpecialTransmission(
     };
   }
 
-  if (isThreeLessonPattern(lessons)) {
+  if (hasThreeLessons) {
     if (isYangDay) {
       const heStem = TIAN_GAN_HE[context.dayStem]?.partner;
       if (!heStem) {

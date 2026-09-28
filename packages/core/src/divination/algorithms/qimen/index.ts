@@ -272,14 +272,18 @@ export function generateQimen(
     timezoneOffsetMinutes,
   ).second;
   const { jieQi } = timeInfo;
-  const termContext: QimenTermContext | undefined =
-    timezoneOffsetMinutes === undefined
-      ? undefined
-      : {
-          referenceDate: referenceDate ?? new Date(timestamp),
-          localOffsetMinutes: timezoneOffsetMinutes,
-          timeZoneId,
-        };
+  // 未显式传偏移时，TimeManager 仍可能采用全局覆盖或运行环境时区。
+  // 从已解析的民用钟表反推本次实际偏移，避免按当地时刻误取中国历表的节气。
+  const wallMinute = new Date(0);
+  wallMinute.setUTCFullYear(timeInfo.solar.year, timeInfo.solar.month - 1, timeInfo.solar.day);
+  wallMinute.setUTCHours(timeInfo.solar.hour, timeInfo.solar.minute);
+  const localOffsetMinutes =
+    timezoneOffsetMinutes ?? (wallMinute.getTime() - Math.floor(timestamp / 60000) * 60000) / 60000;
+  const termContext: QimenTermContext = {
+    referenceDate: referenceDate ?? new Date(timestamp),
+    localOffsetMinutes,
+    timeZoneId,
+  };
 
   // 根据 scope 确定"主动干支"（用于定局、寻符使、空亡、驿马）
   const activeGanZhi = getActiveGanZhi(ganzhi, scope);

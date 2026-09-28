@@ -61,6 +61,7 @@ export interface HuangjiDerivedHexagram extends HuangjiHexagramSummary {
   derivedFrom?: string;
   changedLine?: number;
   sequenceOffset?: number;
+  sequenceStart?: string;
 }
 
 export interface HuangjiSixDayCycleInput {
@@ -942,11 +943,13 @@ function advanceInCircle(source: HuangjiHexagramSummary, offset: number): Huangj
     throw new Error('皇极六十卦序偏移必须介于0至59。');
   }
   const startIndex = getCircleStartIndex(source);
+  const sequenceStart = HUANGJI_CIRCLE_HEXAGRAMS[startIndex];
   const targetName = HUANGJI_CIRCLE_HEXAGRAMS[(startIndex + offset) % 60];
   return {
     ...summarizeHexagram(getHexagramByShortName(targetName)),
     derivedFrom: source.shortName,
     sequenceOffset: offset,
+    sequenceStart,
   };
 }
 

@@ -330,7 +330,7 @@ export function buildHuangjiJingshiPrompt(
           `旬纬卦：${dateTimeForecast.hexagrams.xunWei.name}（由${dateTimeForecast.hexagrams.xunWei.derivedFrom}卦第${dateTimeForecast.hexagrams.xunWei.changedLine}爻变得）`,
           `旬纬统辖：${dateTimeForecast.hexagrams.xunWei.name}统本月经卦内第${xunStartDay}至${xunStartDay + 9}日，共10个皇极日；当前为本旬第${dayInMonthJing - xunStartDay + 1}日。`,
           `旬纬卦辞：${dateTimeForecast.hexagrams.xunWei.judgment}`,
-          `日卦：${dateTimeForecast.hexagrams.daily.name}（月经卦六十卦序第${(dateTimeForecast.hexagrams.daily.sequenceOffset || 0) + 1}位）`,
+          `日卦：${dateTimeForecast.hexagrams.daily.name}（由月经卦${dateTimeForecast.hexagrams.monthJing.shortName}${dateTimeForecast.hexagrams.daily.sequenceStart !== dateTimeForecast.hexagrams.monthJing.shortName ? `接续${dateTimeForecast.hexagrams.daily.sequenceStart}入` : '入'}六十卦序，顺行${dateTimeForecast.hexagrams.daily.sequenceOffset}位）`,
           `时经卦：${dateTimeForecast.hexagrams.hourJing.name}（由${dateTimeForecast.hexagrams.hourJing.derivedFrom}卦第${dateTimeForecast.hexagrams.hourJing.changedLine}爻变得，${dateTimeForecast.calendar.hourRange}）`,
           `日卦卦辞：${dateTimeForecast.hexagrams.daily.judgment}`,
           `时经卦卦辞：${dateTimeForecast.hexagrams.hourJing.judgment}`,

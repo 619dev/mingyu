@@ -452,11 +452,19 @@ function calculateNeutralAstrolabe(
   };
 }
 
-function formatInstantQizhengPrompt(result: QizhengResult) {
+export function formatInstantQizhengPrompt(result: QizhengResult): string {
   return result.prompt
     .replace('【七政四余 · 果老星宗】', '【七政四余即时盘 · 果老星宗】')
     .replace('出生时间：', '起盘时间：')
-    .replace(/命主/g, '命宫主星');
+    .replace('出生地点：', '起盘地点：')
+    .replace('按出生时刻与当地日出日落星历交点划分昼夜', '按起盘时刻与当地日出日落星历交点划分昼夜')
+    .replace(
+      '本命盘以出生时点的星曜位置、落宿、落宫和吊照分析先天结构。',
+      '本盘记录起盘时刻的星曜位置、落宿、落宫和吊照。',
+    )
+    .replace(/昼生/g, '昼盘')
+    .replace(/夜生/g, '夜盘')
+    .replace(/命主/g, '命宫主宰星');
 }
 
 export async function calculateInstantChart<T extends InstantChartType>(

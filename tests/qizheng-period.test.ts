@@ -50,7 +50,7 @@ test('未给流年时七政只排本命静态盘，不冒充阶段资料', () =>
   const natal = generateQizheng(NATAL);
   assert.equal(natal.timeLords, undefined);
   assert.equal(natal.flowingStars, undefined);
-  assert.match(natal.prompt, /出生时点静态结构/);
+  assert.match(natal.prompt, /本命盘以出生时点的星曜位置、落宿、落宫和吊照分析先天结构/);
   assert.doesNotMatch(natal.prompt, /【行限】/);
   assert.doesNotMatch(natal.prompt, /【流曜】/);
 });

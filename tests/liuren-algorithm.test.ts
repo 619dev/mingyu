@@ -692,8 +692,8 @@ test('大六壬全部月将、占时、日柱和昼夜组合应完整成课取�
     伏吟重审法: 144,
     元首法: 2856,
     八专法: 384,
-    别责法: 96,
-    昴星法: 504,
+    别责法: 216,
+    昴星法: 384,
     比用法: 1944,
     涉害法: 1824,
     返吟元首法: 48,
@@ -765,6 +765,18 @@ test('大六壬传统样例会按月将加占时生成天盘、四课与三传',
     result.threeTransmissions.map((item) => item.branch),
     ['寅', '申', '寅'],
   );
+});
+
+test('丙辰日卯时辰将首尾同课应按别责取亥午午', () => {
+  // 《六壬大全·别责课》明列此盘：一课丙寄巳，四课午临巳，三传亥午午。
+  const result = buildReferenceLiurenPlate({ day: '丙辰', hour: '辛卯', monthLeader: '辰' });
+
+  assert.deepEqual(
+    result.lessons.map((lesson) => `${lesson.upper}${lesson.lower}`),
+    ['午丙', '未午', '巳辰', '午巳'],
+  );
+  assert.equal(result.initial.rule, '别责法');
+  assert.deepEqual(result.branches, ['亥', '午', '午']);
 });
 
 test('大六壬排盘骨架应与 GitHub 高星参考项目 kinliuren 样例一致', () => {

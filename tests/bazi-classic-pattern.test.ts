@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { identifyClassicPattern } from '../packages/core/src/bazi/baziEnhancement/classicPatterns';
+import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
+import {
+  identifyClassicPattern,
+  identifyClassicPatternCandidates,
+} from '../packages/core/src/bazi/baziEnhancement/classicPatterns';
+import { generateEnhancedAnalysisSection } from '../packages/core/src/bazi/baziPromptEnhancement';
 
 type Pillars = Parameters<typeof identifyClassicPattern>[2];
 type HiddenStems = Parameters<typeof identifyClassicPattern>[3];
@@ -21,6 +26,36 @@ function identify(pillars: Pillars) {
     '正印格',
   );
 }
+
+test('戊日巳月与己日午月的真实排盘均保留建禄结构候选', () => {
+  for (const [year, month, day, expected] of [
+    [2024, 5, 14, ['甲辰', '己巳', '戊寅', '戊午']],
+    [2024, 6, 14, ['甲辰', '庚午', '己酉', '庚午']],
+  ] as const) {
+    const chart = baziCalculator.calculateBazi({
+      year,
+      month,
+      day,
+      timeIndex: 6,
+      gender: 'male',
+      isLunar: false,
+    });
+    assert.deepEqual(
+      Object.values(chart.pillars).map((pillar) => pillar.ganZhi),
+      expected,
+    );
+    assert.equal(chart.analysis.mingGe.pattern, '建禄格');
+    const candidates = identifyClassicPatternCandidates(
+      chart.pillars.day.gan,
+      chart.pillars.month.zhi,
+      chart.pillars,
+      chart.hiddenStems,
+      chart.analysis.mingGe.pattern,
+    );
+    assert.ok(candidates.some((candidate) => candidate.pattern.name === '建禄格'));
+    assert.match(generateEnhancedAnalysisSection(chart), /【经典结构候选】建禄格/);
+  }
+});
 
 test('金神格应纠正甲日喜火惧水，并保留己日喜忌分歧', () => {
   const jiaPattern = identify({

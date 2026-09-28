@@ -265,7 +265,7 @@ export function getDivinationSummaryBlocks(
         title: '六爻起卦结果',
         tags: [
           `主卦：${item.originalName}`,
-          `变卦：${item.changedName || '无'}`,
+          `变卦：${item.changingYaos.length ? item.changedName || '未列' : '无'}`,
           `互卦：${item.interName || '无'}`,
           item.palaceStage ? `卦位：${item.palaceStage}` : '',
           hexagramRelationText ? `整卦：${hexagramRelationText}` : '',

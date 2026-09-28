@@ -78,7 +78,8 @@ const CLASSIC_PATTERNS: ClassicPattern[] = [
   {
     id: 'lu-ren-lu',
     name: '建禄格',
-    description: '日干与月支同气，如甲木生寅月。建禄自旺，不祖则兄，主辛苦创业。',
+    description:
+      '月支为日干禄位，如甲日寅月、戊日巳月、己日午月。成败仍须结合财官食伤及全局制化核对。',
     conditions: {
       dayStems: [...HEAVENLY_STEMS],
       monthBranch: ['寅', '卯', '巳', '午', '申', '酉', '亥', '子'],
@@ -94,7 +95,6 @@ const CLASSIC_PATTERNS: ClassicPattern[] = [
         壬: '亥',
         癸: '子',
       },
-      otherConditions: ['日干与月支同气', '月令司权'],
       excludePatterns: ['从财格', '从杀格', '从儿格', '从势格'],
     },
     favorableWuxing: ['财', '官', '食'],
