@@ -3644,9 +3644,12 @@ function buildNumberEnergyPromptApi(input: JsonRecord) {
 }
 
 function calculateKongmingApi(input: JsonRecord) {
-  const pattern = readString(input, 'pattern', '').trim() || undefined;
-  if (pattern) assertNoRandomOptions(input, '指定卦象时不接受 seed 或 replay。');
-  return castKongmingHexagram(pattern, pattern ? undefined : readRandomOptions(input));
+  const pattern = input.pattern === undefined ? undefined : readString(input, 'pattern', '').trim();
+  if (pattern !== undefined) assertNoRandomOptions(input, '指定卦象时不接受 seed 或 replay。');
+  return castKongmingHexagram(
+    pattern,
+    pattern === undefined ? readRandomOptions(input) : undefined,
+  );
 }
 
 async function calculateApiResult(

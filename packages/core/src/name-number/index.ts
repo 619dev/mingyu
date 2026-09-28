@@ -522,7 +522,7 @@ function calculateNamingRangeContext(input: NamingBirthInput): NamingBirthContex
 }
 
 export function calculateNamingBirthContext(input: NamingBirthInput): NamingBirthContext {
-  if (input.birthTimeRange) return calculateNamingRangeContext(input);
+  if (input.birthTimeRange !== undefined) return calculateNamingRangeContext(input);
   return calculateNamingPointBirthContext(input);
 }
 

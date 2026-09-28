@@ -221,6 +221,48 @@ test('太阳光照证据应复用IANA历史时区并拒绝非法坐标', () => {
   );
 });
 
+test('夏令时切换日的日出和视太阳正午应按事件时刻的历史偏移显示', () => {
+  const eventLocalTime = (utcDateTime: string) => {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(new Date(utcDateTime));
+    const value = (type: string) => parts.find((part) => part.type === type)?.value;
+    return `${value('year')}-${value('month')}-${value('day')} ${value('hour')}:${value('minute')}:${value('second')}`;
+  };
+  for (const [month, day, hour, minute, referenceOffset] of [
+    [3, 10, 1, 30, -5],
+    [11, 3, 0, 30, -4],
+  ]) {
+    const evidence = calculateSolarIlluminationEvidence({
+      year: 2024,
+      month,
+      day,
+      hour,
+      minute,
+      timeZoneId: 'America/New_York',
+      latitude: 40.7128,
+      longitude: -74.006,
+    });
+    assert.equal(evidence.timezone, referenceOffset);
+    assert.ok(evidence.sunriseSunset.morningUtcDateTime);
+    assert.equal(
+      evidence.sunriseSunset.morningLocalDateTime,
+      eventLocalTime(evidence.sunriseSunset.morningUtcDateTime!),
+    );
+    assert.equal(
+      evidence.apparentSolarNoonLocalDateTime,
+      eventLocalTime(evidence.apparentSolarNoonUtcDateTime),
+    );
+  }
+});
+
 test('太阳光照证据 key 应区分参考时刻和解析时区', () => {
   const base = {
     year: 2024,

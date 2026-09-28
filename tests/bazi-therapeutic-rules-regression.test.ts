@@ -123,6 +123,47 @@ test('无本月依据的全透组合不能占据调候参考与病药提示首�
   assert.deepEqual(result.state.favorableWuxing, ['木']);
 });
 
+test('庚金丑未调候先后与酉月功名条件按本月原文区分', () => {
+  const chou = collectClimateRuleCandidates({
+    ...context(['丙', '丁', '庚', '甲']),
+    monthBranch: '丑',
+  });
+  const chouRule = selectTherapeuticHintRule(chou, '身强');
+  assert.equal(chouRule?.id, 'chou-month-geng-bing-first');
+  assert.deepEqual((chouRule as (typeof CLIMATE_RULES)[number]).recommendationStems, [
+    '丙',
+    '丁',
+    '甲',
+  ]);
+  assert.match(chouRule?.hint ?? '', /先丙解冻、次丁炼金/);
+
+  const wei = collectClimateRuleCandidates({
+    ...context(['丁', '壬', '庚', '甲']),
+    monthBranch: '未',
+  });
+  const weiRule = selectTherapeuticHintRule(wei, '身强');
+  assert.equal(weiRule?.id, 'wei-month-geng-ding-jia-first');
+  assert.deepEqual((weiRule as (typeof CLIMATE_RULES)[number]).recommendationStems, ['丁', '甲']);
+
+  const youWithoutBing = collectClimateRuleCandidates({
+    ...context(['丁', '甲', '庚', '壬']),
+    monthBranch: '酉',
+  });
+  const youWithBing = collectClimateRuleCandidates({
+    ...context(['丁', '甲', '庚', '丙']),
+    monthBranch: '酉',
+  });
+  assert.equal(
+    youWithoutBing.find((candidate) => candidate.rule.id === 'you-month-geng-ding-jia')?.status,
+    '不满足',
+  );
+  assert.equal(
+    youWithBing.find((candidate) => candidate.rule.id === 'you-month-geng-ding-jia')?.status,
+    '满足',
+  );
+  assert.equal(selectTherapeuticHintRule(youWithBing, '身强')?.id, 'you-month-geng-ding-jia');
+});
+
 test('乙子专丙与甲丑先庚后丁不把相反天干列入推荐', () => {
   const cases = [
     {

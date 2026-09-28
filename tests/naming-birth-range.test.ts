@@ -203,6 +203,10 @@ test('案例切换保留各自来源，手改普通日期后命名输入不再�
 test('起名出生区间拒绝伪造四柱与非半开边界', () => {
   const input = createNamingBirthInput(draftFromSource());
   assert.throws(
+    () => calculateNamingBirthContext({ ...input, birthTimeRange: null as never }),
+    /起名出生区间必须提供完整的四柱与北京时间边界/,
+  );
+  assert.throws(
     () =>
       calculateNamingBirthContext({
         ...input,

@@ -113,5 +113,11 @@ test('诸葛与孔明完整提示词不重复任务或加入当前时间', () =>
     assert.doesNotMatch(prompt, /【当前时间】|占法：|所写三字|康熙笔画|五枚硬币|取数过程/u);
     const task = /【任务】\n([\s\S]*?)(?=\n\n【问题】)/u.exec(prompt)?.[1] ?? '';
     assert.equal((task.match(/依据/gu) ?? []).length, 1);
+    if (item.method === 'zhuge') {
+      assert.match(task, /本签签号、签诗、基础解签和补充解释/u);
+      assert.doesNotMatch(task, /签题|典故/u);
+    } else {
+      assert.match(task, /本次签题、卦诗与等第/u);
+    }
   }
 });

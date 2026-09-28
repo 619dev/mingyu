@@ -7289,6 +7289,14 @@ test('公开 API 区分诸葛神数与孔明神卦并支持孔明随机重放', 
   });
   assert.equal(invalid.response.status, 400);
   assert.equal(invalid.body.error.code, 'BAD_REQUEST');
+
+  const blankKongmingPattern = await callApi('divination/kongming', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pattern: '   ' }),
+  });
+  assert.equal(blankKongmingPattern.response.status, 400);
+  assert.equal(blankKongmingPattern.body.error.code, 'BAD_REQUEST');
 });
 
 test('五运六气公开接口保留全年份年度结构并明确公历日期范围', async () => {

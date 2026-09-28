@@ -9,6 +9,7 @@ import {
 import { getGanZhiFromDate } from '../packages/core/src/ganzhi';
 import { birthProfileToBaziPerson, calculateBaziFromBirthProfile } from 'mingyu-core/profile';
 import {
+  getBaziReverseSearchEndYear,
   isValidBaziReverseSource,
   parseBaziReverseSource,
   resolveBaziReverseCandidate,
@@ -16,6 +17,16 @@ import {
 } from '../src/lib/bazi-reverse-input';
 import { buildPersonFromInput, calculateFullBaziChart } from '../src/lib/full-chart-engine/bazi';
 import { buildInputStateSearch, defaultInputState, parseInputState } from '../src/lib/query-state';
+test('反推候选半开终点在 2101 年时仍可重开 2100 年查询', () => {
+  assert.equal(
+    getBaziReverseSearchEndYear({
+      pillars: { year: '庚申', month: '戊子', day: '甲午', hour: '甲子' },
+      intervalStart: '2100-12-31 23:00:00',
+      intervalEnd: '2101-01-01 00:00:00',
+    }),
+    2100,
+  );
+});
 
 test('精准出生表单未选时辰且未填秒时仍可生成共享出生资料', () => {
   for (const year of ['1900', '2000']) {

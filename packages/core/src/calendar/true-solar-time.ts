@@ -639,7 +639,13 @@ export function calculateTrueSolarTime(
     standardTime.month,
     standardTime.day,
   );
-  const longitudeCorrectionMinutes = (longitude - standardMeridian) * 4;
+  // 经度是环绕角：UTC+14 的 210° 标准经线与西经 150° 是同一条经线。
+  const rawLongitudeDifference = longitude - standardMeridian;
+  const longitudeDifference =
+    rawLongitudeDifference > 180 || rawLongitudeDifference < -180
+      ? ((rawLongitudeDifference + 540) % 360) - 180
+      : rawLongitudeDifference;
+  const longitudeCorrectionMinutes = longitudeDifference * 4;
   const totalCorrectionMinutes = equationOfTimeMinutes + longitudeCorrectionMinutes;
 
   const correctedDate = new Date(
