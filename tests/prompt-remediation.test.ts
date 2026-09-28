@@ -98,16 +98,15 @@ test('奇门提示资料保留完整格局索引，空亡事实不重复列出',
   assert.doesNotMatch(text, /灾咎减半/);
 });
 
-test('奇门复合格局只列组合结论，单项格局另列一次', () => {
+test('奇门常规提示词只列经典格局命中及各自落宫', () => {
   const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
   const text = formatEnhancedDivinationInfo('qimen', data);
-  const combos = text.split('复合格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
+  const patternBlock = text.split('盘面命中格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
 
-  assert.match(combos, /兑七宫三吉聚气：聚集7个吉格，吉象叠加/);
-  assert.match(combos, /巽四宫吉凶混杂：同时见吉格与凶格，气机不纯/);
-  assert.doesNotMatch(combos, /天遁|月奇得使|三奇游六仪|门迫|癸击刑/);
-  assert.match(text, /三奇游六仪（吉格）/);
-  assert.equal(combos.split('巽四宫吉凶混杂').length - 1, 1);
+  assert.match(patternBlock, /天遁（吉格，兑七宫）：生门、丙奇、地盘戊同宫/);
+  assert.match(patternBlock, /三奇游六仪（吉格）：甲寅癸值符加地盘丁奇于巽四宫/);
+  assert.match(patternBlock, /门迫（凶格）：惊门（金）克巽四宫（木）/);
+  assert.doesNotMatch(text, /复合格局：|兑七宫三吉聚气|巽四宫吉凶混杂/);
 });
 
 test('三山国王签谱提示资料过滤串签典故与编辑性噪音', () => {

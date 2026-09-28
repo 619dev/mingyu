@@ -214,7 +214,7 @@ function buildXuanKong(
 }
 
 function buildAgreements(
-  bazhai: BaZhaiResult | null,
+  bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null,
   xuankong: XuanKongResult | null,
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'],
 ): ResidentialFengshuiAgreement[] {
@@ -250,13 +250,23 @@ function buildAgreements(
   }
 
   if (bazhai && xuankong) {
+    const candidateDirections =
+      'directionMeasurement' in bazhai ? bazhai.directionMeasurement.candidateDirections : [];
+    const candidateMatches = new Set(candidateDirections.map((item) => item.match));
+    const matchChangesWithOrientation = candidateMatches.size > 1;
     items.push({
       level: '可互补',
       title: '宅运与人宅分层并观',
-      detail: `玄空见${xuankong.period.label}、${xuankong.daoShanXiang.summary}；八宅命卦${bazhai.mingGua}、命宅关系${bazhai.match}。宅运结构与人宅适配分层并列。`,
+      detail: `玄空见${xuankong.period.label}、${xuankong.daoShanXiang.summary}；八宅命卦${bazhai.mingGua}、${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
     });
 
-    if (bazhai.match === '相合') {
+    if (matchChangesWithOrientation) {
+      items.push({
+        level: '资料不足',
+        title: '命宅关系随候选坐向变化',
+        detail: `测量误差范围内，${candidateDirections.map((item) => `${item.label}命宅${item.match}`).join('、')}；需复测坐向后确定命宅关系。`,
+      });
+    } else if (bazhai.match === '相合') {
       items.push({
         level: '一致关注',
         title: '命宅相合可提高关注优先级',
@@ -283,7 +293,7 @@ function buildAgreements(
 }
 
 function buildAdvice(
-  bazhai: BaZhaiResult | null,
+  bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null,
   xuankong: XuanKongResult | null,
   agreements: ResidentialFengshuiAgreement[],
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'],
@@ -295,12 +305,19 @@ function buildAdvice(
     );
   }
   if (bazhai) {
+    const candidateDirections =
+      'directionMeasurement' in bazhai ? bazhai.directionMeasurement.candidateDirections : [];
+    const candidateMatches = new Set(candidateDirections.map((item) => item.match));
+    const matchText =
+      candidateMatches.size > 1
+        ? `候选坐向命宅关系${[...candidateMatches].join('或')}`
+        : `命宅关系${bazhai.match}`;
     const lucky = bazhai.luckyDirections
       .slice(0, 4)
       .map((item) => `${item.direction}${item.label}`)
       .join('、');
     advice.push(
-      `再看人宅：命卦${bazhai.mingGua}（${bazhai.mingGroup}），命宅关系${bazhai.match}${
+      `再看人宅：命卦${bazhai.mingGua}（${bazhai.mingGroup}），${matchText}${
         lucky ? `；命卦较利方位可参考 ${lucky}` : ''
       }。`,
     );
@@ -322,7 +339,7 @@ function buildAdvice(
 }
 
 function buildEvidencePrompt(params: {
-  bazhai: BaZhaiResult | null;
+  bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null;
   xuankong: XuanKongResult | null;
   agreements: ResidentialFengshuiAgreement[];
   advice: string[];
@@ -337,10 +354,15 @@ function buildEvidencePrompt(params: {
     });
   }
   if (params.bazhai) {
+    const candidateDirections =
+      'directionMeasurement' in params.bazhai
+        ? params.bazhai.directionMeasurement.candidateDirections
+        : [];
+    const candidateMatches = new Set(candidateDirections.map((item) => item.match));
     items.push({
       level: '主证',
       title: '八宅人宅层',
-      detail: `命卦${params.bazhai.mingGua}，宅卦${params.bazhai.houseGua ?? '未定'}，命宅关系${params.bazhai.match}`,
+      detail: `命卦${params.bazhai.mingGua}，宅卦${params.bazhai.houseGua ?? '未定'}${candidateMatches.size > 1 ? '（中心读数）' : ''}，${candidateMatches.size > 1 ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${params.bazhai.match}`}`,
       source: '八宅大游年',
     });
   }

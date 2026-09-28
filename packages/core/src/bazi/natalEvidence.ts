@@ -1,6 +1,10 @@
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import type { BaziChartResult, PatternAnalysis } from './baziTypes';
-import { formatPatternFulfillmentFacts, formatUsefulGodFunctions } from './baziAnalysisFormatter';
+import {
+  formatAlternativePatternCandidates,
+  formatPatternDecisionForPrompt,
+  formatUsefulGodFunctions,
+} from './baziAnalysisFormatter';
 import {
   HEAVENLY_STEMS,
   HIDDEN_STEMS,
@@ -169,6 +173,63 @@ export interface BaziNatalEvidenceAnalysis {
 
 function hasText(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+/** 本命提示证据保留本盘裁决所需事实，通用核验条件留在结构化 fulfillment 中。 */
+function formatNatalPatternFacts(pattern: PatternAnalysis): string[] {
+  const decision = formatPatternDecisionForPrompt(pattern);
+  const knownEvidence = [
+    pattern.basis,
+    pattern.fulfillment?.basis,
+    pattern.fulfillment?.decisionDetail,
+    pattern.fulfillment?.summary,
+  ]
+    .map((item) => conditionPortableBasis(item ?? ''))
+    .filter(hasText);
+  const facts: string[] = [];
+  const appendIfNew = (label: string, value: string, evidence = value) => {
+    const normalized = conditionPortableBasis(value);
+    const normalizedEvidence = conditionPortableBasis(evidence);
+    if (
+      !hasText(normalized) ||
+      !hasText(normalizedEvidence) ||
+      knownEvidence.some((item) => item.includes(normalizedEvidence))
+    ) {
+      return;
+    }
+    facts.push(label ? `${label}：${normalized}` : normalized);
+    knownEvidence.push(normalizedEvidence);
+  };
+
+  const alternatives = formatAlternativePatternCandidates(pattern);
+  if (alternatives) facts.push(alternatives);
+
+  const special = pattern.specialAdjudication;
+  if (pattern.isSpecial && special) {
+    appendIfNew('特殊格裁决', `${special.kind}${special.status}；路径：${special.route}`);
+    for (const item of special.satisfied) appendIfNew('特殊格条件', item);
+    for (const item of special.blockers) appendIfNew('特殊格反证', item);
+  }
+
+  if (decision) facts.push(decision);
+
+  const contradiction = pattern.fulfillment?.contradiction ?? '';
+  appendIfNew('相互制约', contradiction);
+
+  for (const item of pattern.fulfillment?.conditionFacts ?? []) {
+    if (item.key.startsWith('path.') || item.key === 'bazi.day-master-strength') continue;
+    appendIfNew('条件核验', `${item.status}；${item.detail}`, item.detail);
+  }
+
+  for (const item of pattern.fulfillment?.pathEvaluations ?? []) {
+    appendIfNew(
+      '制化路径',
+      `${item.label}（${item.position}）：${item.status}；${item.detail}`,
+      item.detail,
+    );
+  }
+
+  return facts;
 }
 
 function joinOrNone(values: string[]) {
@@ -341,7 +402,11 @@ function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
     ...strengthDetails.ruleBasis.map(conditionPortableBasis),
   ];
   const pattern = data.analysis.mingGe;
-  const patternFacts = formatPatternFulfillmentFacts(pattern);
+  const patternFacts = formatNatalPatternFacts(pattern);
+  const patternBasis = conditionPortableBasis(pattern.basis ?? '');
+  const patternBasisAlreadyShown = Boolean(
+    patternBasis && patternFacts.some((fact) => fact.includes(patternBasis)),
+  );
   const usefulGod = data.analysis.usefulGod;
   const usefulBasis = [
     conditionPortableBasis(usefulGod.primaryReason ?? ''),
@@ -401,12 +466,12 @@ function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
       patternFulfillment: pattern.fulfillment,
       transformation: pattern.transformation,
       basis: [
-        conditionPortableBasis(pattern.basis ?? ''),
+        patternBasisAlreadyShown ? '' : patternBasis,
         ...patternFacts.map(conditionPortableBasis),
         pattern.isSpecial ? '当前规则标记为特殊格局' : '当前规则未标记为特殊格局',
       ].filter(hasText),
       calculationStepKeys: ['bazi:natal:calculation:core-analysis'],
-      promptText: `格局：${pattern.pattern || '未记录'}${pattern.basis ? `；依据：${conditionPortableBasis(pattern.basis)}` : ''}；特殊格局标记：${pattern.isSpecial ? '是' : '否'}${patternFacts.length ? `\n${patternFacts.join('\n')}` : ''}`,
+      promptText: `格局：${pattern.pattern || '未记录'}${patternBasis && !patternBasisAlreadyShown ? `；依据：${patternBasis}` : ''}；特殊格局标记：${pattern.isSpecial ? '是' : '否'}${patternFacts.length ? `\n${patternFacts.join('\n')}` : ''}`,
       sources: ['月令司权、透干、根气、成局与格局规则条件'],
       limitation: ANALYSIS_FACT_LIMITATION,
     },

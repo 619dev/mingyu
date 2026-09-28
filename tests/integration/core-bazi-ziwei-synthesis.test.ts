@@ -99,6 +99,7 @@ test('合参提示词应支持不同解读层级并保持完整任务结构', as
   assert.ok(repeatedPattern);
   assert.match(prompt, /【共同盘面资料】/);
   assert.equal(prompt.split(`${repeatedPattern.title}：${repeatedPattern.detail}`).length - 1, 1);
+  assert.doesNotMatch(prompt, /同时参照【共同盘面资料】/);
 });
 
 test('运限证据超过展示范围时合参任务书明确标出未列条数', async () => {

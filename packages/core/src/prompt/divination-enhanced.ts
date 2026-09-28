@@ -721,7 +721,6 @@ function getQimenScopePresentation(data: QimenData) {
 }
 
 const qimenComboKindsByIntent = {
-  general: ['triGood', 'triBad', 'mixed', 'dunPlusReturning', 'luckPlusQi'],
   military: [
     'baihuKaiJing',
     'baihuXiuMen',
@@ -819,10 +818,19 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
         : item.traditionalTone === '风险'
           ? '凶格'
           : '中性格局';
+    const clauses = item.promptText.split(/[，；]/u).map((clause) => clause.replace(/。$/u, ''));
+    const basis = [
+      clauses[0],
+      ...clauses
+        .slice(1)
+        .filter((clause) => /甲|旬|遁|星奇游/u.test(clause) && !/主|百事|吉利/u.test(clause)),
+    ]
+      .filter(Boolean)
+      .join('；');
     const missingPalaces = item.palaces
       .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
-      .filter((name) => !item.promptText.includes(name));
-    return `${item.name}（${tone}${missingPalaces.length ? `，${missingPalaces.join('、')}` : ''}）：${item.promptText}`;
+      .filter((name) => !basis.includes(name));
+    return `${item.name}（${tone}${missingPalaces.length ? `，${missingPalaces.join('、')}` : ''}）：${basis}`;
   });
   const questionContext = [
     question,
@@ -847,7 +855,6 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
   const doorQuestion = /用门|门气|八门旺衰|门旺衰|门的强弱|八门余气/u.test(questionContext);
   const stemQuestion = /命宫|命干|奇仪受制|十干迫制|用神干|天盘干受制/u.test(questionContext);
   const selectedComboKinds = new Set<string>([
-    ...qimenComboKindsByIntent.general,
     ...(militaryQuestion ? qimenComboKindsByIntent.military : []),
     ...(routeQuestion ? qimenComboKindsByIntent.route : []),
     ...(escapeQuestion ? qimenComboKindsByIntent.escape : []),

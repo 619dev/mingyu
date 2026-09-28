@@ -54,6 +54,21 @@ test('即时盘拒绝与确定 UTC 时刻相冲突的观测地点固定偏移', 
   );
 });
 
+test('异步即时盘固定传入时间，时间标签与盘面保持同一瞬时', async () => {
+  const customDate = new Date('2024-06-01T16:20:00.000Z');
+  const pending = calculateInstantChart({
+    type: 'ziwei',
+    customDate,
+  });
+  customDate.setUTCFullYear(2025);
+  const response = await pending;
+  assert.equal(response.generatedAt, '2024-06-01T16:20:00.000Z');
+  assert.deepEqual(
+    [response.wallClock.year, response.wallClock.month, response.wallClock.day],
+    [2024, 6, 2],
+  );
+});
+
 test('即时星盘和七政盘保留 UTC 分钟内秒数', async () => {
   const customDate = new Date('2025-05-05T05:57:37.000Z');
   const observer = { longitude: 116.4, latitude: 39.9, timezone: 8 };

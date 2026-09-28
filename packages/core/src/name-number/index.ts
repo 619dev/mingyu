@@ -15,6 +15,7 @@ import {
 import { baziCalculator } from '../bazi/baziCalculator';
 import { formatUsefulGodFunctions } from '../bazi/baziAnalysisFormatter';
 import { getCivilDateTimeAtFixedOffset } from '../calendar/civil-time';
+import { resolveBirthPlace } from '../location';
 import type { BirthProfileTimeRange } from '../profile/time-range';
 import { CHARACTER_STROKE_NOTES, CHARACTER_READING_NOTES } from './character-annotations';
 import {
@@ -92,6 +93,13 @@ function calculateNamingBazi(input: NamingBirthInput) {
 
 function calculateNamingPointBirthContext(input: NamingBirthInput) {
   const chart = calculateNamingBazi(input);
+  const place = input.birthPlace?.trim() || '';
+  const longitude = input.useTrueSolarTime ? Number(input.birthLongitude) : null;
+  const resolvedPlace = place.length > 0 && longitude !== null ? resolveBirthPlace(place) : null;
+  const matchedResolvedPlace =
+    resolvedPlace && longitude !== null && Math.abs(resolvedPlace.longitude - longitude) <= 1e-8
+      ? resolvedPlace
+      : null;
   const hasPreciseStandardTime =
     input.useTrueSolarTime !== true && input.birthSecond !== undefined && input.birthSecond !== '';
   const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
@@ -133,8 +141,12 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
           : hasPreciseStandardTime
             ? '标准北京时间（精确到秒）'
             : '时辰',
-      place: input.birthPlace?.trim() || '',
-      longitude: input.useTrueSolarTime ? Number(input.birthLongitude) : null,
+      place,
+      longitude,
+      locationLevel: matchedResolvedPlace?.level ?? null,
+      coordinateAccuracy: matchedResolvedPlace?.coordinateAccuracy ?? null,
+      timezone: input.useTrueSolarTime ? (chart.timing?.timezone ?? 8) : null,
+      timeZoneId: input.useTrueSolarTime ? (chart.timing?.timeZoneId ?? null) : null,
       calculatedTime: chart.timing
         ? calculatedClock!
         : hasPreciseStandardTime && inputClock
@@ -1117,7 +1129,7 @@ function formatBirthContext(
     : [];
   return [
     `出生记录：${context.timeBasis.inputDate} ${context.timeBasis.inputTime}`,
-    `时间口径：${context.timeBasis.mode}${context.timeBasis.longitude !== null ? `；出生地${context.timeBasis.place || '按经度定位'}；经度${context.timeBasis.longitude}°` : ''}`,
+    `时间口径：${context.timeBasis.mode}${context.timeBasis.longitude !== null ? `；${formatNamingLocationTimeBasis(context.timeBasis)}` : ''}`,
     `排盘公历：${context.solarDate} ${context.timeBasis.calculatedTime}`,
     `农历：${context.lunarDate}`,
     `四柱${unknownTime ? '（已确定柱）' : ''}：${context.pillars.join(' ')}`,
@@ -1173,6 +1185,23 @@ function formatBirthContext(
         ]),
     ...context.warnings.map((warning) => `出生时刻说明：${warning}`),
   ].join('\n');
+}
+
+function formatNamingLocationTimeBasis(timeBasis: NamingBirthPointContext['timeBasis']): string {
+  const representativePointLabel =
+    timeBasis.coordinateAccuracy === 'administrative-center'
+      ? timeBasis.locationLevel === 'district'
+        ? '（区县行政中心代表点）'
+        : timeBasis.locationLevel === 'city'
+          ? '（城市行政中心代表点）'
+          : '（省级行政中心代表点）'
+      : timeBasis.coordinateAccuracy === 'province-approximation'
+        ? '（省级近似坐标）'
+        : '';
+  const timezone = timeBasis.timezone ?? 8;
+  const offset = `UTC${timezone >= 0 ? '+' : ''}${timezone}`;
+  const timezoneLabel = timeBasis.timeZoneId ? `${timeBasis.timeZoneId}，${offset}` : offset;
+  return `地点记录：${timeBasis.place || '未提供'}；真太阳时校正经度：${timeBasis.longitude}°${representativePointLabel}；时区：${timezoneLabel}`;
 }
 
 function formatNameAnalysis(result: ReturnType<typeof analyzeChineseName>) {

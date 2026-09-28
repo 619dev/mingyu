@@ -678,9 +678,9 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
         ].join('；')
       : '',
     `山向：坐${result.sitMountain}向${result.facingMountain}`,
-    `卦型：${result.guaType}；${result.replacementReason}`,
+    `卦型：${result.guaType}`,
     result.replacement
-      ? `替星取法：山盘${formatReplacementLeg(result.replacement.mountain)}；向盘${formatReplacementLeg(result.replacement.facing)}`
+      ? `替星取法：山盘${formatReplacementLeg(result.replacement.mountain)}；向盘${formatReplacementLeg(result.replacement.facing)}${result.replacementApplied ? '' : '；山向原星与替星数相同，未发生替星'}`
       : '',
     `局型：${result.formation}`,
     result.combinations.length

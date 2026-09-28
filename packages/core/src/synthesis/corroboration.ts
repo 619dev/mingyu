@@ -272,10 +272,21 @@ function buildTimingCondition(
       payload?.active_scope?.scope !== 'origin' && Boolean(payload?.active_scope?.solar_date),
   );
   if (scopes.length) {
+    const originIndexes = new Set(
+      (ziwei.payloadByScope.origin?.palaces ?? []).map((palace) => palace.index),
+    );
+    const allPalacesLocated = scopes.every(
+      (payload) =>
+        typeof payload.active_scope.palace_index === 'number' &&
+        originIndexes.has(payload.active_scope.palace_index),
+    );
     const hits = scopes.flatMap((payload) => {
       const scope = payload.active_scope;
       const palaceStars = evidence.filter(
-        (star) => Number.isInteger(scope.palace_index) && star.palaceIndex === scope.palace_index,
+        (star) =>
+          typeof scope.palace_index === 'number' &&
+          originIndexes.has(scope.palace_index) &&
+          star.palaceIndex === scope.palace_index,
       );
       const mutagens = (scope.mutagen_map ?? []).filter(
         (item) =>
@@ -297,10 +308,12 @@ function buildTimingCondition(
     });
     return {
       key: 'timing.period',
-      status: hits.length ? '满足' : '不满足',
+      status: hits.length ? '满足' : allPalacesLocated ? '不满足' : '资料不足',
       detail: hits.length
         ? `紫微运限定位：${hits.join('；')}。这些是紫微单盘引动事实，双盘同一时间窗口仍需核对八字岁运。`
-        : `已核对${scopes.map((payload) => `${payload.active_scope.label}（${payload.active_scope.solar_date}）`).join('、')}，目标星未命中所列运限宫位或四化。`,
+        : allPalacesLocated
+          ? `已核对${scopes.map((payload) => `${payload.active_scope.label}（${payload.active_scope.solar_date}）`).join('、')}，目标星未命中所列运限宫位或四化。`
+          : '已列紫微运限日期，但部分落宫未定位，无法完整核对本命目标星曜的运限引动。',
     };
   }
   return {

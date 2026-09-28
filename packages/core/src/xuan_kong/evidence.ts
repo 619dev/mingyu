@@ -144,7 +144,7 @@ export function analyzeXuanKongEvidence(
     {
       key: 'xuankong:calculation:mountain',
       stage: '定山向',
-      promptText: `坐山${result.sitMountain}，朝向${result.facingMountain}，采用${result.guaType}；${result.replacementReason}`,
+      promptText: `坐山${result.sitMountain}，朝向${result.facingMountain}，采用${result.guaType}`,
       sources: ['二十四山罗盘换算', '下卦中央九度与兼向替卦边界规则'],
       limitation: STEP_LIMIT,
     },
@@ -176,7 +176,7 @@ export function analyzeXuanKongEvidence(
     {
       key: 'xuankong:fact:gua-type',
       type: '起法',
-      promptText: `${result.guaType}；${result.replacementReason}`,
+      promptText: result.guaType,
       sources: ['玄空下卦与兼向替卦起法规则'],
       limitation: FACT_LIMIT,
     },

@@ -50,6 +50,33 @@ test('住宅合参保留跨宅卦误差候选测量结果', () => {
   );
 });
 
+test('测量误差跨东四宅与西四宅时，合参不把中心命宅关系写成定论', () => {
+  const result = generateResidentialFengshui({
+    mingGua: '坎',
+    year: 2024,
+    doorToInteriorDegree: 65,
+    measurementUncertaintyDegrees: 3,
+  });
+
+  assert.equal(result.bazhai?.match, '相冲');
+  assert.ok(result.bazhai && 'directionMeasurement' in result.bazhai);
+  assert.deepEqual(
+    result.bazhai.directionMeasurement.candidateDirections.map((item) => [
+      item.houseGua,
+      item.match,
+    ]),
+    [
+      ['艮', '相冲'],
+      ['震', '相合'],
+    ],
+  );
+  assert.ok(result.agreements.some((item) => item.title === '命宅关系随候选坐向变化'));
+  assert.ok(result.agreements.every((item) => item.title !== '命宅不同组需分开说明'));
+  assert.match(result.advice.join('\n'), /候选坐向命宅关系相冲或相合/);
+  assert.doesNotMatch(result.evidencePromptText, /，命宅关系相冲/);
+  assert.match(result.evidencePromptText, /候选命宅关系相冲或相合/);
+});
+
 test('缺少宅运年份时仍按已有朝向或坐向独立计算八宅宅卦', () => {
   for (const orientation of [
     { sitMountain: '子' },

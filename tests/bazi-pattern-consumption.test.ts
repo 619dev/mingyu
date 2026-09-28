@@ -98,3 +98,30 @@ test('制化条件变化后所有消费者反映新状态而不是沿用成格�
   assert.doesNotMatch(text, /当前成败判定：成格/);
   assert.match(formatBaziForPrompt(result), /当前成败判定：破格/);
 });
+
+test('本命格局提示证据省略已写入成败理由的重复条件并保留独立盘面依据', () => {
+  const result = baziCalculator.calculateBazi({
+    year: 2013,
+    month: 9,
+    day: 25,
+    timeIndex: 3,
+    gender: 'male',
+  });
+  const pattern = result.analysis.mingGe;
+  const fact = analyzeBaziNatalEvidence(result).analysisFacts.find((item) => item.type === '格局');
+  const pathDetail = pattern.fulfillment?.pathEvaluations?.find(
+    (item) => item.label === '印星制伤官护官',
+  )?.detail;
+
+  assert.ok(fact);
+  assert.ok(pathDetail);
+  assert.match(fact.promptText, /当前成败判定：破格；判定理由：/);
+  assert.equal(fact.promptText.split(pathDetail).length - 1, 1);
+  assert.match(fact.promptText, /条件核验：满足；伤官见官可用项：时柱透干丁/);
+  assert.doesNotMatch(fact.promptText, /格局条件：|候选取用：/);
+
+  const evidenceDetail = result.evidenceAnalysis?.evidence.items.find(
+    (item) => item.title === '格局事实',
+  )?.detail;
+  assert.equal(evidenceDetail?.split(pathDetail).length - 1, 1);
+});

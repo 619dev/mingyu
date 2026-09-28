@@ -1121,7 +1121,7 @@ function extractXuanKongFacts(data: unknown): DivinationPromptFact[] {
         ? `坐${text(d.sitMountain)}向${text(d.facingMountain)}`
         : undefined,
     ]),
-    fact('xuankong.gua-type', '卦型：', [d.guaType, d.replacementReason]),
+    fact('xuankong.gua-type', '卦型：', [d.guaType]),
     fact('xuankong.formation', '局型：', [d.formation]),
     fact('xuankong.dao-shan-xiang', '到山到向：', [dao?.summary]),
     ...palaces.map((item, index) =>

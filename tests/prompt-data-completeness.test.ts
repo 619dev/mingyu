@@ -134,6 +134,9 @@ test('奇门经典格局保留触发事实而非只列名称', () => {
   const facts = analyzeQimenEvidence(data).patternFacts.filter((item) => item.kind === '经典格局');
   assert.ok(facts.length);
   const text = formatDivinationInfo('qimen', data);
-  for (const fact of facts) assert.ok(text.includes(fact.promptText), fact.name);
+  for (const fact of facts) {
+    assert.ok(text.includes(fact.name), fact.name);
+    assert.ok(text.includes(fact.promptText.split(/[，；]/u)[0].replace(/。$/u, '')), fact.name);
+  }
   assert.doesNotMatch(text, /不作通用吉凶评分/);
 });

@@ -335,12 +335,19 @@ test('合参区分亮度已列与落陷制约，运限按宫位及四化星曜�
     '不满足',
   );
   ziwei.payloadByScope.yearly.active_scope.palace_index = undefined;
+  const missingLanding = evaluateGuiRenCorroboration(buildGuiBazi(), ziwei).effectConditions.find(
+    (item) => item.key === 'timing.period',
+  );
+  assert.equal(missingLanding?.status, '资料不足');
+  assert.match(missingLanding!.detail, /落宫未定位/);
+  ziwei.payloadByScope.yearly.active_scope.palace_index = 99;
   assert.equal(
     evaluateGuiRenCorroboration(buildGuiBazi(), ziwei).effectConditions.find(
       (item) => item.key === 'timing.period',
     )?.status,
-    '不满足',
+    '资料不足',
   );
+  ziwei.payloadByScope.yearly.active_scope.palace_index = undefined;
   ziwei.payloadByScope.origin.palaces[0].major_stars[0].name = '左辅';
   ziwei.payloadByScope.yearly.active_scope.mutagen_map = [
     { mutagen: '科', star: '左辅', palace_index: 0, palace_name: '命宫' },
@@ -350,6 +357,7 @@ test('合参区分亮度已列与落陷制约，运限按宫位及四化星曜�
   )!;
   assert.equal(transformed.status, '满足');
   assert.match(transformed.detail, /左辅化科入命宫/);
+  ziwei.payloadByScope.yearly.active_scope.palace_index = 1;
   ziwei.payloadByScope.yearly.active_scope.mutagen_map[0].palace_index = 1;
   assert.equal(
     evaluateGuiRenCorroboration(buildGuiBazi(), ziwei).effectConditions.find(

@@ -15,6 +15,17 @@ test('九运玄空正文明确星数五行与山向运的生克施受', () => {
   assert.doesNotMatch(result.prompt, /流年盘|流月盘/);
 });
 
+test('玄空提示词只列起法与盘面，不夹带输入过程说明', () => {
+  const defaultChart = generateXuanKong({ year: 2024, sitMountain: '子' });
+  const replacementChart = generateXuanKong({ year: 2008, sitMountain: '壬', guaType: '替卦' });
+  assert.match(defaultChart.prompt, /卦型：下卦/);
+  assert.match(replacementChart.prompt, /卦型：替卦/);
+  for (const chart of [defaultChart, replacementChart]) {
+    assert.doesNotMatch(chart.prompt, /输入明确指定|未指定卦型|由调用方核定/);
+    assert.doesNotMatch(chart.evidenceAnalysis.promptText, /输入明确指定|未指定卦型|由调用方核定/);
+  }
+});
+
 test('玄空年盘月盘仅随实际计算结果加入正文层级与各宫', () => {
   const yearly = generateXuanKong({ year: 2024, sitMountain: '午', flowYear: 2026 });
   assert.match(yearly.prompt, /本次资料层级：宅盘（运盘、山盘、向盘）、流年盘。/);

@@ -166,7 +166,8 @@ function assertValidDate(value: Date): Date {
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
     throw new Error('即时排盘时间不是有效日期。');
   }
-  return value;
+  // 输入 Date 可被调用方修改；固定同一瞬时供盘面和 generatedAt 共用。
+  return new Date(value.getTime());
 }
 
 function assertObserver(

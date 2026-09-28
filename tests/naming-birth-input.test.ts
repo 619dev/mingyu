@@ -6,7 +6,7 @@ import {
   calculateNamingBirthContext,
   analyzeChineseName,
   buildChineseNameAnalysisPrompt,
-} from 'mingyu-core/name-number';
+} from '../packages/core/src/name-number/index.ts';
 import { calculateBaziChartFromInput } from '../packages/core/src/bazi/input.ts';
 
 test('姓名案例保留精确时空资料并与八字跨日四柱一致', () => {
@@ -60,7 +60,9 @@ test('姓名案例保留精确时空资料并与八字跨日四柱一致', () =>
     });
     assert.ok(prompt.includes(`出生记录：${naming.timeBasis.inputDate} 00:30`));
     assert.ok(prompt.includes(`排盘公历：${naming.solarDate} ${naming.timeBasis.calculatedTime}`));
-    assert.ok(prompt.includes('时间口径：真太阳时；出生地新疆；经度75°'));
+    assert.ok(
+      prompt.includes('时间口径：真太阳时；地点记录：新疆；真太阳时校正经度：75°；时区：UTC+8'),
+    );
     draft.birthHour = '12';
     assert.equal(saved.birthHour, '00');
   }

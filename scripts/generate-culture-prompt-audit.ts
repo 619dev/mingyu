@@ -310,7 +310,9 @@ function birthFacts(
       owner: '时间口径：',
       values: [
         context.timeBasis.mode,
-        ...(context.timeBasis.longitude === null ? [] : [`经度${context.timeBasis.longitude}°`]),
+        ...(context.timeBasis.longitude === null
+          ? []
+          : [`真太阳时校正经度：${context.timeBasis.longitude}°`]),
       ],
     },
     {

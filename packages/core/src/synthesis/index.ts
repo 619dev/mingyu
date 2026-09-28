@@ -554,17 +554,13 @@ export function formatBaziZiweiSynthesisForPrompt(
   );
   const formatEvidence = (item: SynthesisEvidenceFact) =>
     `  ${item.title}：${item.detail}${item.truncatedEvidenceCount ? `\n  同一运限另有${item.truncatedEvidenceCount}项资料未列。` : ''}`;
-  const formatThemeEvidence = (items: SynthesisEvidenceFact[]) => {
-    const shared = items.some((item) => (evidenceCounts.get(evidenceIdentity(item)) ?? 0) > 1);
-    const uniqueFacts = items
-      .filter((item) => (evidenceCounts.get(evidenceIdentity(item)) ?? 0) === 1)
-      .map(formatEvidence);
-    return (
-      [shared ? '  同时参照【共同盘面资料】中的相关事实。' : '', ...uniqueFacts]
-        .filter(Boolean)
-        .join('\n') || '  本主题资料未提供'
-    );
-  };
+  const formatThemeEvidence = (items: SynthesisEvidenceFact[]) =>
+    items.length
+      ? items
+          .filter((item) => (evidenceCounts.get(evidenceIdentity(item)) ?? 0) === 1)
+          .map(formatEvidence)
+          .join('\n')
+      : '  本主题资料未提供';
   const sharedText = sharedEvidence.length
     ? [
         '【共同盘面资料】',
@@ -584,14 +580,16 @@ export function formatBaziZiweiSynthesisForPrompt(
     : '';
   const themeText = synthesis.themes
     .map((theme) => {
+      const baziEvidence = formatThemeEvidence(theme.baziEvidence);
+      const ziweiEvidence = formatThemeEvidence(theme.ziweiEvidence);
       return [
         `【${theme.label}】`,
         `分析主线：${theme.focus}`,
-        '八字资料：',
-        formatThemeEvidence(theme.baziEvidence),
-        '紫微资料：',
-        formatThemeEvidence(theme.ziweiEvidence),
-      ].join('\n');
+        baziEvidence ? `八字资料：\n${baziEvidence}` : '',
+        ziweiEvidence ? `紫微资料：\n${ziweiEvidence}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
     })
     .join('\n\n');
 

@@ -373,6 +373,8 @@ export function MetaphysicsPanel({
 
   const bazhai = result?.bazhai ?? null;
   const xuankong = result?.xuankong ?? null;
+  const matchVariesWithOrientation =
+    measurement && new Set(measurement.candidateDirections.map((item) => item.match)).size > 1;
 
   return (
     <div className="metaphysics-panel-shell">
@@ -409,13 +411,21 @@ export function MetaphysicsPanel({
           <div className="result-stat-card">
             <span>宅卦</span>
             <strong>{bazhai?.houseGua ?? (xuankong ? '可由山向回填' : '待补充')}</strong>
-            <small>{bazhai?.houseGroup ?? '填写角度后自动生成'}</small>
+            <small>
+              {measurement?.stability === '宅卦不稳定'
+                ? bazhai?.houseGroup
+                  ? `${bazhai.houseGroup}，中心读数；候选宅卦见下方`
+                  : '测量范围跨宅卦；候选宅卦见下方'
+                : (bazhai?.houseGroup ?? '填写角度后自动生成')}
+            </small>
           </div>
           <div className="result-stat-card">
             <span>命宅关系</span>
             <strong>
               {bazhai && measurement
-                ? bazhai.match
+                ? matchVariesWithOrientation
+                  ? '待复测'
+                  : bazhai.match
                 : bazhai
                   ? '待合参'
                   : xuankong
