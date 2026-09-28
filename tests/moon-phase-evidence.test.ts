@@ -9,7 +9,7 @@ function assertEvidenceReferences(evidence: ReturnType<typeof calculateMoonPhase
   const factKeys = new Set([evidence.summaryFact.key, ...evidence.summaryFact.factKeys]);
   assert.equal(evidence.summaryFact.status, '证据链完整');
   assert.equal(evidence.summaryFact.calculationStepCount, evidence.calculationSteps.length);
-  assert.equal(evidence.summaryFact.principalEventCount, 2);
+  assert.equal(evidence.summaryFact.principalEventCount, evidence.currentPrincipalPhase ? 3 : 2);
   assert.equal(evidence.summaryFact.limitationFactCount, evidence.limitationFacts.length);
   assert.ok(evidence.eventSummaryFact.factKeys.every((key) => factKeys.has(key)));
   assert.ok(
@@ -133,6 +133,30 @@ test('一般日期的月相证据应由前后四正相位稳定包围', () => {
   assert.ok(evidence.approximateMoonAgeDays > 0);
   assert.ok(evidence.approximateMoonAgeDays < 29.530588861);
   assertEvidenceReferences(evidence);
+});
+
+test('四正事件交界秒应独立列当前事件，并保持前后事件严格包围', () => {
+  for (const anchor of [
+    '2024-04-02T02:00:00Z',
+    '2024-04-08T18:00:00Z',
+    '2024-04-15T18:00:00Z',
+    '2024-04-23T23:00:00Z',
+  ]) {
+    const boundary = calculateMoonPhaseEvidence(Date.parse(anchor)).nextPrincipalPhase;
+    for (const offset of [-1000, 0, 1000]) {
+      const timestamp = boundary.utcTimestamp + offset;
+      const evidence = calculateMoonPhaseEvidence(timestamp);
+      assert.ok(evidence.previousPrincipalPhase.utcTimestamp < timestamp);
+      assert.ok(evidence.nextPrincipalPhase.utcTimestamp > timestamp);
+      assert.equal(evidence.currentPrincipalPhase?.key, offset === 0 ? boundary.key : undefined);
+      assert.equal(evidence.eventSummaryFact.currentEventKey, evidence.currentPrincipalPhase?.key);
+      if (offset === 0) {
+        assert.match(evidence.promptText, /当前四正相位/);
+        assert.ok(evidence.summaryFact.factKeys.includes(boundary.key));
+        assertEvidenceReferences(evidence);
+      }
+    }
+  }
 });
 
 test('月相证据应拒绝无效时间戳和超出支持范围的年份', () => {

@@ -74,6 +74,20 @@ test('自定义出生坐标缺少时区时应拒绝，行政区仍可使用已�
         day: 15,
         hour: 12,
         minute: 0,
+        location: null as never,
+      }),
+    /出生地点必须是地点资料对象/,
+  );
+  assert.throws(
+    () =>
+      normalizeBirthProfile({
+        gender: 'female',
+        calendarType: 'solar',
+        year: 1990,
+        month: 5,
+        day: 15,
+        hour: 12,
+        minute: 0,
         location: { name: '纽约', longitude: -74.006, latitude: 40.7128 },
       }),
     (error: unknown) =>
@@ -82,6 +96,20 @@ test('自定义出生坐标缺少时区时应拒绝，行政区仍可使用已�
       error.field === 'location.timezone',
   );
   assert.equal(resolveBirthProfileLocation({ regionId: '110101' })?.timezone, 8);
+  assert.throws(() => resolveBirthProfileLocation(null as never), /出生地点必须是地点资料对象/);
+  assert.throws(
+    () =>
+      resolveBirthProfileLocation({
+        regionId: '999999',
+        longitude: 116.5,
+        latitude: 40,
+        timezone: 8,
+      }),
+    (error: unknown) =>
+      error instanceof BirthProfileError &&
+      error.code === 'LOCATION_NOT_FOUND' &&
+      error.field === 'location.regionId',
+  );
   assert.equal(
     resolveBirthProfileLocation({ longitude: -74.006, timeZoneId: 'America/New_York' })?.timezone,
     undefined,

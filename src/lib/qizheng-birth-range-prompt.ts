@@ -24,9 +24,9 @@ function formatNatalFacts(data: QizhengResult): string[] {
     `十二宫：${data.twelvePalaces.map((item) => `${item.palace}在${item.signBranch}`).join('；')}。`,
     ...data.stars.map(
       (star) =>
-        `${star.name}：${star.xiu}宿，${star.signBranch}宫${star.palace}，${star.dignity || '无庙旺标记'}${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}；${star.precisionClass}。`,
+        `${star.name}：${star.xiu}宿，${star.signBranch}宫${star.palace}，${star.dignity || '无庙旺标记'}${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
     ),
-    `吊照：${data.aspects.length ? data.aspects.map((item) => `${item.star1}与${item.star2}${item.type}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度，${item.precisionClass}`).join('；') : '容许度内无主要吊照'}。`,
+    `吊照：${data.aspects.length ? data.aspects.map((item) => `${item.star1}与${item.star2}${item.type}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
     `神煞：${data.shensha.map((item) => `${item.name}${item.value}`).join('；')}。`,
     ...(enNan
       ? [
@@ -35,9 +35,8 @@ function formatNatalFacts(data: QizhengResult): string[] {
           `恩难交会：${enNan.aspectInteraction.length ? enNan.aspectInteraction.join('；') : '无对应交会'}。`,
         ]
       : []),
-    `月相：${context.moonPhase.eightPhaseName}，${context.moonPhase.waxing ? '盈' : '亏'}；前一四正月相${context.moonPhase.previousPrincipalPhase.name}，后一四正月相${context.moonPhase.nextPrincipalPhase.name}。`,
+    `月相：${context.moonPhase.eightPhaseName}，${context.moonPhase.waxing ? '盈' : '亏'}；${context.moonPhase.currentPrincipalPhase ? `当前四正月相${context.moonPhase.currentPrincipalPhase.name}，` : ''}前一四正月相${context.moonPhase.previousPrincipalPhase.name}，后一四正月相${context.moonPhase.nextPrincipalPhase.name}。`,
     `光照日期${context.solarIllumination.localDate}：${context.solarIllumination.status}；${[context.solarIllumination.sunriseSunset, context.solarIllumination.civilTwilight, context.solarIllumination.nauticalTwilight, context.solarIllumination.astronomicalTwilight].map((item) => `${item.name}${item.status}`).join('；')}。`,
-    `盘面证据：${data.evidenceAnalysis.summaryFact.status}；${data.evidenceAnalysis.counterEvidenceFacts.map((item) => `${item.type}：${item.status}`).join('；')}。`,
   ];
 }
 
@@ -53,9 +52,9 @@ export function formatQizhengFlowRangeFacts(
     '流曜落宫落宿：',
     ...flow.stars.map(
       (star) =>
-        `${star.name}：${star.signBranch}宫${star.palace}，${star.xiu}宿${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}；${star.precisionClass}。`,
+        `${star.name}：${star.signBranch}宫${star.palace}，${star.xiu}宿${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
     ),
-    `流曜与本命吊照：${flow.transits.length ? flow.transits.map((item) => `${item.star1}与${item.star2}${item.type}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度，${item.precisionClass}`).join('；') : '容许度内无主要吊照'}。`,
+    `流曜与本命吊照：${flow.transits.length ? flow.transits.map((item) => `${item.star1}与${item.star2}${item.type}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
     ...(limits
       ? [
           `行限：${limits.gender === 'male' ? '男命' : '女命'}，生年干${limits.yearStem}属${limits.yearStemYinYang}，${limits.direction}，虚岁${limits.nominalAge}；${limits.ageNote}。`,
@@ -98,9 +97,7 @@ export function formatQizhengBirthRangePrompt(
         ]
       : []),
     '【时间与地点】',
-    `东八区；纬度${context.latitude}、经度${context.longitude}；${context.locationSource}；传统宫位采用${context.palaceTimeMode || '民用时间'}。`,
-    '【计算口径】',
-    '七政、罗睺、计都、月孛采用天文位置，紫炁采用传统均速模型；吊照容许度与紧密程度描述几何关系。整秒覆盖表示时间扫描步长，星历及传统模型各有其计算精度。',
+    `东八区；纬度${context.latitude}、经度${context.longitude}；传统宫位采用${context.palaceTimeMode || '民用时间'}。`,
     '连续量列出本段所有整秒的极值；圆周量按相对首值的最短弧展开，折回零至三百六十度可得圆周位置。事件时间统一列为北京时间。',
     ...range.branches.flatMap((branch, index) => [
       `【时段${index + 1}】`,

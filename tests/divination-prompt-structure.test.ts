@@ -1457,6 +1457,7 @@ test('雷诺曼提示词保留逐牌基础牌义与真实布局，不扩写普�
     drawLenormandSpread('five', { seed: '提示词完整性-五牌' }),
   );
   assert.match(fivePrompt, /基础牌义：/);
+  assert.doesNotMatch(fivePrompt, /主题牌/);
   assert.doesNotMatch(fivePrompt, /固定组合：[\s\S]*牌序相邻|相邻牌义合读/);
 
   const reverseData = drawLenormandSpread('three', { manualCardIds: [31, 32, 8] });

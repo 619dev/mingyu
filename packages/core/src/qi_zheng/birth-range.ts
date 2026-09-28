@@ -281,6 +281,7 @@ function projectDiscreteFacts(result: QizhengResult): unknown {
       waxing: moon.waxing,
       previousPrincipalPhase: moon.previousPrincipalPhase.name,
       nextPrincipalPhase: moon.nextPrincipalPhase.name,
+      currentPrincipalPhase: moon.currentPrincipalPhase?.name ?? null,
     },
     solarIllumination: {
       localDate: result.calculationContext.solarIllumination.localDate,
@@ -520,6 +521,15 @@ function collectContinuousSamples(result: QizhengResult): ContinuousSample[] {
     '毫秒时间戳',
     moon.nextPrincipalPhase.utcTimestamp,
   );
+  if (moon.currentPrincipalPhase) {
+    addSample(
+      samples,
+      'calculationContext.moonPhase.currentPrincipalPhase.utcTimestamp',
+      '当前主相位' + moon.currentPrincipalPhase.name + '时刻',
+      '毫秒时间戳',
+      moon.currentPrincipalPhase.utcTimestamp,
+    );
+  }
 
   const illumination = result.calculationContext.solarIllumination;
   addSample(

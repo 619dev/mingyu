@@ -33,6 +33,165 @@ test('丙子引文保留壬戊原文且不再列甲为通用取用', () => {
   assert.deepEqual(entry.primaryGods, ['壬', '戊']);
 });
 
+test('丙火卯辰月直录本月原文，并区分壬水主用与土局取甲', () => {
+  const mao = getBaziQiongtongAdvice('丙', '卯');
+  const chen = getBaziQiongtongAdvice('丙', '辰');
+  assert.ok(mao);
+  assert.ok(chen);
+  assert.deepEqual(mao.primaryGods, ['壬']);
+  assert.equal(mao.classicVerse, '二月丙火，阳气舒升，耑用壬水。');
+  assert.match(mao.modernExplanation, /无壬时.*己土姑用/);
+  assert.deepEqual(chen.primaryGods, ['壬', '甲']);
+  assert.match(chen.classicVerse, /三月丙火.*或成土局，取甲为辅，壬不可离/u);
+  assert.match(chen.modernExplanation, /支成土局才取甲木为辅/u);
+  for (const [month, day, branch, entry] of [
+    [3, 13, '卯', mao],
+    [4, 12, '辰', chen],
+  ] as const) {
+    const chart = baziCalculator.calculateBazi({
+      year: 2024,
+      month,
+      day,
+      timeIndex: 6,
+      gender: 'male',
+      useTrueSolarTime: false,
+    });
+    assert.equal(chart.dayMaster.gan, '丙');
+    assert.equal(chart.pillars.month.zhi, branch);
+    const section = buildEnhancedPatternUsefulGodSection(chart);
+    assert.equal(section.qiongtongAdvice?.title, `丙生于${branch}月`);
+    assert.deepEqual(section.qiongtongAdvice?.quotes, [entry.classicVerse]);
+    assert.equal(section.qiongtongAdvice?.summary, entry.modernExplanation);
+  }
+});
+
+test('丙火其余六个月各引本月原文，分清主用、替用和随局取用', () => {
+  const cases = [
+    { month: 1, day: 13, branch: '丑', gods: ['壬', '甲'], verse: /^十二月丙火/u },
+    { month: 5, day: 12, branch: '巳', gods: ['壬', '庚'], verse: /^四月丙火/u },
+    { month: 7, day: 11, branch: '未', gods: ['壬', '庚'], verse: /^六月丙火/u },
+    { month: 9, day: 9, branch: '酉', gods: ['壬', '癸'], verse: /^八月丙火/u },
+    { month: 10, day: 9, branch: '戌', gods: ['甲', '壬', '癸'], verse: /^九月丙火/u },
+    { month: 11, day: 8, branch: '亥', gods: ['庚', '戊', '壬'], verse: /^总之十月丙火/u },
+  ] as const;
+
+  for (const { month, day, branch, gods, verse } of cases) {
+    const entry = getBaziQiongtongAdvice('丙', branch);
+    assert.ok(entry);
+    assert.deepEqual(entry.primaryGods, gods);
+    assert.match(entry.classicVerse, verse);
+
+    const chart = baziCalculator.calculateBazi({
+      year: 2024,
+      month,
+      day,
+      timeIndex: 6,
+      gender: 'male',
+      useTrueSolarTime: false,
+    });
+    assert.equal(chart.dayMaster.gan, '丙');
+    assert.equal(chart.pillars.month.zhi, branch);
+    const section = buildEnhancedPatternUsefulGodSection(chart);
+    assert.equal(section.qiongtongAdvice?.title, `丙生于${branch}月`);
+    assert.deepEqual(section.qiongtongAdvice?.quotes, [entry.classicVerse]);
+    assert.equal(section.qiongtongAdvice?.summary, entry.modernExplanation);
+  }
+
+  assert.match(getBaziQiongtongAdvice('丙', '巳')!.modernExplanation, /无壬时.*癸水姑用/u);
+  assert.match(getBaziQiongtongAdvice('丙', '未')!.modernExplanation, /无庚有壬、不见戊出/u);
+  assert.match(getBaziQiongtongAdvice('丙', '酉')!.modernExplanation, /无壬时癸水.*替用/u);
+  assert.match(getBaziQiongtongAdvice('丙', '戌')!.modernExplanation, /无壬且癸透干时.*替用/u);
+  assert.match(getBaziQiongtongAdvice('丙', '亥')!.classicVerse, /木旺宜庚，水旺宜戊，火旺用壬/u);
+  assert.match(getBaziQiongtongAdvice('丙', '丑')!.modernExplanation, /土多时才需甲木/u);
+});
+
+test('丁火缺月按本月条文或三冬总论归属，并保留条件取用', () => {
+  const cases = [
+    { month: 1, day: 14, branch: '丑', gods: ['甲', '庚'], verse: /^三冬丁火/u },
+    { month: 2, day: 13, branch: '寅', gods: ['庚'], verse: /^正月丁火/u },
+    { month: 4, day: 13, branch: '辰', gods: ['甲', '庚'], verse: /^三月丁火/u },
+    { month: 5, day: 13, branch: '巳', gods: ['甲', '庚', '戊'], verse: /^四月丁火/u },
+    { month: 7, day: 12, branch: '未', gods: ['甲', '壬'], verse: /^六月之丁/u },
+    { month: 8, day: 11, branch: '申', gods: ['甲', '庚', '丙'], verse: /^七月丁火/u },
+    { month: 10, day: 10, branch: '戌', gods: ['甲', '庚'], verse: /^九月耑用/u },
+    { month: 11, day: 9, branch: '亥', gods: ['甲', '庚'], verse: /^三冬丁火/u },
+  ] as const;
+
+  for (const { month, day, branch, gods, verse } of cases) {
+    const entry = getBaziQiongtongAdvice('丁', branch);
+    assert.ok(entry);
+    assert.deepEqual(entry.primaryGods, gods);
+    assert.match(entry.classicVerse, verse);
+
+    const chart = baziCalculator.calculateBazi({
+      year: 2024,
+      month,
+      day,
+      timeIndex: 6,
+      gender: 'male',
+      useTrueSolarTime: false,
+    });
+    assert.equal(chart.dayMaster.gan, '丁');
+    assert.equal(chart.pillars.month.zhi, branch);
+    const section = buildEnhancedPatternUsefulGodSection(chart);
+    assert.equal(section.qiongtongAdvice?.title, `丁生于${branch}月`);
+    assert.deepEqual(section.qiongtongAdvice?.quotes, [entry.classicVerse]);
+    assert.equal(section.qiongtongAdvice?.summary, entry.modernExplanation);
+  }
+
+  assert.match(getBaziQiongtongAdvice('丁', '辰')!.modernExplanation, /支成木局.*庚为先/u);
+  assert.match(getBaziQiongtongAdvice('丁', '巳')!.modernExplanation, /无甲而庚、戊透时.*取戊/u);
+  assert.match(getBaziQiongtongAdvice('丁', '申')!.modernExplanation, /丙火.*可借/u);
+  assert.match(getBaziQiongtongAdvice('丁', '亥')!.modernExplanation, /三冬总论/u);
+  assert.match(getBaziQiongtongAdvice('丁', '丑')!.modernExplanation, /三冬总论/u);
+});
+
+test('戊土缺月按明确单月或合写月份原文取用', () => {
+  const cases = [
+    { month: 1, day: 15, branch: '丑', gods: ['丙', '甲'], verse: /^十一二月严寒/u },
+    { month: 2, day: 14, branch: '寅', gods: ['丙', '甲', '癸'], verse: /^正二月先丙/u },
+    { month: 3, day: 15, branch: '卯', gods: ['丙', '甲', '癸'], verse: /^正二月先丙/u },
+    { month: 5, day: 14, branch: '巳', gods: ['甲', '丙', '癸'], verse: /^四月戊土/u },
+    { month: 7, day: 13, branch: '未', gods: ['癸', '丙', '甲'], verse: /^六月戊土/u },
+    { month: 8, day: 12, branch: '申', gods: ['丙', '癸', '甲'], verse: /^七月戊土/u },
+    { month: 9, day: 11, branch: '酉', gods: ['丙', '癸'], verse: /^八月戊土/u },
+    { month: 11, day: 10, branch: '亥', gods: ['甲', '丙'], verse: /^十月戊土/u },
+  ] as const;
+
+  for (const { month, day, branch, gods, verse } of cases) {
+    const entry = getBaziQiongtongAdvice('戊', branch);
+    assert.ok(entry);
+    assert.deepEqual(entry.primaryGods, gods);
+    assert.match(entry.classicVerse, verse);
+
+    const chart = baziCalculator.calculateBazi({
+      year: 2024,
+      month,
+      day,
+      timeIndex: 6,
+      gender: 'male',
+      useTrueSolarTime: false,
+    });
+    assert.equal(chart.dayMaster.gan, '戊');
+    assert.equal(chart.pillars.month.zhi, branch);
+    const section = buildEnhancedPatternUsefulGodSection(chart);
+    assert.equal(section.qiongtongAdvice?.title, `戊生于${branch}月`);
+    assert.deepEqual(section.qiongtongAdvice?.quotes, [entry.classicVerse]);
+    assert.equal(section.qiongtongAdvice?.summary, entry.modernExplanation);
+  }
+
+  assert.equal(
+    getBaziQiongtongAdvice('戊', '寅')?.classicVerse,
+    getBaziQiongtongAdvice('戊', '卯')?.classicVerse,
+  );
+  assert.equal(
+    getBaziQiongtongAdvice('戊', '子')?.classicVerse,
+    getBaziQiongtongAdvice('戊', '丑')?.classicVerse,
+  );
+  assert.match(getBaziQiongtongAdvice('戊', '申')!.modernExplanation, /支成水局时.*甲泄水/u);
+  assert.match(getBaziQiongtongAdvice('戊', '酉')!.classicVerse, /不必木疏/u);
+});
+
 test('午月丙丁实盘不把条件荐干写成通用调候结论', () => {
   const cases = [
     { day: 10, stem: '丙', primaryGods: ['壬'] },

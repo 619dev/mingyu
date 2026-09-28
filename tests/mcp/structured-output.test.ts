@@ -3412,6 +3412,18 @@ test('MCP 塔罗应返回分层结构化证据并写入提示词', async () => {
   });
 });
 
+test('MCP 塔罗与雷诺曼提示词拒绝空白问题，与公开 API 的必填边界一致', async () => {
+  await withMcpClient(async (client) => {
+    for (const name of ['tarot_prompt', 'lenormand_prompt']) {
+      const result = await client.callTool({
+        name,
+        arguments: { question: '   ' },
+      });
+      assert.equal(result.isError, true, `${name} 应拒绝空白问题`);
+    }
+  });
+});
+
 test('MCP 灵签应返回签号、签题与签诗', async () => {
   await withMcpClient(async (client) => {
     const drawn = await client.callTool({

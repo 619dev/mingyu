@@ -1044,7 +1044,7 @@ function buildCandidateEvidence(
     moonPhaseFact: moonPhaseEvidence,
     astronomicalFacts: [
       `中国标准时间12:00参照月相为${moonPhaseEvidence.eightPhaseName}（${moonPhaseEvidence.waxing ? '盈' : '亏'}），日月黄经差${moonPhaseEvidence.phaseAngleDegrees.toFixed(2)}°，照明约${moonPhaseEvidence.illuminationPercent.toFixed(1)}%`,
-      `前一四正相位${moonPhaseEvidence.previousPrincipalPhase.name} ${moonPhaseEvidence.previousPrincipalPhase.utcDateTime}，下一四正相位${moonPhaseEvidence.nextPrincipalPhase.name} ${moonPhaseEvidence.nextPrincipalPhase.utcDateTime}`,
+      `${moonPhaseEvidence.currentPrincipalPhase ? `当前四正相位${moonPhaseEvidence.currentPrincipalPhase.name} ${moonPhaseEvidence.currentPrincipalPhase.utcDateTime}，` : ''}前一四正相位${moonPhaseEvidence.previousPrincipalPhase.name} ${moonPhaseEvidence.previousPrincipalPhase.utcDateTime}，下一四正相位${moonPhaseEvidence.nextPrincipalPhase.name} ${moonPhaseEvidence.nextPrincipalPhase.utcDateTime}`,
     ],
     calendarFacts: [
       `${day.weekday}，${day.lunarDate}`,
@@ -1088,7 +1088,7 @@ function buildCandidateEvidence(
 }
 
 function formatMoonPhaseFact(fact: MoonPhaseEvidence) {
-  return `中国标准时间12:00参照月相为${fact.eightPhaseName}（${fact.waxing ? '盈' : '亏'}），日月黄经差${fact.phaseAngleDegrees.toFixed(2)}°，照明约${fact.illuminationPercent.toFixed(1)}%；前一四正相位${fact.previousPrincipalPhase.name} ${fact.previousPrincipalPhase.utcDateTime}，下一四正相位${fact.nextPrincipalPhase.name} ${fact.nextPrincipalPhase.utcDateTime}；来源${fact.source}；限制${fact.limitations.join('；')}`;
+  return `中国标准时间12:00参照月相为${fact.eightPhaseName}（${fact.waxing ? '盈' : '亏'}），日月黄经差${fact.phaseAngleDegrees.toFixed(2)}°，照明约${fact.illuminationPercent.toFixed(1)}%；${fact.currentPrincipalPhase ? `当前四正相位${fact.currentPrincipalPhase.name} ${fact.currentPrincipalPhase.utcDateTime}，` : ''}前一四正相位${fact.previousPrincipalPhase.name} ${fact.previousPrincipalPhase.utcDateTime}，下一四正相位${fact.nextPrincipalPhase.name} ${fact.nextPrincipalPhase.utcDateTime}；来源${fact.source}；限制${fact.limitations.join('；')}`;
 }
 
 function formatCandidate(item: AlmanacCandidateEvidence) {
@@ -1180,6 +1180,9 @@ function collectCandidateFactKeys(candidate: AlmanacCandidateEvidence): string[]
     candidate.moonPhaseFact.eventSummaryFact.key,
     candidate.moonPhaseFact.previousPrincipalPhase.key,
     candidate.moonPhaseFact.nextPrincipalPhase.key,
+    ...(candidate.moonPhaseFact.currentPrincipalPhase
+      ? [candidate.moonPhaseFact.currentPrincipalPhase.key]
+      : []),
     ...candidate.usableHours.flatMap((hour) => [
       hour.key,
       ...hour.participantRelationFacts.map((item) => item.key),

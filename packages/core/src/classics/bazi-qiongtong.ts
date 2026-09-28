@@ -195,6 +195,37 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     modernExplanation: '壬水辅映丙火，庚金为壬水之源。',
     taboos: ['戊土晦光'],
   },
+  // 出处：三春丙火·二月。
+  '丙+卯': {
+    dayMaster: '丙',
+    monthBranch: '卯',
+    seasonSummary: '二月阳气舒升，专用壬水。',
+    primaryGods: ['壬'],
+    classicVerse: '二月丙火，阳气舒升，耑用壬水。',
+    modernExplanation: '壬水为本月主用；无壬时原文另以己土姑用，不等同壬水正用。',
+    taboos: [],
+  },
+  // 出处：三春丙火·三月。
+  '丙+辰': {
+    dayMaster: '丙',
+    monthBranch: '辰',
+    seasonSummary: '三月气渐炎升，以壬水为主；成土局时取甲木为辅。',
+    primaryGods: ['壬', '甲'],
+    classicVerse: '三月丙火，气渐炎升，用壬水。或成土局，取甲为辅，壬不可离。',
+    modernExplanation: '壬水为本月主用；支成土局才取甲木为辅，庚金助壬另有条件。',
+    taboos: [],
+  },
+  // 出处：三夏丙火·四月。
+  '丙+巳': {
+    dayMaster: '丙',
+    monthBranch: '巳',
+    seasonSummary: '四月火势炎炎，专用壬水，庚金发水源。',
+    primaryGods: ['壬', '庚'],
+    classicVerse:
+      '四月丙火，建禄于巳，火势炎炎，宜专用壬水，解炎威之力，成既济之功。如无壬水，孤阳失辅，难透清光。得庚发水源，方为有根之水。',
+    modernExplanation: '壬水为主用，庚金助其有源；无壬时原文另以癸水姑用。',
+    taboos: [],
+  },
   // 出处：三夏丙火·五月。
   '丙+午': {
     dayMaster: '丙',
@@ -204,6 +235,16 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     classicVerse: '五月亦耑用壬。',
     modernExplanation:
       '本月专用壬水；庚金可发水源，原文亦有无庚而壬透的分支；炎上格须按其条件另论。',
+    taboos: [],
+  },
+  // 出处：三夏丙火·六月。
+  '丙+未': {
+    dayMaster: '丙',
+    monthBranch: '未',
+    seasonSummary: '六月丙火退气，以壬水为用，庚金辅佐。',
+    primaryGods: ['壬', '庚'],
+    classicVerse: '六月丙火退气，三伏生寒，壬水为用，取庚辅佐。',
+    modernExplanation: '壬水为本月主用，庚金为辅；原文另列无庚有壬、不见戊出的分支。',
     taboos: [],
   },
   // 出处：三秋丙火·七月。
@@ -217,6 +258,39 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     modernExplanation: '壬水偏多时，原文另取戊土制水。',
     taboos: ['土多晦光'],
   },
+  // 出处：三秋丙火·八月。
+  '丙+酉': {
+    dayMaster: '丙',
+    monthBranch: '酉',
+    seasonSummary: '八月日近黄昏，仍用壬水辅映。',
+    primaryGods: ['壬', '癸'],
+    classicVerse:
+      '八月丙火，日近黄昏，丙火之余光，存于光湖，仍用壬水辅映。四柱多丙，一壬高透为奇，定主登科及第。富贵双全。一壬藏支，亦主秀才。或戊多困水则假作斯文。若无壬水，癸亦可用，但功名不久。',
+    modernExplanation: '壬水为本月主用；无壬时癸水才是原文另列的替用。',
+    taboos: ['戊多困水'],
+  },
+  // 出处：三秋丙火·九月。
+  '丙+戌': {
+    dayMaster: '丙',
+    monthBranch: '戌',
+    seasonSummary: '九月火气愈退，先甲木、次壬水。',
+    primaryGods: ['甲', '壬', '癸'],
+    classicVerse:
+      '九月丙火，火气愈退，所忌土晦光火，必须先用甲木，次取壬水。甲壬两透，富贵非凡。若无壬水，得癸透干，亦可，虽不科甲，异路功名。',
+    modernExplanation: '甲木先用、壬水次取；无壬且癸透干时，原文才以癸替用。',
+    taboos: ['土晦光火'],
+  },
+  // 出处：三冬丙火·十月。
+  '丙+亥': {
+    dayMaster: '丙',
+    monthBranch: '亥',
+    seasonSummary: '十月太阳失令，随木、水、火偏旺的情况分支取用。',
+    primaryGods: ['庚', '戊', '壬'],
+    classicVerse: '总之十月丙火，木旺宜庚，水旺宜戊，火旺用壬，随宜酌用可也。',
+    modernExplanation:
+      '木旺时宜庚，水旺时宜戊，火旺时用壬；这是随原局分别取用的条件，不能将三者并作通用组合。',
+    taboos: [],
+  },
   // 出处：三冬丙火·十一月。
   '丙+子': {
     dayMaster: '丙',
@@ -227,8 +301,29 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     modernExplanation: '戊土佐壬水，原文将壬戊配合作为本月提纲。',
     taboos: [],
   },
+  // 出处：三冬丙火·十二月。
+  '丙+丑': {
+    dayMaster: '丙',
+    monthBranch: '丑',
+    seasonSummary: '十二月气进二阳，以壬水为用；土多时还需甲木。',
+    primaryGods: ['壬', '甲'],
+    classicVerse:
+      '十二月丙火，气进二阳，侮雪欺霜，喜壬为用。己土司令，土多又不可少甲。壬甲两透，科甲堪宜，甲藏则秀才而已。或无甲得一壬透，富中取贵。',
+    modernExplanation: '壬水为本月主用；己土司令而土多时才需甲木，原文亦有无甲而壬透的分支。',
+    taboos: [],
+  },
 
   // 丁火
+  // 出处：三春丁火·正月。
+  '丁+寅': {
+    dayMaster: '丁',
+    monthBranch: '寅',
+    seasonSummary: '正月甲木当权，姑用庚金劈甲引丁。',
+    primaryGods: ['庚'],
+    classicVerse: '正月丁火，甲木当权，乃为母旺，非庚不能噼甲，何以引丁，姑用庚金。',
+    modernExplanation: '甲木当权而偏旺，原文用庚金劈甲以引丁，并非再以甲为通用增补。',
+    taboos: [],
+  },
   // 出处：三春丁火·二月。
   '丁+卯': {
     dayMaster: '丁',
@@ -238,6 +333,27 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     classicVerse: '二月丁火，溼乙伤丁，先庚后甲，非庚不能去乙，非甲不能引丁。',
     modernExplanation: '庚金去乙，甲木引丁，二者作用相接。',
     taboos: [],
+  },
+  // 出处：三春丁火·三月。
+  '丁+辰': {
+    dayMaster: '丁',
+    monthBranch: '辰',
+    seasonSummary: '三月戊土司令，先甲木制土引丁，次看庚金。',
+    primaryGods: ['甲', '庚'],
+    classicVerse: '三月丁火，戊土司令，洩弱丁气，先用甲木引丁制土，次看庚金。',
+    modernExplanation: '甲木为先、庚金为次；若支成木局，原文另改取庚为先。',
+    taboos: [],
+  },
+  // 出处：三夏丁火·四月。
+  '丁+巳': {
+    dayMaster: '丁',
+    monthBranch: '巳',
+    seasonSummary: '四月丁火乘旺，取甲引丁，以庚劈甲。',
+    primaryGods: ['甲', '庚', '戊'],
+    classicVerse:
+      '四月丁火乘旺，虽取甲引丁，必用庚噼甲。伐甲、方云木火通明。甲多、又取庚为先。但四柱忌见癸水。',
+    modernExplanation: '甲木引丁、庚金劈甲；甲多时庚为先，无甲而庚、戊透时原文另取戊。',
+    taboos: ['癸水'],
   },
   // 出处：三夏丁火·五月。
   '丁+午': {
@@ -251,6 +367,27 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
       '支成火局且火透时，原文论庚壬两透；干支无火局而水透时，另用甲木并取庚劈甲；癸透亦另有分支。',
     taboos: ['乱用甲木'],
   },
+  // 出处：三夏丁火·六月。
+  '丁+未': {
+    dayMaster: '丁',
+    monthBranch: '未',
+    seasonSummary: '六月丁火退气，专取甲木，壬水次之。',
+    primaryGods: ['甲', '壬'],
+    classicVerse: '六月之丁，阴柔退气，但值三伏生寒，丁弱极矣，专取甲木，壬水次之。',
+    modernExplanation: '甲木为本月主用、壬水次之；庚金的作用另依原局配合核对。',
+    taboos: [],
+  },
+  // 出处：三秋丁火·七月。
+  '丁+申': {
+    dayMaster: '丁',
+    monthBranch: '申',
+    seasonSummary: '七月丁火退气，专用甲木，庚金劈甲，丙火可借。',
+    primaryGods: ['甲', '庚', '丙'],
+    classicVerse:
+      '七月丁火，退气柔弱，端用甲木，金虽乘旺司权，无伤丁之理，仍取庚劈甲，为引火之物，或借丙暖金晒甲，不虑丙夺丁光，凡两丙夹丁者，夏月忌之，余月不忌，但此格少年困苦刑克中年富贵，必要地支见水制丙，方妙。',
+    modernExplanation: '甲木为主，庚金劈甲引丁；原文仅将丙火列作可借的暖金晒甲之助。',
+    taboos: [],
+  },
   // 出处：三秋丁火·八月。
   '丁+酉': {
     dayMaster: '丁',
@@ -259,6 +396,26 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     primaryGods: ['甲', '庚', '丙'],
     classicVerse: '八月甲丙庚皆用，七八月或无甲木，乙亦可用',
     modernExplanation: '甲木引丁，庚金劈甲；丙火可暖金晒木。',
+    taboos: [],
+  },
+  // 出处：三秋丁火·九月。
+  '丁+戌': {
+    dayMaster: '丁',
+    monthBranch: '戌',
+    seasonSummary: '九月专用甲木、庚金。',
+    primaryGods: ['甲', '庚'],
+    classicVerse: '九月耑用甲庚。',
+    modernExplanation: '甲木引丁，庚金劈甲；一派戊土时，原文另按甲木透出与否分别论述。',
+    taboos: [],
+  },
+  // 出处：三冬丁火·三冬总论（十月）。
+  '丁+亥': {
+    dayMaster: '丁',
+    monthBranch: '亥',
+    seasonSummary: '三冬丁火微寒，甲木为尊、庚金佐之。',
+    primaryGods: ['甲', '庚'],
+    classicVerse: '三冬丁火，甲木为尊，庚金佐之，癸戊权宜酌用可也。',
+    modernExplanation: '此为适用于亥月的三冬总论：甲木引丁、庚金佐之，癸戊仍须随原局酌用。',
     taboos: [],
   },
   // 出处：三冬丁火·十一月。
@@ -271,8 +428,38 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     modernExplanation: '甲木引丁，庚金劈甲；十一月水多癸旺且无比印时另论从杀。',
     taboos: [],
   },
+  // 出处：三冬丁火·三冬总论（十二月）。
+  '丁+丑': {
+    dayMaster: '丁',
+    monthBranch: '丑',
+    seasonSummary: '三冬丁火微寒，甲木为尊、庚金佐之。',
+    primaryGods: ['甲', '庚'],
+    classicVerse: '三冬丁火，甲木为尊，庚金佐之，癸戊权宜酌用可也。',
+    modernExplanation: '此为适用于丑月的三冬总论：甲木引丁、庚金佐之，癸戊仍须随原局酌用。',
+    taboos: [],
+  },
 
   // 戊土
+  // 出处：三春戊土·正二月合论（正月）。
+  '戊+寅': {
+    dayMaster: '戊',
+    monthBranch: '寅',
+    seasonSummary: '正二月戊土，先丙火照暖，后甲木疏土，癸水再次。',
+    primaryGods: ['丙', '甲', '癸'],
+    classicVerse: '正二月先丙后甲，癸又次之。',
+    modernExplanation: '原文合论正二月：丙火先除寒，甲木疏土，癸水滋润为次。',
+    taboos: [],
+  },
+  // 出处：三春戊土·正二月合论（二月）。
+  '戊+卯': {
+    dayMaster: '戊',
+    monthBranch: '卯',
+    seasonSummary: '正二月戊土，先丙火照暖，后甲木疏土，癸水再次。',
+    primaryGods: ['丙', '甲', '癸'],
+    classicVerse: '正二月先丙后甲，癸又次之。',
+    modernExplanation: '原文合论正二月：丙火先除寒，甲木疏土，癸水滋润为次。',
+    taboos: [],
+  },
   // 出处：三春戊土·三月。
   '戊+辰': {
     dayMaster: '戊',
@@ -281,6 +468,17 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     primaryGods: ['甲', '丙', '癸'],
     classicVerse: '三月先甲后丙，癸又次之，因戊土司权故也。',
     modernExplanation: '甲木疏土，丙火照暖，癸水滋润。',
+    taboos: [],
+  },
+  // 出处：三夏戊土·四月。
+  '戊+巳': {
+    dayMaster: '戊',
+    monthBranch: '巳',
+    seasonSummary: '四月戊土外实内虚，先甲木疏劈，丙癸为佐。',
+    primaryGods: ['甲', '丙', '癸'],
+    classicVerse:
+      '四月戊土，阳气发升，寒气内藏，外实内虚，不畏火炎，无阳气相催，万物不长，故先用甲疏噼，次取丙癸为佐。',
+    modernExplanation: '甲木为先，丙火与癸水为辅；原文按丙火偏多等局另有分支。',
     taboos: [],
   },
   // 出处：三夏戊土·五月。
@@ -293,6 +491,36 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     modernExplanation: '壬水润燥，甲木疏土；丙火按原局酌用。',
     taboos: [],
   },
+  // 出处：三夏戊土·六月。
+  '戊+未': {
+    dayMaster: '戊',
+    monthBranch: '未',
+    seasonSummary: '六月夏土干枯，先癸水，次丙火、甲木。',
+    primaryGods: ['癸', '丙', '甲'],
+    classicVerse: '六月戊土，遇夏干枯，先看癸水，次用丙火甲木。',
+    modernExplanation: '癸水为先，丙火与甲木次之；原文另按有癸无丙等组合分支论述。',
+    taboos: [],
+  },
+  // 出处：三秋戊土·七月。
+  '戊+申': {
+    dayMaster: '戊',
+    monthBranch: '申',
+    seasonSummary: '七月阳气渐入、寒气渐出，先丙后癸，甲木次之。',
+    primaryGods: ['丙', '癸', '甲'],
+    classicVerse: '七月戊土，阳气渐入，寒气渐出，先丙后癸，甲木次之。',
+    modernExplanation: '丙火照暖为先，癸水滋润为次，甲木再次；支成水局时原文另取甲泄水。',
+    taboos: [],
+  },
+  // 出处：三秋戊土·八月。
+  '戊+酉': {
+    dayMaster: '戊',
+    monthBranch: '酉',
+    seasonSummary: '八月金泄身寒，先丙火照暖，后癸水滋润。',
+    primaryGods: ['丙', '癸'],
+    classicVerse: '八月戊土，金洩身寒，赖丙照暖，喜水滋润，先丙后癸，不必木疏。',
+    modernExplanation: '丙火为先、癸水为次；原文明说本月不必再以木疏土。',
+    taboos: [],
+  },
   // 出处：三秋戊土·九月。
   '戊+戌': {
     dayMaster: '戊',
@@ -303,7 +531,17 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     modernExplanation: '甲木疏土、癸水润土；见金时原文另论丙火。',
     taboos: ['戊癸化合'],
   },
-  // 出处：三冬戊土·十一月。
+  // 出处：三冬戊土·十月。
+  '戊+亥': {
+    dayMaster: '戊',
+    monthBranch: '亥',
+    seasonSummary: '十月阳气略出，先甲木，次丙火。',
+    primaryGods: ['甲', '丙'],
+    classicVerse: '十月戊土，时值小阳，阳气略出，先用甲木，次取丙火。',
+    modernExplanation: '甲木疏土为先，丙火照暖为次；两者配合仍需核对原局。',
+    taboos: [],
+  },
+  // 出处：三冬戊土·十一二月合论（十一月）。
   '戊+子': {
     dayMaster: '戊',
     monthBranch: '子',
@@ -311,6 +549,16 @@ export const BAZI_QIONGTONG_TABLE: Record<string, BaziQiongtongEntry> = {
     primaryGods: ['丙', '甲'],
     classicVerse: '十一二月严寒冰冻，丙火为专，甲木为佐。',
     modernExplanation: '丙火解冻，甲木疏土以助生发。',
+    taboos: [],
+  },
+  // 出处：三冬戊土·十一二月合论（十二月）。
+  '戊+丑': {
+    dayMaster: '戊',
+    monthBranch: '丑',
+    seasonSummary: '十一二月严寒冰冻，丙火为专、甲木为佐。',
+    primaryGods: ['丙', '甲'],
+    classicVerse: '十一二月严寒冰冻，丙火为专，甲木为佐。',
+    modernExplanation: '原文合论十一、十二月：丙火解冻为主，甲木疏土为佐。',
     taboos: [],
   },
 

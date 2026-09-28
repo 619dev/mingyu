@@ -477,6 +477,11 @@ export class BaziCalculator {
       );
     }
 
+    if (!useTrueSolarTimeEnabled) {
+      // 日时保留当地钟表口径；年月节令沿真实瞬时投影到东八区历表。
+      termSolarTime = getTermSolarTime(solarTime, undefined, person);
+    }
+
     const pillarEightChar = lunarHour.getEightChar();
     const termEightChar =
       termSolarTime === solarTime ? pillarEightChar : termSolarTime.getLunarHour().getEightChar();
@@ -828,7 +833,7 @@ export class BaziCalculator {
     }
 
     const dayMasterGan = dayMaster.gan;
-    const termSolarTime = getTermSolarTime(solarTime, timing);
+    const termSolarTime = getTermSolarTime(solarTime, timing, person);
 
     const baziArray: [string, string][] = [
       [pillars.year.gan, pillars.year.zhi],

@@ -25,6 +25,10 @@ test('七政本命区间资料保留月亮换宫两侧、整秒范围与完整�
   }
   assert.match(text, /流年与行限属于另外的时段资料/);
   assert.doesNotMatch(text, /calculationContext|startTimestamp|sourceId|mingyu|API|MCP/);
+  assert.doesNotMatch(
+    text,
+    /盘面证据|证据链状态|坐标来源|手动输入|现代天文计算|传统均速模型|计算口径/,
+  );
 });
 
 test('七政流曜区间资料保留目标窗口、所有分段、行限与事件连续量', () => {
@@ -69,4 +73,8 @@ test('七政流曜区间资料保留目标窗口、所有分段、行限与事�
     }
   }
   assert.doesNotMatch(text, /calculationContext|startTimestamp|sourceId|mingyu|API|MCP/);
+  assert.doesNotMatch(
+    text,
+    /盘面证据|证据链状态|坐标来源|手动输入|现代天文计算|传统均速模型|计算口径/,
+  );
 });

@@ -165,7 +165,14 @@ function assertProfileShape(profile: BirthProfile): void {
   assertIntegerInRange(profile.year, '出生年份', 1900, 2100);
   assertIntegerInRange(profile.month, '出生月份', 1, 12);
   assertIntegerInRange(profile.day, '出生日期', 1, 31);
-  if (profile.location) {
+  if (profile.location !== undefined) {
+    if (
+      !profile.location ||
+      typeof profile.location !== 'object' ||
+      Array.isArray(profile.location)
+    ) {
+      throw new TypeError('出生地点必须是地点资料对象。');
+    }
     if (profile.location.longitude !== undefined) {
       assertFiniteInRange(profile.location.longitude, '出生地经度', -180, 180);
     }
@@ -188,10 +195,13 @@ function assertProfileShape(profile: BirthProfile): void {
 export function resolveBirthProfileLocation(
   location?: BirthProfileLocation,
 ): ResolvedBirthProfileLocation | undefined {
-  if (!location) return undefined;
+  if (location === undefined) return undefined;
+  if (!location || typeof location !== 'object' || Array.isArray(location)) {
+    throw new TypeError('出生地点必须是地点资料对象。');
+  }
   const region = location.regionId ? resolveBirthPlace(location.regionId) : null;
 
-  if (location.regionId && !region && location.longitude === undefined) {
+  if (location.regionId && !region) {
     throw new BirthProfileError({
       code: 'LOCATION_NOT_FOUND',
       level: 'error',
