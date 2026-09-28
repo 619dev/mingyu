@@ -183,7 +183,7 @@ test('bazhai: 从大门面向屋内的度数可直接生成传统坐向与完整
   assert.equal(r.houseGua, '坎');
   assert.equal(r.match, '相合');
   assert.match(r.directionMeasurement.promptText, /站在大门处面向屋内/);
-  assert.match(r.evidenceAnalysis.promptText, /测量事实：从大门面向屋内实测0°/);
+  assert.match(r.evidenceAnalysis.promptText, /测量事实：北向基准未声明；原始读数0°/);
   assert.equal(r.evidenceAnalysis.measurementFacts.length, 4);
   assert.equal(r.evidenceAnalysis.measurementFact.status, '稳定');
   assert.equal(r.evidenceAnalysis.measurementFact.referenceStatus, '未声明');
