@@ -2311,6 +2311,36 @@ test('MCP 命理提示词默认使用当前阶段并在合参中同步八字岁�
   });
 });
 
+test('MCP 八字紫微与主题合参按紫微目标日期定位八字岁运', async () => {
+  await withMcpClient(async (client) => {
+    const common = {
+      name: '目标日期合参样本',
+      gender: 'male',
+      year: 1990,
+      month: 5,
+      day: 15,
+      timeIndex: 6,
+      dateType: 'solar',
+      promptScope: 'yearly',
+      scopeDate: '2020-06-15',
+      question: '请比较这段时间的事业发展。',
+    } as const;
+
+    for (const name of ['bazi_ziwei_prompt', 'thematic_consultation_prompt']) {
+      const response = await client.callTool({
+        name,
+        arguments:
+          name === 'thematic_consultation_prompt' ? { ...common, topic: 'career' } : common,
+      });
+      assert.equal(response.isError, undefined, JSON.stringify(response.content));
+      const prompt = String(response.structuredContent?.prompt);
+      assert.match(prompt, /【八字岁运】[\s\S]*选择日期：2020年/u, name);
+      assert.match(prompt, /2020-06-15/u, name);
+      assert.doesNotMatch(prompt, /时间层说明/u, name);
+    }
+  });
+});
+
 test('MCP 八字和星盘年限缺少明确层级参数时应返回业务错误', async () => {
   await withMcpClient(async (client) => {
     const bazi = await client.callTool({

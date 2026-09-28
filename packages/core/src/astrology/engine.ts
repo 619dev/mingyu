@@ -341,6 +341,9 @@ function requireChartCoordinates(input: BirthData): { latitude: number; longitud
   if (input.latitude === undefined || input.longitude === undefined) {
     throw new Error('完整星盘计算必须同时提供出生地纬度和经度。');
   }
+  if (Math.abs(input.latitude) === 90) {
+    throw new RangeError('地理极点无法确定上升点与宫位，完整星盘纬度必须小于90度。');
+  }
   return { latitude: input.latitude, longitude: input.longitude };
 }
 

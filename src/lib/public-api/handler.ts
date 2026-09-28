@@ -16,6 +16,7 @@ import {
   buildFortuneSelectionContext,
   type BaziFortuneSelectionValue,
 } from 'mingyu-core/bazi';
+import { selectBaziFortuneForZiweiScope } from './fortune-selection';
 import {
   buildAstronomicalTimeEvidence,
   calculateMoonPhaseEvidence,
@@ -6337,7 +6338,11 @@ async function buildBaziZiweiPrompt(input: JsonRecord) {
                 : undefined;
   const currentBaziSelection =
     baziFortuneScope && baziFortuneScope !== 'natal' && baziFortuneScope !== 'full'
-      ? buildCurrentBaziFortuneSelectionForScope(baziResult, baziFortuneScope)
+      ? selectBaziFortuneForZiweiScope(
+          baziResult,
+          baziFortuneScope,
+          readOptionalZiweiScopeDate(input),
+        )
       : null;
   const baziFortuneSelectionContext = currentBaziSelection
     ? buildFortuneSelectionContext(baziResult, currentBaziSelection)
@@ -6563,7 +6568,11 @@ async function buildThematicConsultationPromptApi(input: JsonRecord) {
                 : undefined;
   const currentBaziSelection =
     baziResult && baziFortuneScope && baziFortuneScope !== 'natal' && baziFortuneScope !== 'full'
-      ? buildCurrentBaziFortuneSelectionForScope(baziResult, baziFortuneScope)
+      ? selectBaziFortuneForZiweiScope(
+          baziResult,
+          baziFortuneScope,
+          readOptionalZiweiScopeDate(input),
+        )
       : null;
   const baziFortuneSelectionContext =
     baziResult && currentBaziSelection

@@ -144,6 +144,24 @@ test('星盘底层入口拒绝无效地理坐标', () => {
   }
 });
 
+test('地理极点不生成任意上升点与宫位，高纬度仍可用整宫制', () => {
+  const input = {
+    year: 2026,
+    month: 6,
+    day: 21,
+    hour: 12,
+    minute: 0,
+    timezone: 0,
+    latitude: 90,
+    longitude: 0,
+  };
+  for (const latitude of [90, -90]) {
+    assert.throws(() => calculateChart({ ...input, latitude }), /极点无法确定上升点与宫位/);
+  }
+  assert.equal(calculateChart({ ...input, latitude: 89.9 }).houses.system, 'whole_sign');
+  assert.equal(calculatePlanets(input).find((planet) => planet.name === 'Sun')?.house, 0);
+});
+
 test('本命盘拒绝未知相位类型，避免把无效筛选显示为无相位', () => {
   assert.throws(
     () =>

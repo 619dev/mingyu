@@ -316,6 +316,11 @@ export function buildHuangjiJingshiPrompt(
             `现代冬至岁周换算模型：以${sixDayCycle.anchor.dateTime}的冬至真实瞬时确定${sixDayCycle.calendar.targetYear}岁周；该冬至落在公历${sixDayCycle.anchor.winterSolsticeGregorianYear}年，该瞬时在目标地点为${sixDayCycle.anchor.localDateTime}。`,
             `当地子半锚点：${sixDayCycle.anchor.dayStartDateTime}（真实瞬时${sixDayCycle.anchor.dayStartUtcDateTime}），以冬至子半至下一冬至子半的实际跨度按三百六十逻辑日比例映射。`,
             `实际跨度：已经过${sixDayCycle.calendar.actualElapsedSeconds}秒（${sixDayCycle.calendar.actualElapsedDays}个完整日），逻辑位置${sixDayCycle.calendar.logicalPosition.toFixed(9)}日，即第${sixDayCycle.calendar.logicalElapsedDays + 1}个逻辑日的${sixDayCycle.calendar.logicalDayFraction.toFixed(9)}。`,
+            ...(sixDayCycle.calendar.endpointClamped
+              ? [
+                  '岁周交接：下一冬至当地日子半已到、冬至真实瞬时尚未到，当前仍属上一岁周，逻辑位置暂封顶于第360个逻辑日。',
+                ]
+              : []),
             `冬至日子半干支：${sixDayCycle.anchor.dayGanZhi}（六十甲子序号${sixDayCycle.anchor.dayIndex}）；经卦${sixDayCycle.hexagrams.jing.name}第${sixDayCycle.dayLine}爻当日，${sixDayCycle.hourRange}时变卦${sixDayCycle.hexagrams.hourly.name}，每四小时一爻。`,
           ]
       : [];

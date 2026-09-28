@@ -219,6 +219,24 @@ test('紫微提示词快照应输出已校勘格局的条件与古籍依据', ()
   );
 });
 
+test('紫微在线提示词省略未出现的可选格局加强条件', () => {
+  const payload = createPayload();
+  const fudePalace = payload.palaces.find((palace) => palace.name === '福德');
+  assert.ok(fudePalace);
+  fudePalace.minor_stars.push({ name: '文昌', kind: 'minor' }, { name: '文曲', kind: 'minor' });
+  payload.patterns = detectPatterns({ palaces: payload.palaces });
+
+  const promptWithoutEnhancer = formatZiweiPayloadForPrompt(payload);
+  assert.match(promptWithoutEnhancer, /格局：玉袖天香/);
+  assert.match(promptWithoutEnhancer, /命中条件：文昌与文曲同守福德宫/);
+  assert.doesNotMatch(promptWithoutEnhancer, /未附加紫微加强条件/);
+
+  fudePalace.major_stars.push({ name: '紫微', kind: 'major' });
+  payload.patterns = detectPatterns({ palaces: payload.palaces });
+  const promptWithEnhancer = formatZiweiPayloadForPrompt(payload);
+  assert.match(promptWithEnhancer, /福德宫同时见紫微加强条件/);
+});
+
 test('真实紫微盘的重点宫星只在详细资料列出一次，十二宫索引保留完整宫位', async () => {
   const runtime = await calculateZiweiChart(
     {

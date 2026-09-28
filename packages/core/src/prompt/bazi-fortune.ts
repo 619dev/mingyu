@@ -332,6 +332,11 @@ type FortuneCycle = NonNullable<BaziChartResult['luckInfo']>['cycles'][number];
 
 const FORTUNE_NOTATION = '十神记法：干/支主气；流年以立春交接，交运年结合大运交接时刻。';
 
+function formatFortuneSolarDateTime(time: Parameters<typeof formatSolarDateTime>[0]) {
+  const minuteText = formatSolarDateTime(time, true);
+  return time.second === 0 ? minuteText : `${minuteText}:${String(time.second).padStart(2, '0')}`;
+}
+
 function formatFortuneCycle(result: BaziChartResult, cycle: FortuneCycle) {
   const range = getLuckCycleTimeRange(cycle);
   const layers = cycle.isXiaoyun
@@ -340,7 +345,7 @@ function formatFortuneCycle(result: BaziChartResult, cycle: FortuneCycle) {
   return {
     layers,
     lines: [
-      `${cycle.isXiaoyun ? '童运' : `${cycle.ganZhi}大运`}｜${cycle.age}岁起｜${formatSolarDateTime(range.start, true)}～${formatSolarDateTime(range.end, true)}`,
+      `${cycle.isXiaoyun ? '童运' : `${cycle.ganZhi}大运`}｜${cycle.age}岁起｜${formatFortuneSolarDateTime(range.start)}～${formatFortuneSolarDateTime(range.end)}`,
       ...formatTriggerRelations(analyzeFortuneTriggers(result, layers)),
     ],
   };

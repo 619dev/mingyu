@@ -255,3 +255,20 @@ test('现代比例模型提示词将冬至锚点与比例口径列入排盘资�
   assert.match(result.prompt, /【排盘资料】\n六日逐爻公历时间：[\s\S]*现代冬至岁周换算模型：/u);
   assert.match(result.prompt, /【问题】\n此时的主要变化是什么？/);
 });
+
+test('下一冬至当地子半先于交节时提示词写明上一岁周逻辑日封顶', () => {
+  const beforeTerm = calculateHuangjiJingshi({
+    sixDayDate: parseProportionalSixDay('2025-12-21T12:00:00+08:00'),
+  });
+  assert.equal(beforeTerm.sixDayCycle?.calendar.targetYear, 2025);
+  assert.equal(beforeTerm.sixDayCycle?.calendar.endpointClamped, true);
+  assert.match(beforeTerm.prompt, /下一冬至当地日子半已到、冬至真实瞬时尚未到/);
+  assert.match(beforeTerm.prompt, /当前仍属上一岁周，逻辑位置暂封顶于第360个逻辑日/);
+
+  const atTerm = calculateHuangjiJingshi({
+    sixDayDate: parseProportionalSixDay('2025-12-21T23:03:05+08:00'),
+  });
+  assert.equal(atTerm.sixDayCycle?.calendar.targetYear, 2026);
+  assert.equal(atTerm.sixDayCycle?.calendar.endpointClamped, false);
+  assert.doesNotMatch(atTerm.prompt, /逻辑位置暂封顶/);
+});

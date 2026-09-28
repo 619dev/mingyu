@@ -269,7 +269,7 @@ export const MingluPillarsSection: React.FC<Props> = ({
       {data.mingGuaInfo && (
         <div className="minglu-subblock">
           <h3 className="minglu-subblock-title">
-            本命卦位与八方吉凶 ({data.mingGuaInfo.name} · {data.mingGuaInfo.eastWest})
+            本命卦位与三项方位摘要 ({data.mingGuaInfo.name} · {data.mingGuaInfo.eastWest})
           </h3>
           <div className="minglu-card-grid minglu-card-grid-3">
             {data.mingGuaInfo.directions.map((dir, idx) => (

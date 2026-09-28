@@ -194,21 +194,12 @@ export function evaluateMeihuaTimelineTrend(params: {
  */
 function estimateYingQi(params: {
   movingYaoIndex: number;
-  upperTrigramIndex: number;
-  lowerTrigramIndex: number;
   tiElement: string;
   yongElement: string;
   seasonState: '旺' | '相' | '休' | '囚' | '死' | '平';
 }): string[] {
   const periods: string[] = [];
-  const {
-    movingYaoIndex,
-    upperTrigramIndex,
-    lowerTrigramIndex,
-    tiElement,
-    yongElement,
-    seasonState,
-  } = params;
+  const { movingYaoIndex, tiElement, yongElement, seasonState } = params;
 
   // 1. 动爻只定阶段和层位，不机械换算具体日、周、月、年。
   const yaoPeriodMap: Record<number, string> = {
@@ -221,11 +212,7 @@ function estimateYingQi(params: {
   };
   periods.push(yaoPeriodMap[movingYaoIndex] || '触发层位须结合实际事件再验');
 
-  // 2. 卦数只保留为起卦结构旁证，不直接映射时间单位。
-  const guaSum = upperTrigramIndex + lowerTrigramIndex;
-  periods.push(`上下卦数和为${guaSum}，只作取数来源旁证，不换算绝对日期`);
-
-  // 3. 体用生克只作快慢与阻力条件，不直接等于事件成败。
+  // 2. 体用生克只作快慢与阻力条件，不直接等于事件成败。
   if (yongElement === tiElement) {
     periods.push('体用比和，关系同气，可优先观察条件同步时的进展');
   } else if (isSheng(yongElement, tiElement)) {
@@ -236,7 +223,7 @@ function estimateYingQi(params: {
     periods.push('体克用，体卦能够制约事项，但须核验投入和消耗是否可承受');
   }
 
-  // 4. 旺衰提供相对迟速条件，须与体用生克、互变共同判断。
+  // 3. 旺衰提供相对迟速条件，须与体用生克、互变共同判断。
   if (seasonState === '旺' || seasonState === '相') {
     periods.push(`体卦月令${seasonState}，可作应期偏快的盘内参考`);
   } else if (seasonState === '休' || seasonState === '囚' || seasonState === '死') {
@@ -515,8 +502,6 @@ export function generateMeihua(customDate?: Date, settings?: MeihuaSettings): Me
       }),
       yingQi: estimateYingQi({
         movingYaoIndex,
-        upperTrigramIndex,
-        lowerTrigramIndex,
         tiElement: tiGua.element,
         yongElement: yongGua.element,
         seasonState: tiSeasonState,

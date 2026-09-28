@@ -10,6 +10,7 @@ import {
   type BaziPromptTopic,
 } from '../../src/lib/public-api/prompt-builders';
 import { baziCalculator } from 'mingyu-core/bazi';
+import { selectBaziFortuneForZiweiScope } from '../../src/lib/public-api/fortune-selection';
 import { calculateTrueSolarTime } from '@core/bazi/trueSolarTime';
 import { getTimeIndexFromClock } from 'mingyu-core/calendar';
 import { generateQimen } from 'mingyu-core/divination/qimen';
@@ -2113,6 +2114,48 @@ test('公开 API 应支持八字紫微合参提示词', async () => {
   assert.match(body.data.prompt, /我现在适合换工作还是继续等待/);
   assert.doesNotMatch(body.data.prompt, /结构化证据|证据汇总|解释边界|计算链/);
   assertPromptIsPortableTaskText(body.data.prompt);
+});
+
+test('八字紫微合参与主题提示词按紫微目标日期定位八字岁运', async () => {
+  const input = {
+    name: '目标日期合参样本',
+    gender: 'male',
+    year: 1990,
+    month: 5,
+    day: 15,
+    timeIndex: 6,
+    dateType: 'solar',
+    promptScope: 'yearly',
+    scopeDate: '2020-06-15',
+    question: '请比较这段时间的事业发展。',
+    responseMode: 'prompt-only',
+  } as const;
+
+  for (const path of ['bazi-ziwei/prompt', 'consultation/thematic/prompt']) {
+    const { response, body } = await callApi(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 200, `${path}: ${JSON.stringify(body)}`);
+    assert.equal(body.ok, true);
+    const prompt = body.data.prompt as string;
+    assert.match(prompt, /【八字岁运】[\s\S]*选择日期：2020年/u, path);
+    assert.match(prompt, /2020-06-15/u, path);
+    assert.doesNotMatch(prompt, /时间层说明/u, path);
+  }
+});
+
+test('八字有效运限外的紫微目标日期不生成八字岁运选择', () => {
+  const chart = baziCalculator.calculateBazi({
+    gender: 'male',
+    year: 1990,
+    month: 5,
+    day: 15,
+    timeIndex: 6,
+  });
+
+  assert.equal(selectBaziFortuneForZiweiScope(chart, 'year', '1900-01-01'), null);
 });
 
 test('同一命主的八字紫微本命合参不将两套盘面写成双方关系', async () => {

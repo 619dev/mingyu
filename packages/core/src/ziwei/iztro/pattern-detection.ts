@@ -841,7 +841,7 @@ const VERIFIED_PATTERN_RULES: VerifiedPatternRule[] = [
             stars: ['文昌', '文曲', ...getMatchedStarNames(target, ['紫微'])],
             conditions: [
               '文昌与文曲同守福德宫',
-              hasStar(target, '紫微') ? '福德宫同时见紫微加强条件' : '未附加紫微加强条件',
+              ...(hasStar(target, '紫微') ? ['福德宫同时见紫微加强条件'] : []),
             ],
           }
         : null;
