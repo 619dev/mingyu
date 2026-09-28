@@ -176,7 +176,7 @@ export interface AlmanacCounterEvidenceFact {
 
 export interface AlmanacCounterSummaryFact {
   key: 'almanac:counter-summary';
-  status: '有明确反证' | '未见明确反证';
+  status: '有明确反证' | '未见明确反证' | '资料不足';
   factKeys: string[];
   promptText: string;
   sources: string[];
@@ -1592,11 +1592,19 @@ export function analyzeAlmanacEvidence(data: AlmanacData): AlmanacEvidenceAnalys
   const counterEvidenceFacts = buildCounterEvidenceFacts(candidates);
   const counterSummaryFact: AlmanacCounterSummaryFact = {
     key: 'almanac:counter-summary',
-    status: counterEvidenceFacts.length ? '有明确反证' : '未见明确反证',
+    status:
+      candidates.length === 0
+        ? '资料不足'
+        : counterEvidenceFacts.length
+          ? '有明确反证'
+          : '未见明确反证',
     factKeys: counterEvidenceFacts.map((item) => item.key),
-    promptText: counterEvidenceFacts.length
-      ? `候选范围内共记录${counterEvidenceFacts.length}项明确限制，须与可用条件并列展示`
-      : '候选范围内未见明确事项忌项、参与人冲突或无可用时辰记录；不代表现实风险为零',
+    promptText:
+      candidates.length === 0
+        ? '当前没有候选日资料，无法核验候选范围内的明确限制'
+        : counterEvidenceFacts.length
+          ? `候选范围内共记录${counterEvidenceFacts.length}项明确限制，须与可用条件并列展示`
+          : '候选范围内未见明确事项忌项、参与人冲突或无可用时辰记录；不代表现实风险为零',
     sources: ['各候选日七步状态形成链与逐时时课筛选结果'],
     limitation: COUNTER_SUMMARY_LIMITATION,
   };

@@ -273,6 +273,18 @@ test('紫微阶段格式化覆盖真实完整时间线边界、交界流月和�
   );
   for (const [periodIndex, period] of timeline.periods.entries()) {
     const text = phaseTexts[periodIndex]!;
+    const firstYear = period.years[0]!;
+    const lastYear = period.years.at(-1)!;
+    assert.ok(
+      text.includes(`实际覆盖：${firstYear.dateStr} 至 ${lastYear.endDateStr ?? lastYear.dateStr}`),
+      `${period.label} 的实际覆盖日期应只描述本阶段资料`,
+    );
+    assert.ok(!text.includes('本阶段事实日期：'));
+    assert.ok(
+      text.includes(
+        `完整资料全局覆盖：${timeline.actualStartDateStr} 至 ${timeline.actualEndDateStr}`,
+      ),
+    );
     assert.match(text, new RegExp(`${period.label}.*${period.dateStr}至${period.endDateStr}`));
     for (const year of period.years) {
       assert.ok(

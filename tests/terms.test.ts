@@ -54,6 +54,31 @@ test('八字术语盘面情境推断：应根据日主旺衰与喜忌动态生�
   assert.ok(termCtx.relationshipSummary?.includes('日主'), '应包含日主旺衰与格局摘要');
 });
 
+test('八字术语只将有效六十甲子和天干五行名归为对应盘面事实', () => {
+  const bazi = baziCalculator.calculateCoreBazi({
+    year: 1990,
+    month: 5,
+    day: 15,
+    timeIndex: 6,
+    gender: 'male',
+  });
+
+  assert.equal(getBaziTermContext('甲子', bazi)?.chartTitle, '四柱干支气数');
+  assert.equal(getBaziTermContext('甲木', bazi)?.chartTitle, '天干实盘作用');
+  assert.equal(getBaziTermContext('甲丑', bazi), undefined);
+  assert.equal(getBaziTermContext('甲火', bazi), undefined);
+  assert.equal(getBaziTermContext('子土', bazi), undefined);
+  assert.equal(getBaziTermContext('炉中火', bazi), undefined);
+  assert.equal(
+    getBaziTermContext('炉中火', bazi, { pillarLabel: '年柱', ganZhi: '丙寅' })?.chartTitle,
+    '柱位纳音气象',
+  );
+  assert.equal(
+    getBaziTermContext('炉中火', bazi, { pillarLabel: '年柱', ganZhi: '甲子' }),
+    undefined,
+  );
+});
+
 test('六爻术语盘面情境推断：应准确识别世爻、应爻与动变作用', () => {
   const liuyao = generateLiuyao(new Date('2024-06-01T12:00:00'));
 

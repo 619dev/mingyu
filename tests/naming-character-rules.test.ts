@@ -1,11 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  analyzeChineseName,
+  buildChineseNameAnalysisPrompt,
   generateChineseNames,
   selectNamingCharacters,
   selectChineseCharacters,
   buildChineseNamingPrompt,
 } from 'mingyu-core/name-number';
+
+test('姓名提示词只要求本次资料支持的分析与方案', () => {
+  const analysisPrompt = buildChineseNameAnalysisPrompt({
+    analysis: analyzeChineseName({ fullName: '李清和' }),
+  });
+  assert.doesNotMatch(analysisPrompt, /【出生资料】|出生适配/);
+  assert.match(analysisPrompt, /【输出要求】\n先给整体结论/);
+
+  const candidates = generateChineseNames({ surname: '李', limit: 1 });
+  assert.equal(candidates.length, 1);
+  const namingPrompt = buildChineseNamingPrompt({ surname: '李', candidates });
+  assert.doesNotMatch(namingPrompt, /【出生资料】|出生适配|不少于八个|首选名及两个备选名/);
+  assert.match(namingPrompt, /已列出的三才五格依据/);
+  assert.match(namingPrompt, /至多两个备选名/);
+});
 
 test('偏好字与忌用字按字典繁简对应处理并以忌用字优先', () => {
   for (const [preferredCharacters, forbiddenCharacters] of [

@@ -1300,16 +1300,16 @@ export function buildChineseNameAnalysisPrompt(input: {
   question?: string;
   selection?: PromptSelection;
 }) {
-  const task =
-    '综合出生取用、姓名字义、音律、书写辨识、谐音联想、三才五格与现代使用场景，评价这个姓名的整体适配度；说明各项依据之间如何互相支持或制约，并给出自然可用的优化方向。';
+  const hasBirthContext = Boolean(input.analysis.birthContext);
+  const task = `综合${hasBirthContext ? '出生取用、' : ''}姓名字义、音律、书写辨识、谐音联想、三才五格与现代使用场景，评价这个姓名的整体适配度；说明各项依据之间如何互相支持或制约，并给出自然可用的优化方向。`;
   return [
     '【任务】',
     input.selection ? buildPromptSelectionTask(task, input.selection) : task,
     ...(input.selection ? ['【解读选择】', getPromptSelectionSection(input.selection)] : []),
     '',
-    '【出生资料】',
-    formatBirthContext(input.analysis.birthContext),
-    '',
+    ...(hasBirthContext
+      ? ['【出生资料】', formatBirthContext(input.analysis.birthContext), '']
+      : []),
     '【姓名资料】',
     formatNameAnalysis(input.analysis),
     '',
@@ -1321,7 +1321,7 @@ export function buildChineseNameAnalysisPrompt(input: {
       `请完整解析“${input.analysis.surname}${input.analysis.given}”这个姓名。`,
     '',
     '【输出要求】',
-    '先给整体结论，再分别说明出生适配、字义组合、读音节奏、书写辨识、谐音与社会使用感受、三才五格，最后给出可直接比较的优点、留意点和优化建议。',
+    `先给整体结论，再分别说明${hasBirthContext ? '出生适配、' : ''}字义组合、读音节奏、书写辨识、谐音与社会使用感受、三才五格，最后给出可直接比较的优点、留意点和优化建议。`,
   ].join('\n');
 }
 
@@ -1337,6 +1337,7 @@ export function buildChineseNamingPrompt(input: {
   selection?: PromptSelection;
 }) {
   if (!input.candidates.length) throw new Error('请先生成姓名候选');
+  const birthContext = input.candidates[0]!.analysis.birthContext;
   const forbidden = new Set(namingCharacters(input.forbiddenCharacters).map(namingCharacterKey));
   const preferred = namingCharacters(input.preferredCharacters).filter(
     (char) => !forbidden.has(namingCharacterKey(char)),
@@ -1360,16 +1361,13 @@ export function buildChineseNamingPrompt(input: {
       items.findIndex((entry) => namingCharacterKey(entry.char) === key) === index
     );
   });
-  const task =
-    '综合出生取用、用字条件、字义搭配、音律节奏、字形协调、谐音联想和现代社会使用场景设计姓名。候选姓名只是比较起点，可以重新组合适配字，也可以补充同类常用字并提出更合适的新名字。';
+  const task = `综合${birthContext ? '出生取用、' : ''}用字条件、字义搭配、音律节奏、字形协调、谐音联想和现代社会使用场景设计姓名。候选姓名只是比较起点，可以重新组合适配字，也可以补充同类常用字并提出更合适的新名字。`;
   return [
     '【任务】',
     input.selection ? buildPromptSelectionTask(task, input.selection) : task,
     ...(input.selection ? ['【解读选择】', getPromptSelectionSection(input.selection)] : []),
     '',
-    '【出生资料】',
-    formatBirthContext(input.candidates[0]!.analysis.birthContext),
-    '',
+    ...(birthContext ? ['【出生资料】', formatBirthContext(birthContext), ''] : []),
     '【起名资料】',
     [
       `姓氏：${input.surname}`,
@@ -1390,7 +1388,7 @@ export function buildChineseNamingPrompt(input: {
     formatNamingTradition(),
     '',
     '【输出要求】',
-    '先说明选字思路，再给出不少于八个姓名方案。每个方案说明出生适配、字义组合、读音节奏、字形、谐音联想、辨识度与三才五格，明确标注哪些来自候选样本、哪些是重新设计；最后给出首选名及两个备选名。',
+    `先说明选字思路，再比较本次候选姓名的${birthContext ? '出生适配、' : ''}字义组合、读音节奏、字形、谐音联想、辨识度与已列出的三才五格依据；如重新设计姓名，说明新组合的选字、读音和字形依据；最后给出首选名及至多两个备选名，标明候选姓名与新构思。`,
   ].join('\n');
 }
 
@@ -1709,9 +1707,9 @@ export function buildNumberEnergyPrompt(input: {
       : analysis.purpose === 'plate'
         ? '车牌号'
         : '数字字母编号';
-  const conversion = analysis.letterConversions.length
-    ? analysis.letterConversions.map((item) => `${item.letter}=${item.value}`).join('、')
-    : '没有字母换算';
+  const conversion = analysis.letterConversions
+    .map((item) => `${item.letter}=${item.value}`)
+    .join('、');
   const pairs = analysis.energyPairs.length
     ? analysis.energyPairs
         .map((item, index) => {
@@ -1721,10 +1719,10 @@ export function buildNumberEnergyPrompt(input: {
           return `${index + 1}. ${item.span} → ${item.pair}：${item.name}（${item.nature}）${modifier}；${item.keywords.join('、')}；${item.meaning}\n位置：能量序列第${item.start + 1}—${item.end + 1}位，对应数字字母第${item.sourceStart + 1}—${item.sourceEnd + 1}位「${item.sourceText}」\n卦变：${item.trigramEvidence.explanation}`;
         })
         .join('\n')
-    : '当前序列不足以形成八星磁场组合。';
-  const distribution = analysis.magneticDistribution.length
-    ? analysis.magneticDistribution.map((item) => `${item.name}${item.count}组`).join('、')
-    : '暂无可归类组合';
+    : '';
+  const distribution = analysis.magneticDistribution
+    .map((item) => `${item.name}${item.count}组`)
+    .join('、');
   const usageFocus =
     analysis.purpose === 'phone'
       ? '手机号结合日常联络、工作沟通、关系维护与号码记忆辨识来解读；个人经历以本人提供的事实为准。'
@@ -1733,7 +1731,7 @@ export function buildNumberEnergyPrompt(input: {
         : '数字字母编号结合提问中说明的实际用途来解读；用途未明时先给通用象意，并列出需要补充的使用背景。';
   const task = analysis.energyPairs.length
     ? '依据实际形成的八星数字能量相邻组合、频次、连续段和前后作用，结合号码用途回答问题。'
-    : '依据原始数字字母序列、取数结果、0与5的位置和号码用途回答问题，并结合当前已列资料说明现实侧重点。';
+    : `依据原始数字字母序列${conversion ? '、字母换算' : ''}${analysis.modifiers.length ? '、0与5的位置' : ''}和号码用途回答问题，并结合当前已列资料说明现实侧重点。`;
   const selectedTask = input.selection ? buildPromptSelectionTask(task, input.selection) : task;
 
   return [
@@ -1748,13 +1746,17 @@ export function buildNumberEnergyPrompt(input: {
     ...(analysis.excludedCharacters.length
       ? [`号码标记：${analysis.excludedCharacters.join('、')}；磁场按上述数字字母序列计算。`]
       : []),
-    `字母换算：${conversion}`,
+    ...(conversion ? [`字母换算：${conversion}`] : []),
     `能量序列：${analysis.energySequence}`,
-    `磁场分布：${distribution}`,
-    `高频磁场：${analysis.dominantFields.join('、') || '暂无'}`,
-    '',
-    '【磁场组合】',
-    pairs,
+    ...(analysis.energyPairs.length
+      ? [
+          `磁场分布：${distribution}`,
+          `高频磁场：${analysis.dominantFields.join('、')}`,
+          '',
+          '【磁场组合】',
+          pairs,
+        ]
+      : ['磁场组合：当前序列不足以形成八星磁场组合。']),
     ...(analysis.magneticSegments.length
       ? [
           '',
@@ -1791,9 +1793,13 @@ export function buildNumberEnergyPrompt(input: {
     input.question?.trim() || `请完整解读这个${purposeLabel}的数字能量。`,
     '',
     '【输出要求】',
-    '将磁场作为民俗象意解释，并以实际使用体验和个人选择为现实判断依据。',
+    analysis.energyPairs.length
+      ? '将磁场作为民俗象意解释，并以实际使用体验和个人选择为现实判断依据。'
+      : '将号码序列作为民俗象意解释，并以实际使用体验和个人选择为现实判断依据。',
     usageFocus,
-    '先概括高频磁场，再按号码顺序解释每组磁场及其衔接，结合号码类型说明资源、行动、关系、表达与稳定性等现实倾向，最后给出平衡使用这些倾向的建议。',
+    analysis.energyPairs.length
+      ? '先概括高频磁场，再按号码顺序解释每组磁场及其衔接，结合号码类型说明资源、行动、关系、表达与稳定性等现实倾向，最后给出平衡使用这些倾向的建议。'
+      : `结合号码类型与能量序列${analysis.modifiers.length ? '中0与5的位置' : ''}，说明实际使用时可观察的侧重点和个人选择。`,
   ].join('\n');
 }
 

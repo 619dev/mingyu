@@ -291,9 +291,11 @@ function isApplyingAspect(first: AspectBody, second: AspectBody, angle: number):
   if (first.longitudeSpeed === undefined || second.longitudeSpeed === undefined) return null;
   const relativeSpeed = second.longitudeSpeed - first.longitudeSpeed;
   if (relativeSpeed === 0) return null;
+  const currentSeparation = separation(first.longitude, second.longitude);
+  if (currentSeparation === angle) return null;
   const directedSeparation = normalize(second.longitude - first.longitude);
   const separationSpeed = (directedSeparation > 180 ? -1 : 1) * relativeSpeed;
-  return (separation(first.longitude, second.longitude) - angle) * separationSpeed < 0;
+  return (currentSeparation - angle) * separationSpeed < 0;
 }
 
 function toUtc(input: BirthData): Date {

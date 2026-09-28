@@ -5,6 +5,45 @@ import { formatMeihuaFacts } from '@core/prompt/meihua-facts';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 import { ZHOUYI_HEXAGRAMS_TEXT } from '@core/classics/zhouyi';
 
+test('梅花旧盘取数与卦数不一致时不输出错误算式', () => {
+  const date = new Date('2026-05-19T10:30:00+08:00');
+  const cases = [
+    {
+      data: generateMeihua(date, { method: 'time' }),
+      change: (data: ReturnType<typeof generateMeihua>) => {
+        data.calculation!.day! += 1;
+      },
+    },
+    {
+      data: generateMeihua(date, { method: 'number', number: 42 }),
+      change: (data: ReturnType<typeof generateMeihua>) => {
+        data.calculation!.number! += 1;
+      },
+    },
+    {
+      data: generateMeihua(date, { method: 'sound', soundCount: 5 }),
+      change: (data: ReturnType<typeof generateMeihua>) => {
+        data.calculation!.soundCount! += 1;
+      },
+    },
+    {
+      data: generateMeihua(date, { method: 'direction', direction: 'north', objectType: 'earth' }),
+      change: (data: ReturnType<typeof generateMeihua>) => {
+        data.calculation!.objectType = 'heaven';
+      },
+    },
+  ];
+  for (const { data, change } of cases) {
+    assert.match(formatMeihuaFacts(data).join('\n'), /起卦取数：/u);
+    change(data);
+    assert.doesNotMatch(formatMeihuaFacts(data).join('\n'), /起卦取数：|物象锚点：/u);
+  }
+
+  const mismatched = generateMeihua(date, { method: 'number', number: 42 });
+  mismatched.calculation!.movingYaoIndex = (mismatched.movingYao.position % 6) + 1;
+  assert.doesNotMatch(formatMeihuaFacts(mismatched).join('\n'), /起卦取数：/u);
+});
+
 test('梅花字占保留原字及分笔，方位取象使用中文资料', () => {
   const date = new Date('2026-09-11T05:27:00+08:00');
   const character = generateMeihua(date, {

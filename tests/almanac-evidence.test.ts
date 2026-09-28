@@ -178,7 +178,9 @@ test('黄历择日候选资料为空时应明确标记缺失，不生成伪最�
   assert.equal(evidence.summaryFact.candidateCount, 0);
   assert.equal(evidence.calculationSteps[0]?.status, '资料不足');
   assert.equal(evidence.calculationSteps[6]?.status, '资料不足');
-  assert.equal(evidence.counterSummaryFact.status, '未见明确反证');
+  assert.equal(evidence.counterSummaryFact.status, '资料不足');
+  assert.match(evidence.counterSummaryFact.promptText, /没有候选日资料，无法核验/u);
+  assert.doesNotMatch(evidence.counterSummaryFact.promptText, /未见明确事项忌项/);
   assert.deepEqual(evidence.preferredDates, []);
   assert.deepEqual(evidence.conditionalDates, []);
   assert.deepEqual(evidence.cautionDates, []);

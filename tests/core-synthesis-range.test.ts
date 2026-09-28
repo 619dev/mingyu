@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildBaziZiweiSynthesis,
   calculateBaziZiweiCombinedReading,
   type BaziZiweiCombinedReading,
   type BaziZiweiRangeReading,
@@ -93,4 +94,45 @@ test('合参范围必须固定紫微上下文，并逐秒使用真实 synthesis'
     assert.deepEqual(sample.synthesis, point.synthesis);
     assert.equal(sample.promptText, point.promptText);
   }
+});
+
+test('紫微大限或流年未提供时合参不应报告资料完整', async () => {
+  const { birthTimeRange: _birthTimeRange, ...pointProfile } = PROFILE;
+  const reading = await calculateBaziZiweiCombinedReading(pointProfile, {
+    ziwei: ZIWEI_OPTIONS,
+  });
+  if (reading.range) throw new Error('测试预期得到单点合参结果。');
+  assert.equal(reading.synthesis.status, '资料完整');
+  const { bazi, ziwei: runtime } = reading.bundle;
+  assert.ok(bazi);
+  assert.ok(runtime);
+
+  for (const missingScope of ['decadal', 'yearly'] as const) {
+    const payloadByScope = { ...runtime.payloadByScope };
+    delete (payloadByScope as Partial<typeof payloadByScope>)[missingScope];
+    const synthesis = buildBaziZiweiSynthesis({
+      bazi,
+      ziwei: { ...runtime, payloadByScope },
+    });
+
+    assert.equal(synthesis.status, '资料有缺口');
+    assert.ok(
+      synthesis.missingFacts.includes(
+        missingScope === 'decadal'
+          ? '运限基准日期缺少对应紫微大限'
+          : '运限基准年份缺少对应紫微流年',
+      ),
+    );
+  }
+
+  const originOnly = buildBaziZiweiSynthesis({
+    bazi,
+    ziwei: {
+      ...runtime,
+      payloadByScope: { origin: runtime.payloadByScope.origin } as typeof runtime.payloadByScope,
+    },
+  });
+  assert.ok(originOnly.missingFacts.includes('运限基准日期缺少对应紫微大限'));
+  assert.ok(originOnly.missingFacts.includes('运限基准年份缺少对应紫微流年'));
+  assert.ok(!originOnly.missingFacts.includes('大运与流年缺少紫微资料'));
 });

@@ -24,6 +24,11 @@ test('提示词完整保留首尾及仅含0和5的序列位置', () => {
   assert.match(modifiersOnly, /不足以形成八星磁场组合/);
   assert.match(modifiersOnly, /依据原始数字字母序列/);
   assert.doesNotMatch(modifiersOnly, /依据实际形成的八星数字能量相邻组合/);
+  assert.doesNotMatch(modifiersOnly, /【磁场组合】|磁场分布：|高频磁场：|先概括高频磁场/);
+
+  const single = buildNumberEnergyPrompt({ analysis: analyzeNumber('1') });
+  assert.doesNotMatch(single, /【磁场组合】|【0与5的位置】|字母换算：|先概括高频磁场/);
+  assert.match(single, /结合号码类型与能量序列，说明实际使用时可观察的侧重点/);
 });
 
 test('字母内部与跨字符磁场均能追溯展开位置', () => {

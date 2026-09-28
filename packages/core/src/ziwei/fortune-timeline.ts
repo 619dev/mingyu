@@ -1204,11 +1204,16 @@ export function formatZiweiFortuneTimelinePhase(
       years: source.years.slice(selection.startYearIndex, selection.endYearIndex + 1),
     };
   });
-  const phaseTimeline: ZiweiFortuneTimeline = { ...timeline, periods };
   const firstPeriod = periods[0]!;
   const firstYear = firstPeriod.years[0]!;
   const lastPeriod = periods.at(-1)!;
   const lastYear = lastPeriod.years.at(-1)!;
+  const phaseTimeline: ZiweiFortuneTimeline = {
+    ...timeline,
+    periods,
+    actualStartDateStr: firstYear.dateStr,
+    actualEndDateStr: lastYear.endDateStr ?? lastYear.dateStr,
+  };
   const selectionText = selections
     .map((selection) => {
       const period = timeline.periods[selection.periodIndex]!;
@@ -1224,7 +1229,6 @@ export function formatZiweiFortuneTimelinePhase(
   return [
     `紫微完整运限阶段 ${phaseNumber}/${phaseCount}`,
     `本阶段覆盖：${selectionText}`,
-    `本阶段事实日期：${firstYear.dateStr} 至 ${lastYear.endDateStr ?? lastYear.dateStr}`,
     `完整资料全局覆盖：${timeline.actualStartDateStr} 至 ${timeline.actualEndDateStr}`,
     timelineText,
   ].join('\n');

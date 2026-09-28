@@ -484,7 +484,8 @@ export function buildBaziZiweiSynthesis(params: {
         gaps.push(`${theme.label}八字资料有待核验项：${placeholderKeys.join('、')}`);
       }
     }
-    if (!theme.ziweiEvidence.length) gaps.push(`${theme.label}缺少紫微资料`);
+    if (!theme.ziweiEvidence.length && theme.id !== 'timing')
+      gaps.push(`${theme.label}缺少紫微资料`);
     return gaps;
   });
   if (!hasCompleteZiweiOrigin(params.ziwei)) {
@@ -492,6 +493,11 @@ export function buildBaziZiweiSynthesis(params: {
   }
   if (!baziFacts.luck.length) missingFacts.push('运限基准日期缺少对应八字大运或童限');
   if (!baziFacts.annual.length) missingFacts.push('运限基准年份缺少对应八字流年');
+  const ziweiTimingScopes = new Set(
+    themes.find((theme) => theme.id === 'timing')?.ziweiEvidence.map((fact) => fact.scope),
+  );
+  if (!ziweiTimingScopes.has('decadal')) missingFacts.push('运限基准日期缺少对应紫微大限');
+  if (!ziweiTimingScopes.has('yearly')) missingFacts.push('运限基准年份缺少对应紫微流年');
 
   const corroboration = evaluateBaziZiweiCorroboration(params.bazi, params.ziwei);
 

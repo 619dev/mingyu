@@ -1,6 +1,8 @@
 import type { MeihuaData } from '../types/divination';
 import { getBranchWuxing, getSeasonState, isSheng, isKe } from '../ganzhi';
 import { MEIHUA_DIRECTION_OPTIONS, MEIHUA_OBJECT_OPTIONS } from '../divination/config';
+import { dizhi } from '../divination/divination-data';
+import { trigramsByIndex } from '../divination/hexagram-data';
 import { hasCompleteCharacterCalculation } from '../divination/algorithms/meihua/helpers/methods';
 
 export function formatMeihuaFacts(data: MeihuaData): string[] {
@@ -41,9 +43,9 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
   const c = data.calculation;
   if (c) {
     const hasResolvedIndices =
-      typeof c.upperTrigramIndex === 'number' &&
-      typeof c.lowerTrigramIndex === 'number' &&
-      typeof c.movingYaoIndex === 'number';
+      trigramsByIndex[c.upperTrigramIndex ?? 0]?.name === data.mainHexagram.upper &&
+      trigramsByIndex[c.lowerTrigramIndex ?? 0]?.name === data.mainHexagram.lower &&
+      c.movingYaoIndex === data.movingYao.position;
     const objectLabel = MEIHUA_OBJECT_OPTIONS.find((item) => item.value === c.objectType)?.label;
     const directionLabel = MEIHUA_DIRECTION_OPTIONS.find(
       (item) => item.value === c.direction,
@@ -53,7 +55,19 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
       (c.methodKey === 'time' || c.methodKey === 'timeTrigram') &&
       c.yearZhi &&
       c.timeZhi &&
-      [c.yearZhiIndex, c.month, c.day, c.timeZhiIndex].every((value) => typeof value === 'number')
+      c.yearZhiIndex === dizhi.indexOf(c.yearZhi) + 1 &&
+      c.timeZhiIndex === dizhi.indexOf(c.timeZhi) + 1 &&
+      c.yearZhiIndex > 0 &&
+      c.timeZhiIndex > 0 &&
+      Number.isInteger(c.month) &&
+      Number.isInteger(c.day) &&
+      c.month! >= 1 &&
+      c.month! <= 12 &&
+      c.day! >= 1 &&
+      c.day! <= 30 &&
+      c.upperTrigramIndex === ((c.yearZhiIndex + c.month! + c.day!) % 8 || 8) &&
+      c.lowerTrigramIndex === ((c.yearZhiIndex + c.month! + c.day! + c.timeZhiIndex) % 8 || 8) &&
+      c.movingYaoIndex === ((c.yearZhiIndex + c.month! + c.day! + c.timeZhiIndex) % 6 || 6)
     ) {
       facts.push(
         `起卦取数：农历年支${c.yearZhi}序数${c.yearZhiIndex}、农历月数${c.month}、农历日数${c.day}、时支${c.timeZhi}序数${c.timeZhiIndex}；年支序数加月数加日数除8取余得上卦数${c.upperTrigramIndex}，再加时支序数除8取余得下卦数${c.lowerTrigramIndex}，同一总数除6取余得动爻${c.movingYaoIndex}；卦数余0取8，动爻余0取6`,
@@ -61,9 +75,15 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
     } else if (
       hasResolvedIndices &&
       c.methodKey === 'number' &&
-      typeof c.number === 'number' &&
+      Number.isSafeInteger(c.number) &&
+      c.number! > 0 &&
       c.timeZhi &&
-      typeof c.timeZhiIndex === 'number'
+      c.timeZhiIndex === dizhi.indexOf(c.timeZhi) + 1 &&
+      c.timeZhiIndex > 0 &&
+      Number.isSafeInteger(c.number! + c.timeZhiIndex) &&
+      c.upperTrigramIndex === (c.number! % 8 || 8) &&
+      c.lowerTrigramIndex === ((c.number! + c.timeZhiIndex) % 8 || 8) &&
+      c.movingYaoIndex === ((c.number! + c.timeZhiIndex) % 6 || 6)
     ) {
       facts.push(
         `起卦取数：数字${c.number}除8取余得上卦数${c.upperTrigramIndex}；数字${c.number}加时支${c.timeZhi}序数${c.timeZhiIndex}，除8取余得下卦数${c.lowerTrigramIndex}，除6取余得动爻${c.movingYaoIndex}；卦数余0取8，动爻余0取6`,
@@ -71,9 +91,15 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
     } else if (
       hasResolvedIndices &&
       c.methodKey === 'sound' &&
-      typeof c.soundCount === 'number' &&
+      Number.isSafeInteger(c.soundCount) &&
+      c.soundCount! > 0 &&
       c.timeZhi &&
-      typeof c.timeZhiIndex === 'number'
+      c.timeZhiIndex === dizhi.indexOf(c.timeZhi) + 1 &&
+      c.timeZhiIndex > 0 &&
+      Number.isSafeInteger(c.soundCount! + c.timeZhiIndex) &&
+      c.upperTrigramIndex === (c.soundCount! % 8 || 8) &&
+      c.lowerTrigramIndex === ((c.soundCount! + c.timeZhiIndex) % 8 || 8) &&
+      c.movingYaoIndex === ((c.soundCount! + c.timeZhiIndex) % 6 || 6)
     ) {
       facts.push(
         `起卦取数：所闻声音数${c.soundCount}除8取余得上卦数${c.upperTrigramIndex}；声音数${c.soundCount}加时支${c.timeZhi}序数${c.timeZhiIndex}，除8取余得下卦数${c.lowerTrigramIndex}，除6取余得动爻${c.movingYaoIndex}；卦数余0取8，动爻余0取6`,
@@ -97,7 +123,16 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
       c.timeZhi &&
       objectLabel &&
       directionLabel &&
-      typeof c.timeZhiIndex === 'number'
+      c.timeZhiIndex === dizhi.indexOf(c.timeZhi) + 1 &&
+      c.timeZhiIndex > 0 &&
+      c.objectTrigramIndex ===
+        MEIHUA_OBJECT_OPTIONS.findIndex((item) => item.value === c.objectType) + 1 &&
+      c.objectTrigramIndex === c.upperTrigramIndex &&
+      c.directionTrigramIndex ===
+        MEIHUA_DIRECTION_OPTIONS.findIndex((item) => item.value === c.direction) + 1 &&
+      c.directionTrigramIndex === c.lowerTrigramIndex &&
+      c.movingYaoIndex ===
+        ((c.objectTrigramIndex + c.directionTrigramIndex + c.timeZhiIndex) % 6 || 6)
     ) {
       facts.push(
         `起卦取数：所见物类${objectLabel}取上卦数${c.objectTrigramIndex}，方位${directionLabel}取下卦数${c.directionTrigramIndex}；上卦数加下卦数及时支${c.timeZhi}序数${c.timeZhiIndex}除6取余得动爻${c.movingYaoIndex}；卦数余0取8，动爻余0取6`,

@@ -473,6 +473,23 @@ test('零容许度的精确相位强度为100且相对静止无法区分入相�
   assert.equal(result.isApplying, null);
 });
 
+test('精确相位不应被误标为出相', () => {
+  for (const angle of [0, 60, 180]) {
+    const type =
+      angle === 0
+        ? AspectType.Conjunction
+        : angle === 60
+          ? AspectType.Sextile
+          : AspectType.Opposition;
+    const result = calculateAspects([
+      { name: '甲', longitude: 0, longitudeSpeed: 0 },
+      { name: '乙', longitude: angle, longitudeSpeed: 1 },
+    ]).aspects.find((aspect) => aspect.type === type)!;
+    assert.equal(result.deviation, 0);
+    assert.equal(result.isApplying, null, type);
+  }
+});
+
 test('合相跨零度与冲相两侧按趋近方向判断，速度缺失保持未定', () => {
   for (const [longitude, longitudeSpeed, type] of [
     [359.99, 12, AspectType.Conjunction],
