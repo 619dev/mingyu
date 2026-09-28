@@ -207,6 +207,10 @@ test('添加居住人资料不改变门向测量及玄空候选山向', () => {
   assert.deepEqual(withPerson.xuankong?.measurement, alone.xuankong?.measurement);
   assert.deepEqual(withPerson.xuankong?.plates, alone.xuankong?.plates);
   assert.match(withPerson.prompt, /候选山向/);
+  assert.match(withPerson.agreements[0].detail, /中心读数盘，待复测核定/);
+  assert.match(withPerson.advice[0], /中心读数盘，待复测核定/);
+  assert.match(withPerson.evidencePromptText, /中心读数盘，待复测核定/);
+  assert.ok(withPerson.agreements.every((item) => item.level !== '一致关注'));
 });
 
 test('住宅风水仅有出生信息时可出八宅，不出玄空', () => {

@@ -46,7 +46,7 @@ test('流曜吊照逐条绑定采样时刻和本命宫位，角距两端来自�
     assert.ok(Math.abs(Math.abs(angle - aspect.exactAngle) - aspect.orb) < 0.0001);
     assert.ok(
       result.prompt.includes(
-        `采样时刻${flowing.localDateTime}：${aspect.star1}（本命${first.signBranch}宫${first.palace}）与${aspect.star2}（${second.signBranch}宫${second.palace}）`,
+        `采样时刻${flowing.localDateTime}：${aspect.star1}（入本命${first.signBranch}宫${first.palace}）与${aspect.star2}（${second.signBranch}宫${second.palace}）`,
       ),
     );
   }

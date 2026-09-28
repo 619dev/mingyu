@@ -18,6 +18,11 @@ test('七政真太阳时只校正传统命身宫，天体位置保持同一时�
 
   assert.equal(trueSolar.calculationContext.palaceTimeMode, '真太阳时混合口径');
   assert.match(trueSolar.calculationContext.palaceTimeNote ?? '', /真太阳时校正/);
+  assert.match(trueSolar.calculationContext.palaceTimeNote ?? '', /紫炁古法模型/);
+  assert.doesNotMatch(
+    trueSolar.calculationContext.palaceTimeNote ?? '',
+    /七政四余位置仍用现代星历/,
+  );
   assert.deepEqual(
     trueSolar.stars.map((star) => [star.name, star.longitude, star.xiu]),
     civil.stars.map((star) => [star.name, star.longitude, star.xiu]),

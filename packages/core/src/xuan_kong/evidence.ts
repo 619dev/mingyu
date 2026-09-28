@@ -250,6 +250,9 @@ export function analyzeXuanKongEvidence(
     const candidates = measurement.candidateMountains ?? [];
     const measurementDetails = [
       `山向测量稳定性为${measurement.stability}`,
+      measurement.stability === '山向边界敏感'
+        ? '当前局型、城门与三盘九宫按中心读数暂列，复测后核定适用盘面'
+        : '',
       measurement.sitDegree !== undefined && measurement.facingDegree !== undefined
         ? `坐山${measurement.sitDegree}°、朝向${measurement.facingDegree}°、误差±${measurement.uncertaintyDegrees ?? '未知'}°`
         : '',
@@ -301,7 +304,7 @@ export function analyzeXuanKongEvidence(
   const summaryFact = {
     key: 'xuankong:summary',
     status: counterFacts.length ? '含边界提示' : '结构完整',
-    promptText: `${result.period.yuan}${result.period.yun}运，坐${result.sitMountain}向${result.facingMountain}，${result.guaType}，${result.formation}；${result.daoShanXiang.summary}`,
+    promptText: `${result.period.yuan}${result.period.yun}运，坐${result.sitMountain}向${result.facingMountain}，${result.guaType}，${result.formation}；${result.daoShanXiang.summary}${result.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}`,
     sources: ['定运、山向、三盘飞布与到山到向汇总'],
     limitation: FACT_LIMIT,
   };

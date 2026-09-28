@@ -348,17 +348,21 @@ function collectPalaceEvidence(params: {
     });
   });
 
-  if (currentScope !== 'origin' && palace.scope_hits.length > 0) {
+  const selectedScopeHit =
+    currentScope === 'origin'
+      ? undefined
+      : `${currentScope === 'decadal' ? currentScopeLabel : mapScopeLabel(currentScope)}落宫`;
+  if (selectedScopeHit && palace.scope_hits.includes(selectedScopeHit)) {
     drafts.push({
-      stable_key: buildStableKey(['scope-hit', palace.index, palace.scope_hits.join('|')]),
+      stable_key: buildStableKey(['scope-hit', currentScope, palace.index, selectedScopeHit]),
       type: 'palace_scope_hit',
-      title: `${palace.scope_hits.join('、')}位于${palace.name}`,
+      title: `${selectedScopeHit}位于${palace.name}`,
       scope: currentScope,
       palace_indexes: [palace.index],
       palace_names: [palace.name],
       star_names: [],
       mutagens: [],
-      description: `${palace.name}在当前参考时间下被一个或多个运限命中。`,
+      description: `本命${formatPalaceName(palace.name)}的宫干支为${palace.heavenly_stem}${palace.earthly_branch}。`,
       priority: 70,
     });
   }

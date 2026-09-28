@@ -15,7 +15,7 @@ function formatStarFact(star: StarFact, includeScope: boolean): string {
   const tags = [
     star.brightness,
     star.birth_mutagen ? `生年化${star.birth_mutagen}` : '',
-    includeScope && star.horoscope_mutagen ? `流耀化${star.horoscope_mutagen}` : '',
+    includeScope && star.horoscope_mutagen ? `流曜化${star.horoscope_mutagen}` : '',
     includeScope && star.active_scope_mutagen ? `当前运限化${star.active_scope_mutagen}` : '',
   ].filter(Boolean);
   return tags.length ? `${star.name}(${tags.join('/')})` : star.name;
@@ -187,7 +187,7 @@ export function buildPalaceSummary(payload: AnalysisPayloadV1, palace: PalaceFac
       ? palace.scope_stars.map((star) => formatStarFact(star, true))
       : undefined,
     生年四化: collectMutagenStars(allStars, 'birth_mutagen'),
-    流耀四化: includeScope ? horoscopeMutagens : undefined,
+    流曜四化: includeScope ? horoscopeMutagens : undefined,
     当前运限四化: includeScope ? collectMutagenStars(allStars, 'active_scope_mutagen') : undefined,
     自化情况: (palace.self_mutagens ?? []).map((item) => `自化${item}`),
     飞星走向: (palace.mutaged_palaces ?? [])

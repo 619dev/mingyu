@@ -9,9 +9,9 @@ import {
 import type { FortuneHourMode } from './types';
 
 function assertSolarDate(year: number, month: number, day: number) {
-  // 2100 节令年的亥、子、丑月包含 2101 年的公历日期标签。
-  if (!Number.isInteger(year) || year < 1900 || year > 2101) {
-    throw new Error('年份需在 1900-2101 之间。');
+  // 节令年末月可延伸到下一公历年；出生下界的童运也可能落在 1899 年。
+  if (!Number.isInteger(year) || year < 1899 || year > 2233) {
+    throw new Error('年份需在 1899-2233 之间。');
   }
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     throw new Error('月份需在 1-12 之间。');
@@ -21,7 +21,9 @@ function assertSolarDate(year: number, month: number, day: number) {
   }
 
   const maxDay =
-    year === 2101 ? new Date(Date.UTC(year, month, 0)).getUTCDate() : daysInSolarMonth(year, month);
+    year < 1900 || year > 2100
+      ? new Date(Date.UTC(year, month, 0)).getUTCDate()
+      : daysInSolarMonth(year, month);
   if (day > maxDay) {
     throw new Error(`日期需在 1-${maxDay} 之间。`);
   }

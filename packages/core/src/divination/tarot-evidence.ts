@@ -6,13 +6,14 @@ import {
   type RandomTraceFact,
 } from '../shared/random';
 import type { TarotData } from '../types/divination';
-import { tarotSpreads } from './tarot-data';
-import { drawSpreadCards, resolveInteractiveTarotCards } from './tarot';
+import { tarotCards, tarotSpreads } from './tarot-data';
+import { drawSpreadCards, getCardEvidence, resolveInteractiveTarotCards } from './tarot';
 import { MingyuCoreError } from '../shared/result';
 
 export interface TarotCardEvidence {
   key: string;
-  status: '已映射';
+  status: '已映射' | '存在缺口';
+  mismatches: string[];
   index: number;
   cardId: number;
   position: string;
@@ -183,7 +184,7 @@ export interface TarotSummaryFact {
 
 export interface TarotTraditionalFact {
   key: string;
-  status: '已映射';
+  status: '已映射' | '存在缺口';
   index: number;
   position: string;
   card: string;
@@ -247,6 +248,47 @@ export interface TarotEvidenceAnalysis {
 
 function normalizeElement(element?: string) {
   return element?.split('（')[0] || '元素未列';
+}
+
+function sameStringList(value: unknown, expected: string[]) {
+  return (
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((item, index) => item === expected[index])
+  );
+}
+
+function canonicalizeTarotCards(data: TarotData) {
+  const mismatches: string[][] = [];
+  const cards = data.cards.map((input) => {
+    const canonical = tarotCards.find((card) => card.number === input.id);
+    if (!canonical) {
+      mismatches.push(['牌号不在韦特系78张牌表中']);
+      return {
+        ...input,
+        name: `未知牌号${String(input.id)}`,
+        keywords: [],
+        element: '元素未列',
+        archetype: '牌阶主题未列',
+      };
+    }
+
+    const evidence = getCardEvidence(canonical.name);
+    const fields: string[] = [];
+    if (input.name !== canonical.name) fields.push('牌名');
+    if (!sameStringList(input.keywords, evidence.keywords)) fields.push('关键词');
+    if (input.element !== evidence.element) fields.push('元素主题');
+    if (input.archetype !== evidence.archetype) fields.push('牌阶主题');
+    mismatches.push(fields);
+    return {
+      ...input,
+      name: canonical.name,
+      keywords: evidence.keywords,
+      element: evidence.element,
+      archetype: evidence.archetype,
+    };
+  });
+  return { data: { ...data, cards }, mismatches };
 }
 
 const TRADITIONAL_FACT_LIMITATION =
@@ -577,7 +619,8 @@ function buildSummaryFact(params: {
     params.spreadCoverageFact.status === '完整' &&
     params.drawFact.status === '可核验' &&
     ['可重放', '不适用'].includes(params.randomFact.status) &&
-    params.drawOrderFacts.length === params.cards.length
+    params.drawOrderFacts.length === params.cards.length &&
+    params.cards.every((card) => card.status === '已映射')
       ? '证据链完整'
       : '证据链有缺口';
   return {
@@ -859,6 +902,8 @@ function buildLimitationFacts(params: {
 
 export function analyzeTarotEvidence(data: TarotData): TarotEvidenceAnalysis {
   if (!data.cards.length) throw new Error('塔罗结构化证据至少需要一张牌。');
+  const canonicalized = canonicalizeTarotCards(data);
+  data = canonicalized.data;
   const sources: TarotEvidenceAnalysis['sources'] = [
     {
       title: '78张韦特系塔罗牌组结构',
@@ -877,9 +922,11 @@ export function analyzeTarotEvidence(data: TarotData): TarotEvidenceAnalysis {
     const promptMeaning = `${card.position}为${card.name}${orientation}`;
     const key = `tarot:card:${index + 1}:${card.id}:${orientation}`;
     const traditionalFactKey = `card:${index + 1}:${card.name}:${orientation}`;
+    const mismatches = canonicalized.mismatches[index] ?? ['牌面资料未能映射'];
     return {
       key,
-      status: '已映射',
+      status: mismatches.length ? '存在缺口' : '已映射',
+      mismatches,
       index: index + 1,
       cardId: card.id,
       position: card.position,
@@ -894,14 +941,14 @@ export function analyzeTarotEvidence(data: TarotData): TarotEvidenceAnalysis {
         ? ['逆位只表示该牌主题可能受阻、过度、内化或方向偏离，须结合牌位与整组牌序']
         : [],
       traditionalFactKey,
-      promptText: `${card.position}为${card.name}${orientation}；关键词${card.keywords.join('、') || '未列'}；元素主题${card.element || '元素未列'}；牌阶主题${card.archetype || '牌阶主题未列'}`,
-      sources: ['已声明牌阵牌位', '已确定牌号、牌名与正逆位', '韦特系逐牌关键词、元素与牌阶资料'],
+      promptText: `${card.position}为${card.name}${orientation}；关键词${card.keywords.join('、') || '未列'}；元素主题${card.element || '元素未列'}；牌阶主题${card.archetype || '牌阶主题未列'}${mismatches.length ? `；牌号核对存在缺口（${mismatches.join('、')}），牌义字段已按牌号对应牌表重建` : ''}`,
+      sources: ['已声明牌阵牌位', '依据牌号映射牌名与正逆位', '韦特系逐牌关键词、元素与牌阶资料'],
       limitation: CARD_FACT_LIMITATION,
     };
   });
   const traditionalFacts = cards.map((card): TarotTraditionalFact => ({
     key: card.traditionalFactKey,
-    status: '已映射',
+    status: card.status,
     index: card.index,
     position: card.position,
     card: card.name,
@@ -1078,7 +1125,13 @@ export function analyzeTarotEvidence(data: TarotData): TarotEvidenceAnalysis {
       title: `${card.position}：${card.name}${card.orientation}`,
       detail: `${card.promptText}；边界：${card.limitation}`,
       source: card.sources.join('、'),
-      tags: [card.position, card.name, card.orientation, normalizeElement(card.element)],
+      tags: [
+        card.position,
+        card.name,
+        card.orientation,
+        normalizeElement(card.element),
+        card.status,
+      ],
     })),
     ...(sequenceFacts.length
       ? [

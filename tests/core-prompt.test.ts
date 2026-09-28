@@ -127,7 +127,7 @@ test('新派提示词保留十神显隐事实，不把共现组合写成已成�
 
 test('npm 八字提示词应保留所选岁运与上层资料', () => {
   const result = createChart('female', 15);
-  const cycle = result.luckInfo.cycles.find((item) => item.years.length > 0);
+  const cycle = result.luckInfo.cycles.find((item) => item.years.length > 0 && !item.isXiaoyun);
   assert.ok(cycle);
   const year = cycle.years[0];
   assert.ok(year);

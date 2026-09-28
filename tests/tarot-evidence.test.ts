@@ -5,8 +5,8 @@ import {
   drawTarotSpread,
   resolveInteractiveTarotCards,
   tarotSpreads,
-} from 'mingyu-core/divination/tarot';
-import type { TarotData, TarotSpreadType } from 'mingyu-core/types';
+} from '../packages/core/src/divination/tarot.ts';
+import type { TarotData, TarotSpreadType } from '../packages/core/src/types/divination.ts';
 
 const spreadTypes = Object.keys(tarotSpreads) as TarotSpreadType[];
 
@@ -26,6 +26,28 @@ test('塔罗自动与逐张抽牌的随机记录必须完整并对应实际牌�
     assert.throws(() => analyzeTarotEvidence(changed), /随机轨迹与牌面、顺序或正逆位不一致/);
     assert.equal(analyzeTarotEvidence(data).randomFact.status, '可重放');
   }
+});
+
+test('塔罗证据分析按牌号重建被篡改的牌面资料并报告缺口', () => {
+  const data = structuredClone(
+    drawTarotSpread('single', { manualCards: [{ id: 1, reversed: false }] }),
+  );
+  Object.assign(data.cards[0], {
+    name: '皇帝',
+    keywords: ['伪造关键词'],
+    element: '伪造元素',
+    archetype: '伪造牌阶',
+  });
+
+  const evidence = analyzeTarotEvidence(data);
+
+  assert.equal(evidence.cards[0].name, '愚者');
+  assert.deepEqual(evidence.cards[0].keywords, ['新开始', '冒险', '纯真']);
+  assert.equal(evidence.cards[0].status, '存在缺口');
+  assert.deepEqual(evidence.cards[0].mismatches, ['牌名', '关键词', '元素主题', '牌阶主题']);
+  assert.equal(evidence.traditionalFacts[0].status, '存在缺口');
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+  assert.doesNotMatch(evidence.promptText, /伪造关键词|伪造元素|伪造牌阶|皇帝/);
 });
 
 test('凯尔特十字十牌位保留韦特原著的目标、基础、过去影响及希望恐惧', () => {
@@ -428,11 +450,13 @@ test('塔罗牌位、顺序和牌号异常时应给出可定位的覆盖事实',
 });
 
 test('塔罗主题对象只做标签计数，不生成权重或吉凶评分', () => {
-  const data = drawTarotSpread('three', { seed: '塔罗重复主题' });
-  data.cards = data.cards.map((card, index) => ({
-    ...card,
-    element: index < 2 ? '火（行动、动力、创造）' : '大阿卡纳（核心课题与阶段转折）',
-  }));
+  const data = drawTarotSpread('three', {
+    manualCards: [
+      { id: 23, reversed: false },
+      { id: 24, reversed: false },
+      { id: 1, reversed: false },
+    ],
+  });
   const evidence = analyzeTarotEvidence(data);
   const fire = evidence.themeFacts.find((fact) => fact.theme === '火');
 

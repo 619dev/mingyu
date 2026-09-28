@@ -250,6 +250,7 @@ function buildAgreements(
   }
 
   if (bazhai && xuankong) {
+    const xuankongBoundarySensitive = xuankong.measurement?.stability === '山向边界敏感';
     const candidateDirections =
       'directionMeasurement' in bazhai ? bazhai.directionMeasurement.candidateDirections : [];
     const candidateMatches = new Set(candidateDirections.map((item) => item.match));
@@ -257,7 +258,7 @@ function buildAgreements(
     items.push({
       level: '可互补',
       title: '宅运与人宅分层并观',
-      detail: `玄空见${xuankong.period.label}、${xuankong.daoShanXiang.summary}；八宅命卦${bazhai.mingGua}、${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
+      detail: `玄空见${xuankong.period.label}、${xuankong.daoShanXiang.summary}${xuankongBoundarySensitive ? '（中心读数盘，待复测核定）' : ''}；八宅命卦${bazhai.mingGua}、${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
     });
 
     if (matchChangesWithOrientation) {
@@ -266,13 +267,13 @@ function buildAgreements(
         title: '命宅关系随候选坐向变化',
         detail: `测量误差范围内，${candidateDirections.map((item) => `${item.label}命宅${item.match}`).join('、')}；需复测坐向后确定命宅关系。`,
       });
-    } else if (bazhai.match === '相合') {
+    } else if (bazhai.match === '相合' && !xuankongBoundarySensitive) {
       items.push({
         level: '一致关注',
         title: '命宅相合可提高关注优先级',
         detail: '八宅显示命宅同组，与玄空中的山向、当运结构并列作为关注资料。',
       });
-    } else if (bazhai.match === '相冲') {
+    } else if (bazhai.match === '相冲' && !xuankongBoundarySensitive) {
       items.push({
         level: '口径不同需分述',
         title: '命宅不同组需分开说明',
@@ -280,7 +281,7 @@ function buildAgreements(
       });
     }
 
-    if (xuankong.measurement?.stability === '山向边界敏感' || bazhai.match === '未知') {
+    if (xuankongBoundarySensitive || bazhai.match === '未知') {
       items.push({
         level: '资料不足',
         title: '山向或宅卦边界仍敏感',
@@ -301,7 +302,7 @@ function buildAdvice(
   const advice: string[] = [];
   if (xuankong) {
     advice.push(
-      `先看宅运：${xuankong.period.label}，坐${xuankong.sitMountain}向${xuankong.facingMountain}，${xuankong.guaType}，${xuankong.daoShanXiang.summary}。`,
+      `先看宅运：${xuankong.period.label}，坐${xuankong.sitMountain}向${xuankong.facingMountain}，${xuankong.guaType}，${xuankong.daoShanXiang.summary}${xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}。`,
     );
   }
   if (bazhai) {
@@ -349,7 +350,7 @@ function buildEvidencePrompt(params: {
     items.push({
       level: '主证',
       title: '玄空宅运层',
-      detail: `${params.xuankong.period.label}；坐${params.xuankong.sitMountain}向${params.xuankong.facingMountain}；${params.xuankong.guaType}；${params.xuankong.daoShanXiang.summary}`,
+      detail: `${params.xuankong.period.label}；坐${params.xuankong.sitMountain}向${params.xuankong.facingMountain}；${params.xuankong.guaType}；${params.xuankong.daoShanXiang.summary}${params.xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}`,
       source: '玄空飞星 v1',
     });
   }

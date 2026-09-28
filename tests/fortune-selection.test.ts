@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { baziCalculator } from '@core/bazi/baziCalculator';
-import { getMonthDaysInfo, getYearInfo } from '@core/bazi/calendarTool';
+import { getMonthDaysInfo, getYearInfo, resolveBaziFortuneDate } from '@core/bazi/calendarTool';
 import {
   buildBaziFortuneSelectionForDate,
   buildCurrentBaziFortuneSelection,
@@ -11,6 +11,11 @@ import {
   normalizeFortuneSelection,
 } from 'mingyu-core/bazi';
 import { getDayHourBreakdown } from '@core/bazi/fortuneSelection/helpers/breakdown';
+import { buildFortuneSelectionContext as buildSourceFortuneSelectionContext } from '@core/bazi/fortuneSelection/index';
+import {
+  buildBaziFortuneSelectionForDate as buildSourceFortuneSelectionForDate,
+  buildCurrentBaziFortuneSelection as buildSourceCurrentFortuneSelection,
+} from '@core/bazi/fortuneSelection/current';
 import type { BaziChartResult } from '@core/bazi/baziTypes';
 import { formatBaziFortuneSelection } from '@core/prompt/bazi-fortune';
 
@@ -223,6 +228,45 @@ test('立春前出生的童限应生成出生时刻所属的上一节令年', ()
   assert.ok(selection);
   assert.equal(selection.year, 1989);
   assert.equal(buildFortuneSelectionContext(result, selection)?.year, 1989);
+});
+
+test('童运占位文字不得被解读为干支、十神或岁运作用事实', () => {
+  const result = baziCalculator.calculateBazi({
+    gender: 'male',
+    year: 1990,
+    month: 1,
+    day: 15,
+    timeIndex: 6,
+    isLunar: false,
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+  });
+  const childIndex = result.luckInfo.cycles.findIndex((cycle) => cycle.isXiaoyun);
+  assert.ok(childIndex >= 0);
+  const current = buildCurrentBaziFortuneSelection(result, new Date('1990-01-15T12:00:00+08:00'));
+  assert.ok(current);
+  assert.equal(current.cycleIndex, childIndex);
+
+  for (const selection of [
+    { scope: 'dayun' as const, cycleIndex: childIndex },
+    { scope: 'year' as const, cycleIndex: childIndex, year: 1989 },
+    { scope: 'month' as const, cycleIndex: childIndex, year: current.year, month: current.month },
+    current,
+  ]) {
+    const context = buildSourceFortuneSelectionContext(result, selection);
+    assert.ok(context);
+    assert.equal(context.cycleGanZhi, '');
+    assert.equal(
+      context.actionEvidence?.facts.some((fact) => fact.stem === '小'),
+      false,
+    );
+    const text = [
+      ...context.promptPayload.summaryLines,
+      ...(context.promptPayload.evidenceLines ?? []),
+      formatBaziFortuneSelection(context)?.focus ?? '',
+    ].join('\n');
+    assert.doesNotMatch(text, /天干小|地支运|大运干支：小运|小运童运|童运（小运）|所属大运：童运/);
+  }
 });
 
 test('当前快捷流日在北京时间 23:00 子初切换到次一民用日', () => {
@@ -682,11 +726,83 @@ test('2100 节令年末月的 2101 年流日应能构造流时详情', () => {
   assert.ok(context?.hourBreakdown?.length);
 });
 
+test('出生年份边界外的童运和末步流年仍能生成岁运明细', () => {
+  const early = baziCalculator.calculateBazi({
+    gender: 'male',
+    year: 1900,
+    month: 1,
+    day: 15,
+    timeIndex: 6,
+    isLunar: false,
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+  });
+  const earlySelection = buildSourceCurrentFortuneSelection(
+    early,
+    new Date('1900-01-15T12:00:00+08:00'),
+  );
+  assert.equal(earlySelection?.year, 1899);
+  assert.ok(earlySelection);
+  assert.equal(buildSourceFortuneSelectionContext(early, earlySelection)?.year, 1899);
+  assert.equal(resolveBaziFortuneDate('1900-01-15').year, 1899);
+
+  const late = baziCalculator.calculateBazi({
+    gender: 'male',
+    year: 2100,
+    month: 1,
+    day: 15,
+    timeIndex: 6,
+    isLunar: false,
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+  });
+  const cycleIndex = late.luckInfo.cycles.length - 1;
+  const year = late.luckInfo.cycles[cycleIndex].years[0].year;
+  assert.ok(year > 2200);
+  const yearContext = buildSourceFortuneSelectionContext(late, {
+    scope: 'year',
+    cycleIndex,
+    year,
+  });
+  assert.ok(yearContext?.monthBreakdown?.length);
+  const month = yearContext?.monthBreakdown?.[0]?.month;
+  assert.ok(month);
+  const monthContext = buildSourceFortuneSelectionContext(late, {
+    scope: 'month',
+    cycleIndex,
+    year,
+    month,
+  });
+  assert.ok(monthContext?.dayBreakdown?.length);
+  const day = getMonthDaysInfo(year, month).find(
+    (item) => item.solarDate === monthContext.dayBreakdown?.[0]?.date,
+  )?.day;
+  assert.ok(day);
+  const dayContext = buildSourceFortuneSelectionContext(late, {
+    scope: 'day',
+    cycleIndex,
+    year,
+    month,
+    day,
+  });
+  assert.ok(dayContext?.hourBreakdown?.length);
+  assert.ok(formatBaziFortuneSelection(dayContext)?.focus);
+  assert.equal(getYearInfo(year).months[0].startTermEvidence, undefined);
+
+  const dateSelection = buildSourceFortuneSelectionForDate(late, 'year', '2101-01-15');
+  assert.equal(dateSelection.year, 2100);
+
+  const lastMonthDays = getMonthDaysInfo(2231, 12);
+  assert.match(lastMonthDays.at(-1)?.solarDate ?? '', /^2232-02-/);
+  assert.equal(resolveBaziFortuneDate('2232-01-15').year, 2231);
+  assert.equal(getDayHourBreakdown(2232, 1, 15).length, 12);
+});
+
 test('流日时辰拆解应先拒绝无效日期', () => {
   assert.throws(() => getDayHourBreakdown(2026, 2, 31), /日期需在 1-28 之间/);
   assert.throws(() => getDayHourBreakdown(2026, 13, 1), /月份需在 1-12 之间/);
-  assert.throws(() => getDayHourBreakdown(1899, 1, 1), /年份需在 1900-2101 之间/);
-  assert.throws(() => getDayHourBreakdown(2102, 1, 1), /年份需在 1900-2101 之间/);
+  assert.throws(() => getDayHourBreakdown(1898, 1, 1), /年份需在 1899-2233 之间/);
+  assert.throws(() => getDayHourBreakdown(2234, 1, 1), /年份需在 1899-2233 之间/);
 });
 
 test('交运年份默认应归到后一步大运，而不是继续挂在童运或前一步运里', () => {

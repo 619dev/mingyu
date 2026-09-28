@@ -308,7 +308,7 @@ test('大六壬旧结果缺少天地盘时应明确标为证据缺口，不反�
   assert.match(evidence.plateFact.limitation, /不得反推或补造/);
   assert.ok(
     evidence.evidence.items.some(
-      (item) => item.level === '反证' && item.title === '天地盘定位资料缺失',
+      (item) => item.level === '反证' && item.title === '天地盘定位待复核',
     ),
   );
 });
@@ -321,13 +321,38 @@ test('大六壬天地盘十二条记录含重复位置时不得标为完整', ()
   assert.equal(evidence.platePositionFacts.length, 12);
   assert.equal(evidence.plateFact.status, '缺少');
   assert.equal(evidence.summaryFact.status, '证据链有缺口');
-  assert.match(evidence.plateFact.promptText, /存在重复/);
+  assert.match(evidence.plateFact.promptText, /有缺漏或重复/);
 });
 
 test('大六壬天地盘十二条记录含未知支或天将时不得标为完整', () => {
   for (const field of ['under', 'branch', 'god'] as const) {
     const data = generateLiuren(fixedDate);
     data.heavenlyPlate[0] = { ...data.heavenlyPlate[0], [field]: '未知' };
+
+    const evidence = analyzeLiurenEvidence(data);
+    assert.equal(evidence.plateFact.status, '缺少', field);
+    assert.equal(evidence.summaryFact.status, '证据链有缺口', field);
+  }
+});
+
+test('大六壬天地盘十二支与天将齐全但对应错位时不标为完整', () => {
+  for (const field of ['branch', 'god'] as const) {
+    const data = generateLiuren(fixedDate);
+    const first = data.heavenlyPlate[0][field];
+    data.heavenlyPlate[0][field] = data.heavenlyPlate[1][field];
+    data.heavenlyPlate[1][field] = first;
+
+    const evidence = analyzeLiurenEvidence(data);
+    assert.equal(evidence.plateFact.status, '缺少', field);
+    assert.equal(evidence.summaryFact.status, '证据链有缺口', field);
+    assert.match(evidence.plateFact.promptText, /与逐位记录不一致/);
+  }
+});
+
+test('大六壬贵人与日干或地盘位置不一致时不标为完整', () => {
+  for (const field of ['noblemanBranch', 'noblemanGroundBranch'] as const) {
+    const data = generateLiuren(fixedDate);
+    data[field] = data.heavenlyPlate.find((item) => item.under !== data[field])!.under;
 
     const evidence = analyzeLiurenEvidence(data);
     assert.equal(evidence.plateFact.status, '缺少', field);
@@ -411,6 +436,16 @@ test('大六壬旧结果缺少逐项神煞起法时应明确不可复算', () =>
   assert.ok(shenShaFacts.length > 0);
   assert.ok(shenShaFacts.every((item) => item.promptText.includes('未保存起法输入，不能据此复算')));
   assert.ok(shenShaFacts.every((item) => item.sources.includes('旧结果未保存逐项起法与来源')));
+});
+
+test('大六壬旧结果未保存神煞时不虚构传统神煞命中', () => {
+  const data = generateLiuren(fixedDate);
+  data.shenShaFacts = undefined;
+  data.shenShaSummary = undefined;
+
+  const evidence = analyzeLiurenEvidence(data);
+  assert.equal(evidence.traditionalFacts.filter((item) => item.kind === '神煞').length, 0);
+  assert.doesNotMatch(evidence.promptText, /传统神煞在盘面/);
 });
 
 test('十二天将阴阳应与所配天干一致', () => {

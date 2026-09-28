@@ -216,6 +216,26 @@ test('雷诺曼手工录入应按牌位成盘，并将随机轨迹标为不适�
   );
 });
 
+test('雷诺曼证据分析按牌号重建被篡改的牌面资料并报告缺口', () => {
+  const data = structuredClone(drawLenormandSpread('single', { manualCardIds: [1] }));
+  Object.assign(data.cards[0], {
+    name: '伪造牌名',
+    keywords: ['伪造关键词'],
+    meaning: '伪造牌义',
+  });
+
+  const evidence = analyzeLenormandEvidence(data);
+
+  assert.equal(evidence.cards[0].name, '骑士');
+  assert.deepEqual(evidence.cards[0].keywords, ['消息', '到来', '进展']);
+  assert.equal(evidence.cards[0].meaning, '消息抵达，事情开始移动。');
+  assert.equal(evidence.cards[0].status, '存在缺口');
+  assert.deepEqual(evidence.cards[0].mismatches, ['牌名', '关键词', '基础牌义']);
+  assert.equal(evidence.traditionalFacts[0].status, '存在缺口');
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+  assert.doesNotMatch(evidence.promptText, /伪造牌名|伪造关键词|伪造牌义/);
+});
+
 test('雷诺曼含先后语义的固定组合只在原牌序命中', () => {
   for (const [firstName, secondName] of [
     ['骑士', '心'],
@@ -267,6 +287,20 @@ test('雷诺曼含先后语义的固定组合只在原牌序命中', () => {
 
   const reversible = drawLenormandSpread('three', { manualCardIds: [25, 24, 1] });
   assert.equal(reversible.combinations?.[0].source, '固定组合');
+});
+
+test('雷诺曼选择牌阵不把A方案走向与B方案拼成连续组合', () => {
+  const result = drawLenormandSpread('decision', { manualCardIds: [1, 2, 3, 4, 5, 6] });
+  const crossBranchCombination = result.combinations?.find(
+    (item) => item.position1 === '选择A走向' && item.position2 === '选择B',
+  );
+
+  assert.equal(crossBranchCombination, undefined);
+  assert.ok(
+    result.evidenceAnalysis?.adjacentReadings.every(
+      (item) => !(item.position1 === '选择A走向' && item.position2 === '选择B'),
+    ),
+  );
 });
 
 test('雷诺曼九宫固定组合应按纵向空间相邻命中并保留牌位', () => {

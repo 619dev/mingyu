@@ -636,6 +636,25 @@ test('太乙积时在公元九十九年与一百年交接连续', () => {
   assert.equal(secondDay.accumulatedValue, firstDay.accumulatedValue + 1);
 });
 
+test('太乙时计在历法切换日沿用干支历的连续日序', () => {
+  const before = generateTaiyi({
+    scope: 'hour',
+    date: new Date('1582-10-04T23:00:00+08:00'),
+  });
+  const after = generateTaiyi({
+    scope: 'hour',
+    date: new Date('1582-10-15T00:00:00+08:00'),
+  });
+  assert.equal(before.ganZhi, '甲子');
+  assert.equal(after.ganZhi, '甲子');
+  assert.equal(after.accumulatedValue, before.accumulatedValue);
+  assert.equal(after.bureau, before.bureau);
+  const beforeDay = generateTaiyi({ scope: 'day', date: new Date('1582-10-04T23:00:00+08:00') });
+  const afterDay = generateTaiyi({ scope: 'day', date: new Date('1582-10-15T00:00:00+08:00') });
+  assert.equal(afterDay.accumulatedValue, beforeDay.accumulatedValue);
+  assert.equal(afterDay.bureau, beforeDay.bureau);
+});
+
 test('太乙拒绝原型属性计式和非日期对象', () => {
   for (const scope of ['toString', 'constructor', '__proto__']) {
     assert.throws(() => generateTaiyi({ scope, year: 2026 } as never), /太乙计式无效/);

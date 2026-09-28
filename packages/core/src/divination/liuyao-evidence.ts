@@ -470,11 +470,14 @@ function formatYao(reference: LiuyaoYaoReference) {
 
 function buildGenerationFact(data: LiuyaoData): LiuyaoGenerationFact {
   const method = data.generation?.method ?? '未记录';
+  const simulatedCoins = method === 'coins' && Boolean(data.meta?.random);
   const methodLabel =
     method === 'yarrow'
       ? '蓍草起卦'
       : method === 'coins'
-        ? '模拟三钱起卦'
+        ? simulatedCoins
+          ? '模拟三钱起卦'
+          : '三钱记录起卦'
         : method === 'manual'
           ? '手工录入六爻值'
           : method === 'time'
@@ -535,7 +538,7 @@ function buildGenerationFact(data: LiuyaoData): LiuyaoGenerationFact {
           ? coinThrows
               .map(
                 (item, index) =>
-                  `第${index + 1}爻计算样本${item.coins.join('+')}=${item.total}（${item.total === 6 ? '老阴' : item.total === 7 ? '少阳' : item.total === 8 ? '少阴' : '老阳'}）`,
+                  `第${index + 1}爻${method === 'coins' && !simulatedCoins ? '投掷记录' : '计算样本'}${item.coins.join('+')}=${item.total}（${item.total === 6 ? '老阴' : item.total === 7 ? '少阳' : item.total === 8 ? '少阴' : '老阳'}）`,
               )
               .join('；')
           : '未附逐爻生成记录';
@@ -555,7 +558,7 @@ function buildGenerationFact(data: LiuyaoData): LiuyaoGenerationFact {
         ? '《周易衍义》揲蓍十八变与分堆记录'
         : method === 'manual'
           ? '调用方手工录入的六个爻值'
-          : '六爻逐爻三钱生成记录',
+          : '六爻逐爻三钱记录',
       '六爻起卦方式与原始爻值结果',
     ],
     limitation: GENERATION_FACT_LIMITATION,
@@ -1463,18 +1466,19 @@ export function analyzeLiuyaoEvidence(
   const generationFact = buildGenerationFact(data);
   const generationMethod = data.generation?.method;
   const methodLabel = generationFact.methodLabel;
+  const recordedCoins = generationMethod === 'coins' && !data.meta?.random;
   const generationFacts = [
     `起卦方式：${methodLabel}`,
     generationFact.yarrow ? formatYarrowProcess(generationFact.yarrow) : '',
     ...generationFact.coinThrows.map(
       (item, index) =>
-        `第${index + 1}爻计算样本：${item.coins.join('+')}=${item.total}（${item.total === 6 ? '老阴' : item.total === 7 ? '少阳' : item.total === 8 ? '少阴' : '老阳'}）`,
+        `第${index + 1}爻${recordedCoins ? '投掷记录' : '计算样本'}：${item.coins.join('+')}=${item.total}（${item.total === 6 ? '老阴' : item.total === 7 ? '少阳' : item.total === 8 ? '少阴' : '老阳'}）`,
     ),
     generationMethod === 'manual' ? `手工爻值：${data.yaoArray.join('、')}` : '',
   ].filter(Boolean);
   const trace = data.meta?.random;
   const expectsRandomTrace =
-    generationMethod === 'coins' ||
+    (generationMethod === 'coins' && !recordedCoins) ||
     generationMethod === 'time' ||
     (generationMethod === 'yarrow' && generationFact.yarrow?.samplingModel !== '手工分堆');
   const randomFact = buildRandomTraceFact({

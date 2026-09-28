@@ -101,15 +101,15 @@ test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
   assert.ok(
     evidence.limitationFacts.every((item) => item.ownerFactKeys.every((key) => factKeys.has(key))),
   );
-  assert.match(evidence.promptText, /【奇门用神宫与宫间作用结构化证据】/);
-  assert.match(evidence.promptText, /奇门九宫逐宫计算事实/);
-  assert.match(evidence.promptText, /计算链：/);
-  assert.match(evidence.promptText, /证据汇总：/);
-  assert.match(evidence.promptText, /解释限制：/);
-  assert.match(evidence.promptText, /门.+、星.+、神.+、天盘.+、地盘/);
+  assert.match(evidence.promptText, /【任务】/);
+  assert.match(evidence.promptText, /【九宫盘面】/);
+  assert.match(evidence.promptText, /【传统依据】/);
+  assert.ok(
+    evidence.promptText.split('\n').some((line) => /门.+，星.+，神.+，天盘.+，地盘/u.test(line)),
+  );
   assert.doesNotMatch(
     evidence.promptText,
-    /主宫评分|辅宫评分|权重[：=]?\d|评分-?\d+|（-?\d+分|成功率[：=]?\d|应期范围\d/,
+    /来源[：:]|标签[：:]|限制[：:]|边界[：:]|qimen:|主宫评分|辅宫评分|权重[：=]?\d|评分-?\d+|（-?\d+分|成功率[：=]?\d|应期范围\d/,
   );
   assert.doesNotMatch(evidence.promptText, /qimen:(?:evidence|limitation|calculation):/);
   assertPromptIsPortableTaskText(evidence.promptText);
@@ -118,11 +118,61 @@ test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
 test('奇门证据应明确候选不等于已按问题选定用神', () => {
   const evidence = analyzeQimenEvidence(generateQimen(fixedDate));
 
-  assert.match(evidence.promptText, /均为盘面候选/);
-  assert.match(evidence.promptText, /不等于已经按具体问题选定用神/);
-  assert.match(evidence.promptText, /未给目标期限时不把宫数、局数或盘内快慢换算成唯一日期/);
-  assert.match(evidence.promptText, /方位仅在现实路线、安全和事项用神均匹配时采用/);
-  assert.match(evidence.promptText, /不得输出吉凶总分、成功率/);
+  assert.match(evidence.promptText, /相关宫位与主客关系/);
+  assert.ok(
+    evidence.limitationFacts.some((item) =>
+      item.promptText.includes('不等于已经按具体问题选定用神'),
+    ),
+  );
+  assert.ok(
+    evidence.limitationFacts.some((item) =>
+      item.promptText.includes('未给目标期限时不得换算唯一日期'),
+    ),
+  );
+  assert.ok(
+    evidence.limitationFacts.some((item) => item.promptText.includes('现实安全、权限、天气')),
+  );
+  assert.ok(
+    evidence.limitationFacts.some((item) => item.promptText.includes('不得输出吉凶总分、成功率')),
+  );
+  assert.doesNotMatch(evidence.promptText, /不得|不等于|来源[：:]|标签[：:]|限制[：:]/);
+});
+
+test('奇门在线提示词只输出任务、盘面与传统依据并去掉重复格局条件', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const evidence = analyzeQimenEvidence(data);
+  const prompt = evidence.promptText;
+  const classicMenPo = evidence.patternFacts.find(
+    (item) => item.kind === '经典格局' && item.name === '门迫',
+  );
+  const basicMenPoFacts = evidence.patternFacts.filter(
+    (item) => item.kind === '基础格局' && item.name.startsWith('门迫'),
+  );
+
+  assert.ok(classicMenPo);
+  assert.ok(basicMenPoFacts.length > 0);
+  for (const fact of basicMenPoFacts) {
+    assert.deepEqual(
+      fact.palaces,
+      data.jiuGongGe
+        .filter((palace) => fact.name.includes(palace.name))
+        .map((palace) => palace.gong),
+    );
+  }
+  assert.match(prompt, /【任务】/);
+  assert.match(prompt, /【九宫盘面】/);
+  assert.match(prompt, /【传统格局】/);
+  assert.match(prompt, /【传统依据】/);
+  assert.match(prompt, /门迫（巽四宫）；惊门（金）克巽四宫（木）/);
+  assert.match(prompt, /马星（驿马落乾六宫）/);
+  assert.doesNotMatch(prompt, /来源[：:]|标签[：:]|限制[：:]|边界[：:]|组成来源|规则命中|qimen:/);
+  assert.equal(prompt.split('惊门（金）克巽四宫（木）').length - 1, 1);
+  assert.equal(prompt.split(classicMenPo.promptText).length - 1, 1);
+
+  const onlinePrompt = formatEnhancedDivinationInfo('qimen', data, '工作进展如何？');
+  assert.doesNotMatch(onlinePrompt, /来源[：:]|标签[：:]|限制[：:]/);
+  assert.match(onlinePrompt, /盘面命中格局：/);
+  assert.match(onlinePrompt, /门迫（凶格）：惊门（金）克巽四宫（木）/);
 });
 
 test('Issue #204：结构化依据中的节令背景应采用正式定局三元', () => {
@@ -158,7 +208,7 @@ test('奇门证据应保留空亡与宫间五行反证', () => {
   const evidence = analyzeQimenEvidence(data);
 
   assert.equal(evidence.candidates.find((item) => item.gong === first.gong)?.isVoid, true);
-  assert.match(evidence.promptText, /宫位逢空/);
+  assert.match(evidence.promptText, /逢空/);
   assert.ok(evidence.relations.every((item) => item.relation.length > 0));
 });
 
@@ -327,6 +377,9 @@ test('奇门提示词按问题展示专项复合格局，结构化盘面仍保�
   const military = formatEnhancedDivinationInfo('qimen', data, '军事演习的行军攻守如何安排？');
   assert.match(military, /星宫主客|飞鸟跌穴利客/);
   assert.match(military, /迷路法/);
+  const militaryCombos = military.split('复合格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
+  assert.match(militaryCombos, /飞鸟跌穴利客（兑七宫）：该格局，合/);
+  assert.doesNotMatch(militaryCombos, /兑七宫飞鸟跌穴，合/);
   assert.doesNotMatch(military, /射覆物象克应|不作通用吉凶评分|不替代通用吉格评分/);
 
   const object = formatEnhancedDivinationInfo('qimen', data, '寻找丢失的手表');

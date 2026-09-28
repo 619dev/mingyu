@@ -903,6 +903,12 @@ test('大六壬月将按中气切换，不按整个月支粗略取值', () => {
   assert.equal(afterGuyu.monthLeader, '酉');
 });
 
+test('大六壬公元 1 年大寒前沿用上一冬至的丑将', () => {
+  assert.equal(generateLiuren(new Date('0001-01-20T00:00:00Z')).monthLeader, '丑');
+  assert.equal(generateLiuren(new Date('0001-01-21T08:39:40Z')).monthLeader, '丑');
+  assert.equal(generateLiuren(new Date('0001-01-21T08:39:41Z')).monthLeader, '子');
+});
+
 test('大六壬逐月神煞应按月建起，且与日支支马分层保存', () => {
   const result = generateLiuren(new Date('2026-01-01T12:00:00+08:00'));
   const facts = new Map(result.shenShaFacts?.map((item) => [item.name, item]));

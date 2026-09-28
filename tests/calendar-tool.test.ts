@@ -100,11 +100,12 @@ test('流日应在子初 23:00 换日', () => {
 });
 
 test('日历工具应先拒绝无效年月和时间对象', () => {
-  assert.throws(() => getYearInfo(1899), /年份需在 1900-2100 之间/);
-  assert.throws(() => getYearInfo(2101), /年份需在 1900-2100 之间/);
+  assert.throws(() => getYearInfo(1898), /年份需在 1899-2232 之间/);
+  assert.throws(() => getYearInfo(2233), /年份需在 1899-2232 之间/);
   assert.throws(() => getMonthDaysInfo(2026, 0), /节令月序号需在 1-12 之间/);
   assert.throws(() => getMonthDaysInfo(2026, 13), /节令月序号需在 1-12 之间/);
-  assert.throws(() => resolveBaziFortuneDate('1900-01-01'), /不在支持的节气年范围内/);
+  assert.equal(resolveBaziFortuneDate('1900-01-01').year, 1899);
+  assert.throws(() => resolveBaziFortuneDate('1899-01-01'), /不在支持的节气年范围内/);
   assert.throws(() => getCalendarInfo(new Date(Number.NaN)), /时间不是有效日期/);
   assert.throws(() => getBaziMonthIndexByDate(2026, new Date(Number.NaN)), /参考时间不是有效日期/);
   assert.throws(() => getBaziDayIndexByDate(2026, 1, new Date(Number.NaN)), /参考时间不是有效日期/);

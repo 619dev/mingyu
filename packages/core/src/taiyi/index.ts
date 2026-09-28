@@ -15,7 +15,7 @@
  * 古籍历法常数、小余和气应链的逐项复原。
  */
 import { createUtcTimestamp } from '../calendar/date-validation';
-import { SolarTime } from 'tyme4ts';
+import { SolarDay, SolarTime } from 'tyme4ts';
 import { getSixtyCycle, isValidGanZhi } from '../ganzhi';
 import type { TaiyiModelInfo, TaiyiResult, TaiyiScope } from '../types/divination';
 import { evaluateTaiyiConditions } from './conditions';
@@ -514,9 +514,10 @@ function getTaiyiGanZhiFromDate(date: Date): {
 
 function daysSince(date: Date, year: number, month: number, day: number): number {
   const parts = readCivilParts(date);
-  const current = createUtcTimestamp(parts.year, parts.month - 1, parts.day);
-  const base = createUtcTimestamp(year, month - 1, day);
-  return Math.floor((current - base) / 86400000);
+  // 与推干支所用历法一致：1582-10-04 后的下一日是 1582-10-15。
+  return SolarDay.fromYmd(parts.year, parts.month, parts.day).subtract(
+    SolarDay.fromYmd(year, month, day),
+  );
 }
 
 function getSeasonHalf(date: Date): 'winter' | 'summer' {

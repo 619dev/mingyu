@@ -52,11 +52,9 @@ export function buildFocusTaskBundle(
 
   if (reportContext.reportType === 'palace') {
     const selectedPalace = reportContext.palaceName
-      ? getPalaceByName(payload, reportContext.palaceName)
-      : activePalace;
-    const palaceName = formatPalaceName(
-      selectedPalace?.name ?? reportContext.palaceName ?? '当前宫位',
-    );
+      ? (getPalaceByName(payload, reportContext.palaceName) ?? activePalace ?? lifePalace)
+      : (activePalace ?? lifePalace);
+    const palaceName = selectedPalace ? formatPalaceName(selectedPalace.name) : '当前宫位';
 
     return {
       focusSummary: `围绕${palaceName}及其对宫、三方四正组织证据。`,

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EARTHLY_BRANCHES } from '../packages/core/src/ganzhi/data';
 import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
+import { buildFocusTaskBundle } from '../packages/core/src/ziwei/prompt/focus';
 
 import {
   buildCombinedZiweiCompatibilityPrompt,
@@ -144,6 +145,18 @@ function createReportContext(overrides: Partial<PromptContext> = {}): PromptCont
     ...overrides,
   };
 }
+
+test('紫微宫位专题遇到盘上不存在的宫名时只采用已定位宫位', () => {
+  const payload = createPayload();
+  const focus = buildFocusTaskBundle(payload, {
+    scope: 'origin',
+    reportType: 'palace',
+    palaceName: '不存在的宫位',
+  });
+  assert.match(focus.focusSummary, /围绕命宫及其对宫、三方四正/);
+  assert.ok(focus.focusPalaces.some((palace) => palace.name === '命宫'));
+  assert.doesNotMatch(focus.focusSummary, /不存在的宫位/);
+});
 
 test('紫微提示词快照不得重新接入未校勘的旧格局数据', () => {
   const payload = createPayload();

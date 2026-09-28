@@ -353,7 +353,10 @@ test('玄空边界敏感时应输出候选山向', () => {
   assert.deepEqual(result.measurement?.boundaryReasons, ['二十四山分界']);
   assert.ok((result.measurement?.candidateMountains?.length ?? 0) >= 1);
   assert.match(result.prompt, /候选山向/);
+  assert.match(result.prompt, /局型、城门与三盘九宫按中心读数暂列/);
   assert.match(result.evidenceAnalysis.promptText, /二十四山分界/);
+  assert.match(result.evidenceAnalysis.promptText, /三盘九宫按中心读数暂列/);
+  assert.match(result.evidenceAnalysis.summaryFact.promptText, /中心读数盘，待复测核定/);
 });
 
 test('玄空测量误差范围应枚举全部覆盖山向，不得只取左中右三个采样点', () => {

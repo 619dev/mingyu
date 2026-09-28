@@ -83,9 +83,36 @@ test('给出性别与流年后应同时生成行限和流曜，并叠到本命�
   assert.match(result.prompt, /大限：命宫宿度、出童限岁数和当前大限宫位未定/);
   assert.match(result.prompt, /【流曜】/);
   assert.match(result.prompt, /【流曜周期】/);
+  assert.match(result.prompt, /流曜太阳（入本命[^）]+）与本命/u);
+  assert.doesNotMatch(result.prompt, /流曜太阳（本命[^）]+）与本命/u);
   assert.equal(result.flowingStars?.periodEvents?.mode, 'daily');
   assert.equal(result.prompt.match(/当前大限宫位未定/g)?.length, 1);
   assert.doesNotMatch(result.prompt, /只解读根基、落宿、落宫和吊照/);
+});
+
+test('七政默认东八区生成行限时与流曜共用同一时间解析口径', () => {
+  const withDefault = generateQizheng({
+    year: 2000,
+    month: 6,
+    day: 15,
+    hour: 12,
+    gender: 'male',
+    flowYear: 2024,
+  });
+  const withExplicit = generateQizheng({
+    year: 2000,
+    month: 6,
+    day: 15,
+    hour: 12,
+    timezone: 8,
+    gender: 'male',
+    flowYear: 2024,
+  });
+
+  assert.equal(withDefault.calculationContext.timezoneSource, '默认东八区');
+  assert.equal(withDefault.timeLords?.annualBranch, withExplicit.timeLords?.annualBranch);
+  assert.equal(withDefault.flowingStars?.localDateTime, withExplicit.flowingStars?.localDateTime);
+  assert.deepEqual(withDefault.timeLords, withExplicit.timeLords);
 });
 
 test('只有流年没有性别时只排流曜，不编造行限', () => {

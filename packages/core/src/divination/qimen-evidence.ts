@@ -1,5 +1,4 @@
 import type { QimenData, QimenJiuGongGe } from '../types/divination';
-import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import {
   formatTianPanStars,
@@ -336,21 +335,52 @@ function getBasicPatternTone(tag: string): QimenPatternEvidenceFact['traditional
   return '中性';
 }
 
+function getPatternPalaces(data: QimenData, tag: string): number[] {
+  return data.jiuGongGe
+    .filter((palace) => tag.includes(palace.name))
+    .map((palace) => palace.gong)
+    .sort((left, right) => left - right);
+}
+
+function getClassicPatternAliasesForBasicTag(tag: string): string[] {
+  if (tag.startsWith('门迫')) return ['门迫'];
+  if (tag.startsWith('符使同宫')) return ['符使同宫'];
+  if (tag.startsWith('宝鉴三奇得使')) return ['宝鉴三奇得使'];
+  if (tag.startsWith('三奇游六仪')) return ['三奇游六仪'];
+
+  const threeQiMatch = tag.match(/^三奇得使（([乙丙丁])奇/u);
+  if (threeQiMatch) {
+    const qiName = { 乙: '日奇', 丙: '月奇', 丁: '星奇' }[threeQiMatch[1] as '乙' | '丙' | '丁'];
+    return [`${qiName}得使`];
+  }
+
+  const punishmentMatch = tag.match(/^击刑（(?:年干|月干|日干|时干)([戊己庚辛壬癸])/u);
+  if (punishmentMatch) return [`${punishmentMatch[1]}击刑`];
+
+  const tombMatch = tag.match(/^入墓（(?:年干|月干|日干|时干)([乙丙丁戊己庚辛壬癸])/u);
+  if (tombMatch) return [`${tombMatch[1]}入墓`];
+
+  return [];
+}
+
+function isBasicPatternCoveredByClassic(
+  tag: string,
+  palaces: number[],
+  classicFacts: QimenPatternEvidenceFact[],
+): boolean {
+  const aliases = getClassicPatternAliasesForBasicTag(tag);
+  if (!aliases.length || !palaces.length) return false;
+
+  return palaces.every((gong) =>
+    classicFacts.some(
+      (classic) => aliases.includes(classic.name) && classic.palaces.includes(gong),
+    ),
+  );
+}
+
 function buildPatternFacts(data: QimenData): QimenPatternEvidenceFact[] {
   const limitation =
     '传统格局命中只证明盘面满足当前列明规则，不是现实结果、吉凶分或事件概率' as const;
-  const basicFacts = (data.patternDetails ?? []).map((item, index) => ({
-    key: `basic:${index}:${item.tag}`,
-    status: '已命中' as const,
-    name: item.tag,
-    kind: '基础格局' as const,
-    traditionalTone: getBasicPatternTone(item.tag),
-    originalText: item.summary,
-    promptText: item.summary,
-    palaces: [],
-    sources: ['奇门基础格局标签与当前盘面规则命中记录'],
-    limitation,
-  }));
   const classicFacts = (data.classicPatterns ?? []).map((item, index) => ({
     key: `classic:${index}:${item.name}:${item.palaces.join('-')}`,
     status: '已命中' as const,
@@ -383,6 +413,19 @@ function buildPatternFacts(data: QimenData): QimenPatternEvidenceFact[] {
     promptText: item.summary,
     palaces: item.palace ? [item.palace] : [],
     sources: item.sources,
+    limitation,
+  }));
+
+  const basicFacts = (data.patternDetails ?? []).map((item, index) => ({
+    key: `basic:${index}:${item.tag}`,
+    status: '已命中' as const,
+    name: item.tag,
+    kind: '基础格局' as const,
+    traditionalTone: getBasicPatternTone(item.tag),
+    originalText: item.summary,
+    promptText: item.summary,
+    palaces: getPatternPalaces(data, item.tag),
+    sources: ['奇门基础格局标签与当前盘面规则命中记录'],
     limitation,
   }));
 
@@ -1377,14 +1420,74 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
   ];
   const evidence: PromptEvidenceBundle = { title: '奇门用神宫与宫间作用结构化证据', items };
   const calculationChain = calculationEvidenceFacts.map((item) => item.promptText);
+  const classicFactsForPrompt = patternFacts.filter((item) => item.kind === '经典格局');
+  const promptPatternFacts = patternFacts.filter(
+    (item) =>
+      item.kind !== '复合格局' &&
+      !(
+        item.kind === '基础格局' &&
+        isBasicPatternCoveredByClassic(
+          item.name,
+          getPatternPalaces(data, item.name),
+          classicFactsForPrompt,
+        )
+      ),
+  );
+  const patternLines = promptPatternFacts.map((item) => {
+    const palaces =
+      item.palaces.length || item.kind !== '基础格局'
+        ? item.palaces
+        : getPatternPalaces(data, item.name);
+    const palaceNames = palaces
+      .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
+      .filter((name) => !item.name.includes(name));
+    const tone =
+      item.traditionalTone === '有利'
+        ? '吉格'
+        : item.traditionalTone === '风险'
+          ? '凶格'
+          : item.traditionalTone === '混合'
+            ? '吉凶并见'
+            : '中性格局';
+    const summary = item.promptText.replace(
+      /(?:，|；)?不(?:作|替代|重复加算)通用(?:(?:吉凶|吉格|凶格)评分|凶方扣分)。?/gu,
+      '',
+    );
+    return `${tone}：${item.name}${palaceNames.length ? `（${palaceNames.join('、')}）` : ''}；${summary}`;
+  });
+  const palaceLines = [...data.jiuGongGe]
+    .sort((left, right) => left.gong - right.gong)
+    .map((palace) => {
+      const isVoid = data.voidPalaces?.some((item) => item.palace === palace.gong);
+      const hasHorse = data.horseStar?.palace === palace.gong;
+      return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}，地盘${palace.diPan.stem || '无'}${isVoid ? '，逢空' : ''}${hasHorse ? '，马星' : ''}`;
+    });
+  const specialCondition = data.specialConditions?.description?.trim();
+  const timingText = [
+    data.yingQi?.rhythm ? `盘内相对节奏${data.yingQi.rhythm}` : '',
+    ...(data.yingQi?.triggerConditions ?? []).filter(
+      (condition) => !/不得|不能|不应|不可|未给|未选定|未定位/u.test(condition),
+    ),
+  ]
+    .filter(Boolean)
+    .join('；');
   const promptText = [
-    '【奇门用神宫与宫间作用结构化证据】',
-    ...formatPromptEvidenceBundle(evidence),
-    `计算链：${calculationChain.join(' → ')}。`,
-    `证据汇总：${summaryFact.promptText}。`,
-    `触发条件：${timingConditions.join('；')}`,
-    `解释限制：${limitations.join('；')}。`,
-  ].join('\n');
+    '【任务】按传统奇门取用方法判断盘面结构、相关宫位与主客关系，并分析格局及应期。',
+    '【问题】请综合解读当前盘面',
+    `【起局资料】${scopeLabel}；${layoutMethodLabel}；${setupMethodLabel}；${data.isYangDun ? '阳遁' : '阴遁'}${data.juShu}局；定局${data.timeInfo.juTerm || data.timeInfo.solarTerm}${data.timeInfo.epoch}`,
+    `四柱干支：年${data.ganzhi.year}、月${data.ganzhi.month}、日${data.ganzhi.day}、时${data.ganzhi.hour}`,
+    `值符${data.zhiFu}落${zhiFuPalace?.name ?? '未见'}；值使${data.zhiShi}落${zhiShiPalace?.name ?? '未见'}；当前主动干支${activeGanZhi}（遁${getDunJiaStem(activeGanZhi)}）`,
+    specialCondition ? `特殊条件：${specialCondition}` : '',
+    '【九宫盘面】',
+    ...palaceLines,
+    patternLines.length ? '【传统格局】' : '',
+    ...patternLines,
+    timingText ? `【应期资料】${timingText}` : '',
+    '【传统依据】',
+    ...unique(ruleSourceFacts.map((item) => item.rule)),
+  ]
+    .filter(Boolean)
+    .join('\n');
   return {
     key: 'qimen:evidence',
     status: '已计算',

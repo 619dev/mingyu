@@ -8,7 +8,13 @@ import type {
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import { getBranchWuxing, getStemWuxing, isKe, isSheng } from '../ganzhi';
-import { DIZHI, TIANJIANG } from './algorithms/liuren/helpers/plate';
+import {
+  buildHeavenlyPlate,
+  DIZHI,
+  getNoblemanBranch,
+  TIANJIANG,
+  TIANGAN,
+} from './algorithms/liuren/helpers/plate';
 import {
   formatLiurenOrdinaryStage,
   getLiurenOrdinaryCandidateStatusLabel,
@@ -458,18 +464,7 @@ function buildTraditionalFacts(
             limitation: TRADITIONAL_FACT_LIMITATION,
           };
         })
-      : [
-          {
-            key: 'shensha:legacy:unavailable',
-            kind: '神煞',
-            name: '传统神煞',
-            originalText: '传统神煞在盘面',
-            promptText: '传统神煞在盘面；未保存起法输入，不能据此复算',
-            sources: ['旧结果未保存逐项起法与来源'],
-            branches: undefined,
-            limitation: TRADITIONAL_FACT_LIMITATION,
-          },
-        ];
+      : [];
 
   return [
     ...classicalFacts,
@@ -815,7 +810,10 @@ function buildPlatePositionFacts(data: LiurenData): LiurenPlateFact[] {
   }));
 }
 
-function buildPlateCoverageFact(positions: LiurenPlateFact[]): LiurenPlateCoverageFact {
+function buildPlateCoverageFact(
+  data: LiurenData,
+  positions: LiurenPlateFact[],
+): LiurenPlateCoverageFact {
   const earthBranches = new Set(positions.map((item) => item.earthBranch));
   const heavenBranches = new Set(positions.map((item) => item.heavenBranch));
   const gods = new Set(positions.map((item) => item.god));
@@ -823,7 +821,37 @@ function buildPlateCoverageFact(positions: LiurenPlateFact[]): LiurenPlateCovera
     positions.length === 12 &&
     DIZHI.every((branch) => earthBranches.has(branch) && heavenBranches.has(branch)) &&
     TIANJIANG.every((god) => gods.has(god));
-  const status = completeBranches ? '完整' : '缺少';
+  const noblemanBranch = data.noblemanBranch;
+  const dayStem = data.ganzhi.day.charAt(0);
+  const noblemanMatchesDayStem =
+    TIANGAN.includes(dayStem as (typeof TIANGAN)[number]) &&
+    (data.dayNight === '昼占' || data.dayNight === '夜占') &&
+    noblemanBranch === getNoblemanBranch(dayStem, data.dayNight);
+  const expectedPlate =
+    completeBranches &&
+    DIZHI.includes(data.monthLeader as (typeof DIZHI)[number]) &&
+    DIZHI.includes(data.divinationBranch as (typeof DIZHI)[number]) &&
+    noblemanBranch &&
+    DIZHI.includes(noblemanBranch as (typeof DIZHI)[number]) &&
+    noblemanMatchesDayStem &&
+    (data.dayNight === '昼占' || data.dayNight === '夜占')
+      ? buildHeavenlyPlate({
+          monthLeader: data.monthLeader,
+          divinationBranch: data.divinationBranch,
+          noblemanBranch,
+          dayNight: data.dayNight,
+        })
+      : [];
+  const byEarthBranch = new Map(positions.map((item) => [item.earthBranch, item]));
+  const positionsAligned =
+    expectedPlate.length === 12 &&
+    expectedPlate.find((item) => item.branch === noblemanBranch)?.under ===
+      data.noblemanGroundBranch &&
+    expectedPlate.every((item) => {
+      const actual = byEarthBranch.get(item.under);
+      return actual?.heavenBranch === item.branch && actual.god === item.god;
+    });
+  const status = completeBranches && positionsAligned ? '完整' : '缺少';
   return {
     key: 'liuren:plate:coverage',
     status,
@@ -833,7 +861,7 @@ function buildPlateCoverageFact(positions: LiurenPlateFact[]): LiurenPlateCovera
     promptText:
       status === '完整'
         ? '天地盘十二位与十二天将资料完整，可逐位核验月将加时和贵人顺逆排布。'
-        : `${positions.length < 12 ? `当前结果仅保留${positions.length}/12位天地盘资料` : `当前结果保留${positions.length}/12位天地盘资料，但地盘、天盘或天将不完整或存在重复`}，无法完整核验月将加时和十二天将排布；不得反推或补造缺失位置。`,
+        : `${positions.length < 12 ? `当前结果仅保留${positions.length}/12位天地盘资料` : !completeBranches ? `当前结果保留${positions.length}/12位天地盘资料，地盘、天盘或天将有缺漏或重复` : '当前结果的月将加时或贵人布将与逐位记录不一致'}；月将加时和十二天将排布待复核。`,
     sources: ['当前大六壬结果的天地盘逐位记录', '十二地支与十二天将完整性检查'],
     limitation: PLATE_COVERAGE_LIMITATION,
   };
@@ -1273,7 +1301,7 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
     `日柱旬空：${calculationFact.xunKong.join('、') || '未列'}`,
   ];
   const platePositionFacts = buildPlatePositionFacts(data);
-  const plateFact = buildPlateCoverageFact(platePositionFacts);
+  const plateFact = buildPlateCoverageFact(data, platePositionFacts);
   const plateFacts = platePositionFacts.map(
     (item) => `地盘${item.earthBranch}上见天盘${item.heavenBranch}乘${item.god}`,
   );
@@ -1477,7 +1505,7 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
     },
     {
       level: plateFact.status === '完整' ? '辅证' : '反证',
-      title: plateFact.status === '完整' ? '天地盘十二支与天将定位' : '天地盘定位资料缺失',
+      title: plateFact.status === '完整' ? '天地盘十二支与天将定位' : '天地盘定位待复核',
       detail: `${plateFact.promptText}${platePositionFacts.length ? `；已保存位置：${platePositionFacts.map((item) => item.promptText).join('；')}` : ''}；逐位边界：${PLATE_FACT_LIMITATION}；覆盖边界：${plateFact.limitation}`,
       source: Array.from(
         new Set([...plateFact.sources, ...platePositionFacts.flatMap((item) => item.sources)]),

@@ -58,7 +58,7 @@ const PILLAR_LABELS: Record<PillarKey, string> = {
 const PILLAR_KEYS: PillarKey[] = ['year', 'month', 'day', 'hour'];
 
 function splitGanZhi(ganZhi: string | undefined) {
-  if (!ganZhi || ganZhi.length < 2) return null;
+  if (!ganZhi || ganZhi.length !== 2 || !isGanZhiPair(ganZhi[0], ganZhi[1])) return null;
   return {
     gan: ganZhi[0],
     zhi: ganZhi[1],
@@ -262,7 +262,9 @@ function buildFortuneEvidenceLines(params: {
     {
       level: '主证',
       title: '指定年限运限',
-      detail: `${params.scopeLabel}，所属大运为${params.cycleLabel}（${params.cycleGanZhi}）。`,
+      detail: params.cycleGanZhi
+        ? `${params.scopeLabel}，所属大运为${params.cycleLabel}（${params.cycleGanZhi}）。`
+        : `${params.scopeLabel}，属于${params.cycleLabel}时段。`,
       source: '岁运资料',
       tags: [params.scope],
     },
@@ -368,6 +370,20 @@ function analyzeSelectionTriggers(result: BaziChartResult, layers: FortuneTrigge
       (layer) => layer.ganZhi.length === 2 && isGanZhiPair(layer.ganZhi[0], layer.ganZhi[1]),
     ),
   );
+}
+
+function analyzeSelectionActions(
+  result: BaziChartResult,
+  layers: FortuneActionLayerInput[],
+  triggerEvidence: FortuneTriggerEvidenceResult,
+) {
+  return analyzeFortuneActionEvidence({
+    result,
+    layers: layers.filter(
+      (layer) => layer.ganZhi.length === 2 && isGanZhiPair(layer.ganZhi[0], layer.ganZhi[1]),
+    ),
+    triggerEvidence,
+  });
 }
 
 function getYearTimeRange(year: number): LocalTimeRange {
@@ -478,6 +494,7 @@ export function buildFortuneSelectionContext(
   }
 
   const cycleLabel = formatCycleLabel(cycle);
+  const cycleGanZhi = cycle.isXiaoyun ? '' : cycle.ganZhi;
   const cycleTimeRange = getLuckCycleTimeRange(cycle);
   const yearItem = cycle.years.find((item) => item.year === normalized.year);
   const monthInfoList = normalized.year ? getYearInfo(normalized.year).months : [];
@@ -489,7 +506,7 @@ export function buildFortuneSelectionContext(
   const baseContext = {
     cycleIndex: normalized.cycleIndex ?? 0,
     cycleLabel,
-    cycleGanZhi: cycle.ganZhi,
+    cycleGanZhi,
     cycleStartYear: cycle.year,
     cycleAge: cycle.age,
     cycleType: cycle.type,
@@ -505,14 +522,16 @@ export function buildFortuneSelectionContext(
       const timeRange = clipToCycle(getYearTimeRange(item.year), cycleTimeRange);
       return timeRange ? [{ year: item.year, ganZhi: item.ganZhi, age: item.age, timeRange }] : [];
     });
-    const cycleTenGod = formatGanZhiTenGod(result, cycle.ganZhi);
-    const cycleTriggerSummary = buildGanZhiTriggerSummary(result, cycle.ganZhi, '大运');
+    const cycleTenGod = cycleGanZhi ? formatGanZhiTenGod(result, cycleGanZhi) : undefined;
+    const cycleTriggerSummary = cycleGanZhi
+      ? buildGanZhiTriggerSummary(result, cycleGanZhi, '大运')
+      : undefined;
     const triggerEvidence = analyzeSelectionTriggers(result, [
       fortuneLayer('dayun', 'dayun', cycleLabel, cycle.ganZhi, `${cycle.year}年起`),
     ]);
-    const actionEvidence = analyzeFortuneActionEvidence({
+    const actionEvidence = analyzeSelectionActions(
       result,
-      layers: [
+      [
         actionLayer(
           'dayun',
           'dayun',
@@ -522,7 +541,7 @@ export function buildFortuneSelectionContext(
         ),
       ],
       triggerEvidence,
-    });
+    );
 
     return {
       ...baseContext,
@@ -534,28 +553,31 @@ export function buildFortuneSelectionContext(
       promptPayload: {
         scopeLabel: `分析对象：${cycleLabel}`,
         summaryLines: [
-          `大运干支：${cycle.ganZhi}`,
-          `大运十神：${cycleTenGod}`,
-          cycleTriggerSummary,
-          `起运年份：${cycle.year}年`,
-          `起运年龄：${cycle.age}岁`,
+          ...(cycleGanZhi
+            ? [`大运干支：${cycleGanZhi}`, `大运十神：${cycleTenGod}`, cycleTriggerSummary!]
+            : []),
+          `${cycle.isXiaoyun ? '童运起始年份' : '起运年份'}：${cycle.year}年`,
+          `${cycle.isXiaoyun ? '童运起始年龄' : '起运年龄'}：${cycle.age}岁`,
           cycle.isXiaoyun
             ? '类型：未起运，行童运'
             : `类型：${cycle.type === '小运' ? '童运' : cycle.type}`,
         ],
-        selectedFacts: [`大运十神：${cycleTenGod}`, cycleTriggerSummary],
+        selectedFacts: cycleGanZhi ? [`大运十神：${cycleTenGod}`, cycleTriggerSummary!] : [],
         evidenceLines: buildFortuneEvidenceLines({
           scope: 'dayun',
           scopeLabel: `${cycleLabel}`,
           cycleLabel,
-          cycleGanZhi: cycle.ganZhi,
+          cycleGanZhi,
           selectedTitle: '大运干支与十神',
-          selectedGanZhi: cycle.ganZhi,
+          selectedGanZhi: cycleGanZhi || undefined,
           selectedTenGod: cycleTenGod,
           triggerSummary: cycleTriggerSummary,
-          timingText: `${cycle.year}年起，约${cycle.age}岁交运；只作为十年阶段主题与强弱背景。`,
-          limitText:
-            '大运不能替代流年给出精确年份；未给出具体流年时，只能判断十年阶段，不展开年度触发。',
+          timingText: cycle.isXiaoyun
+            ? `${formatLocalDateTime(cycleTimeRange.start)}起，至${formatLocalDateTime(cycleTimeRange.end)}交首运；童运时段。`
+            : `${cycle.year}年起，约${cycle.age}岁交运；只作为十年阶段主题与强弱背景。`,
+          limitText: cycle.isXiaoyun
+            ? '童运只表示首运前时段；未给出具体流年时，不展开年度触发。'
+            : '大运不能替代流年给出精确年份；未给出具体流年时，只能判断十年阶段，不展开年度触发。',
           triggerEvidence,
           actionEvidence,
         }),
@@ -610,9 +632,9 @@ export function buildFortuneSelectionContext(
       fortuneLayer('dayun', 'dayun', cycleLabel, cycle.ganZhi, `${cycle.year}年起`),
       fortuneLayer('year', 'year', `${yearItem.year}年流年`, yearItem.ganZhi, `${yearItem.year}年`),
     ]);
-    const actionEvidence = analyzeFortuneActionEvidence({
+    const actionEvidence = analyzeSelectionActions(
       result,
-      layers: [
+      [
         actionLayer(
           'dayun',
           'dayun',
@@ -629,7 +651,7 @@ export function buildFortuneSelectionContext(
         ),
       ],
       triggerEvidence,
-    });
+    );
 
     return {
       ...baseContext,
@@ -641,7 +663,7 @@ export function buildFortuneSelectionContext(
       promptPayload: {
         scopeLabel: `分析对象：${yearItem.year}年流年`,
         summaryLines: [
-          `所属大运：${cycleLabel}`,
+          cycle.isXiaoyun ? '所属大运：未起运，童运时段' : `所属大运：${cycleLabel}`,
           `流年干支：${yearItem.ganZhi}`,
           `流年十神：${yearTenGod}`,
           yearTriggerSummary,
@@ -656,12 +678,14 @@ export function buildFortuneSelectionContext(
           scope: 'year',
           scopeLabel: `${yearItem.year}年流年`,
           cycleLabel,
-          cycleGanZhi: cycle.ganZhi,
+          cycleGanZhi,
           selectedTitle: '流年干支与十神',
           selectedGanZhi: yearItem.ganZhi,
           selectedTenGod: yearTenGod,
           triggerSummary: yearTriggerSummary,
-          parentText: `所属大运：${cycleLabel}（${cycle.ganZhi}），年度判断必须承接该十年阶段。`,
+          parentText: cycle.isXiaoyun
+            ? '所属童运时段，流年需结合童运时间范围。'
+            : `所属大运：${cycleLabel}（${cycleGanZhi}），年度判断必须承接该十年阶段。`,
           timingText: `${yearItem.year}年（${yearItem.age}岁）为年度触发；流月列表只作月份窗口参考。`,
           limitText: '未给出具体流月或流日时，不得把某月某日硬断成唯一应期。',
           triggerEvidence,
@@ -745,9 +769,9 @@ export function buildFortuneSelectionContext(
         `${monthInfo.startDate}至${monthInfo.endDate}`,
       ),
     ]);
-    const actionEvidence = analyzeFortuneActionEvidence({
+    const actionEvidence = analyzeSelectionActions(
       result,
-      layers: [
+      [
         actionLayer(
           'dayun',
           'dayun',
@@ -771,7 +795,7 @@ export function buildFortuneSelectionContext(
         ),
       ],
       triggerEvidence,
-    });
+    );
 
     return {
       ...baseContext,
@@ -802,7 +826,7 @@ export function buildFortuneSelectionContext(
       promptPayload: {
         scopeLabel: `分析对象：${yearItem.year}年${monthInfo.month}流月`,
         summaryLines: [
-          `所属大运：${cycleLabel}`,
+          cycle.isXiaoyun ? '所属大运：未起运，童运时段' : `所属大运：${cycleLabel}`,
           `所属流年：${yearItem.year}年 ${yearItem.ganZhi}`,
           `流月：${monthInfo.month} ${monthInfo.ganZhi}`,
           `流月十神：${monthTenGod}`,
@@ -825,12 +849,14 @@ export function buildFortuneSelectionContext(
             scope: 'month',
             scopeLabel: `${yearItem.year}年${monthInfo.month}流月`,
             cycleLabel,
-            cycleGanZhi: cycle.ganZhi,
+            cycleGanZhi,
             selectedTitle: '流月干支与十神',
             selectedGanZhi: monthInfo.ganZhi,
             selectedTenGod: monthTenGod,
             triggerSummary: monthTriggerSummary,
-            parentText: `所属大运：${cycleLabel}（${cycle.ganZhi}）；所属流年：${yearItem.year}年${yearItem.ganZhi}。`,
+            parentText: cycle.isXiaoyun
+              ? `所属童运时段；所属流年：${yearItem.year}年${yearItem.ganZhi}。`
+              : `所属大运：${cycleLabel}（${cycleGanZhi}）；所属流年：${yearItem.year}年${yearItem.ganZhi}。`,
             timingText: `${monthInfo.startDate}至${monthInfo.endDate}，以节气月为准；${monthInfo.startTermName || ''} ${monthInfo.startDateTime || ''} 起，${monthInfo.endTermName || ''} ${monthInfo.endDateTime || ''} 交下节。`,
             limitText:
               '流月只细化年度主题，不能推翻本命、大运与流年主线；未给出流日时不硬给具体日期。',
@@ -918,9 +944,9 @@ export function buildFortuneSelectionContext(
     fortuneLayer('month', 'month', `${yearItem.year}年${monthInfo.month}流月`, monthInfo.ganZhi),
     fortuneLayer('day', 'day', `${actualDate}流日`, dayInfo.ganZhi, actualDate),
   ]);
-  const actionEvidence = analyzeFortuneActionEvidence({
+  const actionEvidence = analyzeSelectionActions(
     result,
-    layers: [
+    [
       actionLayer(
         'dayun',
         'dayun',
@@ -939,7 +965,7 @@ export function buildFortuneSelectionContext(
       actionLayer('day', 'day', `${actualDate}流日`, dayInfo.ganZhi, actualDate),
     ],
     triggerEvidence,
-  });
+  );
   const monthDayLines = dayInfoList
     .filter((item) => clipToCycle(item.timeRange, cycleTimeRange))
     .map((item) =>
@@ -978,7 +1004,7 @@ export function buildFortuneSelectionContext(
     promptPayload: {
       scopeLabel: `分析对象：${actualDate}流日`,
       summaryLines: [
-        `所属大运：${cycleLabel}`,
+        cycle.isXiaoyun ? '所属大运：未起运，童运时段' : `所属大运：${cycleLabel}`,
         `所属流年：${yearItem.year}年 ${yearItem.ganZhi}`,
         `所属流月：${monthInfo.month} ${monthInfo.ganZhi}`,
         `流日：${actualDate} ${dayInfo.ganZhi}`,
@@ -999,12 +1025,14 @@ export function buildFortuneSelectionContext(
         scope: 'day',
         scopeLabel: `${actualDate}流日`,
         cycleLabel,
-        cycleGanZhi: cycle.ganZhi,
+        cycleGanZhi,
         selectedTitle: '流日干支与十神',
         selectedGanZhi: dayInfo.ganZhi,
         selectedTenGod: dayTenGod,
         triggerSummary: dayTriggerSummary,
-        parentText: `所属大运：${cycleLabel}（${cycle.ganZhi}）；所属流年：${yearItem.year}年${yearItem.ganZhi}；所属流月：${monthInfo.month}${monthInfo.ganZhi}。`,
+        parentText: cycle.isXiaoyun
+          ? `所属童运时段；所属流年：${yearItem.year}年${yearItem.ganZhi}；所属流月：${monthInfo.month}${monthInfo.ganZhi}。`
+          : `所属大运：${cycleLabel}（${cycleGanZhi}）；所属流年：${yearItem.year}年${yearItem.ganZhi}；所属流月：${monthInfo.month}${monthInfo.ganZhi}。`,
         timingText: `按子初换日：${ziChuStart}至${ziChuEnd}；流时列表只作当日内短时触发参考。`,
         limitText: '流日只判断当日执行、沟通、避险和即时触发，不得改写长期命局或整年趋势。',
         triggerEvidence,

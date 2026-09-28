@@ -9,6 +9,7 @@ import {
 import type { LenormandCombinationRelation, LenormandData } from '../types/divination';
 import { MingyuCoreError } from '../shared/result';
 import {
+  LENORMAND_CARDS,
   LENORMAND_SPREADS,
   resolveInteractiveLenormandCards,
   shuffleLenormandCards,
@@ -16,7 +17,8 @@ import {
 
 export interface LenormandCardEvidence {
   key: string;
-  status: '已映射';
+  status: '已映射' | '存在缺口';
+  mismatches: string[];
   index: number;
   cardId: number;
   name: string;
@@ -165,7 +167,7 @@ export interface LenormandSummaryFact {
 
 export interface LenormandTraditionalFact {
   key: string;
-  status: '已映射';
+  status: '已映射' | '存在缺口';
   kind: '单牌牌义' | '固定组合' | '相邻合读';
   cardFactKeys: string[];
   cardNames: string[];
@@ -523,7 +525,7 @@ function buildTraditionalFacts(
   const cardByName = new Map(cards.map((card) => [card.name, card]));
   const cardFacts = cards.map((card): LenormandTraditionalFact => ({
     key: `card:${card.index}:${card.name}`,
-    status: '已映射',
+    status: card.status,
     kind: '单牌牌义',
     cardFactKeys: [card.key],
     cardNames: [card.name],
@@ -838,6 +840,7 @@ function buildSummaryFact(params: {
     params.drawFact.status === '可核验' &&
     ['可重放', '不适用'].includes(params.randomFact.status) &&
     params.drawOrderFacts.length === params.cards.length &&
+    params.cards.every((card) => card.status === '已映射') &&
     layoutComplete
       ? '证据链完整'
       : '证据链有缺口';
@@ -1131,9 +1134,53 @@ function buildLimitationFacts(params: {
 
 export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidenceAnalysis {
   if (!data.cards.length) throw new Error('雷诺曼结构化证据至少需要一张牌。');
+  const inputCards = data.cards;
+  const mismatchesByIndex = inputCards.map(() => [] as string[]);
+  const columns = data.spreadType === 'grandTableau' ? 9 : data.spreadType === 'nine' ? 3 : 0;
+  data = {
+    ...data,
+    cards: inputCards.map((input, index) => {
+      const canonical = LENORMAND_CARDS.find((card) => card.id === input.id);
+      const mismatches = mismatchesByIndex[index]!;
+      if (!canonical) {
+        mismatches.push('牌号不在36张雷诺曼牌表中');
+      } else {
+        if (input.name !== canonical.name) mismatches.push('牌名');
+        if (
+          !Array.isArray(input.keywords) ||
+          input.keywords.length !== canonical.keywords.length ||
+          input.keywords.some(
+            (keyword, keywordIndex) => keyword !== canonical.keywords[keywordIndex],
+          )
+        ) {
+          mismatches.push('关键词');
+        }
+        if (input.meaning !== canonical.meaning) mismatches.push('基础牌义');
+      }
+
+      const expectedHouse =
+        data.spreadType === 'grandTableau' ? LENORMAND_CARDS[index]?.name : undefined;
+      const expectedRow = columns ? Math.floor(index / columns) + 1 : undefined;
+      const expectedColumn = columns ? (index % columns) + 1 : undefined;
+      if (input.house !== expectedHouse) mismatches.push('宫位');
+      if (input.row !== expectedRow) mismatches.push('行号');
+      if (input.column !== expectedColumn) mismatches.push('列号');
+
+      return {
+        ...input,
+        name: canonical?.name ?? `未知牌号${String(input.id)}`,
+        keywords: canonical ? [...canonical.keywords] : [],
+        meaning: canonical?.meaning ?? '该牌号无法映射到雷诺曼牌表，未生成牌义。',
+        house: expectedHouse,
+        row: expectedRow,
+        column: expectedColumn,
+      };
+    }),
+  };
   const cards = data.cards.map((card, index): LenormandCardEvidence => {
     const key = `lenormand:card:${index + 1}:${card.id}`;
     const traditionalFactKey = `card:${index + 1}:${card.name}`;
+    const mismatches = mismatchesByIndex[index] ?? ['牌面资料未能映射'];
     const promptMeaning = conditionLenormandTraditionalText(card.meaning, {
       kind: '单牌牌义',
       cardNames: [card.name],
@@ -1141,7 +1188,8 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
     });
     return {
       key,
-      status: '已映射',
+      status: mismatches.length ? '存在缺口' : '已映射',
+      mismatches,
       index: index + 1,
       cardId: card.id,
       name: card.name,
@@ -1152,8 +1200,12 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
       row: card.row,
       column: card.column,
       traditionalFactKey,
-      promptText: `${card.position}为${card.name}；关键词${card.keywords.join('、') || '未列'}；条件化牌义${promptMeaning}${card.house ? `；计算落${card.house}宫` : ''}${card.row && card.column ? `；第${card.row}排第${card.column}列` : ''}`,
-      sources: ['已声明牌阵牌位', '已确定牌号与牌名', '36张雷诺曼逐牌关键词与基础牌义资料'],
+      promptText: `${card.position}为${card.name}；关键词${card.keywords.join('、') || '未列'}；条件化牌义${promptMeaning}${card.house ? `；计算落${card.house}宫` : ''}${card.row && card.column ? `；第${card.row}排第${card.column}列` : ''}${mismatches.length ? `；牌面核对存在缺口（${mismatches.join('、')}），已按牌号与牌阵位置重建` : ''}`,
+      sources: [
+        '已声明牌阵牌位',
+        '依据牌号映射牌名与基础牌义',
+        '36张雷诺曼逐牌关键词与基础牌义资料',
+      ],
       limitation: CARD_FACT_LIMITATION,
     };
   });
@@ -1311,7 +1363,7 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
       title: `${card.position}：${card.name}`,
       detail: `${card.promptText}；边界：${card.limitation}`,
       source: card.sources.join('、'),
-      tags: [card.position, card.name, ...card.keywords.slice(0, 3)],
+      tags: [card.position, card.name, ...card.keywords.slice(0, 3), card.status],
     })),
     ...(sequenceFacts.length
       ? [

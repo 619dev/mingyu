@@ -2147,7 +2147,7 @@ function formatQizhengFlowingPrompt(
       const second = natalStars.find((star) => `本命${star.name}` === aspect.star2)!;
       const relation = aspect.type === '同宫' ? '合相' : aspect.type;
       const palaceRelation = first.signBranch === second.signBranch ? '同宫' : '异宫';
-      return `采样时刻${flowing.localDateTime}：${aspect.star1}（本命${first.signBranch}宫${first.palace}）与${aspect.star2}（${second.signBranch}宫${second.palace}）：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`;
+      return `采样时刻${flowing.localDateTime}：${aspect.star1}（入本命${first.signBranch}宫${first.palace}）与${aspect.star2}（${second.signBranch}宫${second.palace}）：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`;
     }),
     16,
   );
@@ -2234,7 +2234,7 @@ function generateQizhengInternal(
     );
     palaceHour = trueSolar.correctedTime.hour;
     palaceMinute = trueSolar.correctedTime.minute;
-    trueSolarNote = `传统命身十二宫已按真太阳时校正（经度修正 ${trueSolar.longitudeCorrectionMinutes.toFixed(2)} 分，均时差 ${trueSolar.equationOfTimeMinutes.toFixed(2)} 分）；七政四余位置仍用现代星历`;
+    trueSolarNote = `传统命身十二宫已按真太阳时校正（经度修正 ${trueSolar.longitudeCorrectionMinutes.toFixed(2)} 分，均时差 ${trueSolar.equationOfTimeMinutes.toFixed(2)} 分）；星曜位置仍按各自星历与紫炁古法模型计算`;
     calculationContext.palaceTimeNote = trueSolarNote;
   } else {
     calculationContext.palaceTimeNote = trueSolarNote;
@@ -2316,7 +2316,7 @@ function generateQizhengInternal(
   if (input.gender && flowCivil) {
     const birthSeasonalYear = getQizhengSeasonalYear(Date.parse(calculationContext.utcDateTime));
     const flowSeasonalYear = getQizhengSeasonalYear(
-      buildAstronomicalTimeEvidence(flowCivil.flowInput).unixMilliseconds,
+      buildQizhengAstronomicalTime(flowCivil.flowInput).unixMilliseconds,
     );
     timeLords = buildQizhengTimeLords({
       gender: input.gender,

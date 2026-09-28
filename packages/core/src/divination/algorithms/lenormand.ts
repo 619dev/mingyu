@@ -375,13 +375,24 @@ function buildLenormandCombinations(
   const candidates =
     spreadType === 'nine' || spreadType === 'grandTableau'
       ? getGridCombinationCandidates(cards)
-      : cards.slice(1).map((second, index) => ({
-          first: cards[index],
-          second,
-          rowDistance: 0,
-          columnDistance: 0,
-          relation: '牌序相邻' as const,
-        }));
+      : cards
+          .slice(1)
+          .map((second, index) => ({
+            first: cards[index],
+            second,
+            rowDistance: 0,
+            columnDistance: 0,
+            relation: '牌序相邻' as const,
+          }))
+          // 选择A走向与选择B分属两条支线，不按牌序互作组合。
+          .filter(
+            ({ first, second }) =>
+              !(
+                spreadType === 'decision' &&
+                first.position === '选择A走向' &&
+                second.position === '选择B'
+              ),
+          );
 
   return candidates.flatMap(({ first, second, relation, rowDistance, columnDistance }) => {
     const fixedMeaning = getFixedCombinationMeaning(first.name, second.name);

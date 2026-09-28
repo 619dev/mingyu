@@ -92,8 +92,9 @@ function formatSolarDateKey(year: number, month: number, day: number): string {
 }
 
 function assertYear(year: number) {
-  if (!Number.isInteger(year) || year < 1900 || year > 2100) {
-    throw new Error('年份需在 1900-2100 之间。');
+  // 出生输入为 1900-2100 年；立春前及末步大运会跨出出生年份范围。
+  if (!Number.isInteger(year) || year < 1899 || year > 2232) {
+    throw new Error('年份需在 1899-2232 之间。');
   }
 }
 
@@ -222,6 +223,8 @@ function buildBaziMonthInfoFromTerm(
   const endAt = toNativeDate(endSolarTime);
   const monthColumn = startSolarTime.next(60).getLunarHour().getEightChar().getMonth();
   const zhi = monthColumn.getEarthBranch().getName();
+  const startEvidenceYear = termYear + Math.floor(termIndex / 24);
+  const endEvidenceYear = termYear + Math.floor((termIndex + 2) / 24);
 
   return {
     index,
@@ -233,14 +236,15 @@ function buildBaziMonthInfoFromTerm(
     endDateTime: formatDateTime(endAt),
     startTermName: term.getName(),
     endTermName: nextTerm.getName(),
-    startTermEvidence: calculateSolarTermEvidence(
-      termYear + Math.floor(termIndex / 24),
-      termIndex % 24,
-    ),
-    endTermEvidence: calculateSolarTermEvidence(
-      termYear + Math.floor((termIndex + 2) / 24),
-      (termIndex + 2) % 24,
-    ),
+    // 独立节气核验目前只覆盖 1900-2200；范围外保留历表交节时刻，不伪造核验资料。
+    startTermEvidence:
+      startEvidenceYear >= 1900 && startEvidenceYear <= 2200
+        ? calculateSolarTermEvidence(startEvidenceYear, termIndex % 24)
+        : undefined,
+    endTermEvidence:
+      endEvidenceYear >= 1900 && endEvidenceYear <= 2200
+        ? calculateSolarTermEvidence(endEvidenceYear, (termIndex + 2) % 24)
+        : undefined,
     timeRange: createLocalTimeRange(startAt, endAt),
     startAt,
     endAt,
@@ -355,7 +359,7 @@ export function resolveBaziFortuneDate(date: string): BaziFortuneDateResolution 
   const referenceDate = toChinaInstant(fromCivilDate(civilDate));
   let year = civilYear;
   let month = getBaziMonthIndexByDate(year, referenceDate);
-  if (month === undefined && year > 1900) {
+  if (month === undefined && year > 1899) {
     year -= 1;
     month = getBaziMonthIndexByDate(year, referenceDate);
   }

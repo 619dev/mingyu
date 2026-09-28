@@ -879,10 +879,24 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
         /(?:，|；)?不(?:作|替代|重复加算)通用(?:(?:吉凶|吉格|凶格)评分|凶方扣分)。?/gu,
         '',
       );
+      const summaryWithoutRepeatedPattern = (data.classicPatterns ?? []).reduce(
+        (summary, pattern) => {
+          if (
+            !palaceName ||
+            item.palace === undefined ||
+            !pattern.palaces.includes(item.palace) ||
+            !item.sources.includes(pattern.name)
+          ) {
+            return summary;
+          }
+          return summary.replaceAll(`${palaceName}${pattern.name}`, '该格局');
+        },
+        fullSummary,
+      );
       const summary =
-        palaceName && fullSummary.startsWith(palaceName)
-          ? fullSummary.slice(palaceName.length)
-          : fullSummary;
+        palaceName && summaryWithoutRepeatedPattern.startsWith(palaceName)
+          ? summaryWithoutRepeatedPattern.slice(palaceName.length)
+          : summaryWithoutRepeatedPattern;
       // 基础格局已逐条解释，复合格局只保留组合结论，避免再次罗列来源条件。
       return `${name}：${summary}`;
     });
