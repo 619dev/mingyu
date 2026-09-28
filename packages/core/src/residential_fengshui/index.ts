@@ -121,6 +121,14 @@ function hasOrientationInput(input: ResidentialFengshuiInput) {
   );
 }
 
+function hasDegreeMeasurement(input: ResidentialFengshuiInput) {
+  return (
+    input.doorToInteriorDegree !== undefined ||
+    input.sitDegree !== undefined ||
+    input.facingDegree !== undefined
+  );
+}
+
 type ResidentialOrientation = ReturnType<typeof resolveXuanKongOrientation>;
 
 function resolveResidentialOrientation(
@@ -344,6 +352,7 @@ function buildEvidencePrompt(params: {
   xuankong: XuanKongResult | null;
   agreements: ResidentialFengshuiAgreement[];
   advice: string[];
+  northReferenceUnspecified: boolean;
 }) {
   const items: PromptEvidenceItem[] = [];
   if (params.xuankong) {
@@ -352,6 +361,14 @@ function buildEvidencePrompt(params: {
       title: '玄空宅运层',
       detail: `${params.xuankong.period.label}；坐${params.xuankong.sitMountain}向${params.xuankong.facingMountain}；${params.xuankong.guaType}；${params.xuankong.daoShanXiang.summary}${params.xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}`,
       source: '玄空飞星 v1',
+    });
+  }
+  if (params.northReferenceUnspecified) {
+    items.push({
+      level: '反证',
+      title: '坐向北向基准未声明',
+      detail: '坐向角度按原始读数暂排，尚未确认磁北或真北；补充北向基准后再核定住宅方向盘。',
+      source: '住宅风水输入未声明北向基准',
     });
   }
   if (params.bazhai) {
@@ -385,15 +402,24 @@ function buildPrompt(result: {
   bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null;
   xuankong: XuanKongResult | null;
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'];
+  northReferenceUnspecified: boolean;
 }) {
-  const stripHeading = (prompt: string) =>
+  const stripHeading = (prompt: string, omitBazhaiNorthNote = false) =>
     prompt
       .split('\n')
-      .filter((line) => !/^【.+】$/.test(line.trim()))
+      .filter(
+        (line) =>
+          !/^【.+】$/.test(line.trim()) &&
+          (!omitBazhaiNorthNote ||
+            line !== '北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。'),
+      )
       .join('\n')
       .trim();
   const lines = [
     '【住宅风水排盘】',
+    result.northReferenceUnspecified && result.xuankong
+      ? '坐向北向基准未声明；玄空角度盘按原始读数暂排，补充磁北或真北基准后复核。'
+      : '',
     result.xuankong ? '' : `山向：${result.orientationText}`,
     result.houseYear != null ? `宅运年份：${result.houseYear}` : '',
     !result.xuankong && result.bazhai
@@ -402,7 +428,9 @@ function buildPrompt(result: {
         : '玄空：未排盘'
       : '',
     result.xuankong ? `玄空完整盘面：\n${stripHeading(result.xuankong.prompt)}` : '',
-    result.bazhai ? `八宅完整盘面：\n${stripHeading(result.bazhai.prompt)}` : '',
+    result.bazhai
+      ? `八宅完整盘面：\n${stripHeading(result.bazhai.prompt, result.northReferenceUnspecified && Boolean(result.xuankong))}`
+      : '',
   ];
   return lines.filter(Boolean).join('\n');
 }
@@ -432,13 +460,22 @@ export function generateResidentialFengshui(
   const orientationText = orientation
     ? `坐${orientation.sitMountain}向${orientation.facingMountain}`
     : '未提供山向';
-  const evidencePromptText = buildEvidencePrompt({ bazhai, xuankong, agreements, advice });
+  const northReferenceUnspecified =
+    hasDegreeMeasurement(input) && (input.northReference ?? 'unspecified') === 'unspecified';
+  const evidencePromptText = buildEvidencePrompt({
+    bazhai,
+    xuankong,
+    agreements,
+    advice,
+    northReferenceUnspecified,
+  });
   const prompt = buildPrompt({
     orientationText,
     houseYear,
     bazhai,
     xuankong,
     xuankongStatus,
+    northReferenceUnspecified,
   });
 
   return {

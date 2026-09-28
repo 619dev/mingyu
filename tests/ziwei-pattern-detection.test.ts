@@ -264,6 +264,22 @@ test('原有仍可复算的紫微格局应按各自盘面条件命中', () => {
   });
 });
 
+test('日月照璧只在田宅宫实际处于墓库时列附加条件', () => {
+  const palaces = createPalaces();
+  addStar(palaces, 9, '太阳');
+  addStar(palaces, 9, '太阴');
+
+  const ordinary = detectPatterns({ palaces }).find((item) => item.name === '日月照璧');
+  assert.deepEqual(ordinary?.matched_conditions, ['太阳与太阴同守田宅宫']);
+
+  palaces[9].earthly_branch = '戌';
+  const storage = detectPatterns({ palaces }).find((item) => item.name === '日月照璧');
+  assert.deepEqual(storage?.matched_conditions, [
+    '太阳与太阴同守田宅宫',
+    '田宅宫在戌，属于古籍所喜墓库',
+  ]);
+});
+
 test('命录应将紫微格局命中条件、解释与古籍原文分别展示', () => {
   const palaces = createPalaces();
   addStar(palaces, 0, '紫微');

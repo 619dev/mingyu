@@ -697,7 +697,9 @@ const VERIFIED_PATTERN_RULES: VerifiedPatternRule[] = [
             stars: ['太阳', '太阴'],
             conditions: [
               '太阳与太阴同守田宅宫',
-              `田宅宫在${target.earthly_branch}${['辰', '戌', '丑', '未'].includes(target.earthly_branch) ? '，属于古籍所喜墓库' : '，不附加墓库条件'}`,
+              ...(['辰', '戌', '丑', '未'].includes(target.earthly_branch)
+                ? [`田宅宫在${target.earthly_branch}，属于古籍所喜墓库`]
+                : []),
             ],
           }
         : null;

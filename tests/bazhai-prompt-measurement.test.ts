@@ -38,3 +38,23 @@ test('八宅宅卦跨界时提示词并列候选并标明中心读数盘', () =>
   assert.equal(stable.directionMeasurement.stability, '稳定');
   assert.doesNotMatch(stable.prompt, /候选坐向|中心读数/);
 });
+
+test('八宅未声明北向时只把原始角度标为暂算依据', () => {
+  const result = analyzeBaZhaiByDoorDegree({
+    mingGua: '坎',
+    doorToInteriorDegree: 0,
+  });
+
+  assert.match(
+    result.directionMeasurement.promptText,
+    /北向基准未声明；按原始读数 0°暂算入户方向（非已确认真北）/,
+  );
+  assert.match(result.prompt, /北向基准未声明；以下坐向按原始读数暂算/);
+  assert.match(result.evidenceAnalysis.measurementFact.promptText, /北向基准未声明/);
+  assert.match(result.evidenceAnalysis.measurementCandidateFacts[0].promptText, /按原始读数暂算/);
+  assert.match(
+    result.evidenceAnalysis.measurementCandidateFacts[0].limitation,
+    /不代表真北坐向范围/,
+  );
+  assert.doesNotMatch(result.evidenceAnalysis.promptText, /真北口径0°|换算真北口径为0°/);
+});

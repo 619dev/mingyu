@@ -67,10 +67,10 @@ test('生肖六十流年七百二十组合保留全部刑冲害破与合会关�
           sanhui.some((group) => group.includes(branch) && group.includes(yearBranch)),
       );
       assert.ok(result.prompt.includes(yearGanZhi));
-      assert.ok(
-        result.prompt.includes(`本次比较流年年干${yearGanZhi[0]}与出生年支${branch}的五行`),
+      assert.match(
+        result.prompt,
+        /五行生克看作用方向；十神以个人出生日干和流年年干的阴阳五行为参照/,
       );
-      assert.match(result.prompt, /十神以个人出生日干为参照，并结合双方天干阴阳确定/);
       if (result.noble?.startsWith('三合')) {
         const group = sanhe.find(
           (members) => members.includes(branch) && members.includes(yearBranch),
@@ -121,4 +121,18 @@ test('丁卯值年太岁星君应使用常见名沉兴', () => {
   // 道教总庙三清宫“六十甲子太岁星君名称”列丁卯太岁沉兴大将军。
   // https://www.sanching.org.tw/me70
   assert.deepEqual(getYearTaiSui('丁卯'), { yearBranch: '卯', star: '沉兴' });
+});
+
+test('生肖提示词只列实际命中的太岁关系', () => {
+  const noConflict = getZodiacYearFortune('子', '丙寅');
+  assert.deepEqual(noConflict.conflicts, []);
+  assert.doesNotMatch(noConflict.prompt, /太岁关系：|未命中值、冲、刑、害、破|信息范围：/);
+  assert.doesNotMatch(noConflict.prompt, /参与关系的资料：/);
+
+  const conflict = getZodiacYearFortune('子', '丙午');
+  assert.deepEqual(
+    conflict.conflicts.map((item) => item.type),
+    ['冲太岁'],
+  );
+  assert.match(conflict.prompt, /太岁关系：冲太岁（生肖年支子与流年年支午相冲）/);
 });

@@ -61,7 +61,7 @@ export interface BaZhaiMeasurementCandidateFact {
   calculationStepKeys: string[];
   promptText: string;
   sources: string[];
-  limitation: '候选坐向只表示测量误差范围内可能落入的二十四山与宅卦，不代表现场真实坐向已经确定，也不得据候选数量生成可信度、吉凶分或调整结论';
+  limitation: string;
 }
 
 export interface BaZhaiMeasurementFact {
@@ -210,6 +210,16 @@ const LIMITATION_FACT_LIMITATION =
   '限制事实用于约束八宅传统分类与现场测量可支持的解释范围，不得被反向当作住宅效果、健康变化、财富结果或调整有效性的证据' as const;
 const SUMMARY_FACT_LIMITATION =
   '八宅证据汇总只统计命卦年界、命卦宅卦、八宫逐方、测量候选、反证与限制覆盖；不得按数量生成住宅吉凶总分、可信度、健康概率、财富增幅或调整效果保证' as const;
+
+function describeMeasurementBearing(measurement: BaZhaiDoorMeasurement) {
+  const direction = measurement.method === '站在大门处面向屋内测量' ? '入户' : '坐山';
+  if (measurement.northReference === 'unspecified') {
+    return `北向基准未声明；原始读数${measurement.measuredDegree}°，暂按${measurement.trueNorthDegree}°计算${direction}方位（非已确认真北）`;
+  }
+  return measurement.northReference === 'magnetic'
+    ? `磁北读数${measurement.measuredDegree}°按磁偏角折算真北${measurement.trueNorthDegree}°，计算${direction}方位`
+    : `真北读数${measurement.measuredDegree}°，计算${direction}方位`;
+}
 
 function buildCalculationFact(
   data: Omit<BaZhaiResult, 'prompt' | 'evidenceAnalysis'>,
@@ -371,9 +381,17 @@ function buildMeasurementFact(measurement?: BaZhaiDoorMeasurement): BaZhaiMeasur
       match: item.match,
       measurementFactKey: 'measurement:bazhai:door',
       calculationStepKeys: ['bazhai:calculation:house-gua'],
-      promptText: `${item.label}：坐${item.sitMountain}山、向${item.facingMountain}向，归${item.houseGua}宅${item.houseGroup}，命宅${item.match}`,
-      sources: ['真北坐山角度、测量误差与二十四山覆盖范围', '坐山宅卦与命宅分组比较'],
-      limitation: MEASUREMENT_CANDIDATE_LIMITATION,
+      promptText: `${measurement.northReference === 'unspecified' ? '按原始读数暂算，' : ''}${item.label}：坐${item.sitMountain}山、向${item.facingMountain}向，归${item.houseGua}宅${item.houseGroup}，命宅${item.match}`,
+      sources: [
+        measurement.northReference === 'unspecified'
+          ? '原始读数暂算的坐山角度、测量误差与二十四山覆盖范围'
+          : '真北坐山角度、测量误差与二十四山覆盖范围',
+        '坐山宅卦与命宅分组比较',
+      ],
+      limitation:
+        measurement.northReference === 'unspecified'
+          ? `${MEASUREMENT_CANDIDATE_LIMITATION}；北向基准未声明，此候选仅按原始读数暂算，不代表真北坐向范围`
+          : MEASUREMENT_CANDIDATE_LIMITATION,
     }),
   );
   return {
@@ -400,7 +418,7 @@ function buildMeasurementFact(measurement?: BaZhaiDoorMeasurement): BaZhaiMeasur
     candidateFactKeys: candidates.map((item) => item.key),
     calculationStepKeys: ['bazhai:calculation:house-gua'],
     warnings: measurement.warnings,
-    promptText: `${measurement.method}：输入${measurement.measuredDegree}°，真北口径${measurement.trueNorthDegree}°，误差±${measurement.measurementUncertaintyDegrees}°，中心结果${measurement.label}，稳定性${measurement.stability}，候选${candidates.map((item) => item.label).join('、') || '无'}`,
+    promptText: `${measurement.method}：${describeMeasurementBearing(measurement)}，误差±${measurement.measurementUncertaintyDegrees}°，中心结果${measurement.label}，稳定性${measurement.stability}，候选${candidates.map((item) => item.label).join('、') || '无'}`,
     sources: [
       measurement.method === '站在大门处面向屋内测量'
         ? '现场入户指南针读数与指定测量站位'
@@ -710,10 +728,10 @@ export function analyzeBaZhaiEvidence(
   const measurementFact = buildMeasurementFact(measurement);
   const measurementFacts = measurement
     ? [
-        `${measurement.method === '站在大门处面向屋内测量' ? '从大门面向屋内实测' : '住宅坐山输入'}${measurement.measuredDegree}°，换算真北口径为${measurement.trueNorthDegree}°`,
-        `传统坐向为${measurement.label}，坐${measurement.sitMountain}山、向${measurement.facingMountain}向`,
-        `测量误差±${measurement.measurementUncertaintyDegrees}°，距最近二十四山边界${measurement.nearestBoundaryDistanceDegrees.toFixed(2)}°`,
-        `稳定性为${measurement.stability}，候选坐向${measurement.candidateDirections.map((item) => item.label).join('、')}`,
+        describeMeasurementBearing(measurement),
+        `${measurement.northReference === 'unspecified' ? '按原始读数暂算的' : ''}传统坐向为${measurement.label}，坐${measurement.sitMountain}山、向${measurement.facingMountain}向`,
+        `${measurement.northReference === 'unspecified' ? '按原始读数暂算的' : ''}测量误差±${measurement.measurementUncertaintyDegrees}°，距最近二十四山边界${measurement.nearestBoundaryDistanceDegrees.toFixed(2)}°`,
+        `${measurement.northReference === 'unspecified' ? '按原始读数暂算的' : ''}稳定性为${measurement.stability}，候选坐向${measurement.candidateDirections.map((item) => item.label).join('、')}`,
       ]
     : [];
   const measurementCandidateFacts = measurementFact.candidates;

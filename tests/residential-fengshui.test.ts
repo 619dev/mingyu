@@ -324,6 +324,20 @@ test('住宅风水无居住人时门向磁北应换算真北并同步玄空盘',
   assert.ok(result.xuankong?.measurement?.candidateMountains?.length === 2);
 });
 
+test('住宅合参未声明北向时将玄空角度盘标为原始读数暂算', () => {
+  const result = generateResidentialFengshui({
+    mingGua: '坎',
+    year: 2024,
+    doorToInteriorDegree: 0,
+  });
+
+  assert.ok(result.xuankong);
+  assert.equal(result.xuankong.sitMountain, '子');
+  assert.match(result.prompt, /坐向北向基准未声明；玄空角度盘按原始读数暂排/);
+  assert.match(result.evidencePromptText, /坐向角度按原始读数暂排/);
+  assert.equal(result.prompt.match(/北向基准未声明/g)?.length, 1);
+});
+
 test('住宅风水无居住人时门向测量参数应执行与八宅一致的校验', () => {
   for (const input of [
     {

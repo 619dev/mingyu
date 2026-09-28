@@ -109,7 +109,7 @@ export interface BaZhaiDoorMeasurement {
   measuredDegree: number;
   northReference: 'unspecified' | 'magnetic' | 'true';
   magneticDeclinationDegrees: number | null;
-  /** 换算至真北基准后的入户方向；未声明北向时等同原始读数。 */
+  /** 按已声明北向基准换算的方向；未声明时保留原始读数作暂算值，并非已确认真北。 */
   trueNorthDegree: number;
   measurementUncertaintyDegrees: number;
   nearestBoundaryDistanceDegrees: number;
@@ -309,6 +309,9 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
   const lines: string[] = [];
   const houseUnstable = measurement?.stability === '宅卦不稳定';
   lines.push('【八宅风水排盘】');
+  if (measurement?.northReference === 'unspecified') {
+    lines.push('北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。');
+  }
   lines.push(`命卦：${r.mingGua}（${r.mingGroup}）`);
   lines.push(`立春年界：${r.birthYearBoundaryNote}`);
   if (measurement?.stability === '宅卦不稳定') {
@@ -467,7 +470,9 @@ function analyzeBaZhaiByMeasurement(
     label,
     promptText: [
       `${method === '站在大门处面向屋内测量' ? '测量方式：站在大门处面向屋内，指南针读数' : '住宅坐山度数'}为 ${doorToInteriorDegree}°；北向基准为${measurement.reference === 'magnetic' ? `磁北，磁偏角 ${measurement.declination}°（东偏为正）` : measurement.reference === 'true' ? '真北' : '未声明'}。`,
-      `真北口径${method === '站在大门处面向屋内测量' ? '入户' : '坐山'}方向为 ${measurement.trueNorthDegree}°，测量误差 ±${measurement.uncertainty}°，距最近二十四山分界 ${measurement.nearestBoundaryDistanceDegrees}°。`,
+      measurement.reference === 'unspecified'
+        ? `北向基准未声明；按原始读数 ${measurement.trueNorthDegree}°暂算${method === '站在大门处面向屋内测量' ? '入户' : '坐山'}方向（非已确认真北），测量误差 ±${measurement.uncertainty}°，距最近二十四山分界 ${measurement.nearestBoundaryDistanceDegrees}°。`
+        : `真北口径${method === '站在大门处面向屋内测量' ? '入户' : '坐山'}方向为 ${measurement.trueNorthDegree}°，测量误差 ±${measurement.uncertainty}°，距最近二十四山分界 ${measurement.nearestBoundaryDistanceDegrees}°。`,
       `中心读数换算后住宅坐山 ${sit.degree}° 为${sit.mountain}山，传统朝向 ${facing.degree}° 为${facing.mountain}向，结果为${label}。`,
       `误差候选：${candidateDirections.map((item) => `${item.label}（${item.houseGua}宅、${item.houseGroup}、命宅${item.match}）`).join('、')}。`,
       `测量稳定性为${measurement.stability}，候选坐向${candidateDirections.map((item) => item.label).join('、')}。`,
