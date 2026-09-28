@@ -15,6 +15,7 @@ import { MingluFengshuiSection } from './MingluFengshuiSection';
 import { MingluCrossSynthesisSection } from './MingluCrossSynthesisSection';
 import { MingluGlossarySection } from './MingluGlossarySection';
 import { scrollToMingluAnchor } from './MingluLink';
+import { formatMingluPatternCopy } from './minglu-copy';
 import './minglu.css';
 
 interface MingluWikiViewProps {
@@ -89,24 +90,7 @@ export const MingluWikiView: React.FC<MingluWikiViewProps> = ({ article }) => {
       md += `- ${el.wuxing}行：${el.score}加权计数 (${el.percentage}%) [${el.seasonStatus}]\n`;
     });
     md += `${article.fiveElementsSection.dayMasterStrength.judgmentSummary}\n`;
-    md += `\n## 三、格局成败与用神\n`;
-    md += `- 主格：${article.patternUsefulGodSection.pattern.name}\n`;
-    const transformation = article.patternUsefulGodSection.pattern.transformation;
-    if (transformation) {
-      md += `- 化气判定：${transformation.status}；化神${transformation.element}\n`;
-      md += `- 化气依据：${transformation.basis}\n`;
-      transformation.evidence.forEach((item) => {
-        md += `- 化气证据：${item}\n`;
-      });
-      transformation.conditions.forEach((item) => {
-        md += `- 化气条件：${item}\n`;
-      });
-      if (transformation.status === '成化') {
-        md += `- 取用主体：化神${transformation.element}；原日主旺衰与十神作为本命事实，取用按化神及其条件核验。\n`;
-      }
-    }
-    md += `- 核心用神：${article.patternUsefulGodSection.usefulGods.primaryUseful}\n`;
-    md += `- 核心忌神：${article.patternUsefulGodSection.usefulGods.primaryAvoid}\n`;
+    md += formatMingluPatternCopy(article);
 
     md += `\n## 四、柱间作用关系\n`;
     article.interactionsSection.forEach((item) => {

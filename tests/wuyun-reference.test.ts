@@ -59,6 +59,16 @@ test('六步保留现代节气交节参考，提示词不把它写成传统交�
   assert.ok(first && second);
   assert.equal(first.endTimestampExclusive, second.startTimestamp);
   assert.equal(first.endBeijingExclusive, second.startBeijing);
+  assert.ok(
+    result.prompt.includes(
+      `初之气（大寒、立春、雨水、惊蛰；现代节气交节参考（北京时间）${first.startBeijing}至${first.endBeijingExclusive}前）`,
+    ),
+  );
+  assert.ok(
+    result.prompt.includes(
+      `二之气（春分、清明、谷雨、立夏；现代节气交节参考（北京时间）${second.startBeijing}至${second.endBeijingExclusive}前）`,
+    ),
+  );
   assert.match(second.startBeijing, /^2026-03-20 \d{2}:\d{2}:\d{2}$/);
   assert.ok(second.startTimestamp > Date.parse('2026-03-19T16:00:00Z'));
   assert.ok(second.startTimestamp < Date.parse('2026-03-20T16:00:00Z'));

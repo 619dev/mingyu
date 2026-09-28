@@ -473,11 +473,15 @@ export function buildBaziZiweiSynthesis(params: {
       const placeholderKeys = definition.baziFactKeys.filter((key) =>
         (baziFacts[key] ?? []).every(
           (fact) =>
-            !fact.detail || fact.detail.includes('未记录') || fact.detail.includes('未登记'),
+            !fact.detail ||
+            fact.detail === '未知' ||
+            fact.detail.startsWith('未知；') ||
+            fact.detail.includes('未记录') ||
+            fact.detail.includes('未登记'),
         ),
       );
       if (placeholderKeys.length) {
-        gaps.push(`${theme.label}八字资料仅有未记录占位：${placeholderKeys.join('、')}`);
+        gaps.push(`${theme.label}八字资料有待核验项：${placeholderKeys.join('、')}`);
       }
     }
     if (!theme.ziweiEvidence.length) gaps.push(`${theme.label}缺少紫微资料`);

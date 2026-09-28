@@ -171,3 +171,63 @@ test('紫微原盘十二宫不完整时合参不能报告资料完整', async ()
   assert.ok(synthesis.missingFacts.includes('紫微本命十二宫资料缺失或不完整'));
   assert.equal(synthesis.corroboration?.shaYao.ziweiCheckStatus, 'origin-missing');
 });
+
+test('八字旺衰或格局未知时合参应登记资料缺口', async () => {
+  const reading = await getCombinedReading();
+  assert.ok(reading.bundle.bazi);
+  assert.ok(reading.bundle.ziwei);
+
+  const synthesis = buildBaziZiweiSynthesis({
+    bazi: {
+      ...reading.bundle.bazi,
+      analysis: {
+        ...reading.bundle.bazi.analysis,
+        dayMasterStrength: {
+          ...reading.bundle.bazi.analysis.dayMasterStrength,
+          status: '未知',
+        },
+        mingGe: {
+          ...reading.bundle.bazi.analysis.mingGe,
+          pattern: '未知',
+        },
+      },
+    },
+    ziwei: reading.bundle.ziwei,
+  });
+
+  assert.equal(synthesis.status, '资料有缺口');
+  assert.ok(
+    synthesis.missingFacts.some((fact) => fact.includes('待核验项：') && fact.includes('strength')),
+  );
+  assert.ok(
+    synthesis.missingFacts.some((fact) => fact.includes('待核验项：') && fact.includes('pattern')),
+  );
+});
+
+test('局部细节未知不应把已知的旺衰结构整体标为缺口', async () => {
+  const reading = await getCombinedReading();
+  assert.ok(reading.bundle.bazi);
+  assert.ok(reading.bundle.ziwei);
+
+  const synthesis = buildBaziZiweiSynthesis({
+    bazi: {
+      ...reading.bundle.bazi,
+      analysis: {
+        ...reading.bundle.bazi.analysis,
+        dayMasterStrength: {
+          ...reading.bundle.bazi.analysis.dayMasterStrength,
+          details: {
+            ...reading.bundle.bazi.analysis.dayMasterStrength.details,
+            ruleBasis: [
+              ...reading.bundle.bazi.analysis.dayMasterStrength.details.ruleBasis,
+              '局部细节未知',
+            ],
+          },
+        },
+      },
+    },
+    ziwei: reading.bundle.ziwei,
+  });
+
+  assert.equal(synthesis.status, '资料完整');
+});

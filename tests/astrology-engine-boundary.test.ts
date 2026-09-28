@@ -291,6 +291,81 @@ test('完整星盘应将已计算宫位用于同宫星群检测', () => {
   assert.ok(chart.summary.patterns.includes('同宫星群（木星、水星、太阳，第10宫）'));
 });
 
+test('交点与莉莉丝可参与相位但不将两颗行星误判为星群', () => {
+  const chart = calculateChart(
+    {
+      year: 2026,
+      month: 1,
+      day: 1,
+      hour: 12,
+      minute: 0,
+      timezone: 0,
+      latitude: 70,
+      longitude: 0,
+    },
+    { includeNodes: true, includeLilith: true },
+  );
+  assert.equal(chart.houses.system, 'whole_sign');
+  assert.deepEqual(
+    chart.planets.filter((planet) => planet.signName === 'Pisces').map((planet) => planet.name),
+    ['Saturn', 'Neptune'],
+  );
+  assert.equal(chart.nodes[0].signName, 'Pisces');
+  assert.ok(
+    chart.aspects.all.some(
+      (aspect) => aspect.body1 === 'True North Node' || aspect.body2 === 'True North Node',
+    ),
+  );
+  assert.ok(chart.summary.patterns.includes('同星座星群（火星、太阳、金星，摩羯座）'));
+  assert.ok(
+    chart.summary.patterns
+      .filter((pattern) => pattern.includes('星群'))
+      .every((pattern) => !pattern.includes('北交点') && !pattern.includes('莉莉丝')),
+  );
+});
+
+test('小行星与凯龙星不将一两颗行星凑成星群，真实行星星群仍保留', () => {
+  const input = {
+    year: 2026,
+    day: 1,
+    hour: 12,
+    minute: 0,
+    timezone: 0,
+    latitude: 70,
+    longitude: 0,
+  };
+  const options = { includeAsteroids: true, includeChiron: true };
+  const february = calculateChart({ ...input, month: 2 }, options);
+  assert.deepEqual(
+    february.planets.filter((planet) => planet.signName === 'Aries').map((planet) => planet.name),
+    ['Neptune', 'Chiron', 'Ceres'],
+  );
+  assert.ok(
+    february.summary.patterns.every(
+      (pattern) => !pattern.includes('同星座星群（谷神星、凯龙星、海王星'),
+    ),
+  );
+  assert.ok(
+    february.summary.patterns.includes('同星座星群（火星、水星、冥王星、太阳、金星，水瓶座）'),
+  );
+  const april = calculateChart({ ...input, month: 4 }, options);
+  assert.deepEqual(
+    april.planets.filter((planet) => planet.signName === 'Taurus').map((planet) => planet.name),
+    ['Venus', 'Uranus', 'Ceres'],
+  );
+  assert.ok(
+    april.summary.patterns.every((pattern) => !pattern.includes('星群（谷神星、天王星、金星')),
+  );
+  assert.ok(april.summary.patterns.includes('同星座星群（海王星、土星、太阳，白羊座）'));
+  for (const chart of [february, april]) {
+    assert.ok(
+      chart.summary.patterns
+        .filter((pattern) => pattern.includes('星群'))
+        .every((pattern) => !/凯龙星|谷神星|智神星|婚神星|灶神星/u.test(pattern)),
+    );
+  }
+});
+
 test('仅位置入口保留南北交点且与完整星盘的交点和莉莉丝一致', () => {
   const input = { year: 2026, month: 1, day: 1, hour: 12, minute: 0, timezone: 8 };
   const options = { includeNodes: true, includeLilith: true };

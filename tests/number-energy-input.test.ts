@@ -134,6 +134,20 @@ test('非英文字母不会经大写转换悄悄变成有效号码', () => {
   assert.match(analyzeNumber('AZ').formula, /字母序号相加/);
 });
 
+test('号码含全零数字时仍按数字取主数，不因字母改用求和口径', () => {
+  for (const purpose of ['phone', 'general'] as const) {
+    const analysis = analyzeNumber('000A', purpose);
+    assert.equal(analysis.primaryIndex, 80);
+    assert.equal(analysis.digitCount, 3);
+    assert.equal(analysis.letterCount, 1);
+    assert.match(analysis.formula, /提取全部数字组成整数/);
+    assert.equal(analysis.energySequence, '0001');
+  }
+  const plate = analyzeNumber('000A', 'plate');
+  assert.equal(plate.primaryIndex, 1);
+  assert.match(plate.formula, /字母按 A=1 至 Z=26 相加/);
+});
+
 test('磁场顺序仅合并连续同类组合并保留跨度', () => {
   const analysis = analyzeNumber('13131');
   assert.deepEqual(analysis.magneticSegments, [

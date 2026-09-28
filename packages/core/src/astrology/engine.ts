@@ -534,7 +534,13 @@ function findPatternsFromBodies(bodies: Array<AspectBody & { house: number }>): 
     ),
     { bodies: bodies.map((body) => body.name) },
   );
-  return detected.map((pattern) => {
+  const stelliumPlanetNames = new Set(getMainBodyNames({}));
+  const patterns = detected.flatMap((pattern) => {
+    if (pattern.kind !== 'stellium_sign' && pattern.kind !== 'stellium_house') return [pattern];
+    const planetBodies = pattern.bodies.filter((name) => stelliumPlanetNames.has(name));
+    return planetBodies.length >= 3 ? [{ ...pattern, bodies: planetBodies }] : [];
+  });
+  return patterns.map((pattern) => {
     const kind = PATTERN_KIND_LABELS[pattern.kind] ?? pattern.kind;
     const members = pattern.bodies.map((item) => BODY_LABELS[item] ?? item).join('、');
     const apex = pattern.apex ? (BODY_LABELS[pattern.apex] ?? pattern.apex) : '';

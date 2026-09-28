@@ -884,6 +884,9 @@ export function analyzeChineseName(input: {
 }) {
   const chars = [...input.fullName.trim()];
   const surnameLength = input.surnameLength ?? 1;
+  if (surnameLength !== 1 && surnameLength !== 2) {
+    throw new Error('姓氏字数必须为1或2');
+  }
   if (chars.length <= surnameLength || chars.length > surnameLength + 2) {
     throw new Error('姓名需由 1 至 2 字姓氏和 1 至 2 字名字组成');
   }
@@ -1632,7 +1635,7 @@ export function analyzeNumber(input: string, purpose: NumberPurpose = 'general')
   const primaryIndex =
     purpose === 'plate'
       ? reduceBy80(BigInt(alphanumericSum))
-      : reduceBy80(digitValue || BigInt(alphanumericSum));
+      : reduceBy80(digits.length ? digitValue : BigInt(alphanumericSum));
   const sumIndex = reduceBy80(BigInt(alphanumericSum));
   const energy = analyzeNumberEnergySequence(alphanumeric);
   return {
@@ -1655,7 +1658,7 @@ export function analyzeNumber(input: string, purpose: NumberPurpose = 'general')
     formula:
       purpose === 'plate'
         ? '数字按原值、字母按 A=1 至 Z=26 相加，再按 80 循环取数。'
-        : digitValue
+        : digits.length
           ? '提取全部数字组成整数，再按 80 循环取数；整除时取 80。'
           : '数字与字母序号相加，再按 80 循环取数；整除时取 80。',
     energyFormula:

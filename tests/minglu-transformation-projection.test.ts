@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
 import { buildMingluArticle } from '../packages/core/src/minglu/builder';
 import { MingluPatternUsefulGodSection } from '../src/pages/ResultPage/components/MingluWiki/MingluPatternUsefulGodSection';
+import { formatMingluPatternCopy } from '../src/pages/ResultPage/components/MingluWiki/minglu-copy';
 
 for (const sample of [
   { label: '成化', year: 1994, month: 3, day: 17, timeIndex: 4, status: '成化' },
@@ -34,6 +35,19 @@ for (const sample of [
     const { pattern } = article.patternUsefulGodSection;
     assert.equal(pattern.formationAnalysis, '');
     assert.deepEqual(pattern.transformation, transformation);
+    const copiedPattern = formatMingluPatternCopy(article);
+    assert.equal(copiedPattern.split(transformation.basis).length - 1, 1);
+    for (const condition of transformation.conditions) {
+      assert.equal(copiedPattern.split(condition).length - 1, 1);
+    }
+    if (sample.status === '成化') {
+      assert.match(copiedPattern, /- 取用主体：化神木/);
+      assert.match(copiedPattern, /- 原日主十神映射：食伤（本命事实）/);
+      assert.doesNotMatch(copiedPattern, /- 核心用神：食伤/);
+    } else {
+      assert.match(copiedPattern, /- 核心用神：待判/);
+      assert.doesNotMatch(copiedPattern, /- 原日主十神映射：/);
+    }
 
     const html = renderToStaticMarkup(
       createElement(MingluPatternUsefulGodSection, { data: article.patternUsefulGodSection }),

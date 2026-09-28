@@ -125,6 +125,16 @@ test('起名与姓名解析可结合出生喜用并生成完整提示词', () =>
   assert.match(prompt, /【传统依据】/);
 });
 
+test('姓名分析拒绝超出五格单双姓口径的姓氏字数', () => {
+  for (const surnameLength of [0, 3]) {
+    assert.throws(
+      () => analyzeChineseName({ fullName: '欧阳娜娜', surnameLength: surnameLength as 1 }),
+      /姓氏字数必须为1或2/,
+    );
+  }
+  assert.equal(analyzeChineseName({ fullName: '欧阳娜娜', surnameLength: 2 }).surname, '欧阳');
+});
+
 test('汉字选字同时支持康熙笔画与五行过滤', () => {
   const result = selectChineseCharacters({ strokes: 8, wuxing: '木', limit: 20 });
   assert.ok(result.length > 0);
