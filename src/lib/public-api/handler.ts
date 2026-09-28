@@ -4247,6 +4247,16 @@ function buildZodiacPrompt(input: JsonRecord) {
 function calculateTaiyiApi(input: JsonRecord) {
   const scope = readEnum(input, 'scope', ['year', 'month', 'day', 'hour'], 'year');
   const year = readInteger(input, 'year', 1900, 2200);
+  if (
+    scope === 'year' &&
+    ['month', 'day', 'hour', 'minute', 'second'].some((field) => Object.hasOwn(input, field))
+  ) {
+    throw new ApiError(
+      400,
+      'BAD_REQUEST',
+      '太乙年计只接受 year；月、日、时字段仅用于月计、日计和时计。',
+    );
+  }
   const ganZhi = readString(input, 'ganZhi', '');
   if (ganZhi && !isValidGanZhi(ganZhi)) {
     throw new ApiError(400, 'BAD_REQUEST', `ganZhi 不是有效的六十甲子：${ganZhi}。`);

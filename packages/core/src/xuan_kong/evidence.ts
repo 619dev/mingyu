@@ -1,8 +1,6 @@
 /**
  * 玄空飞星证据层
  */
-import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
-import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 
 export interface XuanKongEvidenceSourceResult {
   period: {
@@ -132,6 +130,7 @@ export function formatReplacementLeg(
 
 export function analyzeXuanKongEvidence(
   result: XuanKongEvidenceSourceResult,
+  promptText: string,
 ): XuanKongEvidenceAnalysis {
   const calculationSteps = [
     {
@@ -343,38 +342,6 @@ export function analyzeXuanKongEvidence(
     },
   ];
 
-  const evidenceItems: PromptEvidenceItem[] = [
-    ...calculationSteps.map((item) => ({
-      level: '主证' as const,
-      title: item.stage,
-      detail: item.promptText,
-      source: item.sources.join('、'),
-    })),
-    ...facts.map((item) => ({
-      level: '主证' as const,
-      title: item.type,
-      detail: item.promptText,
-      source: item.sources.join('、'),
-    })),
-    ...counterFacts.map((item) => ({
-      level: '反证' as const,
-      title: item.type,
-      detail: item.promptText,
-      source: item.sources.join('、'),
-    })),
-    ...limitationFacts.map((item) => ({
-      level: '限制' as const,
-      title: item.type,
-      detail: item.promptText,
-      source: item.sources.join('、'),
-    })),
-  ];
-
-  const bundle: PromptEvidenceBundle = {
-    title: '玄空飞星证据',
-    items: evidenceItems,
-  };
-
   return {
     key: 'xuankong:evidence',
     calculationSteps,
@@ -383,6 +350,6 @@ export function analyzeXuanKongEvidence(
     limitationFacts,
     summaryFact,
     sources,
-    promptText: formatPromptEvidenceBundle(bundle).join('\n'),
+    promptText,
   };
 }

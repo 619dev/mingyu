@@ -664,7 +664,6 @@ function buildIlluminationFact(
     promptText: [
       `出生时刻太阳高度${illumination.solarAltitudeDegrees.toFixed(3)}°、方位角${illumination.solarAzimuthDegrees.toFixed(3)}°、赤纬${illumination.solarDeclinationDegrees.toFixed(3)}°`,
       `均时差${illumination.equationOfTimeMinutes.toFixed(3)}分钟，视太阳正午${illumination.apparentSolarNoonLocalDateTime}`,
-      `光照计算方法：${illumination.method}；来源：${illumination.source}`,
     ].join('；'),
     sources: [illumination.source, '出生地点与时刻太阳光照计算资料'],
     limitation: ILLUMINATION_FACT_LIMITATION,
@@ -953,7 +952,6 @@ export function analyzeAstrolabeEvidence(
       ? [
           `出生时刻太阳高度${illuminationFact.solarAltitudeDegrees!.toFixed(3)}°、方位角${illuminationFact.solarAzimuthDegrees!.toFixed(3)}°、赤纬${illuminationFact.solarDeclinationDegrees!.toFixed(3)}°`,
           `均时差${illuminationFact.equationOfTimeMinutes!.toFixed(3)}分钟，视太阳正午${illuminationFact.apparentSolarNoonLocalDateTime}`,
-          `光照算法：${illuminationFact.method}；来源：${illuminationFact.source}`,
         ]
       : [];
   const supportingFacts = aspectFacts.map((item) => item.promptText);
@@ -1004,7 +1002,7 @@ export function analyzeAstrolabeEvidence(
                 ? ('反证' as const)
                 : ('辅证' as const),
             title: '历史时区映射与诊断',
-            detail: `${timezoneFact.promptText}；诊断边界：${timezoneFact.diagnosticSummaryFact.limitation}`,
+            detail: `${timezoneFact.timeZoneId} 的当地钟表时间对应 UTC ${timezoneFact.selectedUtcDateTime}，历史偏移 UTC${timezoneFact.resolvedOffsetHours >= 0 ? '+' : ''}${timezoneFact.resolvedOffsetHours}；${timezoneFact.diagnosticSummaryFact.promptText}；诊断边界：${timezoneFact.diagnosticSummaryFact.limitation}`,
             source: timezoneFact.source,
             tags: ['历史时区', timezoneFact.status, timezoneFact.diagnosticSummaryFact.status],
           },
@@ -1015,7 +1013,7 @@ export function analyzeAstrolabeEvidence(
           {
             level: trueSolarTimeFact.status === '已计算' ? ('辅证' as const) : ('反证' as const),
             title: '真太阳时校正证据',
-            detail: `${trueSolarTimeFact.promptText}；边界：${trueSolarTimeFact.summaryFact.limitation}`,
+            detail: `当地钟表时间${data.birth.standardDateTime ?? data.birth.dateTime}，真太阳时${data.birth.trueSolarDateTime ?? '未记录'}；${trueSolarTimeFact.correctionFacts.map((fact) => fact.promptText).join('；')}；边界：${trueSolarTimeFact.summaryFact.limitation}`,
             source: trueSolarTimeFact.source,
             tags: ['真太阳时', trueSolarTimeFact.status, trueSolarTimeFact.summaryFact.status],
           },
@@ -1113,7 +1111,10 @@ export function analyzeAstrolabeEvidence(
   const evidence: PromptEvidenceBundle = { title: '西方星盘位置与相位结构化证据', items };
   const promptText = [
     '【西方星盘位置与相位结构化证据】',
-    ...formatPromptEvidenceBundle(evidence),
+    ...formatPromptEvidenceBundle({
+      ...evidence,
+      items: evidence.items.map((item) => ({ ...item, source: undefined })),
+    }),
     `计算链：${calculationChain.join(' → ')}。`,
     `反证核验：${counterSummaryFact.promptText}。`,
     `证据汇总：${summaryFact.promptText}。`,

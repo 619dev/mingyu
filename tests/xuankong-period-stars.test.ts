@@ -24,6 +24,8 @@ test('流月紫白按节气月入中后顺飞，十五日口径可复现', () =>
   assert.equal(monthStar.plate[4], monthStar.centerStar);
   assert.deepEqual([...monthStar.plate].sort(), NINE_STARS);
   assert.equal(resolveMonthFlyingStar(2024, 3, 15).centerStar, monthStar.centerStar);
+  assert.match(monthStar.calendarNote, /15日中国标准时间12:00代表该流月/);
+  assert.doesNotMatch(monthStar.calendarNote, /未指定日期|未提供具体时刻/);
 });
 
 test('宅盘可叠加流年流月飞星，且不把建造年当成流年', () => {
@@ -122,6 +124,7 @@ test('交节当日按中国标准时间正午取月盘，标明交节前后所�
   assert.match(beforeXiaohan.calendarNote, /12:00所属节气月（子月）/);
   assert.match(beforeXiaohan.calendarNote, /小寒于2026年1月5日 16:23:10交节/);
   assert.match(beforeXiaohan.calendarNote, /交节前后分属不同节气月/);
+  assert.doesNotMatch(beforeXiaohan.calendarNote, /未指定日期|未提供具体时刻/);
   const beforeXiaohanPlate = generateXuanKong({
     year: 2024,
     sitMountain: '子',

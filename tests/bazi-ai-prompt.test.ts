@@ -350,6 +350,8 @@ test('从儿格缺少明确财气承接依据时仍保留本盘五行流向', ()
 test('从儿格流派资料不重复五行流向与已列的财星明透条件', () => {
   const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
   assert.equal(result.analysis.mingGe.specialAdjudication?.kind, '从儿格');
+  const basis = result.analysis.mingGe.basis!;
+  const satisfied = result.analysis.mingGe.specialAdjudication!.satisfied;
   const prompts = [
     buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
     buildBaziPromptForResult({ result, schools: ['ziping', 'mangpai'] }),
@@ -364,6 +366,29 @@ test('从儿格流派资料不重复五行流向与已列的财星明透条件',
   const independentSchoolFacts = formatBaziSchoolPrompt(result, 'ziping');
   assert.match(independentSchoolFacts, /从儿五行流向：食伤土生财金/);
   assert.doesNotMatch(independentSchoolFacts, /^财星明透：/m);
+  assert.equal(independentSchoolFacts.split(basis).length - 1, 1);
+  assert.doesNotMatch(independentSchoolFacts, /特殊格条件：|特殊格裁决：从儿格成立/);
+  for (const condition of satisfied) {
+    assert.equal(independentSchoolFacts.split(condition).length - 1, 1);
+  }
+
+  const multiSchoolFacts = formatBaziSchoolsPrompt(result, ['ziping', 'mangpai']);
+  assert.equal(multiSchoolFacts.split(basis).length - 1, 1);
+  assert.doesNotMatch(multiSchoolFacts, /特殊格条件：|特殊格裁决：从儿格成立/);
+  for (const condition of satisfied) {
+    assert.equal(multiSchoolFacts.split(condition).length - 1, 1);
+  }
+
+  const partiallySummarized = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  const omittedCondition = partiallySummarized.analysis.mingGe.specialAdjudication!.satisfied[1];
+  partiallySummarized.analysis.mingGe.basis = partiallySummarized.analysis.mingGe.basis!.replace(
+    omittedCondition,
+    '',
+  );
+  const partialFacts = formatBaziSchoolPrompt(partiallySummarized, 'ziping');
+  assert.equal(partialFacts.match(/特殊格条件：/g)?.length, 1);
+  assert.match(partialFacts, new RegExp(omittedCondition));
+  assert.equal(partialFacts.split(satisfied[0]).length - 1, 1);
 });
 
 test('曲直格依据已包含亥卯未木局与成立事实时不再另列格局条件', () => {

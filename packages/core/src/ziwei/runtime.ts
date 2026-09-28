@@ -532,6 +532,9 @@ function readPreciseStandardBirthTime(
 
 /** 将网页表单或普通 JSON 输入转换为严格的紫微 ChartInput。 */
 export function buildZiweiChartInput(input: ZiweiChartInputDraft): ChartInput {
+  if (input.gender !== 'male' && input.gender !== 'female') {
+    throw new Error('性别必须是 male 或 female。');
+  }
   const birthDateParts = readBirthDate(input);
   const preciseStandardBirthTime = input.useTrueSolarTime
     ? undefined

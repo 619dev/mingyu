@@ -404,17 +404,25 @@ function buildPrompt(result: {
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'];
   northReferenceUnspecified: boolean;
 }) {
-  const stripHeading = (prompt: string, omitBazhaiNorthNote = false) =>
-    prompt
+  const stripHeading = (prompt: string, omitBazhaiNorthNote = false, omitTask = false) => {
+    let section = '';
+    return prompt
       .split('\n')
-      .filter(
-        (line) =>
-          !/^【.+】$/.test(line.trim()) &&
+      .filter((line) => {
+        const heading = line.trim().match(/^【(.+)】$/);
+        if (heading) {
+          section = heading[1];
+          return false;
+        }
+        return (
+          !(omitTask && section === '任务') &&
           (!omitBazhaiNorthNote ||
-            line !== '北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。'),
-      )
+            line !== '北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。')
+        );
+      })
       .join('\n')
       .trim();
+  };
   const lines = [
     '【住宅风水排盘】',
     result.northReferenceUnspecified && result.xuankong
@@ -427,7 +435,7 @@ function buildPrompt(result: {
         ? '玄空：未排盘（缺少建造年或起运年）'
         : '玄空：未排盘'
       : '',
-    result.xuankong ? `玄空完整盘面：\n${stripHeading(result.xuankong.prompt)}` : '',
+    result.xuankong ? `玄空完整盘面：\n${stripHeading(result.xuankong.prompt, false, true)}` : '',
     result.bazhai
       ? `八宅完整盘面：\n${stripHeading(result.bazhai.prompt, result.northReferenceUnspecified && Boolean(result.xuankong))}`
       : '',

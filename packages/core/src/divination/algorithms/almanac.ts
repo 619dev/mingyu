@@ -310,7 +310,7 @@ function normalizeTaboos(items: Array<{ getName(): string }>) {
   return items.map((item) => item.getName()).filter(Boolean);
 }
 
-function getNoonEightChar(date: Date) {
+function getNoonSolarTime(date: Date) {
   return SolarTime.fromYmdHms(
     date.getUTCFullYear(),
     date.getUTCMonth() + 1,
@@ -318,9 +318,33 @@ function getNoonEightChar(date: Date) {
     12,
     0,
     0,
-  )
-    .getLunarHour()
-    .getEightChar();
+  );
+}
+
+function getJieBoundaryNote(solarDay: SolarDay): string | undefined {
+  const term = solarDay.getTerm();
+  if (!JIE_MONTH_BRANCH[term.getName()]) return undefined;
+  const termTime = term.getJulianDay().getSolarTime();
+  if (termTime.getSolarDay().toString() !== solarDay.toString()) return undefined;
+
+  const cycleAt = (hour: number, minute: number, second: number) =>
+    SolarTime.fromYmdHms(
+      solarDay.getYear(),
+      solarDay.getMonth(),
+      solarDay.getDay(),
+      hour,
+      minute,
+      second,
+    )
+      .getSixtyCycleHour()
+      .getSixtyCycleDay();
+  const before = cycleAt(0, 0, 0);
+  const after = cycleAt(23, 59, 59);
+  if (before.getMonth().getName() === after.getMonth().getName()) return undefined;
+  const time = [termTime.getHour(), termTime.getMinute(), termTime.getSecond()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':');
+  return `${term.getName()}于中国标准时间${time}交节；此前为${before.getYear().getName()}年${before.getMonth().getName()}月，此后为${after.getYear().getName()}年${after.getMonth().getName()}月；本日年柱、月柱、建除、神煞和宜忌以正午时刻列示，具体时刻按交节前后核对`;
 }
 
 function shouldBuildParticipantProfile(item: AlmanacParticipantInput) {
@@ -1442,12 +1466,14 @@ function buildDayCandidate(
     date.getUTCDate(),
   );
   const lunarDay = solarDay.getLunarDay();
-  const noonEightChar = getNoonEightChar(date);
-  const dayCycle = lunarDay.getSixtyCycle();
+  const noonTime = getNoonSolarTime(date);
+  const noonEightChar = noonTime.getLunarHour().getEightChar();
+  const noonCycleDay = noonTime.getSixtyCycleHour().getSixtyCycleDay();
+  const dayCycle = noonCycleDay.getSixtyCycle();
   const dayBranch = dayCycle.getEarthBranch();
-  const recommends = normalizeTaboos(lunarDay.getRecommends());
-  const avoids = normalizeTaboos(lunarDay.getAvoids());
-  const godSources = getHuangliSolarDayGods(solarDay);
+  const recommends = normalizeTaboos(noonCycleDay.getRecommends());
+  const avoids = normalizeTaboos(noonCycleDay.getAvoids());
+  const godSources = getHuangliSolarDayGods(solarDay, noonTime);
   const gods = godSources.map((item) => item.getName());
   const scoring = buildDayFacts({
     dateKey,
@@ -1460,6 +1486,8 @@ function buildDayCandidate(
     fourTerminationTerm: getFourTerminationTerm(date),
     participants,
   });
+  const jieBoundaryNote = getJieBoundaryNote(solarDay);
+  if (jieBoundaryNote) scoring.cautions.push(jieBoundaryNote);
 
   // 彭祖百忌完整：天干+地支
   const dayStemName = dayCycle.getHeavenStem().getName();
@@ -1480,8 +1508,8 @@ function buildDayCandidate(
       day: noonEightChar.getDay().getName(),
     },
     zodiac: dayBranch.getZodiac().getName(),
-    dayOfficer: lunarDay.getDuty().getName(),
-    twelveStar: lunarDay.getTwelveStar().getName(),
+    dayOfficer: noonCycleDay.getDuty().getName(),
+    twelveStar: noonCycleDay.getTwelveStar().getName(),
     twentyEightStar,
     twentyEightStarDetail: getAlmanacTwentyEightStarDetail(twentyEightStar),
     nineStar,

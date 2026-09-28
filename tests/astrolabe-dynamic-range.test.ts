@@ -12,6 +12,7 @@ import {
   type AstrolabeDynamicRangeRequest,
 } from 'mingyu-core/divination/astrolabe-dynamic-range';
 import type { AstrolabeBirthInput } from 'mingyu-core/types';
+import { julianDateToUnix } from '../packages/core/src/astrology/engine.ts';
 import {
   AstrolabePeriodCalculationCache,
   buildAstrolabePeriodEvents,
@@ -245,6 +246,49 @@ test('非东八区返照时刻与同一证据的 UTC 时间一致', () => {
   );
   assert.equal(returnTime?.value, evidence.timeScale.unixMilliseconds);
   assert.notEqual(returnTime?.value, Date.parse(`${evidence.dateTime.replace(' ', 'T')}+08:00`));
+});
+
+test('非东八区关键窗口投影沿用事件真实时刻而非东八区墙钟', () => {
+  const natal = generateAstrolabe({
+    ...input,
+    year: '2000',
+    month: '3',
+    day: '10',
+    hour: '2',
+    minute: '30',
+    latitude: '40.7128',
+    longitude: '-74.0060',
+    timezone: undefined,
+    timeZoneId: 'America/New_York',
+  });
+  const scope = buildAstrolabeScopeContext(natal, 'monthly', '2024-07');
+  const period = scope.periodEvents!;
+  assert.ok(period.windows.length > 0);
+  const projected = projectAstrolabeDynamicSample({ natal, scopes: [scope] });
+
+  period.windows.forEach((window, index) => {
+    const first = period.events.find((event) => event.key === window.eventKeys[0])!;
+    const last = period.events.find(
+      (event) => event.key === window.eventKeys[window.eventKeys.length - 1],
+    )!;
+    assert.equal(
+      projected.samples.find(
+        (fact) => fact.path === `dynamic.monthly.period.windows.${index}.start`,
+      )?.value,
+      julianDateToUnix(first.julianDate),
+    );
+    assert.equal(
+      projected.samples.find((fact) => fact.path === `dynamic.monthly.period.windows.${index}.end`)
+        ?.value,
+      julianDateToUnix(last.julianDate),
+    );
+  });
+  assert.notEqual(
+    julianDateToUnix(
+      period.events.find((event) => event.key === period.windows[0].eventKeys[0])!.julianDate,
+    ),
+    Date.parse(`${period.windows[0].startDateTime.replace(' ', 'T')}+08:00`),
+  );
 });
 
 test('跨公历年保留正确推进年龄和完整出生秒', () => {

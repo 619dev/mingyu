@@ -10,6 +10,7 @@ import {
 } from '../packages/core/src/divination/algorithms/almanac.ts';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 
 const ALMANAC_CROSS_CENTURY_TRUTH = [
   ['1900-01-01', '己亥', '丙子', '甲戌'],
@@ -189,6 +190,58 @@ test('黄历择日：交节当天年柱月柱按正午精确干支历显示', ()
   assert.equal(lichun.annualDirectionGods?.find((item) => item.god === '太岁')?.branch, '卯');
   assert.equal(lichun.annualDirectionGods?.find((item) => item.god === '太岁')?.direction, '正东');
   assert.equal(jingzhe.ganzhi.month, '庚寅');
+});
+
+test('黄历择日：交节日月建相关事实采用正午月令并说明精确交节时刻', () => {
+  // 香港天文台年历：2024 立春 2 月 4 日 16:27；2026 惊蛰 3 月 5 日 21:59。
+  // https://www.hko.gov.hk/tc/gts/astron2024/files/HKO_almanac_2024.pdf
+  // https://www.hko.gov.hk/tc/gts/astron2026/files/HKO_almanac_2026.pdf
+  const cases = [
+    {
+      date: '2024-02-04',
+      month: '乙丑',
+      duty: '收',
+      term: '立春',
+      time: '16:27:07',
+      after: '甲辰年丙寅月',
+    },
+    {
+      date: '2026-03-05',
+      month: '庚寅',
+      duty: '建',
+      term: '惊蛰',
+      time: '21:59:00',
+      after: '丙午年辛卯月',
+    },
+  ] as const;
+
+  for (const item of cases) {
+    const result = generateAlmanacSelection({
+      topic: 'move',
+      startDate: item.date,
+      endDate: item.date,
+    });
+    const day = result.days[0];
+    assert.equal(day.ganzhi.month, item.month);
+    assert.equal(day.dayOfficer, item.duty);
+    const note = day.cautions.find((value) => value.includes(`${item.term}于中国标准时间`));
+    assert.ok(note);
+    assert.match(note, new RegExp(`${item.time}交节`));
+    assert.match(note, new RegExp(`此后为${item.after}`));
+    assert.match(note, /年柱、月柱、建除、神煞和宜忌以正午时刻列示/);
+    assert.ok(result.evidenceAnalysis?.candidates[0].traditionalConstraints.includes(note));
+    assert.match(result.evidenceAnalysis?.candidates[0].calendarFact.promptText ?? '', /正午年柱/);
+    assert.ok(result.evidenceAnalysis?.candidates[0].calendarFact.promptText.includes(note));
+    assert.ok(formatEnhancedDivinationInfo('almanac', result).includes(note));
+    assert.ok(formatDetailedDivinationInfo('almanac', result).includes(note));
+  }
+
+  const timeConditional = generateAlmanacSelection({
+    topic: 'custom',
+    startDate: '2024-02-04',
+    endDate: '2024-02-04',
+  });
+  assert.equal(timeConditional.evidenceAnalysis?.candidates[0].status, '条件候选');
 });
 
 test('黄历择日：参与人适配应覆盖本命日支刑冲破害', () => {

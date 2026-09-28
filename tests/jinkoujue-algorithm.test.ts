@@ -10,6 +10,20 @@ import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
 
+test('金口诀真太阳时跨雨水仍以实际占时定月将与月建', () => {
+  const corrected = new Date('2024-02-19T11:30:00+08:00');
+  const actual = new Date('2024-02-19T12:40:00+08:00');
+  const chart = generateJinkoujue({ customDate: corrected, termReferenceDate: actual });
+  const clockOnly = generateJinkoujue({ customDate: corrected });
+
+  assert.equal(clockOnly.monthLeader, '子');
+  assert.equal(chart.monthLeader, '亥');
+  assert.equal(chart.ganzhi.month, clockOnly.ganzhi.month);
+  assert.equal(chart.ganzhi.day, clockOnly.ganzhi.day);
+  assert.equal(chart.ganzhi.hour, clockOnly.ganzhi.hour);
+  assert.equal(chart.termReferenceTimestamp, actual.getTime());
+});
+
 test('金口诀月将按节气真实瞬时切换，不随占卜时区覆盖延后', () => {
   const before = new Date('2024-02-19T12:13:11+08:00');
   const at = new Date('2024-02-19T12:13:12+08:00');

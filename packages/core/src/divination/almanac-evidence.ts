@@ -541,7 +541,8 @@ export function classifyAlmanacCandidate(
 }
 
 function buildCalendarFact(day: AlmanacDayCandidate): AlmanacCalendarFact {
-  const promptText = `${day.weekday}，${day.lunarDate}；年柱${day.ganzhi.year}、月柱${day.ganzhi.month}、日柱${day.ganzhi.day}，生肖${day.zodiac}；建除值日${day.dayOfficer}，十二神${day.twelveStar}，冲煞${day.clash}`;
+  const jieBoundaryNote = day.cautions.find((item) => item.includes('交节；'));
+  const promptText = `${day.weekday}，${day.lunarDate}；中国标准时间正午年柱${day.ganzhi.year}、月柱${day.ganzhi.month}、日柱${day.ganzhi.day}，生肖${day.zodiac}；建除值日${day.dayOfficer}，十二神${day.twelveStar}，冲煞${day.clash}${jieBoundaryNote ? `；${jieBoundaryNote}` : ''}`;
   return {
     key: `${day.date}:calendar`,
     date: day.date,

@@ -166,9 +166,9 @@ test('黄历事项宜忌与参与人限制在候选日明细中各展开一次',
     const index = promptLines.findIndex((line) => line.includes(date) && line.startsWith('  第'));
     return index < 0 ? '' : (promptLines[index + 1] ?? '');
   };
-  const signingDay = dayLine('2026-06-05');
+  const signingDay = dayLine('2026-06-09');
   const signingCandidate = data.evidenceAnalysis!.candidates.find(
-    (candidate) => candidate.date === '2026-06-05',
+    (candidate) => candidate.date === '2026-06-09',
   );
 
   assert.ok(signingDay);

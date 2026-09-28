@@ -6,9 +6,28 @@ import {
   generateXiaoliuren,
 } from '../packages/core/src/divination/algorithms/xiaoliuren.ts';
 import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
+import { buildTimeInfoText } from '../packages/core/src/prompt/formatters.ts';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const PALACE_NAMES = ['大安', '留连', '速喜', '赤口', '小吉', '空亡'] as const;
+
+test('小六壬真太阳时跨民用零点时，农历日按实际东八区日期、时辰按校正钟表', () => {
+  const actual = new Date('2025-06-30T00:20:00+08:00');
+  const corrected = new Date('2025-06-29T21:15:00+08:00');
+  const chart = generateXiaoliuren({ customDate: corrected, termReferenceDate: actual });
+  const civil = generateXiaoliuren({ customDate: actual });
+  const clockOnly = generateXiaoliuren({ customDate: corrected });
+
+  assert.notEqual(clockOnly.lunarDay, civil.lunarDay);
+  assert.equal(chart.lunarMonth, civil.lunarMonth);
+  assert.equal(chart.lunarDay, civil.lunarDay);
+  assert.equal(chart.isLeapMonth, civil.isLeapMonth);
+  assert.equal(chart.hourIndex, clockOnly.hourIndex);
+  assert.equal(chart.termReferenceTimestamp, actual.getTime());
+  const lunarLine = (data: typeof chart) =>
+    buildTimeInfoText(data).split('\n')[1]?.split(' ').slice(0, -1).join(' ');
+  assert.equal(lunarLine(chart), lunarLine(civil));
+});
 
 test('小六壬：古法二月例、闰月与子时边界保持同一偏移，旧盘沿用通行法', () => {
   const secondMonth = generateXiaoliuren({

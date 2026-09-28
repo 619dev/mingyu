@@ -215,6 +215,9 @@ function assertValidChartInput(input: ChartInput) {
   if (input.dateType !== 'solar' && input.dateType !== 'lunar') {
     throw new Error('出生日期类型必须是公历或农历。');
   }
+  if (input.dateType === 'solar' && input.isLeapMonth === true) {
+    throw new Error('公历日期不能设置农历闰月。');
+  }
 
   assertOneOf(input.gender, VALID_GENDERS, '性别必须是男或女。');
   assertOneOf(input.algorithm, VALID_ALGORITHMS, '紫微排盘算法必须是 default 或 zhongzhou。');

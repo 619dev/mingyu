@@ -214,14 +214,14 @@ function formatAlmanacDetail(data: AlmanacData) {
         .join('；') || '未列'
     }`,
     `候选日：${data.days
-      .map(
-        (item) =>
-          `${item.date}：${item.ganzhi.day}，${item.dayOfficer}执，宜${item.recommends.join('、') || '无'}，忌${item.avoids.join('、') || '无'}，${item.clash}${formatAlmanacGods(
-            item,
-          )
-            .map((text) => `；${text}`)
-            .join('')}`,
-      )
+      .map((item) => {
+        const jieBoundaryNote = item.cautions.find((note) => note.includes('交节；'));
+        return `${item.date}：正午${item.ganzhi.day}，${item.dayOfficer}执，宜${item.recommends.join('、') || '无'}，忌${item.avoids.join('、') || '无'}，${item.clash}${jieBoundaryNote ? `；${jieBoundaryNote}` : ''}${formatAlmanacGods(
+          item,
+        )
+          .map((text) => `；${text}`)
+          .join('')}`;
+      })
       .join('\n')}`,
   ];
 }

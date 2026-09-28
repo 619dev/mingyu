@@ -309,6 +309,45 @@ test('主题及双盘流派提示词只呈现一次八字格局判定与破格�
   }
 });
 
+test('八字紫微合参流派资料不重复通用八字盘面已列出的格局条件', async () => {
+  const baziResult = baziCalculator.calculateBazi({
+    year: 1980,
+    month: 5,
+    day: 3,
+    timeIndex: 0,
+    gender: 'male',
+  });
+  assert.equal(baziResult.analysis.mingGe.specialAdjudication?.kind, '从儿格');
+  const basis = baziResult.analysis.mingGe.basis!;
+  const satisfied = baziResult.analysis.mingGe.specialAdjudication!.satisfied;
+  const baziOnlyPrompt = buildThematicConsultationPrompt({
+    baziResult,
+    system: 'bazi',
+    topic: 'career',
+    baziSchools: ['ziping', 'mangpai'],
+  }).prompt;
+  assert.equal(baziOnlyPrompt.split(basis).length - 1, 1);
+  assert.doesNotMatch(baziOnlyPrompt, /特殊格条件：|特殊格裁决：从儿格成立/);
+  for (const condition of satisfied) {
+    assert.equal(baziOnlyPrompt.split(condition).length - 1, 1);
+  }
+
+  const ziweiResult = await getSampleZiweiResult();
+
+  const prompt = buildBaziZiweiPromptForResults({
+    baziResult,
+    ziweiResult,
+    question: '请分析事业方向。',
+    baziSchools: ['ziping', 'mangpai'],
+  });
+
+  assert.equal(prompt.split(basis).length - 1, 1);
+  assert.doesNotMatch(prompt, /特殊格条件：|特殊格裁决：从儿格成立/);
+  for (const condition of satisfied) {
+    assert.equal(prompt.split(condition).length - 1, 1);
+  }
+});
+
 test('三柱缺时辰降级时八字主题提示词仍可稳定生成', () => {
   const threePillarsPerson = {
     ...samplePerson,

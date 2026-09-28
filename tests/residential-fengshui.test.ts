@@ -156,7 +156,9 @@ test('住宅合参保留各方向完整盘面并只呈现一次', () => {
       assert.ok(result.prompt.includes(`${palace.direction}${palace.label}（${palace.luck}`));
     }
     for (const chart of [result.xuankong!, result.bazhai!]) {
-      const facts = chart.prompt.split('\n').filter((line) => !/^【.+】$/.test(line.trim()));
+      const chartPrompt =
+        chart === result.xuankong ? chart.prompt.split('【盘面资料】\n')[1] : chart.prompt;
+      const facts = chartPrompt.split('\n').filter((line) => !/^【.+】$/.test(line.trim()));
       for (const fact of facts) assert.ok(result.prompt.includes(fact));
     }
     assert.doesNotMatch(result.prompt, /方位合参：|^玄空：|^八宅：/m);

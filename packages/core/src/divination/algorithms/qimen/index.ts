@@ -480,6 +480,7 @@ export function generateQimen(
   // ──────────────────────────────────────────────────────────────────────────
   const isYearOrMonthScope = scope === 'year' || scope === 'month';
   const result: QimenData = {
+    ...(referenceDate ? { termReferenceTimestamp: referenceDate.getTime() } : {}),
     method,
     scope,
     ...(!isYearOrMonthScope ? { juMethod: jushuResult.juMethod } : {}),

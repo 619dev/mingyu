@@ -208,6 +208,10 @@ test('紫微排盘封装应拒绝 iztro 会宽松接受的非法出生输入', a
     /闰月标志必须是布尔值/,
   );
   await assert.rejects(
+    () => buildAstrolabeFromInput({ ...DEFAULT_CHART_INPUT, isLeapMonth: true }),
+    /公历日期不能设置农历闰月/,
+  );
+  await assert.rejects(
     () => buildAstrolabeFromInput({ ...DEFAULT_CHART_INPUT, fixLeap: 'true' as never }),
     /闰月修正配置必须是布尔值/,
   );

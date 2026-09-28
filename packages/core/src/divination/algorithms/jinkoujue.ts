@@ -491,6 +491,7 @@ export function generateJinkoujue(
     branch?: string;
     number?: number;
     customDate?: Date;
+    termReferenceDate?: Date;
   } & RandomOptions,
 ): JinkoujueData {
   assertOptionalRecord(params, '金口诀起课参数');
@@ -502,12 +503,16 @@ export function generateJinkoujue(
 
   let randomTrace: RandomTrace | undefined;
 
-  const { ganzhi, timestamp } = getDivinationTime(params?.customDate);
+  const { ganzhi, timestamp } = getDivinationTime(
+    params?.customDate,
+    undefined,
+    params?.termReferenceDate,
+  );
   const dayStem = ganzhi.day.charAt(0);
   const monthBranch = ganzhi.month.charAt(1);
   const hourBranch = ganzhi.hour.charAt(1);
   const dayNight: '昼占' | '夜占' = DAYTIME_BRANCHES.has(hourBranch) ? '昼占' : '夜占';
-  const monthLeader = getMonthLeaderByZhongqi(timestamp);
+  const monthLeader = getMonthLeaderByZhongqi(params?.termReferenceDate?.getTime() ?? timestamp);
   const noblemanBranch = getJinkouNoblemanBranch(dayStem, dayNight);
   const xunKong = getVoidBranches(ganzhi.day);
 
@@ -608,6 +613,9 @@ export function generateJinkoujue(
   ].join('；');
 
   const result: JinkoujueData = {
+    ...(params?.termReferenceDate
+      ? { termReferenceTimestamp: params.termReferenceDate.getTime() }
+      : {}),
     method,
     methodLabel: METHOD_LABELS[method],
     ganzhi,
@@ -674,6 +682,9 @@ export function generateJinkoujue(
       branch: params?.branch ?? null,
       number: params?.number ?? null,
       timestamp,
+      ...(params?.termReferenceDate
+        ? { termReferenceTimestamp: params.termReferenceDate.getTime() }
+        : {}),
       diFenBranch: diFen.branch,
     },
     calculatedAt: timestamp,

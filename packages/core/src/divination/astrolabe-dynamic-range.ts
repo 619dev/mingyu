@@ -1,5 +1,6 @@
 /** 西占出生时间逐秒动态范围；每个样本计算完整目标范围，不以本命代表秒代算。 */
 import type { AstrolabeBirthInput, AstrolabeData } from '../types/divination';
+import { julianDateToUnix } from '../astrology/engine';
 import { generateAstrolabe } from './algorithms/astrolabe';
 import {
   collectAstrolabeBirthRangeContinuousSamples,
@@ -302,6 +303,7 @@ function periodProjection(
   if (!period) return null;
   const occurrences = new Map<string, number>();
   const eventKeys = new Map<string, string>();
+  const eventTimes = new Map(period.events.map((event) => [event.key, event.julianDate]));
   const events = period.events.map((event) => {
     const identity = JSON.stringify([
       event.kind,
@@ -360,17 +362,24 @@ function periodProjection(
       members(group.events.map((event) => event.key)),
     ]),
     windows: period.windows.map((window, index) => {
-      pushDate(
+      const firstEvent = eventTimes.get(window.eventKeys[0]);
+      const lastEvent = eventTimes.get(window.eventKeys[window.eventKeys.length - 1]);
+      if (firstEvent === undefined || lastEvent === undefined) {
+        throw new Error('动态周期窗口缺少对应事件。');
+      }
+      pushNumber(
         samples,
         `${prefix}.windows.${index}.start`,
         `第${index + 1}个周期窗口起点`,
-        window.startDateTime,
+        'UTC毫秒',
+        julianDateToUnix(firstEvent),
       );
-      pushDate(
+      pushNumber(
         samples,
         `${prefix}.windows.${index}.end`,
         `第${index + 1}个周期窗口终点`,
-        window.endDateTime,
+        'UTC毫秒',
+        julianDateToUnix(lastEvent),
       );
       return members(window.eventKeys);
     }),

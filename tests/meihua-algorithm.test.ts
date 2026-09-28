@@ -19,6 +19,21 @@ import { getDivinationTime } from '../packages/core/src/calendar/timeManager.ts'
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
 
+test('梅花真太阳时跨立夏仍以实际占时定月建，日时取校正钟表', () => {
+  const corrected = new Date('2024-05-05T07:30:00+08:00');
+  const actual = new Date('2024-05-05T08:40:00+08:00');
+  const chart = generateMeihua(corrected, { method: 'time' }, { termReferenceDate: actual });
+  const clockOnly = generateMeihua(corrected, { method: 'time' });
+
+  assert.equal(clockOnly.analysis.monthBranch, '辰');
+  assert.equal(chart.analysis.monthBranch, '巳');
+  assert.equal(chart.ganzhi.month.slice(-1), '巳');
+  assert.equal(chart.ganzhi.day, clockOnly.ganzhi.day);
+  assert.equal(chart.ganzhi.hour, clockOnly.ganzhi.hour);
+  assert.equal(chart.termReferenceTimestamp, actual.getTime());
+  assert.equal(chart.evidenceAnalysis?.stages[0]?.ti.seasonState, chart.analysis.tiSeasonState);
+});
+
 test('梅花随机轨迹重放应识别缺失、多余、篡改及拒绝采样', () => {
   const samples = [0, 0.25, 0xffffffff / 0x100000000, 0.5];
   const data = generateMeihua(SAMPLE_DATE, { method: 'random', replay: samples });

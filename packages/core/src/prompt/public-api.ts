@@ -865,8 +865,8 @@ export function buildBaziZiweiPromptForResults(params: {
   const ziweiText = formatZiweiEvidenceText(params.ziweiResult, ziweiScope);
   const guidance = [
     params.baziSchools?.length
-      ? buildBaziSchoolsPromptSection(params.baziResult, params.baziSchools, true)
-      : buildBaziSchoolPromptSection(params.baziResult, params.baziSchool, true),
+      ? buildBaziSchoolsPromptSection(params.baziResult, params.baziSchools, true, true)
+      : buildBaziSchoolPromptSection(params.baziResult, params.baziSchool, true, true),
     params.ziweiSchools?.length
       ? `【紫微多派合参】\n${formatPromptSchoolGuidance('ziwei', params.ziweiSchools)}`
       : params.ziweiSchool

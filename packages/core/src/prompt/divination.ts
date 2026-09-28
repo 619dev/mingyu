@@ -89,7 +89,9 @@ function formatAlmanacCandidateSummary(data: AlmanacData) {
           ...candidate.directionConstraints,
         ]
       : [];
-    return `${day.date}：${candidate?.status ?? '待核验候选'}，${day.ganzhi.day}日，${day.dayOfficer}执，宜${day.recommends.slice(0, 5).join('、') || '未列'}，忌${day.avoids.slice(0, 5).join('、') || '未列'}；${constraints.length ? `限制：${constraints.slice(0, 2).join('、')}` : day.clash}`;
+    const jieBoundaryNote = day.cautions.find((item) => item.includes('交节；'));
+    const otherConstraints = constraints.filter((item) => item !== jieBoundaryNote);
+    return `${day.date}：${candidate?.status ?? '待核验候选'}，正午${day.ganzhi.day}日，${day.dayOfficer}执，宜${day.recommends.slice(0, 5).join('、') || '未列'}，忌${day.avoids.slice(0, 5).join('、') || '未列'}；${otherConstraints.length ? `限制：${otherConstraints.slice(0, 2).join('、')}` : day.clash}${jieBoundaryNote ? `；${jieBoundaryNote}` : ''}`;
   });
 }
 

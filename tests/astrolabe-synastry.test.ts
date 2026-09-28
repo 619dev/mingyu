@@ -114,6 +114,8 @@ test('西占双盘应按黄经最小夹角识别主要相位并保留计算口�
   assertEvidenceReferences(result);
   assert.ok(result.promptText.length < 10000);
   assert.doesNotMatch(result.promptText, /本项目|项目统一|工程|接口|API|MCP|astrolabe:synastry:/);
+  assert.doesNotMatch(result.promptText, /来源：/);
+  assert.ok(result.evidence.items.some((item) => item.source));
   assertPromptIsPortableTaskText(result.promptText);
   assert.doesNotMatch(result.promptText, /强度\d+%|匹配率\d+%/);
 });

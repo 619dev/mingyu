@@ -375,7 +375,7 @@ const promptToolCalls: Array<[string, Record<string, unknown>, RegExp]> = [
       facingDegree: 0,
       question: '这套宅的飞星怎么看？',
     },
-    /【玄空飞星排盘】[\s\S]*【问题】\n这套宅的飞星怎么看？/,
+    /【任务】[\s\S]*玄空飞星排盘资料[\s\S]*【盘面资料】[\s\S]*【问题】\n这套宅的飞星怎么看？/,
   ],
   [
     'zodiac_prompt',

@@ -838,6 +838,8 @@ function getSpecialPattern(
 export type LiuyaoGenerationMethod = 'time' | 'manual' | 'coins' | 'yarrow';
 
 export interface LiuyaoGenerationOptions extends RandomOptions {
+  /** 真太阳时模式下的实际占时，用于节气与月建。 */
+  termReferenceDate?: Date;
   /** 起卦方式；默认有 yaos 时为 manual，否则为 time。 */
   method?: LiuyaoGenerationMethod;
   /** 蓍草十八变的手工左堆策数。 */
@@ -979,7 +981,11 @@ function toHexagramBinary(yaos: string[]): string {
 
 export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOptions) {
   // 1. 获取占卜时间的干支信息
-  const { ganzhi, timestamp } = getDivinationTime(customDate);
+  const { ganzhi, timestamp } = getDivinationTime(
+    customDate,
+    undefined,
+    options?.termReferenceDate,
+  );
   const resolvedGeneration = resolveRawYaos(timestamp, options);
   const rawYaos = resolvedGeneration.yaos;
 
@@ -1195,6 +1201,9 @@ export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOpti
     : null;
 
   const result: LiuyaoData = {
+    ...(options?.termReferenceDate
+      ? { termReferenceTimestamp: options.termReferenceDate.getTime() }
+      : {}),
     originalName: mainHexagram.name,
     changedName: changedHexagram.name,
     interName: interHexagram.name,
@@ -1229,6 +1238,9 @@ export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOpti
     input: {
       method: resolvedGeneration.generation.method,
       timestamp,
+      ...(options?.termReferenceDate
+        ? { termReferenceTimestamp: options.termReferenceDate.getTime() }
+        : {}),
       yaos: resolvedGeneration.generation.method === 'manual' ? rawYaos : undefined,
     },
     calculatedAt: timestamp,

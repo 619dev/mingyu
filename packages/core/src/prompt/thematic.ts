@@ -428,8 +428,8 @@ export function buildThematicConsultationPrompt(
     );
 
     const schoolSection = options.baziSchools?.length
-      ? buildBaziSchoolsPromptSection(options.baziResult, options.baziSchools, true)
-      : buildBaziSchoolPromptSection(options.baziResult, options.baziSchool, true);
+      ? buildBaziSchoolsPromptSection(options.baziResult, options.baziSchools, true, true)
+      : buildBaziSchoolPromptSection(options.baziResult, options.baziSchool, true, true);
 
     const promptText = joinPromptSections([
       buildPromptGuidance('bazi'),
@@ -579,8 +579,8 @@ export function buildThematicConsultationPrompt(
 
   const schoolSections = [
     options.baziSchools?.length
-      ? buildBaziSchoolsPromptSection(options.baziResult, options.baziSchools, true)
-      : buildBaziSchoolPromptSection(options.baziResult, options.baziSchool, true),
+      ? buildBaziSchoolsPromptSection(options.baziResult, options.baziSchools, true, true)
+      : buildBaziSchoolPromptSection(options.baziResult, options.baziSchool, true, true),
     options.ziweiSchools?.length
       ? `【紫微多派合参】\n${formatPromptSchoolGuidance('ziwei', options.ziweiSchools)}`
       : options.ziweiSchool

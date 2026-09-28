@@ -1230,6 +1230,7 @@ function formatAlmanacInfo(data: AlmanacData) {
       .join('、');
     const conciseFacts = [
       candidate?.status ?? '',
+      item.cautions.find((note) => note.includes('交节；')) ?? '',
       recommendationText,
       avoidText,
       !needsLegacyFallback && allRecommendations.length ? `宜${allRecommendations.join('、')}` : '',
@@ -1240,7 +1241,7 @@ function formatAlmanacInfo(data: AlmanacData) {
       hourText ? `时辰${hourText}` : '',
     ].filter(Boolean);
     return [
-      `  第${index + 1}日：${item.date} ${item.weekday}；${item.lunarDate}；干支${item.ganzhi.year}/${item.ganzhi.month}/${item.ganzhi.day}；建${item.dayOfficer}；值神${item.twelveStar}；宿${item.twentyEightStarDetail?.fullName ?? item.twentyEightStar}${item.twentyEightStarDetail?.fortune ? `（${item.twentyEightStarDetail.fortune}）` : ''}；${item.clash}`,
+      `  第${index + 1}日：${item.date} ${item.weekday}；${item.lunarDate}；正午干支${item.ganzhi.year}/${item.ganzhi.month}/${item.ganzhi.day}；建${item.dayOfficer}；值神${item.twelveStar}；宿${item.twentyEightStarDetail?.fullName ?? item.twentyEightStar}${item.twentyEightStarDetail?.fortune ? `（${item.twentyEightStarDetail.fortune}）` : ''}；${item.clash}`,
       conciseFacts.length ? `    ${conciseFacts.join('；')}` : '',
     ].filter(Boolean);
   });

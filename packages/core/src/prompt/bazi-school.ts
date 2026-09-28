@@ -174,10 +174,25 @@ function formatTransformationFacts(result: BaziChartResult, embedded = false) {
   ];
 }
 
-function formatSchoolPatternFacts(result: BaziChartResult, embedded = false) {
-  const facts = formatPatternFulfillmentFacts(result.analysis.mingGe);
-  const special = result.analysis.mingGe.specialAdjudication;
-  const fulfillment = result.analysis.mingGe.fulfillment;
+function formatSchoolPatternFacts(
+  result: BaziChartResult,
+  embedded = false,
+  chartShowsPatternBasis = false,
+) {
+  const pattern = result.analysis.mingGe;
+  const facts = formatPatternFulfillmentFacts(pattern);
+  const special = pattern.specialAdjudication;
+  const fulfillment = pattern.fulfillment;
+  const basis = pattern.basis ?? '';
+  const alternatives = formatAlternativePatternCandidates(pattern);
+  const patternBasisIsVisible = Boolean(basis && (chartShowsPatternBasis || alternatives));
+  const specialDecisionIsVisible =
+    patternBasisIsVisible &&
+    special?.status === '成立' &&
+    pattern.pattern === special.kind &&
+    basis.includes('成立') &&
+    Boolean(special.route && basis.includes(special.route)) &&
+    Boolean(special.method && basis.includes(special.method));
   const curveFactsInChart = embedded && special?.kind === '曲直格';
   const specialFacts = facts
     .filter(
@@ -194,6 +209,14 @@ function formatSchoolPatternFacts(result: BaziChartResult, embedded = false) {
           item.startsWith('顺局作用：') ||
           item.startsWith('原支藏印官事实：')),
     )
+    .flatMap((item) => {
+      if (item.startsWith('特殊格裁决：') && specialDecisionIsVisible) return [];
+      if (item.startsWith('特殊格条件：') && patternBasisIsVisible && special) {
+        const conditions = special.satisfied.filter((condition) => !basis.includes(condition));
+        return conditions.length ? [`特殊格条件：${conditions.join('；')}`] : [];
+      }
+      return [item];
+    })
     .filter((item) => !item.startsWith('原支藏印官事实：'))
     .filter(
       (item) =>
@@ -207,9 +230,8 @@ function formatSchoolPatternFacts(result: BaziChartResult, embedded = false) {
         ),
     );
   if (embedded) return specialFacts.filter((item) => !item.startsWith('从儿五行流向：'));
-  const alternatives = formatAlternativePatternCandidates(result.analysis.mingGe);
   return [
-    alternatives && result.analysis.mingGe.basis ? `取格依据：${result.analysis.mingGe.basis}` : '',
+    alternatives && basis ? `取格依据：${basis}` : '',
     alternatives,
     ...specialFacts,
     formatPatternDecisionForPrompt(result.analysis.mingGe),
@@ -299,7 +321,12 @@ function formatFortune(result: BaziChartResult) {
   ]);
 }
 
-function formatZipingFacts(result: BaziChartResult, embedded = false, patternEvidence = true) {
+function formatZipingFacts(
+  result: BaziChartResult,
+  embedded = false,
+  patternEvidence = true,
+  chartShowsPatternBasis = false,
+) {
   const strength = result.analysis.dayMasterStrength;
   const details = strength.details;
   return [
@@ -309,7 +336,13 @@ function formatZipingFacts(result: BaziChartResult, embedded = false, patternEvi
     embedded
       ? ''
       : `格局与成败：${result.analysis.mingGe.pattern}${result.analysis.mingGe.basis && !formatAlternativePatternCandidates(result.analysis.mingGe) ? `；${result.analysis.mingGe.basis}` : ''}`,
-    ...(patternEvidence ? formatSchoolPatternFacts(result, embedded) : []),
+    ...(patternEvidence
+      ? formatSchoolPatternFacts(
+          result,
+          embedded,
+          chartShowsPatternBasis || (!embedded && Boolean(result.analysis.mingGe.basis)),
+        )
+      : []),
     ...(patternEvidence ? formatTransformationFacts(result, embedded) : []),
     `调候与取用：${formatUsefulGod(result, embedded)}；五行季节状态${
       Object.entries(result.wuxingSeasonStatus)
@@ -322,7 +355,12 @@ function formatZipingFacts(result: BaziChartResult, embedded = false, patternEvi
     .join('\n');
 }
 
-function formatMangpaiFacts(result: BaziChartResult, embedded = false, patternEvidence = true) {
+function formatMangpaiFacts(
+  result: BaziChartResult,
+  embedded = false,
+  patternEvidence = true,
+  chartShowsPatternBasis = false,
+) {
   return [
     '四柱宫位与十神落位：',
     formatPillars(result, { includePalace: true, includeLifeStage: true }),
@@ -330,7 +368,7 @@ function formatMangpaiFacts(result: BaziChartResult, embedded = false, patternEv
     `十神显隐：${formatTenGodStructure(result)}`,
     `透干通根：${formatRoots(result)}`,
     embedded ? '' : `格局与取用：格局${result.analysis.mingGe.pattern}；${formatUsefulGod(result)}`,
-    ...(patternEvidence ? formatSchoolPatternFacts(result, embedded) : []),
+    ...(patternEvidence ? formatSchoolPatternFacts(result, embedded, chartShowsPatternBasis) : []),
     ...(patternEvidence ? formatTransformationFacts(result, embedded) : []),
     `四柱组合与做功线索：${formatRelations(result)}；从主宾之间的制、化、合、冲关系观察十神作用与组合取象。`,
     `墓库与空亡：${formatTombAndVoid(result)}`,
@@ -341,7 +379,12 @@ function formatMangpaiFacts(result: BaziChartResult, embedded = false, patternEv
     .join('\n');
 }
 
-function formatXinpaiFacts(result: BaziChartResult, embedded = false, patternEvidence = true) {
+function formatXinpaiFacts(
+  result: BaziChartResult,
+  embedded = false,
+  patternEvidence = true,
+  chartShowsPatternBasis = false,
+) {
   const strength = result.analysis.dayMasterStrength;
   const details = strength.details;
   return [
@@ -354,7 +397,7 @@ function formatXinpaiFacts(result: BaziChartResult, embedded = false, patternEvi
     }`,
     `十神结构：${formatTenGodStructure(result)}`,
     embedded ? '' : `格局与取用：格局${result.analysis.mingGe.pattern}；${formatUsefulGod(result)}`,
-    ...(patternEvidence ? formatSchoolPatternFacts(result, embedded) : []),
+    ...(patternEvidence ? formatSchoolPatternFacts(result, embedded, chartShowsPatternBasis) : []),
     ...(patternEvidence ? formatTransformationFacts(result, embedded) : []),
     '喜忌落位：',
     formatUsefulGodPlacements(result),
@@ -399,18 +442,24 @@ export function formatBaziSchoolFacts(
   school: BaziPromptSchool,
   embedded = false,
   patternEvidence = true,
+  chartShowsPatternBasis = false,
 ) {
   if (result.isThreePillars) return formatUnknownTimeFacts(result);
   const normalized = normalizeBaziPromptSchool(school);
-  if (normalized === 'ziping') return formatZipingFacts(result, embedded, patternEvidence);
-  if (normalized === 'mangpai') return formatMangpaiFacts(result, embedded, patternEvidence);
-  return formatXinpaiFacts(result, embedded, patternEvidence);
+  if (normalized === 'ziping') {
+    return formatZipingFacts(result, embedded, patternEvidence, chartShowsPatternBasis);
+  }
+  if (normalized === 'mangpai') {
+    return formatMangpaiFacts(result, embedded, patternEvidence, chartShowsPatternBasis);
+  }
+  return formatXinpaiFacts(result, embedded, patternEvidence, chartShowsPatternBasis);
 }
 
 export function formatBaziSchoolPrompt(
   result: BaziChartResult,
   school: BaziPromptSchool,
   embedded = false,
+  chartShowsPatternBasis = false,
 ) {
   const normalized = normalizeBaziPromptSchool(school);
   const profile = BAZI_SCHOOL_PROFILES[normalized];
@@ -419,7 +468,7 @@ export function formatBaziSchoolPrompt(
     `流派任务：${profile.task}`,
     `流派依据：${profile.basis}`,
     '流派盘面资料：',
-    formatBaziSchoolFacts(result, school, embedded),
+    formatBaziSchoolFacts(result, school, embedded, true, chartShowsPatternBasis),
   ].join('\n');
 }
 
@@ -427,8 +476,11 @@ export function buildBaziSchoolPromptSection(
   result: BaziChartResult,
   school?: BaziPromptSchool,
   embedded = false,
+  chartShowsPatternBasis = false,
 ) {
-  return school ? `【流派】\n${formatBaziSchoolPrompt(result, school, embedded)}` : '';
+  return school
+    ? `【流派】\n${formatBaziSchoolPrompt(result, school, embedded, chartShowsPatternBasis)}`
+    : '';
 }
 
 export function normalizeBaziPromptSchools(
@@ -446,13 +498,24 @@ export function formatBaziSchoolsPrompt(
   result: BaziChartResult,
   schools?: readonly BaziPromptSchool[] | null,
   embedded = false,
+  chartShowsPatternBasis = false,
 ) {
   const selected = normalizeBaziPromptSchools(schools);
   if (!selected.length) return '';
+  const pattern = result.analysis.mingGe;
+  const zipingBasisInFacts =
+    !embedded &&
+    selected.includes('ziping') &&
+    Boolean(pattern.basis) &&
+    !formatAlternativePatternCandidates(pattern);
   const sharedPatternEvidence =
     selected.length > 1 && !result.isThreePillars
       ? [
-          ...formatSchoolPatternFacts(result, embedded),
+          ...formatSchoolPatternFacts(
+            result,
+            embedded,
+            chartShowsPatternBasis || zipingBasisInFacts,
+          ),
           ...formatTransformationFacts(result, embedded),
         ]
       : [];
@@ -483,8 +546,9 @@ export function buildBaziSchoolsPromptSection(
   result: BaziChartResult,
   schools?: readonly BaziPromptSchool[] | null,
   embedded = false,
+  chartShowsPatternBasis = false,
 ) {
   const selected = normalizeBaziPromptSchools(schools);
-  const content = formatBaziSchoolsPrompt(result, selected, embedded);
+  const content = formatBaziSchoolsPrompt(result, selected, embedded, chartShowsPatternBasis);
   return content ? `【${selected.length > 1 ? '多派合参' : '解读流派'}】\n${content}` : '';
 }

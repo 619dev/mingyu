@@ -82,6 +82,8 @@ export interface XiaoliurenData {
   method: XiaoliurenDivinationMethod;
   methodLabel: string;
   timestamp: number;
+  /** 真太阳时模式下用于节气与东八区民用农历日的实际占时戳（毫秒）。 */
+  termReferenceTimestamp?: number;
   lunarMonth: number;
   lunarDay: number;
   isLeapMonth: boolean;
@@ -149,6 +151,8 @@ export interface JinkoujueData {
   method: JinkoujueDivinationMethod;
   methodLabel: string;
   timestamp: number;
+  /** 真太阳时模式下用于节气、月建与月将的实际占时戳（毫秒）。 */
+  termReferenceTimestamp?: number;
   ganzhi: BaseGanZhi;
   dayNight: '昼占' | '夜占';
   monthLeader: string;
@@ -343,6 +347,8 @@ export interface BaseHexagramData {
 }
 
 export interface LiuyaoData extends BaseHexagramData {
+  /** 真太阳时模式下用于节气与月建的实际占时戳（毫秒）。 */
+  termReferenceTimestamp?: number;
   /** 用神候选、原神忌神仇神与逐爻支持/反证结构。 */
   evidenceAnalysis?: import('../divination/liuyao-evidence').LiuyaoEvidenceAnalysis;
   /** 起卦来源与三钱投掷轨迹。 */
@@ -453,6 +459,8 @@ export interface MeihuaCalculation {
 }
 
 export interface MeihuaData extends BaseHexagramData {
+  /** 真太阳时模式下用于节气与月建的实际占时戳（毫秒）。 */
+  termReferenceTimestamp?: number;
   /** 主卦、互卦、变卦逐阶段体用关系与支持/限制证据。 */
   evidenceAnalysis?: import('../divination/meihua-evidence').MeihuaEvidenceAnalysis;
   /** 体卦（代表问卦者） */
@@ -658,6 +666,8 @@ export interface QimenPatternCombo {
 export type QimenScope = 'hour' | 'day' | 'month' | 'year';
 
 export interface QimenData {
+  /** 真太阳时模式下用于节气、定局与月建的实际占时戳（毫秒）。 */
+  termReferenceTimestamp?: number;
   /** 用神宫候选、宫内组合、宫间作用、反证与触发条件。 */
   evidenceAnalysis?: import('../divination/qimen-evidence').QimenEvidenceAnalysis;
   /** 九宫排布方法：zhuanpan=转盘法，feipan=飞盘法。旧结果未记录时按转盘法兼容。 */
@@ -1122,6 +1132,8 @@ export interface LiurenData {
   ganzhi: BaseGanZhi;
   /** Unix 时间戳（毫秒） */
   timestamp: number;
+  /** 真太阳时模式下用于节气、年/月柱与月将的实际占时戳（毫秒）。 */
+  termReferenceTimestamp?: number;
   /** 昼夜占：昼占或夜占 */
   dayNight?: '昼占' | '夜占';
   /** 月将（所用太阳过宫） */

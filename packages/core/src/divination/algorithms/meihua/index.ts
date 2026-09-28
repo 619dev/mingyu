@@ -252,10 +252,18 @@ function estimateYingQi(params: {
  * const result = generateMeihua(undefined, { method: 'number', number: 123 });
  * ```
  */
-export function generateMeihua(customDate?: Date, settings?: MeihuaSettings): MeihuaData {
+export function generateMeihua(
+  customDate?: Date,
+  settings?: MeihuaSettings,
+  options?: { termReferenceDate?: Date },
+): MeihuaData {
   assertOptionalRecord(settings, '梅花易数起卦设置');
   // 1. 获取占卜时间的农历及干支信息
-  const { ganzhi, timeInfo, timestamp } = getDivinationTime(customDate);
+  const { ganzhi, timeInfo, timestamp } = getDivinationTime(
+    customDate,
+    undefined,
+    options?.termReferenceDate,
+  );
   const { lunar } = timeInfo;
   const method = settings?.method ?? 'time';
   if (method !== 'random' && hasRandomOptions(settings)) {
@@ -403,6 +411,9 @@ export function generateMeihua(customDate?: Date, settings?: MeihuaSettings): Me
       : MeihuaHelpers.getSeasonByMonth(lunar.monthNumber);
 
   const result: MeihuaData = {
+    ...(options?.termReferenceDate
+      ? { termReferenceTimestamp: options.termReferenceDate.getTime() }
+      : {}),
     originalName: mainHexagram.name,
     changedName: changingHexagram.name,
     interName: interHexagram.name,
@@ -528,6 +539,9 @@ export function generateMeihua(customDate?: Date, settings?: MeihuaSettings): Me
       direction: settings?.direction,
       objectType: settings?.objectType,
       timestamp,
+      ...(options?.termReferenceDate
+        ? { termReferenceTimestamp: options.termReferenceDate.getTime() }
+        : {}),
     },
     calculatedAt: timestamp,
     random: randomTrace,

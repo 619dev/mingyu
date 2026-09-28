@@ -30,6 +30,27 @@ const getCachedDayGodNames = (month: number, day: number) =>
 
 // ===== 月令关系与建除、择日入口 =====
 
+test('日期黄历查询与择日正午月建一致', () => {
+  for (const [year, month, day, expectedDuty] of [
+    [2024, 2, 4, '收'],
+    [2026, 3, 5, '建'],
+  ] as const) {
+    const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const selection = generateAlmanacSelection({
+      topic: 'move',
+      startDate: date,
+      endDate: date,
+    }).days[0];
+    const info = getHuangliShensha(year, month, day);
+    assert.equal(info.duty, expectedDuty);
+    assert.equal(info.duty, selection.dayOfficer);
+    assert.deepEqual(
+      info.shensha.map((god) => god.name),
+      selection.gods,
+    );
+  }
+});
+
 test('黄历建破刑害合覆盖十二月六十日原典关系', () => {
   // 《星历考原》月建月破、《协纪辨方书》三合、《选择天镜》月刑月害。
   // https://www.shidianguji.com/book/SK1618/chapter/1jursttoszeh6
@@ -609,15 +630,23 @@ test('亥月己丑日保留守日九空并去除时德相日误列', () => {
 
 test('母仓按四季生我之支及四立前十八日覆盖全年', () => {
   // 《协纪辨方书》母仓起例；《历事明原》卷五四立前十八日土王用事。
-  // 2026年四立民用日期：2月4日、5月5日、8月7日、11月7日。
+  // 2026年四立交节：2月4日04:02、5月5日19:48、8月7日19:42、11月7日17:52。
   // https://www.hko.gov.hk/tc/gts/time/calendar/pdf/files/2026.pdf
   // https://www.shidianguji.com/zh/book/7435621765851643938/chapter/1lvu7i4uxkra2
-  const starts = [
-    '2025-11-07',
+  const seasonInstants = [
+    '2025-11-07T12:04:04+08:00',
+    '2026-02-04T04:02:08+08:00',
+    '2026-05-05T19:48:44+08:00',
+    '2026-08-07T19:42:43+08:00',
+    '2026-11-07T17:52:05+08:00',
+    '2027-02-04T09:46:18+08:00',
+  ].map(Date.parse);
+  const noonSeasonStarts = [
+    '2025-11-08',
     '2026-02-04',
-    '2026-05-05',
-    '2026-08-07',
-    '2026-11-07',
+    '2026-05-06',
+    '2026-08-08',
+    '2026-11-08',
     '2027-02-04',
   ].map(Date.parse);
   const branchesBySeason = ['申酉', '亥子', '寅卯', '辰戌丑未', '申酉'];
@@ -626,8 +655,12 @@ test('母仓按四季生我之支及四立前十八日覆盖全年', () => {
   for (let offset = 0; offset < 365; offset++) {
     const time = Date.UTC(2026, 0, 1) + offset * dayMs;
     const date = new Date(time);
-    const season = starts.findIndex((start, index) => time >= start && time < starts[index + 1]);
-    const earthPeriod = starts[season + 1] - time <= 18 * dayMs;
+    const season = noonSeasonStarts.findIndex(
+      (start, index) => time >= start && time < noonSeasonStarts[index + 1],
+    );
+    const noonTime = time + 12 * 3600000 - 8 * 3600000;
+    const nextSeason = seasonInstants.find((start) => start > noonTime)!;
+    const earthPeriod = nextSeason - noonTime <= 18 * dayMs;
     const dayBranch = [...'子丑寅卯辰巳午未申酉戌亥'][((time - anchor) / dayMs) % 12];
     const expected = (earthPeriod ? '巳午' : branchesBySeason[season]).includes(dayBranch);
     const actual = getHuangliShensha(2026, date.getUTCMonth() + 1, date.getUTCDate()).shensha.some(

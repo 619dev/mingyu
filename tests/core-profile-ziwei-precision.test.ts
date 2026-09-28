@@ -78,6 +78,23 @@ test('标准精准出生档案向紫微四柱传递时分秒', () => {
   assert.equal(draftInput.birthTimeIndex, input.birthTimeIndex);
 });
 
+test('紫微表单入口不得将无效性别静默换成女命盘', () => {
+  assert.throws(
+    () =>
+      buildZiweiChartInput({
+        name: '无效性别',
+        gender: 'unknown' as 'male',
+        dateType: 'solar',
+        year: '2000',
+        month: '6',
+        day: '15',
+        timeIndex: 6,
+        isLeapMonth: false,
+      }),
+    /性别必须是 male 或 female/,
+  );
+});
+
 test('真太阳时精确秒数进入校正证据和紫微出生事实', () => {
   const expected = resolveTrueSolarBirthTime({
     dateType: 'solar',

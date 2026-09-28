@@ -17,6 +17,7 @@ import {
   TWENTY_FOUR_MOUNTAINS,
   type CompassMountainPosition,
 } from '../direction';
+import { buildPromptTask } from '../prompt/guidance';
 import {
   analyzeXuanKongEvidence,
   formatReplacementLeg,
@@ -666,10 +667,13 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
     })
     .join('\n');
   return [
-    '【玄空飞星排盘】',
+    '【任务】',
+    buildPromptTask(
+      `请依据以下玄空飞星排盘资料解读住宅${result.flowStars ? `及流年${result.flowStars.monthPlate ? '流月' : ''}` : ''}，说明需要核对的山水条件。`,
+      'xuankong',
+    ),
+    '【盘面资料】',
     `运程：${result.period.label}`,
-    '星气采用旺、生、死、煞、退五气口径：当运为旺，后续两星为生，随后两星为死，再后三星为煞，前一运星为退；结合实际山水形势和星宫生克解读。',
-    `本次资料层级：宅盘（运盘、山盘、向盘）${result.flowStars ? '、流年盘' : ''}${result.flowStars?.monthPlate ? '、流月盘' : ''}。各星当运、生气、退气等状态以宅盘${result.period.yun}运为参照。`,
     result.measurement
       ? [
           `测量资料：坐山${result.measurement.sitDegree}°、朝向${result.measurement.facingDegree}°、误差±${result.measurement.uncertaintyDegrees}°`,
@@ -692,20 +696,6 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
       : '',
     `到山到向：${result.daoShanXiang.summary}`,
     result.castleGate?.summary ?? '',
-    (() => {
-      const wuHuang = result.palaces.filter((p) => p.xiangStar === 5 || p.shanStar === 5);
-      return wuHuang.length
-        ? `五黄落宫：${wuHuang
-            .map((palace) => {
-              const layers = [
-                palace.shanStar === 5 ? '山星' : '',
-                palace.xiangStar === 5 ? '向星' : '',
-              ].filter(Boolean);
-              return `${palace.name}（${palace.direction}，${layers.join('、')}）`;
-            })
-            .join('；')}`
-        : '';
-    })(),
     ...(result.measurement?.stability === '山向边界敏感' &&
     result.measurement.candidateMountains?.length
       ? [
@@ -720,9 +710,10 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
     result.flowStars?.monthPlate
       ? `流月飞星：${result.flowStars.monthPlate.starName}入中；${result.flowStars.monthPlate.calendarNote}`
       : '',
-    result.flowStars ? `宅盘与${result.flowStars.monthPlate ? '流年流月' : '流年'}逐宫叠加：` : '',
     '三盘九宫：',
     palaceLines,
+    '【传统依据】',
+    `三元九运以${result.period.yun}运为宅盘参照；运星入中顺飞，山向盘按同元龙阴阳定顺逆。星气按当运、后续两星生气、再后两星死气、后三星煞气、前一运星退气划分。${result.flowStars ? '流年' : ''}${result.flowStars?.monthPlate ? '流月' : ''}${result.flowStars ? '紫白入中顺飞。' : ''}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -896,8 +887,8 @@ export function generateXuanKong(input: XuanKongInput): XuanKongResult {
     ...(measurement ? { measurement } : {}),
   };
 
-  const evidenceAnalysis = analyzeXuanKongEvidence(partial);
   const prompt = buildPrompt(partial);
+  const evidenceAnalysis = analyzeXuanKongEvidence(partial, prompt);
   return {
     ...partial,
     evidenceAnalysis,

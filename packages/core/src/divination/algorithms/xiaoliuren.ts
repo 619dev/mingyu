@@ -104,6 +104,7 @@ export function generateXiaoliuren(params?: {
   method?: XiaoliurenDivinationMethod;
   rule?: XiaoliurenRule;
   customDate?: Date;
+  termReferenceDate?: Date;
 }): XiaoliurenData {
   assertOptionalRecord(params, '小六壬起课参数');
   const rule = resolveXiaoliurenRule(params?.rule);
@@ -115,10 +116,14 @@ export function generateXiaoliuren(params?: {
   const { ganzhi, timeInfo, timestamp } = getDivinationTime(
     params?.customDate,
     DEFAULT_CHINA_TIMEZONE_HOURS * 60,
+    params?.termReferenceDate,
   );
-  const lunarMonth = timeInfo.lunar.monthNumber;
-  const lunarDay = timeInfo.lunar.dayNumber;
-  const isLeapMonth = timeInfo.lunar.isLeapMonth;
+  const civilLunar = params?.termReferenceDate
+    ? getDivinationTime(params.termReferenceDate, DEFAULT_CHINA_TIMEZONE_HOURS * 60).timeInfo.lunar
+    : timeInfo.lunar;
+  const lunarMonth = civilLunar.monthNumber;
+  const lunarDay = civilLunar.dayNumber;
+  const isLeapMonth = civilLunar.isLeapMonth;
   const clockHourIndex = getTimeIndexFromClock(timeInfo.solar.hour, timeInfo.solar.minute);
   const shichen = getShichenByIndex(clockHourIndex);
   if (!shichen) {
@@ -135,6 +140,9 @@ export function generateXiaoliuren(params?: {
   const hourPalaceIndex = (hourSeed - 1) % 6;
 
   const data: XiaoliurenData = {
+    ...(params?.termReferenceDate
+      ? { termReferenceTimestamp: params.termReferenceDate.getTime() }
+      : {}),
     rule: rule.id,
     ruleLabel: rule.label,
     method,
@@ -170,7 +178,14 @@ export function generateXiaoliuren(params?: {
 
   const result = attachResultMeta(data, {
     algorithm: 'xiaoliuren',
-    input: { method, rule: rule.id, timestamp },
+    input: {
+      method,
+      rule: rule.id,
+      timestamp,
+      ...(params?.termReferenceDate
+        ? { termReferenceTimestamp: params.termReferenceDate.getTime() }
+        : {}),
+    },
     calculatedAt: timestamp,
   });
   return { ...result, evidenceAnalysis: analyzeXiaoliurenEvidence(result) };

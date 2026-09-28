@@ -51,25 +51,40 @@ export function buildMetaphysicsPromptDocument(
   const baseSection = normalizedBase.startsWith('【')
     ? normalizedBase
     : buildPromptSection('排盘资料', normalizedBase);
+  const hasCompleteXuanKongBase =
+    options.method === 'xuankong' &&
+    /^【任务】$/m.test(normalizedBase) &&
+    /^【传统依据】$/m.test(normalizedBase);
+  const currentTimeSection = buildPromptSection(
+    '当前时间',
+    [
+      options.method === 'zodiac'
+        ? '时间身份：本节为提问时点的历法背景；生肖流年关系的参与资料为下列出生年支与目标流年干支。'
+        : '',
+      formatPromptCurrentTime(options.currentTime),
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  );
 
   const sections = [
-    buildPromptGuidance(options.method),
-    buildPromptSection(
-      '当前时间',
-      [
-        options.method === 'zodiac'
-          ? '时间身份：本节为提问时点的历法背景；生肖流年关系的参与资料为下列出生年支与目标流年干支。'
-          : '',
-        formatPromptCurrentTime(options.currentTime),
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    ),
-    baseSection,
+    hasCompleteXuanKongBase ? '' : buildPromptGuidance(options.method),
+    hasCompleteXuanKongBase ? baseSection : currentTimeSection,
+    hasCompleteXuanKongBase ? currentTimeSection : baseSection,
     options.measurement ? buildPromptSection('测量换算', options.measurement) : '',
     buildPromptSchoolSection(options.method, options.schools),
-    selection ? buildPromptSection('解读选择', getPromptSelectionSection(selection)) : '',
-    options.method === 'zodiac' && /^【任务】$/m.test(normalizedBase)
+    selection
+      ? buildPromptSection(
+          '解读选择',
+          [
+            getPromptSelectionSection(selection),
+            hasCompleteXuanKongBase ? buildPromptSelectionTask('', selection) : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        )
+      : '',
+    hasCompleteXuanKongBase || (options.method === 'zodiac' && /^【任务】$/m.test(normalizedBase))
       ? ''
       : buildPromptSection(
           '任务',

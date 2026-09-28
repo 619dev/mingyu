@@ -426,6 +426,7 @@ function getMonthLeaderByZhongqi(timestamp: number) {
  * 支持传入自定义时间，不传则使用当前时间。
  *
  * @param customDate 自定义排盘时间（可选），不传则使用当前时间。
+ * @param options.termReferenceDate 真太阳时模式下的实际占时，用于节气和月将。
  * @returns 完整的大六壬课盘数据对象 LiurenData。
  *
  * @example
@@ -434,14 +435,22 @@ function getMonthLeaderByZhongqi(timestamp: number) {
  * // result 包含 fourLessons（四课）、threeTransmissions（三传）等字段
  * ```
  */
-export function generateLiuren(customDate?: Date): LiurenData {
-  const { ganzhi, timeInfo, timestamp } = getDivinationTime(customDate);
+export function generateLiuren(
+  customDate?: Date,
+  options?: { termReferenceDate?: Date },
+): LiurenData {
+  // 真太阳时只校正日时坐标；节气、年/月柱和月将仍按实际占时交节。
+  const { ganzhi, timeInfo, timestamp } = getDivinationTime(
+    customDate,
+    undefined,
+    options?.termReferenceDate,
+  );
   const dayStem = ganzhi.day.charAt(0);
   const dayBranch = ganzhi.day.charAt(1);
   const hourStem = ganzhi.hour.charAt(0);
   const hourBranch = ganzhi.hour.charAt(1);
   const dayNight: '昼占' | '夜占' = DAYTIME_BRANCHES.has(hourBranch) ? '昼占' : '夜占';
-  const monthLeader = getMonthLeaderByZhongqi(timestamp);
+  const monthLeader = getMonthLeaderByZhongqi(options?.termReferenceDate?.getTime() ?? timestamp);
   const noblemanBranch = getNoblemanBranch(dayStem, dayNight);
   const xunKong = getVoidBranches(ganzhi.day);
   const heavenlyPlate = buildHeavenlyPlate({
@@ -608,6 +617,9 @@ export function generateLiuren(customDate?: Date): LiurenData {
   const result: LiurenData = {
     ganzhi,
     timestamp,
+    ...(options?.termReferenceDate
+      ? { termReferenceTimestamp: options.termReferenceDate.getTime() }
+      : {}),
     dayNight,
     monthLeader,
     divinationBranch: hourBranch,

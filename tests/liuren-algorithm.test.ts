@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import type { LiurenLesson, LiurenPlateItem } from 'mingyu-core/types';
 import { calculateSolarTermEvidence, TimeManager } from 'mingyu-core/calendar';
 import { analyzeLiurenEvidence, generateLiuren } from 'mingyu-core/divination/liuren';
+import { buildTimeInfoText } from 'mingyu-core/prompt';
 import {
   getLiurenGuaTiFacts,
   getLiurenTransmissionGuaTi,
@@ -148,6 +149,29 @@ test('不同全局时区下月将均在雨水交节整秒切换', () => {
   } finally {
     TimeManager.setTimezoneOffsetMinutesOverride(480);
   }
+});
+
+test('真太阳时日时校正跨过雨水时，月将和节气仍按实际占时交节', () => {
+  // 香港天文台 2024 年年历：雨水为 2 月 19 日 12:13（东八区）。
+  // 《大六壬指南》卷一：大寒后子将、雨水后亥将。
+  const beforeTerm = generateLiuren(new Date('2024-02-19T13:00:00+08:00'), {
+    termReferenceDate: new Date('2024-02-19T11:30:00+08:00'),
+  });
+  assert.equal(beforeTerm.monthLeader, '子');
+  assert.equal(beforeTerm.termReferenceTimestamp, new Date('2024-02-19T11:30:00+08:00').getTime());
+  assert.match(beforeTerm.lessonSummary ?? '', /当前节气为立春/);
+  assert.match(buildTimeInfoText(beforeTerm), /节气：立春/);
+  assert.equal(beforeTerm.ganzhi.hour.charAt(1), '未');
+  assert.equal(beforeTerm.heavenlyPlate.find((item) => item.under === '未')?.branch, '子');
+
+  const afterTerm = generateLiuren(new Date('2024-02-19T10:00:00+08:00'), {
+    termReferenceDate: new Date('2024-02-19T12:40:00+08:00'),
+  });
+  assert.equal(afterTerm.monthLeader, '亥');
+  assert.match(afterTerm.lessonSummary ?? '', /当前节气为雨水/);
+  assert.match(buildTimeInfoText(afterTerm), /节气：雨水/);
+  assert.equal(afterTerm.ganzhi.hour.charAt(1), '巳');
+  assert.equal(afterTerm.heavenlyPlate.find((item) => item.under === '巳')?.branch, '亥');
 });
 
 test('大六壬旧资料缺少取传规则名时应保留证据缺口，不按三传反推九宗门', () => {

@@ -137,6 +137,10 @@ export function resolveMonthFlyingStar(
   const centerStar = sixtyMonth.getNineStar().getIndex() + 1;
   assertStar(centerStar);
   const monthBranch = sixtyMonth.getSixtyCycle().getEarthBranch().getName();
+  const dateBasis =
+    day === undefined
+      ? `以${year}年${month}月${resolvedDay}日中国标准时间12:00代表该流月，取所属节气月`
+      : `按${year}年${month}月${resolvedDay}日中国标准时间12:00所属节气月`;
   return {
     year,
     solarTermYear: sixtyMonth.getSixtyCycleYear().getYear(),
@@ -145,7 +149,7 @@ export function resolveMonthFlyingStar(
     centerStar,
     starName: starName(centerStar),
     plate: plateFromCenter(centerStar),
-    calendarNote: `${day === undefined ? '未指定日期时' : ''}按${year}年${month}月${resolvedDay}日中国标准时间12:00所属节气月（${monthBranch}月）取月紫白入中，再顺飞九宫${onJieDay ? `；当日${jie.getName()}于${jieTime.toString()}交节，未提供具体时刻，交节前后分属不同节气月` : ''}`,
+    calendarNote: `${dateBasis}（${monthBranch}月）取月紫白入中，再顺飞九宫${onJieDay ? `；当日${jie.getName()}于${jieTime.toString()}交节，交节前后分属不同节气月` : ''}`,
   };
 }
 

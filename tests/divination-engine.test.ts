@@ -7,11 +7,15 @@ import {
   resolveDivinationInspiredDraftPatch,
 } from '../src/lib/divination/inspiration';
 import type {
+  JinkoujueData,
+  LiurenData,
+  MeihuaData,
   QimenData,
   QimenJiuGongGe,
   SsgwData,
   TaiyiResult,
   TarotData,
+  XiaoliurenData,
 } from '../packages/core/src/types/divination';
 import { STEM_TOMB_MAP } from '../packages/core/src/divination/algorithms/qimen/helpers/_constants';
 import {
@@ -44,6 +48,7 @@ import {
 } from 'mingyu-core/divination/liuyao';
 import { generateLiuren } from 'mingyu-core/divination/liuren';
 import { generateMeihua } from 'mingyu-core/divination/meihua';
+import { generateXiaoliuren } from 'mingyu-core/divination/xiaoliuren';
 import { drawRandomSign } from 'mingyu-core/divination/ssgw';
 import { SSGW_SIGNS } from '../packages/core/src/divination/ssgw-data';
 import {
@@ -4106,6 +4111,152 @@ test('按时间起局的占问应使用地点经度校正真太阳时并写入�
   assert.match(session.prompt, /时间口径：真太阳时/);
   assert.match(session.prompt, /起局地点：新疆维吾尔自治区 喀什地区 喀什市/);
   assert.match(session.prompt, /校正明细：经度修正/);
+});
+
+test('大六壬真太阳时跨雨水时按实际占时确定月将', async () => {
+  // 香港天文台 2024 年年历：雨水为 2 月 19 日 12:13（东八区）。
+  const cases = [
+    { clock: '11:30', longitude: '145', monthLeader: '子', term: '立春', shiftedAfter: true },
+    { clock: '12:40', longitude: '73.5', monthLeader: '亥', term: '雨水', shiftedAfter: false },
+  ] as const;
+  const termTime = new Date('2024-02-19T12:13:00+08:00').getTime();
+
+  for (const item of cases) {
+    const session = await generateDivinationSession(
+      buildDraft({
+        method: 'liuren',
+        divinationTimeMode: 'custom',
+        customDivinationDate: '2024-02-19',
+        customDivinationTime: item.clock,
+        divinationTimeStandard: 'true-solar',
+        birthPlace: '测试地点',
+        birthLongitude: item.longitude,
+      }),
+    );
+    const data = session.data as LiurenData;
+    assert.equal(data.monthLeader, item.monthLeader);
+    assert.match(data.lessonSummary ?? '', new RegExp(`当前节气为${item.term}`));
+    assert.match(session.prompt, new RegExp(`节气：${item.term}`));
+    assert.equal(
+      data.termReferenceTimestamp,
+      new Date(`2024-02-19T${item.clock}:00+08:00`).getTime(),
+    );
+    assert.equal(data.timestamp > termTime, item.shiftedAfter);
+    assert.equal(
+      data.heavenlyPlate.find((entry) => entry.under === data.divinationBranch)?.branch,
+      item.monthLeader,
+    );
+  }
+});
+
+test('六爻真太阳时跨立夏时按实际占时确定月建与逐爻事实', async () => {
+  // 香港天文台 2024 年年历：立夏为 5 月 5 日 08:10（东八区）。
+  const cases = [
+    { clock: '07:30', longitude: '145', month: '辰', term: '谷雨', state: '囚', broken: true },
+    { clock: '08:40', longitude: '73.5', month: '巳', term: '立夏', state: '休', broken: false },
+  ] as const;
+  const termTime = new Date('2024-05-05T08:10:00+08:00').getTime();
+
+  for (const item of cases) {
+    const session = await generateDivinationSession(
+      buildDraft({
+        method: 'liuyao',
+        liuyaoMethod: 'manual',
+        liuyaoYaos: [7, 7, 7, 7, 7, 7],
+        divinationTimeMode: 'custom',
+        customDivinationDate: '2024-05-05',
+        customDivinationTime: item.clock,
+        divinationTimeStandard: 'true-solar',
+        birthPlace: '测试地点',
+        birthLongitude: item.longitude,
+      }),
+    );
+    const data = session.data as ReturnType<typeof generateLiuyao>;
+    assert.equal(data.ganzhi.month.slice(1), item.month);
+    assert.equal(data.yaosDetail[1].seasonState, item.state);
+    assert.equal(data.yaosDetail[5].isMonthBreak, item.broken);
+    assert.match(session.prompt, new RegExp(`节气：${item.term}`));
+    assert.equal(
+      data.termReferenceTimestamp,
+      new Date(`2024-05-05T${item.clock}:00+08:00`).getTime(),
+    );
+    assert.equal(data.timestamp > termTime, item.month === '辰');
+  }
+});
+
+test('梅花、金口诀与奇门真太阳时跨节气时沿用实际交节', async () => {
+  const shared = {
+    divinationTimeMode: 'custom' as const,
+    divinationTimeStandard: 'true-solar' as const,
+    birthPlace: '测试地点',
+    birthLongitude: '73.5',
+  };
+  const meihua = await generateDivinationSession(
+    buildDraft({
+      ...shared,
+      method: 'meihua',
+      customDivinationDate: '2024-05-05',
+      customDivinationTime: '08:40',
+    }),
+  );
+  const meihuaData = meihua.data as MeihuaData;
+  assert.equal(meihuaData.analysis.monthBranch, '巳');
+  assert.match(meihua.prompt, /节气：立夏/);
+  assert.ok(meihuaData.timestamp < new Date('2024-05-05T08:10:00+08:00').getTime());
+
+  const jinkoujue = await generateDivinationSession(
+    buildDraft({
+      ...shared,
+      method: 'jinkoujue',
+      jinkoujueMethod: 'time',
+      customDivinationDate: '2024-02-19',
+      customDivinationTime: '12:40',
+    }),
+  );
+  const jinkoujueData = jinkoujue.data as JinkoujueData;
+  assert.equal(jinkoujueData.monthLeader, '亥');
+  assert.match(jinkoujue.prompt, /节气：雨水/);
+  assert.ok(jinkoujueData.timestamp < new Date('2024-02-19T12:13:00+08:00').getTime());
+
+  const qimen = await generateDivinationSession(
+    buildDraft({
+      ...shared,
+      method: 'qimen',
+      qimenScope: 'hour',
+      customDivinationDate: '2024-05-05',
+      customDivinationTime: '08:40',
+    }),
+  );
+  const qimenData = qimen.data as QimenData;
+  assert.equal(qimenData.ganzhi.month.slice(-1), '巳');
+  assert.equal(qimenData.timeInfo.solarTerm, '立夏');
+  assert.match(qimen.prompt, /节气：立夏/);
+  assert.ok(qimenData.timestamp < new Date('2024-05-05T08:10:00+08:00').getTime());
+});
+
+test('小六壬真太阳时跨民用零点仍按实际东八区日期取农历日', async () => {
+  const actual = new Date('2025-06-30T00:20:00+08:00');
+  const session = await generateDivinationSession(
+    buildDraft({
+      method: 'xiaoliuren',
+      divinationTimeMode: 'custom',
+      customDivinationDate: '2025-06-30',
+      customDivinationTime: '00:20',
+      divinationTimeStandard: 'true-solar',
+      birthPlace: '测试地点',
+      birthLongitude: '73.5',
+    }),
+  );
+  const data = session.data as XiaoliurenData;
+  const civil = generateXiaoliuren({ customDate: actual });
+  assert.equal(data.lunarMonth, civil.lunarMonth);
+  assert.equal(data.lunarDay, civil.lunarDay);
+  assert.equal(data.termReferenceTimestamp, actual.getTime());
+  assert.ok(data.timestamp < new Date('2025-06-30T00:00:00+08:00').getTime());
+  assert.match(
+    session.prompt,
+    new RegExp(`起课：农历${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月${data.lunarDay}日`),
+  );
 });
 
 test('占问启用真太阳时时必须先选择起局地点', async () => {

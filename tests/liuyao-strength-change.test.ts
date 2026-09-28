@@ -12,7 +12,7 @@ import {
   getLiuyaoHexagramRelations,
   getLiuyaoPalaceStage,
 } from 'mingyu-core/divination/liuyao';
-import { formatEnhancedDivinationInfo } from 'mingyu-core/prompt';
+import { buildTimeInfoText, formatEnhancedDivinationInfo } from 'mingyu-core/prompt';
 import type { LiuyaoYaoDetail } from 'mingyu-core/types';
 
 // 2025-01-01 农历为丙子月（子月：水旺木相金休土囚火死）、丙寅日（日支寅）
@@ -23,6 +23,33 @@ const XUN_WEI_FENG_YAOS = [8, 7, 7, 8, 7, 7] as const;
 const DUI_WEI_ZE_YAOS = [7, 7, 8, 7, 7, 8] as const;
 const FENG_SHUI_HUAN_YAOS = [8, 7, 8, 8, 7, 7] as const;
 const KAN_WEI_SHUI_YAOS = [8, 7, 8, 8, 7, 8] as const;
+
+test('六爻真太阳时跨立夏仍按实际交节确定月建旺衰和月破', () => {
+  // 香港天文台 2024 年年历：立夏为 5 月 5 日 08:10（东八区）。
+  const yaos = [7, 7, 7, 7, 7, 7] as const;
+  const beforeTerm = generateLiuyao(new Date('2024-05-05T09:00:00+08:00'), {
+    method: 'manual',
+    yaos,
+    termReferenceDate: new Date('2024-05-05T07:30:00+08:00'),
+  });
+  assert.equal(beforeTerm.originalName, '乾为天');
+  assert.equal(beforeTerm.ganzhi.month.slice(1), '辰');
+  assert.equal(beforeTerm.yaosDetail[1].najiaDizhi, '寅');
+  assert.equal(beforeTerm.yaosDetail[1].seasonState, '囚');
+  assert.equal(beforeTerm.yaosDetail[5].najiaDizhi, '戌');
+  assert.equal(beforeTerm.yaosDetail[5].isMonthBreak, true);
+  assert.match(buildTimeInfoText(beforeTerm), /节气：谷雨/);
+
+  const afterTerm = generateLiuyao(new Date('2024-05-05T06:00:00+08:00'), {
+    method: 'manual',
+    yaos,
+    termReferenceDate: new Date('2024-05-05T08:40:00+08:00'),
+  });
+  assert.equal(afterTerm.ganzhi.month.slice(1), '巳');
+  assert.equal(afterTerm.yaosDetail[1].seasonState, '休');
+  assert.equal(afterTerm.yaosDetail[5].isMonthBreak, false);
+  assert.match(buildTimeInfoText(afterTerm), /节气：立夏/);
+});
 
 function generateSampleLiuyao(yaos: readonly number[] = SHAN_HUO_BI_YAOS) {
   return generateLiuyao(SAMPLE_DATE, { yaos });

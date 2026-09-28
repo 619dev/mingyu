@@ -149,6 +149,30 @@ test('现代星盘不得用真太阳时改写实际出生瞬间和盘面', () =>
   assert.deepEqual(withTrueSolarEvidence.aspects, standard.aspects);
 });
 
+test('本命盘在线提示词只列盘面与时间事实，不带内部来源说明', () => {
+  for (const input of [
+    validInput,
+    {
+      ...validInput,
+      year: '2024',
+      month: '11',
+      day: '3',
+      hour: '1',
+      minute: '30',
+      latitude: '40.7128',
+      longitude: '-74.006',
+      timezone: '-4',
+      timeZoneId: 'America/New_York',
+      useTrueSolarTime: true,
+    },
+  ]) {
+    const evidence = generateAstrolabe(input).evidenceAnalysis!;
+    assert.match(evidence.promptText, /出生时刻太阳高度/);
+    assert.doesNotMatch(evidence.promptText, /明御|Caelus|tyme4ts|来源：|计算方法：/);
+    assert.ok(evidence.evidence.items.some((item) => item.source?.includes('Caelus')));
+  }
+});
+
 test('星盘应返回筛选阈值内全部相位，不得只截取最强十二条', () => {
   const result = generateAstrolabe(validInput);
 

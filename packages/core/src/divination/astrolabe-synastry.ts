@@ -767,7 +767,10 @@ export function analyzeAstrolabeSynastry(
     summaryFact,
     limitationFacts,
   );
-  const evidenceLines = formatPromptEvidenceBundle(evidence);
+  const evidenceLines = formatPromptEvidenceBundle({
+    ...evidence,
+    items: evidence.items.map((item) => ({ ...item, source: undefined })),
+  });
   // 接纳与互溶基于全部命中相位计算，不受返回上限截断影响，并沿用计算点筛选
   const receptionsResult = evaluateAstrolabeSynastryReceptions(
     chart1,
