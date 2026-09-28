@@ -424,6 +424,7 @@ export function resolveXuanKongOrientation(
       return Math.min(rem, 15 - rem);
     };
     const boundaryDistance = Math.min(distanceToBoundary(sitPos), distanceToBoundary(facingPos));
+    const reportDistance = (distance: number) => Number(distance.toFixed(9)) || distance;
     const distanceFromCenter = (pos: CompassMountainPosition) => {
       if (pos.isBoundary) return 7.5;
       const rem = (((pos.degree + 7.5) % 15) + 15) % 15;
@@ -494,8 +495,8 @@ export function resolveXuanKongOrientation(
         sitDegree: sitPos.degree,
         stability,
         uncertaintyDegrees: uncertainty,
-        nearestBoundaryDistanceDegrees: Number(boundaryDistance.toFixed(2)),
-        nearestCentralNineBoundaryDistanceDegrees: Number(centralNineBoundaryDistance.toFixed(2)),
+        nearestBoundaryDistanceDegrees: reportDistance(boundaryDistance),
+        nearestCentralNineBoundaryDistanceDegrees: reportDistance(centralNineBoundaryDistance),
         ...(boundaryReasons.length ? { boundaryReasons } : {}),
         isJianXiang,
         ...(candidateMountains.length ? { candidateMountains } : {}),
@@ -673,7 +674,7 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
       ? [
           `测量资料：坐山${result.measurement.sitDegree}°、朝向${result.measurement.facingDegree}°、误差±${result.measurement.uncertaintyDegrees}°`,
           `距二十四山分界${result.measurement.nearestBoundaryDistanceDegrees ?? '未知'}°、距中央九度分界${result.measurement.nearestCentralNineBoundaryDistanceDegrees ?? '未知'}°`,
-          `边界原因：${result.measurement.boundaryReasons?.join('、') || '当前测量落在二十四山与中央九度稳定区间'}`,
+          `边界原因：${result.measurement.boundaryReasons?.join('、') || '当前测量未触及二十四山或中央九度分界'}`,
           ...(result.measurement.stability === '山向边界敏感'
             ? ['以下山向、局型、城门与三盘九宫按中心读数暂列，复测后核定适用盘面']
             : []),

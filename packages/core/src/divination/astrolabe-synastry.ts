@@ -187,7 +187,12 @@ function hasValidHouseCusps(houses: AstrolabePoint[]) {
   for (let index = 0; index < sorted.length; index += 1) {
     const current = sorted[index];
     const next = sorted[(index + 1) % sorted.length];
-    if (current.house !== index + 1 || !Number.isFinite(current.longitude)) return false;
+    if (
+      current.house !== index + 1 ||
+      !Number.isFinite(current.longitude) ||
+      !Number.isFinite(next.longitude)
+    )
+      return false;
     const arc =
       (normalizeLongitude(next.longitude) - normalizeLongitude(current.longitude) + 360) % 360;
     if (arc === 0) return false;

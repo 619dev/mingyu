@@ -96,19 +96,19 @@ export function evaluateNayinCompatibility(
 
   if (elem1 === elem2) {
     relation = '比和';
-    judgment = '年命纳音同气比和，声气相求，门户根基相得益彰';
+    judgment = `双方年命纳音同属${elem1}，呈比和关系；实际相处结合双方原局与现实互动核验`;
   } else if (isSheng(elem1, elem2)) {
     relation = '生对方';
-    judgment = `年命纳音${elem1}生${elem2}，一方倾心相待，情意绵长`;
+    judgment = `年命纳音${elem1}生${elem2}；实际相处结合双方原局与现实互动核验`;
   } else if (isSheng(elem2, elem1)) {
     relation = '受对方生';
-    judgment = `年命纳音${elem2}生${elem1}，得配偶照拂滋养，根基敦实`;
+    judgment = `年命纳音${elem2}生${elem1}；实际相处结合双方原局与现实互动核验`;
   } else if (isKe(elem1, elem2)) {
     relation = '克对方';
-    judgment = `年命纳音${elem1}克${elem2}，以克为制，主导配合中见张力`;
+    judgment = `年命纳音${elem1}克${elem2}；实际相处结合双方原局与现实互动核验`;
   } else {
     relation = '受对方克';
-    judgment = `年命纳音${elem2}克${elem1}，顺承包容，宜多加调适理解`;
+    judgment = `年命纳音${elem2}克${elem1}；实际相处结合双方原局与现实互动核验`;
   }
 
   return {
@@ -130,6 +130,8 @@ export function evaluateSpousePalaceDeepRelation(
   chart1: BaziChartResult,
   chart2: BaziChartResult,
 ): SpousePalaceDeepRelationResult {
+  assertPillars(chart1.pillars);
+  assertPillars(chart2.pillars);
   const p1 = chart1.pillars.day;
   const p2 = chart2.pillars.day;
 
@@ -145,14 +147,11 @@ export function evaluateSpousePalaceDeepRelation(
   } else if (TIAN_GAN_CHONG[stem1] === stem2) {
     stemRelation = '天干冲';
   } else if (
-    isSheng(chart1.dayMaster.element, chart2.dayMaster.element) ||
-    isSheng(chart2.dayMaster.element, chart1.dayMaster.element)
+    isSheng(getWuxing(stem1), getWuxing(stem2)) ||
+    isSheng(getWuxing(stem2), getWuxing(stem1))
   ) {
     stemRelation = '相生';
-  } else if (
-    isKe(chart1.dayMaster.element, chart2.dayMaster.element) ||
-    isKe(chart2.dayMaster.element, chart1.dayMaster.element)
-  ) {
+  } else if (isKe(getWuxing(stem1), getWuxing(stem2)) || isKe(getWuxing(stem2), getWuxing(stem1))) {
     stemRelation = '相克';
   }
 

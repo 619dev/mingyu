@@ -4641,7 +4641,7 @@ test('黄历择日长区间提示词应携带全部 180 个候选日', async () 
   assert.equal(session.prompt.match(/第\d+日：2026-/g)?.length, 180);
   assert.ok(session.prompt.length < 50_000);
   assert.match(session.prompt, /日期偏好：避开周末/);
-  assert.match(session.prompt, /时段条件：工作日常规办事时段、优先上午/);
+  assert.match(session.prompt, /时段条件：同一候选等级内优先工作日，时辰限常规办事时段、优先上午/);
 });
 
 test('占卜引擎黄历择日应在本地拒绝无效日期范围', async () => {

@@ -312,6 +312,22 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
   if (measurement?.northReference === 'unspecified') {
     lines.push('北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。');
   }
+  if (measurement) {
+    const northReference =
+      measurement.northReference === 'magnetic'
+        ? `磁北，磁偏角${measurement.magneticDeclinationDegrees}°（东偏为正）`
+        : measurement.northReference === 'true'
+          ? '真北'
+          : '：未声明，按原始读数暂算';
+    lines.push(
+      `测向资料：${measurement.method}，读数${measurement.measuredDegree}°，北向基准${northReference}，换算角度${measurement.trueNorthDegree}°，误差±${measurement.measurementUncertaintyDegrees}°；换算为${measurement.label}，距最近二十四山分界${measurement.nearestBoundaryDistanceDegrees}°，测量状态${measurement.stability}。`,
+    );
+    if (measurement.stability === '山向边界敏感') {
+      lines.push(
+        `候选坐向：${measurement.candidateDirections.map((item) => item.label).join('、')}；宅卦仍属${measurement.candidateDirections[0].houseGua}。`,
+      );
+    }
+  }
   lines.push(`命卦：${r.mingGua}（${r.mingGroup}）`);
   lines.push(`立春年界：${r.birthYearBoundaryNote}`);
   if (measurement?.stability === '宅卦不稳定') {

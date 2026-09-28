@@ -9,6 +9,7 @@ import {
   getAlmanacTwentyEightStarDetail,
 } from '../packages/core/src/divination/algorithms/almanac.ts';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator.ts';
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 
 const ALMANAC_CROSS_CENTURY_TRUTH = [
   ['1900-01-01', '己亥', '丙子', '甲戌'],
@@ -511,6 +512,10 @@ test('黄历择日：工作时间应同时避开周末并限定常规办事时�
   const workHourBranches = new Set(['巳', '午', '未', '申']);
 
   assert.equal(result.weekendPreference, 'avoid');
+  assert.ok(result.days.some((day) => day.weekday === '星期六' || day.weekday === '星期日'));
+  const prompt = formatEnhancedDivinationInfo('almanac', result);
+  assert.match(prompt, /时段条件：同一候选等级内优先工作日，时辰限常规办事时段、优先上午/);
+  assert.doesNotMatch(prompt, /时段条件：工作日常规办事时段/);
   assert.ok(candidates.length > 0);
   assert.ok(
     candidates.every((candidate) =>

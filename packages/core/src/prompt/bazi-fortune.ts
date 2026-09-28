@@ -321,7 +321,7 @@ function formatTriggerRelations(
       const participantText = participants.length
         ? `参与层级：${[...new Set(participants)].join('、')}`
         : '参与层级资料未列出';
-      return `${formation.label}（地支：${formation.branches.join('、')}；${participantText}；${formation.interpretationLimit}）`;
+      return `${formation.label}（地支：${formation.branches.join('、')}；${participantText}）`;
     });
     lines.push(`三合三会：${[...new Set(formationLines)].join('；')}`);
   }

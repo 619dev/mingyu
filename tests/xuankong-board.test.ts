@@ -189,6 +189,19 @@ test('玄空正处4.5度中央九度分界时保留下卦并提示下卦/替卦�
   assert.match(result.evidenceAnalysis.promptText, /下卦.*替卦/);
 });
 
+test('玄空兼向稳定区准确表述分界状态，细小非零距离不写成零', () => {
+  const jianXiang = generateXuanKong({ year: 2024, sitDegree: 6 });
+  assert.equal(jianXiang.measurement?.isJianXiang, true);
+  assert.equal(jianXiang.measurement?.stability, '稳定');
+  assert.match(jianXiang.prompt, /当前测量未触及二十四山或中央九度分界/);
+  assert.doesNotMatch(jianXiang.prompt, /中央九度稳定区间/);
+
+  const nearBoundary = generateXuanKong({ year: 2024, sitDegree: 7.496 });
+  assert.equal(nearBoundary.measurement?.stability, '稳定');
+  assert.ok(nearBoundary.measurement!.nearestBoundaryDistanceDegrees! > 0);
+  assert.match(nearBoundary.prompt, /距二十四山分界0\.004°/);
+});
+
 test('玄空替星诀覆盖二十四山且补齐戌山武曲六白', () => {
   assert.equal(Object.keys(TWENTY_FOUR_MOUNTAIN_SUBSTITUTES).length, 24);
   for (const mountain of TWENTY_FOUR_MOUNTAINS) {

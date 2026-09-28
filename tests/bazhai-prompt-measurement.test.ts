@@ -37,6 +37,20 @@ test('八宅宅卦跨界时提示词并列候选并标明中心读数盘', () =>
   });
   assert.equal(stable.directionMeasurement.stability, '稳定');
   assert.doesNotMatch(stable.prompt, /候选坐向|中心读数/);
+  assert.match(stable.prompt, /测向资料：站在大门处面向屋内测量，读数0°，北向基准真北/);
+  assert.match(stable.prompt, /换算为子山午向，距最近二十四山分界7\.5°，测量状态稳定/);
+});
+
+test('八宅同宅卦跨山界时提示词保留候选山向和测向事实', () => {
+  const result = analyzeBaZhaiByDoorDegree({
+    mingGua: '坎',
+    doorToInteriorDegree: 7,
+    northReference: 'true',
+    measurementUncertaintyDegrees: 1,
+  });
+  assert.equal(result.directionMeasurement.stability, '山向边界敏感');
+  assert.match(result.prompt, /读数7°，北向基准真北/);
+  assert.match(result.prompt, /候选坐向：子山午向、癸山丁向；宅卦仍属坎/);
 });
 
 test('八宅未声明北向时只把原始角度标为暂算依据', () => {

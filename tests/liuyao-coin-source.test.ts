@@ -26,3 +26,29 @@ test('程序模拟三钱保留计算样本和随机轨迹', () => {
   assert.match(evidence.generationFact.promptText, /第1爻计算样本/u);
   assert.equal(evidence.randomFact.status, '可重放');
 });
+
+test('六爻手工爻值和铜钱记录拒绝空数组项并返回可读的输入错误', () => {
+  assert.throws(
+    () => generateLiuyao(date, { method: 'manual', yaos: null as unknown as number[] }),
+    /六爻手工爻值必须恰好包含 6 爻/,
+  );
+  assert.throws(
+    () =>
+      generateLiuyao(date, {
+        method: 'coins',
+        coinThrows: [null, ...coinThrows.slice(1)] as unknown as typeof coinThrows,
+      }),
+    /第1爻必须包含三枚有效铜钱/,
+  );
+  assert.throws(
+    () =>
+      generateLiuyao(date, {
+        method: 'coins',
+        coinThrows: [
+          { coins: null, total: 7 },
+          ...coinThrows.slice(1),
+        ] as unknown as typeof coinThrows,
+      }),
+    /第1爻必须包含三枚有效铜钱/,
+  );
+});

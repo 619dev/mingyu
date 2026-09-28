@@ -253,7 +253,6 @@ test('成化状态在合盘与多派提示词只呈现一次', () => {
   ]) {
     assert.equal(prompt.match(/化气判定：成化/g)?.length, 1);
     assert.match(prompt, /化神取用：[^\n]*化神木/);
-    assert.match(prompt, /喜忌(?:覆盖|五行对应)：第二人盘面命中第一人喜用五行木、水/);
     const relationFacts = prompt.split('【双盘关系资料】')[1] ?? '';
     assert.doesNotMatch(relationFacts, /化气判定：成化|取用主体：化神木/);
   }
@@ -298,6 +297,28 @@ test('破格救应已在核心判断列明时省略重复格局条件', () => {
 
   result.analysis.usefulGod.decisionEvidence!.patternBreakerRestrictions = [];
   assert.match(formatBaziPatternConditions(result), /破格项：伤官见官/);
+});
+
+test('救应资料不足时已列明的破格项不重复写入格局条件', () => {
+  const result = createBaziResult({ year: 2012, month: 9, day: 3, timeIndex: 3 });
+  assert.equal(result.analysis.mingGe.fulfillment?.status, '破格');
+  assert.match(result.analysis.mingGe.fulfillment?.decisionDetail ?? '', /伤官见官/);
+  assert.equal(result.pillars.month.gan, '戊');
+  assert.equal(result.analysis.mingGe.fulfillment?.activeBreakers?.[0]?.repairStatus, '资料不足');
+  assert.equal(formatBaziPatternConditions(result), '');
+
+  for (const prompt of [
+    buildBaziPrompt({ result, fortuneScope: 'natal' }),
+    buildPromptFromConfig(
+      '分析当前格局。',
+      { id: 'ai-career', prompt: '分析事业。', scopeLabel: '事业' },
+      result,
+    ).user,
+  ]) {
+    assert.match(prompt, /判定理由：原局见伤官见官、官杀混杂/);
+    assert.match(prompt, /月柱: 戊申 \[伤官\]/);
+    assert.doesNotMatch(prompt, /【格局条件】|破格项：伤官见官/);
+  }
 });
 
 test('格神前提未满足时不附加救应条件，从儿格不重复已有的财气承接与五行流向', () => {

@@ -408,6 +408,8 @@ function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
     patternBasis && patternFacts.some((fact) => fact.includes(patternBasis)),
   );
   const usefulGod = data.analysis.usefulGod;
+  const incrementIncomplete =
+    usefulGod.incrementStatus === '待判' || usefulGod.incrementStatus === '部分判定';
   const usefulBasis = [
     conditionPortableBasis(usefulGod.primaryReason ?? ''),
     ...(usefulGod.decisionEvidence
@@ -424,6 +426,7 @@ function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
   const favorableWuxing = usefulGod.favorableWuxing ?? [];
   const unfavorableWuxing = usefulGod.unfavorableWuxing ?? [];
   const usefulResult = [
+    usefulGod.incrementStatus === '部分判定' ? '增补五行喜忌部分判定' : '',
     usefulGod.incrementStatus === '待判'
       ? '增补五行喜忌待判'
       : usefulGod.primaryFavorableWuxing
@@ -477,7 +480,7 @@ function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
     },
     {
       key: 'bazi:natal:analysis:useful-god',
-      status: usefulResult && usefulGod.incrementStatus !== '待判' ? '已记录' : '资料缺口',
+      status: usefulResult && !incrementIncomplete ? '已记录' : '资料缺口',
       type: '用神取忌',
       result: usefulResult,
       basis: usefulBasis,

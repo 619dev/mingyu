@@ -124,6 +124,42 @@ test('真实命盘增补五行喜忌待判时本命证据应保留资料缺口',
   assert.equal(analysis.calculationSteps.at(-1)?.result.missingFactCount, 1);
 });
 
+test('增补五行喜忌仅部分判定时本命证据与提示词应保留资料缺口', () => {
+  const chart = baziCalculator.calculateBazi({
+    year: 1990,
+    month: 9,
+    day: 5,
+    timeIndex: 6,
+    gender: 'male',
+    isLunar: false,
+  });
+  chart.analysis.usefulGod.incrementStatus = '部分判定';
+  chart.analysis.usefulGod.favorableWuxing = ['木'];
+  chart.analysis.usefulGod.primaryFavorableWuxing = '木';
+  chart.analysis.usefulGod.unfavorableWuxing = [];
+  chart.analysis.usefulGod.primaryUnfavorableWuxing = '';
+
+  const analysis = analyzeBaziNatalEvidence(chart);
+  const usefulFact = analysis.analysisFacts.find((item) => item.type === '用神取忌');
+  assert.equal(usefulFact?.status, '资料缺口');
+  assert.match(usefulFact?.result ?? '', /增补五行喜忌部分判定；主用木/);
+  assert.match(usefulFact?.promptText ?? '', /取用结果：增补五行喜忌部分判定；主用木/);
+  assert.ok(
+    analysis.evidence.items.some(
+      (item) =>
+        item.title === '用神取忌事实' &&
+        item.level === '反证' &&
+        item.detail.includes('增补五行喜忌部分判定；主用木'),
+    ),
+  );
+  assert.equal(analysis.summaryFact.status, '证据链有缺口');
+  assert.equal(analysis.summaryFact.missingFactCount, 1);
+  assert.equal(
+    analysis.calculationSteps.find((item) => item.stage === '核心判断形成')?.status,
+    '存在资料缺口',
+  );
+});
+
 test('八字本命提示词应保留用户选择的传统时辰且不混入工程证据话术', () => {
   const result = baziCalculator.calculateBazi({
     year: 1992,

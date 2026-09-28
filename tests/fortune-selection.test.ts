@@ -886,4 +886,27 @@ test('大运流年引动应识别与命宫、胎元的冲克刑害', () => {
   });
   const triggerLine = context.promptPayload.summaryLines.find((line) => line.includes('流年触发'));
   assert.match(triggerLine ?? '', /冲命宫/);
+  const focus = formatBaziFortuneSelection(context)?.focus ?? '';
+  assert.equal(focus.match(/流年地支子冲命宫午/g)?.length, 1);
+  assert.doesNotMatch(focus, /主变迁变动|身心耗损|事业环境与家宅动荡/);
+});
+
+test('岁运补齐三合三支时任务书只列一次结构事实，不断为已经成化', () => {
+  const result = createMockResult();
+  result.pillars.year = { gan: '甲', zhi: '申', ganZhi: '甲申' };
+  result.pillars.month = { gan: '戊', zhi: '辰', ganZhi: '戊辰' };
+  result.pillars.day = { gan: '甲', zhi: '寅', ganZhi: '甲寅' };
+  result.pillars.hour = { gan: '庚', zhi: '午', ganZhi: '庚午' };
+  result.luckInfo.cycles[0].ganZhi = '甲寅';
+
+  const context = buildFortuneSelectionContext(result, {
+    scope: 'year',
+    cycleIndex: 0,
+    year: 2008,
+  });
+  assert.ok(context);
+  assert.equal(context.promptPayload.triggerEvidence?.formations.length, 1);
+  const focus = formatBaziFortuneSelection(context)?.focus ?? '';
+  assert.equal(focus.match(/申子辰三合水/g)?.length, 1);
+  assert.doesNotMatch(focus, /与原局会合成|流年触发：|只记录原局与所选岁运层级/);
 });

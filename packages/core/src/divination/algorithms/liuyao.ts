@@ -925,11 +925,17 @@ function resolveRawYaos(
     if (options?.yaos !== undefined) throw new Error('六爻模拟投掷不能同时提供手工爻值。');
     if (options?.coinThrows !== undefined) {
       if (usesRandomOptions) throw new Error('六爻手摇记录不能同时提供随机选项。');
-      if (options.coinThrows.length !== 6) {
+      if (!Array.isArray(options.coinThrows) || options.coinThrows.length !== 6) {
         throw new Error('六爻手摇记录必须恰好包含 6 爻。');
       }
-      const coinThrows = options.coinThrows.map((item, index) => {
-        if (item.coins.length !== 3 || !item.coins.every((coin) => coin === 2 || coin === 3)) {
+      const coinThrows = Array.from(options.coinThrows, (item, index) => {
+        if (
+          !item ||
+          typeof item !== 'object' ||
+          !Array.isArray(item.coins) ||
+          item.coins.length !== 3 ||
+          !item.coins.every((coin: unknown) => coin === 2 || coin === 3)
+        ) {
           throw new Error(`第${index + 1}爻必须包含三枚有效铜钱。`);
         }
         const coins = [...item.coins] as [2 | 3, 2 | 3, 2 | 3];
@@ -949,7 +955,7 @@ function resolveRawYaos(
   if (options?.coinThrows !== undefined) throw new Error('六爻手工起卦不能同时提供手摇记录。');
   if (usesRandomOptions) throw new Error('六爻手工起卦不接受随机选项。');
   if (options?.yaos === undefined) throw new Error('六爻手工起卦必须提供六个爻值。');
-  if (options.yaos.length !== 6) {
+  if (!Array.isArray(options.yaos) || options.yaos.length !== 6) {
     throw new Error('六爻手工爻值必须恰好包含 6 爻。');
   }
   const yaos = [...options.yaos];

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { analyzeAstrolabeSynastry } from 'mingyu-core/divination/astrolabe-synastry';
+import { analyzeAstrolabeSynastry } from '../packages/core/src/divination/astrolabe-synastry.ts';
 import type { AstrolabeData, AstrolabePoint } from 'mingyu-core/types';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 import { buildAstrolabeSynastryPrompt } from '../packages/core/src/prompt/astrolabe';
@@ -170,6 +170,22 @@ test('宫头数量齐全但区间退化或序号重复时不生成该方向落�
   assert.equal(
     duplicateNumber.houseOverlays.some((item) => item.owner === '甲'),
     false,
+  );
+
+  first.houses = chart('甲', 35, 125).houses;
+  first.houses[1] = { ...first.houses[1], longitude: Number.NaN };
+  const invalidLongitude = analyzeAstrolabeSynastry(first, second);
+  assert.equal(
+    invalidLongitude.houseOverlays.some((item) => item.owner === '甲'),
+    false,
+  );
+  assert.equal(
+    invalidLongitude.houseOverlays.some((item) => item.owner === '乙'),
+    true,
+  );
+  assert.equal(
+    invalidLongitude.counterEvidenceFacts.find((item) => item.type === '跨盘落宫覆盖')?.status,
+    '资料不足',
   );
 });
 

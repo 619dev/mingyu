@@ -229,6 +229,14 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
       result.analysis.usefulGod?.decisionEvidence?.patternBreakerRestrictions ?? [];
     for (const breaker of fulfillment.activeBreakers ?? []) {
       if (
+        breaker.repairStatus === '资料不足' &&
+        statedDecision.includes(breaker.label) &&
+        breaker.stems.length > 0 &&
+        breaker.stems.every((stem) => result.pillars[stem.pillar].gan === stem.stem)
+      ) {
+        continue;
+      }
+      if (
         breaker.repairStatus === '不满足' &&
         breaker.stems.length > 0 &&
         statedBreakers.some(

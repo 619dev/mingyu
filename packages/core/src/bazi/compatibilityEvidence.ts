@@ -444,10 +444,11 @@ function calculateUsefulGodCoverage(
   const functionalDescriptions = formatUsefulGodFunctions(usefulGod, false).filter(
     (item) => !item.startsWith('化神取用：'),
   );
-  if (!favorable?.length && !unfavorable?.length) {
-    const incrementPending = Boolean(beneficiaryChart.analysis?.usefulGod?.incrementStatus);
+  const incrementPending =
+    usefulGod.incrementStatus === '待判' || usefulGod.incrementStatus === '部分判定';
+  if ((!favorable?.length && !unfavorable?.length) || incrementPending) {
     const unavailableReason = incrementPending
-      ? '增补喜忌五行待判，原局格神与制化作用另行记录。'
+      ? '增补喜忌五行待判，已列部分暂不作为完整覆盖依据。'
       : '命盘未提供结构化喜忌五行。';
     return {
       key: `bazi:compatibility:useful-god-coverage:${beneficiary}:from:${provider}`,
@@ -708,13 +709,14 @@ function buildCounterEvidenceFacts(params: {
       ],
       promptText:
         item.status === '资料不足'
-          ? `${direction}缺少受益方结构化喜忌资料，不生成互补结论`
+          ? `${direction}${item.unavailableReason ?? '喜忌五行资料不足'}`
           : item.favorable.length
             ? `${direction}命中喜用五行${item.favorable.map((entry) => entry.wuxing).join('、')}`
             : `${direction}未命中受益方已列喜用五行；未命中不等于关系不利`,
       sources: item.sources,
       limitation: COUNTER_FACT_LIMITATION,
     });
+    if (item.status === '资料不足') return;
     facts.push({
       key: `bazi:compatibility:counter:mixed-coverage:${item.beneficiary}:from:${item.provider}`,
       type: '喜忌并存',
@@ -1001,6 +1003,15 @@ export function analyzeBaziCompatibility(
   }
   assertPillars(chart1.pillars);
   assertPillars(chart2.pillars);
+  for (const [label, chart] of [
+    ['第一人', chart1],
+    ['第二人', chart2],
+  ] as const) {
+    const dayStem = chart.pillars.day.gan;
+    if (chart.dayMaster?.gan !== dayStem || chart.dayMaster.element !== asWuxing(dayStem)) {
+      throw new Error(`${label}日主与日柱不一致。`);
+    }
+  }
   const people = {
     person1: options.person1Name?.trim() || '第一人',
     person2: options.person2Name?.trim() || '第二人',

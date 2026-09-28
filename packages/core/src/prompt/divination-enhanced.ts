@@ -1271,7 +1271,9 @@ function formatAlmanacInfo(data: AlmanacData) {
         : '',
     data.timePreferences?.length
       ? `时段条件：${[
-          data.timePreferences.includes('work-hours') ? '工作日常规办事时段' : '',
+          data.timePreferences.includes('work-hours')
+            ? '同一候选等级内优先工作日，时辰限常规办事时段'
+            : '',
           data.timePreferences.includes('morning') ? '优先上午' : '',
           data.timePreferences.includes('afternoon') ? '优先下午' : '',
         ]
