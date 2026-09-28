@@ -160,7 +160,8 @@ function getMonthLeaderByZhongqi(timestamp: number) {
   );
   const currentJulianDay = currentTime.getJulianDay().getDay();
   const year = currentParts.year;
-  let activeZhongqi: string | undefined;
+  // 历表从公元 1 年起；该年大寒之前仍沿用上一冬至的丑将。
+  let activeZhongqi: string | undefined = year === 1 ? '冬至' : undefined;
   let activeJulianDay = Number.NEGATIVE_INFINITY;
 
   // 当前节气序列的索引0为上一公历年冬至；目标年末只需下一序列的冬至。

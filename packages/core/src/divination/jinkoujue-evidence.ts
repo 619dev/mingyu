@@ -249,7 +249,7 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
         type: '旬空',
         status: '已触发',
         detail: `${position.position}${position.branch}落日旬空`,
-        promptText: `${position.position}${position.branch}旬空，相关信息需待填实后再作主断`,
+        promptText: `${position.position}${position.branch}落日旬空`,
         sources: ['日柱旬空'],
         limitation: COUNTER_LIMITATION,
       });
@@ -267,24 +267,12 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
       });
     }
   }
-  for (const focus of focusFacts) {
-    if (focus.limitations.length) {
-      counterEvidenceFacts.push({
-        key: `jinkoujue:counter:focus:${focus.key}`,
-        ownerKey: focus.key,
-        type: '主证受限',
-        status: '已触发',
-        detail: focus.limitations.join('、'),
-        promptText: `${focus.target}存在限制：${focus.limitations.join('、')}`,
-        sources: ['焦点限制'],
-        limitation: COUNTER_LIMITATION,
-      });
-    }
-  }
-
+  const usePosition = positions.find(
+    (position) => position.position === data.yinYangUse.usePosition,
+  );
   const summaryFact: JinkoujueEvidenceSummaryFact = {
     key: 'jinkoujue:evidence-summary',
-    status: counterEvidenceFacts.length ? '主线受限' : '证据链完整',
+    status: usePosition?.constraints.length ? '主线受限' : '证据链完整',
     positionCount: positions.length,
     relationCount: relations.length,
     focusCount: focusFacts.length,

@@ -558,21 +558,40 @@ export function analyzeShenshaEvidence(
   const source = Array.from(
     new Set(matchFacts.flatMap((item) => item.sources).filter((item) => !item.includes('未声明'))),
   ).join('、');
-  const promptSourceFor = (itemSources: string[]) =>
-    Array.from(
-      new Set(
-        itemSources
-          .filter((item) => !item.includes('未声明'))
-          .map((item) => item.replace(/^tyme4ts /, '').replace(/^公共/, '')),
-      ),
-    ).join('、') || '未提供公开出处';
+  const promptableMatches = matchFacts.filter(
+    (item) =>
+      item.status === '命中' &&
+      item.evidenceStatus === '来源已声明' &&
+      !item.ruleText.includes('未声明'),
+  );
+  const hitFacts = promptableMatches.map((item) =>
+    [
+      `${item.name}命中`,
+      item.targetBranches.length ? `目标地支${item.targetBranches.join('、')}` : '',
+      item.matchedPillars.length
+        ? `落柱${item.matchedPillars.map((pillar) => `${pillar.label}${pillar.ganZhi}`).join('、')}`
+        : '',
+      !item.targetBranches.length ? item.result?.detail?.trim() || '' : '',
+    ]
+      .filter(Boolean)
+      .join('；'),
+  );
   const promptText = [
-    '【通用神煞资料】',
+    '【任务】',
+    promptableMatches.length > 0
+      ? '根据以下四柱与列出的神煞事实，说明传统起法及其对应的盘面信息，并结合整体四柱作辅助解读。'
+      : '说明给定四柱与本次神煞资料的列示情况。',
     `【四柱】${pillarFacts.map((item) => `${item.label}${item.ganZhi}`).join('、')}。`,
-    `【神煞】${matchFacts.map((item) => item.promptText).join('；')}。`,
-    `【传统依据】${matchFacts
-      .map((item) => `${item.name}：${item.ruleText}（${promptSourceFor(item.sources)}）`)
-      .join('；')}。`,
+    `【命中资料】${hitFacts.length > 0 ? `${hitFacts.join('；')}。` : '本次可用神煞资料未列命中项。'}`,
+    ...(promptableMatches.length > 0
+      ? [
+          `【传统依据】${promptableMatches.map((item) => `${item.name}：${item.ruleText}`).join('；')}。`,
+        ]
+      : []),
+    '【输出要求】',
+    promptableMatches.length > 0
+      ? '逐项说明传统起法及已列盘面命中依据。'
+      : '列出四柱与本次神煞资料的列示结果。',
   ].join('\n');
 
   return {

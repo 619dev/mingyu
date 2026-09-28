@@ -373,7 +373,19 @@ function buildGanZhiEvidence(profile: GanZhiBaseProfile): GanZhiEvidenceFields {
     limitations,
     limitationFacts,
     source,
-    promptText: `干支资料：${calculationSteps.map((item) => item.promptText).join(' → ')}。证据汇总：${summaryFact.promptText}。来源：${source}。限制：${limitations.map((item) => item.replace(/[。；]+$/, '')).join('；')}。`,
+    promptText: [
+      '【任务】',
+      '说明给定干支的天干、地支、纳音属性，并解释资料中列出的传统干支关系。',
+      '【干支资料】',
+      `干支：${profile.ganZhi}（${profile.yinYang}）。`,
+      `天干：${profile.stem.name}，${profile.stem.yinYang}${profile.stem.wuxing}；五合${profile.stem.name}${profile.stem.combine}，合化${profile.stem.combineWuxing}${profile.stem.clash ? `；相冲${profile.stem.name}${profile.stem.clash}` : ''}。`,
+      `地支：${profile.branch.name}，${profile.branch.yinYang}${profile.branch.wuxing}，生肖${profile.branch.zodiac}；藏干${profile.branch.hiddenStems.join('、') || '无'}；六合${profile.branch.name}${profile.branch.combine}（化${profile.branch.combineWuxing}），六冲${profile.branch.name}${profile.branch.clash}，六害${profile.branch.name}${profile.branch.harm}，六破${profile.branch.name}${profile.branch.break}${profile.branch.hiddenCombine ? `，暗合${profile.branch.name}${profile.branch.hiddenCombine}` : ''}${profile.branch.punishments.length ? `，相刑对应${profile.branch.punishments.join('、')}` : ''}；三合${profile.branch.sanhe.group}（${[profile.branch.name, ...profile.branch.sanhe.partners].join('、')}）${profile.branch.sanhui ? `，三会${profile.branch.sanhui.group}（${profile.branch.sanhui.members.join('、')}）` : ''}。`,
+      `纳音：${profile.nayin}，五行属${profile.nayinWuxing}。`,
+      '【传统依据】',
+      '天干五合与合化五行、地支藏干及合冲刑害破关系按传统干支对应，纳音按六十甲子配对取值。',
+      '【输出要求】',
+      '分别说明天干、地支、纳音的传统属性，并按名称解释各项地支关系。',
+    ].join('\n'),
   };
 }
 

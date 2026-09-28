@@ -3,6 +3,24 @@ import test from 'node:test';
 import { generateTaiyi } from '../packages/core/src/taiyi';
 import { buildMetaphysicsPrompt } from '../packages/core/src/prompt/metaphysics';
 import { formatTaiyiInfo } from '../packages/core/src/prompt/divination-enhanced';
+import { buildDivinationPrompt } from '../packages/core/src/prompt/divination';
+
+test('太乙四计在线任务书的传统依据与本计积数一致', () => {
+  for (const [scope, label] of [
+    ['year', '积年'],
+    ['month', '积月'],
+    ['day', '积日'],
+    ['hour', '积时'],
+  ] as const) {
+    const data =
+      scope === 'year'
+        ? generateTaiyi({ scope, year: 2026 })
+        : generateTaiyi({ scope, date: new Date('2026-07-11T06:35:00Z') });
+    const prompt = buildDivinationPrompt({ method: 'taiyi', data, question: '请解读此盘。' });
+    assert.equal(data.accumulatedLabel, label);
+    assert.match(prompt, new RegExp(`【传统依据】\\n${label}与`));
+  }
+});
 
 test('太乙月日时计正文保留实际东八区起局时刻，与外层当前时间分别呈现', () => {
   for (const [scope, label] of [

@@ -2377,9 +2377,11 @@ function generateQizhengInternal(
     '星历口径：七政、罗睺、计都、月孛按星历位置；紫炁按古法均速。',
     ...(timeLords ? formatQizhengTimeLordPrompt(timeLords) : []),
     ...(flowingStars ? formatQizhengFlowingPrompt(flowingStars, stars) : []),
-    timeLords || flowingStars
+    timeLords
       ? '本命盘为出生时点根基；目标时段结合流曜、小限与太岁分析。'
-      : '本命盘以出生时点的星曜位置、落宿、落宫和吊照分析先天结构。',
+      : flowingStars
+        ? '本命盘为出生时点根基；目标时段结合已列流曜与周期星象分析。'
+        : '本命盘以出生时点的星曜位置、落宿、落宫和吊照分析先天结构。',
   ].join('\n');
 
   return {

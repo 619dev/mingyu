@@ -137,6 +137,42 @@ test('西占双盘应计算双方星体落入对方宫位', () => {
   assertEvidenceReferences(result);
 });
 
+test('宫头数量齐全但区间退化或序号重复时不生成该方向落宫', () => {
+  const first = chart('甲', 35, 125);
+  first.houses = first.houses.map((cusp) => ({ ...cusp, longitude: 0 }));
+  const second = chart('乙', 65, 215);
+  const degenerate = analyzeAstrolabeSynastry(first, second);
+
+  assert.equal(
+    degenerate.houseOverlays.some((item) => item.owner === '甲'),
+    false,
+  );
+  assert.equal(
+    degenerate.houseOverlays.some((item) => item.owner === '乙'),
+    true,
+  );
+  assert.equal(
+    degenerate.counterEvidenceFacts.find((item) => item.type === '跨盘落宫覆盖')?.status,
+    '资料不足',
+  );
+  assert.match(degenerate.promptText, /宫头序号或黄经区间无效/);
+  assert.doesNotMatch(degenerate.promptText, /完成双向定位/);
+  const partialPrompt = buildAstrolabeSynastryPrompt({
+    chart1: first,
+    chart2: second,
+    synastry: degenerate,
+  });
+  assert.match(partialPrompt, /以上仅为可定位方向/);
+
+  first.houses = chart('甲', 35, 125).houses;
+  first.houses[1] = { ...first.houses[1], house: 1 };
+  const duplicateNumber = analyzeAstrolabeSynastry(first, second);
+  assert.equal(
+    duplicateNumber.houseOverlays.some((item) => item.owner === '甲'),
+    false,
+  );
+});
+
 test('西占双盘应允许显式调整容许度并拒绝非法参数', () => {
   const first = chart('甲', 0, 120);
   const second = chart('乙', 7, 210);
@@ -173,6 +209,10 @@ test('西占双盘应保留截断数量和关闭落宫的反证', () => {
     truncated.summaryFact.matchedAspectCount - truncated.summaryFact.returnedAspectCount,
   );
   assert.match(truncated.promptText, /因最大返回数截断/);
+  assert.match(
+    buildAstrolabeSynastryPrompt({ chart1: first, chart2: second, synastry: truncated }),
+    new RegExp(`本次命中${truncated.summaryFact.matchedAspectCount}项，列出1项`),
+  );
 
   const noFacts = analyzeAstrolabeSynastry(chart('甲', 0, 120), chart('乙', 20, 210), {
     pointNames: ['Sun'],
@@ -191,6 +231,15 @@ test('西占双盘应保留截断数量和关闭落宫的反证', () => {
   );
   assertEvidenceReferences(noFacts);
   assert.match(noFacts.promptText, /明确关闭跨盘落宫计算/);
+  const noFactsPrompt = buildAstrolabeSynastryPrompt({
+    chart1: chart('甲', 0, 120),
+    chart2: chart('乙', 20, 210),
+    synastry: noFacts,
+  });
+  assert.match(noFactsPrompt, /本次所选计算点未见容许度内的主要相位/);
+  assert.match(noFactsPrompt, /本次未启用跨盘落宫计算/);
+  assert.match(noFactsPrompt, /请依据双方本命盘分析互动主轴/);
+  assert.doesNotMatch(noFactsPrompt, /请依据双方本命盘、跨盘相位和跨盘落宫/);
 });
 
 test('西占合盘互溶与接纳判定：识别金火互溶与接纳断诀', () => {

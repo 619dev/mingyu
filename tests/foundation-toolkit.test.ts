@@ -69,8 +69,26 @@ test('六十甲子工具应返回完整序列与结构化关系', () => {
   assert.equal(profile.summaryFact.sourceFactCount, profile.sourceFacts.length);
   assert.equal(profile.summaryFact.limitationFactCount, profile.limitationFacts.length);
   assert.ok(profile.sourceFacts.every((fact) => fact.ownerStepKeys.length > 0));
-  assert.match(profile.promptText, /六十甲子中的零基序号为0/);
+  assert.match(
+    profile.promptText,
+    /【任务】[\s\S]*【干支资料】[\s\S]*【传统依据】[\s\S]*【输出要求】/,
+  );
+  assert.match(profile.promptText, /五合甲己，合化土/);
+  assert.match(profile.promptText, /子丑（化土）/);
+  assert.match(profile.promptText, /相刑对应卯/);
+  assert.match(profile.promptText, /三合水局（子、申、辰）/);
+  assert.match(profile.promptText, /北方水（亥、子、丑）/);
+  const profileWithoutStemClash = core.foundation.describeGanZhi('戊子');
+  assert.match(profileWithoutStemClash.promptText, /天干：戊，阳土；五合戊癸，合化火。/);
+  assert.doesNotMatch(
+    profileWithoutStemClash.promptText,
+    /天干相冲|戊己冲|固定相冲对象|暗合无固定对象/,
+  );
   assert.doesNotMatch(profile.promptText, /吉凶评分|成功率[：=]?\d|事件概率[：=]?\d/);
+  assert.doesNotMatch(
+    profile.promptText,
+    /零基序号|证据汇总|来源：|限制：|公共干支单一真相源|tyme4ts/,
+  );
   assert.doesNotMatch(profile.promptText, /mingyu-core|命语|本项目|工程|接口|API|MCP/);
   assert.deepEqual(core.foundation.getBranchRelations('寅').punishments, ['巳', '申']);
   assert.equal(core.foundation.getBranchRelations('寅').hiddenCombine, '丑');

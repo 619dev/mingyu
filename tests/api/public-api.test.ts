@@ -1378,7 +1378,7 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
     ganZhi.body.data.calculationSteps.map((item: { promptText: string }) => item.promptText),
   );
   assert.equal(ganZhi.body.data.summaryFact.sourceFactCount, ganZhi.body.data.sourceFacts.length);
-  assert.match(ganZhi.body.data.promptText, /关系对象/);
+  assert.match(ganZhi.body.data.promptText, /【任务】[\s\S]*【干支资料】[\s\S]*【传统依据】/);
 
   const wuxing = await callApi('foundation/wuxing', {
     method: 'POST',
@@ -1441,7 +1441,7 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
     shensha.body.data.matchFacts.find((item: { id: string }) => item.id === 'yima').matchedPillars,
     [{ pillar: 'monthGanZhi', label: '月柱', ganZhi: '丙寅', branch: '寅' }],
   );
-  assert.match(shensha.body.data.promptText, /通用神煞资料/);
+  assert.match(shensha.body.data.promptText, /【四柱】[\s\S]*【命中资料】[\s\S]*【传统依据】/);
   assert.doesNotMatch(
     shensha.body.data.promptText,
     /命语|mingyu-core|本项目|当前项目|工程|接口|API|MCP/,

@@ -164,6 +164,35 @@ test('梅花物象锚点只由完整方位起卦资料形成', () => {
   assert.doesNotMatch(incompleteFacts, /物象锚点|所见物类|起卦取数：|undefined/u);
 });
 
+test('纯乾纯坤互卦取爻事实与变卦来源及阴阳一致', () => {
+  const date = new Date('2025-01-01T14:00:00+08:00');
+  for (const [number, expected] of [
+    [1, '变卦第2至4爻阳阴阳为下卦离；第3至5爻阴阳阳为上卦巽，合为风火家人'],
+    [8, '变卦第2至4爻阴阴阳为下卦艮；第3至5爻阴阳阴为上卦坎，合为水山蹇'],
+  ] as const) {
+    const data = generateMeihua(date, { method: 'number', number });
+    const fact = formatMeihuaFacts(data).find((item) => item.startsWith('互卦取爻：'));
+    assert.ok(fact);
+    assert.equal(fact, `互卦取爻：乾坤无互，改取${expected}`);
+    assert.ok(buildDivinationPrompt('meihua', '请做整体解读。', data).includes(fact));
+  }
+});
+
+test('梅花提示词将本次动爻与其他爻辞分层且不丢本互变原文', () => {
+  const data = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
+    method: 'number',
+    number: 42,
+  });
+  const prompt = buildDivinationPrompt('meihua', '请做整体解读。', data);
+  assert.equal((prompt.match(/动爻爻辞：/gu) ?? []).length, 1);
+  assert.doesNotMatch(prompt, /背景爻辞：/u);
+  assert.ok(data.mainHexagram.movingYaoCi);
+  assert.ok(prompt.includes(data.mainHexagram.movingYaoCi));
+  for (const gua of [data.mainHexagram, data.interHexagram, data.changedHexagram]) {
+    for (const line of gua?.yaoCi ?? []) assert.ok(prompt.includes(line), line);
+  }
+});
+
 test('梅花旧盘缺少取数输入时不把卦象反填为起卦输入', () => {
   const date = new Date('2026-05-19T10:30:00+08:00');
   const number = generateMeihua(date, { method: 'number', number: 42 });

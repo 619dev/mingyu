@@ -15,14 +15,21 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
       `逐爻体用：${lines.map((line) => `第${line.position}爻${line.yaoType}属${line.tiYong}${line.isChanging ? '（动爻）' : ''}`).join('、')}`,
     );
     if (data.interHexagram) {
+      const useChangedLines =
+        data.mainHexagram.upper === data.mainHexagram.lower &&
+        (data.mainHexagram.upper === '乾' || data.mainHexagram.upper === '坤') &&
+        !!moving;
+      const interSourceLines = useChangedLines
+        ? lines.map((line) =>
+            line.position === data.movingYao.position
+              ? line.yaoType === '阳'
+                ? '阴'
+                : '阳'
+              : line.yaoType,
+          )
+        : lines.map((line) => line.yaoType);
       facts.push(
-        `互卦取爻：主卦第2至4爻${lines
-          .slice(1, 4)
-          .map((line) => line.yaoType)
-          .join('')}为下卦${data.interHexagram.lower}；第3至5爻${lines
-          .slice(2, 5)
-          .map((line) => line.yaoType)
-          .join('')}为上卦${data.interHexagram.upper}，合为${data.interHexagram.name}`,
+        `互卦取爻：${useChangedLines ? '乾坤无互，改取变卦' : '主卦'}第2至4爻${interSourceLines.slice(1, 4).join('')}为下卦${data.interHexagram.lower}；第3至5爻${interSourceLines.slice(2, 5).join('')}为上卦${data.interHexagram.upper}，合为${data.interHexagram.name}`,
       );
     }
     if (moving && data.changedHexagram) {

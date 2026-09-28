@@ -193,10 +193,15 @@ function formatSynastryFacts(
     (item) =>
       `  ${item.visitorPerson === 'person1' ? '第一人' : '第二人'}${item.visitor}的${item.point}${position(item.visitorPerson === 'person1' ? chart1 : chart2, item.pointName)}落入${item.ownerPerson === 'person1' ? '第一人' : '第二人'}${item.owner}的本命盘第${item.house}宫。`,
   );
+  const overlayCoverage = data.counterEvidenceFacts.find((item) => item.type === '跨盘落宫覆盖');
   return [
     data.receptionSummary ?? '',
-    aspects.length ? `【跨盘相位】\n${aspects.join('\n')}` : '',
-    overlays.length ? `【跨盘落宫】\n${overlays.join('\n')}` : '',
+    aspects.length
+      ? `【跨盘相位】\n本次命中${data.summaryFact.matchedAspectCount}项，列出${aspects.length}项。\n${aspects.join('\n')}`
+      : '【跨盘相位】\n本次所选计算点未见容许度内的主要相位。',
+    overlays.length
+      ? `【跨盘落宫】\n${overlays.join('\n')}${overlayCoverage?.status === '资料不足' ? '\n至少一方宫头资料无效，以上仅为可定位方向。' : ''}`
+      : `【跨盘落宫】\n${overlayCoverage?.status === '已关闭' ? '本次未启用跨盘落宫计算。' : overlayCoverage?.status === '资料不足' ? '宫头资料不足，无法定位跨盘落宫。' : '本次所选计算点未形成可定位落宫。'}`,
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -215,8 +220,13 @@ export function buildAstrolabeSynastryPromptDocument(
 ): PromptDocument {
   const question =
     options.question?.trim() || '请分析双方互动主轴、互补点、张力点与需要结合现实核对的部分。';
+  const factSources = [
+    '双方本命盘',
+    ...(options.synastry.aspects.length ? ['已列跨盘相位'] : []),
+    ...(options.synastry.houseOverlays.length ? ['已列跨盘落宫'] : []),
+  ].join('、');
   const task = buildPromptTask(
-    '请依据双方本命盘、跨盘相位和跨盘落宫，分析互动主轴、互补点与张力点，并列出各自对应证据，再回答问题。',
+    `请依据${factSources}分析互动主轴、互补点与张力点，逐项列出对应证据，再回答问题。`,
     'astrolabe-synastry',
   );
   const user = joinPromptSections([

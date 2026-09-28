@@ -1106,7 +1106,10 @@ test('MCP 排盘工具应返回 structuredContent，文本兼容输出不重复�
         assert.equal(profile.summaryFact.sourceFactCount, profile.sourceFacts.length);
         assert.equal(profile.summaryFact.limitationFactCount, profile.limitationFacts.length);
         assert.ok(profile.sourceFacts.every((fact) => fact.ownerStepKeys.length > 0));
-        assert.match(profile.promptText, /固定资料查询/);
+        assert.match(
+          profile.promptText,
+          /【任务】[\s\S]*【干支资料】[\s\S]*【传统依据】[\s\S]*【输出要求】/,
+        );
       }
       if (name === 'foundation_wuxing') {
         const analysis = result.structuredContent.result as {
@@ -1214,9 +1217,12 @@ test('MCP 排盘工具应返回 structuredContent，文本兼容输出不重复�
           { pillar: 'monthGanZhi', label: '月柱', ganZhi: '丙寅', branch: '寅' },
         ]);
         assert.ok(analysis.matchFacts.every((item) => item.evidenceStatus === '来源已声明'));
-        assert.match(analysis.promptText, /【神煞】/);
+        assert.match(
+          analysis.promptText,
+          /【任务】[\s\S]*【四柱】[\s\S]*【命中资料】[\s\S]*【传统依据】[\s\S]*【输出要求】/,
+        );
         assert.doesNotMatch(analysis.promptText, /不得凭单项神煞定吉凶/);
-        assertPromptIsPortableTaskText(analysis.promptText);
+        assert.doesNotMatch(analysis.promptText, /工程|接口|API|MCP|来源|证据链|foundation:/);
       }
       if (name === 'calendar_astronomical_time') {
         const evidence = result.structuredContent.result as {

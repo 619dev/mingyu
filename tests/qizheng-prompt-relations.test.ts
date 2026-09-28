@@ -2,6 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateQizheng } from '../packages/core/src/qi_zheng/index';
 
+test('未提供性别时流曜提示词只要求使用已生成的目标时段资料', () => {
+  const result = generateQizheng({
+    year: 1993,
+    month: 4,
+    day: 8,
+    hour: 23,
+    minute: 34,
+    timezone: 8,
+    flowYear: 2022,
+    flowMonth: 6,
+    flowDay: 15,
+  });
+  assert.ok(result.flowingStars);
+  assert.equal(result.timeLords, undefined);
+  assert.match(result.prompt, /目标时段结合已列流曜与周期星象分析/);
+  assert.doesNotMatch(result.prompt, /目标时段结合流曜、小限与太岁分析/);
+});
+
 test('流曜吊照逐条绑定采样时刻和本命宫位，角距两端来自不同时间盘', () => {
   const result = generateQizheng({
     year: 1993,

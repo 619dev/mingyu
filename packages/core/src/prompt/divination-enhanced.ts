@@ -407,7 +407,7 @@ function formatLiuyaoInfo(
     (item) => item.key === evidenceAnalysis.selectionFact.selectedCandidateKey,
   );
   const usefulGodMainLine = selectedUsefulGod
-    ? `用神：${selectedUsefulGod.relative || selectedUsefulGod.label}；盘面${selectedUsefulGod.references.map((item) => `${item.source === '伏神' ? '伏神' : ''}第${item.position}爻${item.sixRelative}${item.branch}${item.wuxing}`).join('、') || '未见'}；支持${selectedUsefulGod.support.join('、') || '盘面平稳'}；限制${selectedUsefulGod.constraints.join('、') || '未见明显空破墓退'}`
+    ? `用神：${selectedUsefulGod.relative || selectedUsefulGod.label}；盘面${selectedUsefulGod.references.map((item) => `${item.source === '伏神' ? '伏神' : ''}第${item.position}爻${item.sixRelative}${item.branch}${item.wuxing}`).join('、') || '未见'}；支持${selectedUsefulGod.support.join('、') || '未见明确支持'}；限制${selectedUsefulGod.constraints.join('、') || '未见明显空破墓退'}`
     : `用神主线：${evidenceAnalysis.selectionFact.promptText}`;
   const godChain = evidenceAnalysis.godChain.filter((item) => item.role !== '用神');
   const godChainText =
@@ -541,7 +541,10 @@ function formatMeihuaClassicalText(data: MeihuaData) {
   }
 
   return [...entries.values()].map((entry) => {
-    const first = entry.references[0];
+    const references = [...entry.references].sort(
+      (left, right) => Number(Boolean(right.isMoving)) - Number(Boolean(left.isMoving)),
+    );
+    const first = references[0];
     if (entry.kind === '卦辞') {
       const stageNames = [...new Set(entry.references.map((item) => item.stage))].join('、');
       const names = [...new Set(entry.references.map((item) => item.hexagram))].join('、');
@@ -551,15 +554,15 @@ function formatMeihuaClassicalText(data: MeihuaData) {
       const firstReference = entry.references[0];
       return `特殊用辞：${firstReference.hexagram}六爻皆动，${entry.text}`;
     }
-    const moving = entry.references.some((item) => item.isMoving);
+    const moving = references.some((item) => item.isMoving);
     const referenceText =
       first.position !== undefined
         ? first.stage === '主卦' && first.isMoving
           ? `第${first.position}爻`
           : `${first.stage}${first.hexagram}第${first.position}爻`
         : `${first.stage}${first.hexagram}特殊用辞`;
-    const label = moving ? '动爻爻辞' : '背景爻辞';
-    const additionalReferences = entry.references
+    const label = moving ? '动爻爻辞' : '其他爻辞';
+    const additionalReferences = references
       .slice(1)
       .map((item) =>
         item.position === undefined
@@ -1310,7 +1313,7 @@ export function formatAstrolabeInfo(data: AstrolabeData) {
 
 export function formatTaiyiTradition(data: TaiyiResult) {
   const scopeLabel = { year: '年计', month: '月计', day: '日计', hour: '时计' }[data.scope];
-  return `积年与${data.yinYang}${scopeLabel}构成盘面基础；太乙、文昌、始击、计神落宫及主客定算构成主线，十六神为辅助定位。`;
+  return `${data.accumulatedLabel}与${data.yinYang}${scopeLabel}构成盘面基础；太乙、文昌、始击、计神落宫及主客定算构成主线，十六神为辅助定位。`;
 }
 
 export function formatTaiyiInfo(data: TaiyiResult) {

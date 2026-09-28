@@ -180,8 +180,24 @@ function isLongitudeInArc(longitude: number, start: number, end: number) {
     : value >= normalizedStart || value < normalizedEnd;
 }
 
+function hasValidHouseCusps(houses: AstrolabePoint[]) {
+  if (houses.length !== 12) return false;
+  const sorted = [...houses].sort((left, right) => left.house - right.house);
+  let arcTotal = 0;
+  for (let index = 0; index < sorted.length; index += 1) {
+    const current = sorted[index];
+    const next = sorted[(index + 1) % sorted.length];
+    if (current.house !== index + 1 || !Number.isFinite(current.longitude)) return false;
+    const arc =
+      (normalizeLongitude(next.longitude) - normalizeLongitude(current.longitude) + 360) % 360;
+    if (arc === 0) return false;
+    arcTotal += arc;
+  }
+  return Math.abs(arcTotal - 360) < 0.000001;
+}
+
 function locateHouse(longitude: number, houses: AstrolabePoint[]) {
-  if (houses.length !== 12) return null;
+  if (!hasValidHouseCusps(houses)) return null;
   const sorted = [...houses].sort((left, right) => left.house - right.house);
   for (let index = 0; index < sorted.length; index += 1) {
     const current = sorted[index];
@@ -323,12 +339,12 @@ function buildBaseCalculationSteps(params: {
         person2HouseCount: params.chart2.houses.length,
       },
       result: {
-        person1HouseCuspsComplete: params.chart1.houses.length === 12,
-        person2HouseCuspsComplete: params.chart2.houses.length === 12,
+        person1HouseCuspsComplete: hasValidHouseCusps(params.chart1.houses),
+        person2HouseCuspsComplete: hasValidHouseCusps(params.chart2.houses),
       },
       dependsOnStepKeys: ['astrolabe:synastry:calculation:input'],
       promptText: houseOverlaysEnabled
-        ? `已核验双方宫头数量，第一人${params.chart1.houses.length}个、第二人${params.chart2.houses.length}个`
+        ? `已核验双方宫头序号与黄经区间，第一人${hasValidHouseCusps(params.chart1.houses) ? '完整有效' : '资料无效'}、第二人${hasValidHouseCusps(params.chart2.houses) ? '完整有效' : '资料无效'}`
         : '当前明确关闭跨盘落宫计算，仍保留关闭状态',
       sources: ['双方本命宫头序号与黄经资料', '跨盘落宫开关'],
       limitation: CALCULATION_STEP_LIMITATION,
@@ -351,7 +367,7 @@ function buildBaseCalculationSteps(params: {
         'astrolabe:synastry:calculation:house-cusps',
       ],
       promptText: houseOverlaysEnabled
-        ? `访客点黄经按宫主十二宫宫头区间完成双向定位，记录${params.overlays.length}项跨盘落宫事实`
+        ? `访客点黄经按宫主有效十二宫宫头区间定位，记录${params.overlays.length}项跨盘落宫事实`
         : '跨盘落宫计算已关闭，未生成落宫事实',
       sources: ['访客计算点黄经', '宫主十二宫宫头黄经区间'],
       limitation: CALCULATION_STEP_LIMITATION,
@@ -370,7 +386,7 @@ function buildCounterEvidenceFacts(params: {
   const tense = params.aspects.filter((item) => item.tendency === '紧张');
   const overlaysEnabled = params.options.includeHouseOverlays !== false;
   const houseDataComplete =
-    params.chart1.houses.length === 12 && params.chart2.houses.length === 12;
+    hasValidHouseCusps(params.chart1.houses) && hasValidHouseCusps(params.chart2.houses);
   return [
     {
       key: 'astrolabe:synastry:counter:aspect-coverage',
@@ -404,7 +420,7 @@ function buildCounterEvidenceFacts(params: {
       promptText: !overlaysEnabled
         ? '当前明确关闭跨盘落宫计算，不把缺少落宫事实误写成未命中'
         : !houseDataComplete
-          ? '至少一方未提供完整十二宫宫头，无法安全生成跨盘落宫事实'
+          ? `至少一方宫头序号或黄经区间无效；${params.overlays.length ? `仅保留${params.overlays.length}项可定位方向的落宫事实` : '无法生成跨盘落宫事实'}`
           : params.overlays.length
             ? `当前记录${params.overlays.length}项跨盘落宫事实`
             : '双方宫头完整但当前所选点未形成可定位落宫；不得补造宫位',

@@ -100,3 +100,17 @@ test('六爻逐爻表同时呈现化空、回头关系与进神', () => {
   assert.equal(advanceData.yaosDetail[1].changeDirection, '化进神');
   assert.match(advanceLine ?? '', /化官鬼卯木（比和、化进神）/);
 });
+
+test('六爻用神只有限制没有支持时不写盘面平稳', () => {
+  const data = generateLiuyao(new Date('2025-06-18T10:30:00+08:00'), {
+    method: 'manual',
+    yaos: [6, 6, 7, 6, 6, 6],
+  });
+  const text = formatSourceLiuyaoPrompt('liuyao', data, '', undefined, {
+    liuyaoTemplate: 'caifu',
+  });
+  assert.equal(data.originalName, '地山谦');
+  assert.match(text, /用神：妻财；盘面伏神第/u);
+  assert.match(text, /支持未见明确支持；限制伏藏待透、受飞神/u);
+  assert.doesNotMatch(text, /支持盘面平稳/u);
+});
