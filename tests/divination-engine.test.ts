@@ -3794,6 +3794,7 @@ test('奇门重点宫位应按证据来源归集，不按旧分数竞争排序',
 
 test('奇门宝鉴三奇得使应按值使吉门加三奇判定', () => {
   const zhiShiPalace = buildQimenPalace(1, '乙', {
+    diPan: { stem: '乙' },
     renPan: { door: '休门' },
   });
   const otherGoodDoorPalace = buildQimenPalace(3, '丙', {
@@ -3812,7 +3813,7 @@ test('奇门宝鉴三奇得使应按值使吉门加三奇判定', () => {
 
   assert.ok(tags.includes('三奇得（乙奇（日奇）合休门于坎一宫）'));
   assert.ok(tags.includes('三奇得（丙奇（月奇）合开门于震三宫）'));
-  assert.ok(tags.includes('宝鉴三奇得使（值使休门加乙奇（日奇）于坎一宫）'));
+  assert.ok(tags.includes('宝鉴三奇得使（值使休门加地盘乙奇（日奇）于坎一宫）'));
   assert.ok(!tags.some((tag) => tag.includes('值使开门加丙奇')));
 
   const details = buildPatternDetails(tags);

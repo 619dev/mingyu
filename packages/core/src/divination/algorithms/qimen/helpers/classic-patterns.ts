@@ -329,7 +329,7 @@ const sanQiShengDian: Record<string, number[]> = {
  *   地遁：休门+乙 或 休门+丁+地盘乙
  *   人遁：丁+休门+太阴
  *   神遁：丙+生门+九天
- *   鬼遁：乙+杜门+九地 或 开门+丁奇+九地
+ *   鬼遁：乙+杜门/开门+九地 或 丁+休门+九地
  *   龙遁：乙+癸+休门/开门 或 休门+乙+坎一
  *   虎遁：辛+生门/休门+艮 或 生门+乙+艮八
  *   风遁：乙+杜门+巽 或 开门+乙+巽四
@@ -461,7 +461,7 @@ function getDunPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[] {
         name: '鬼遁',
         tone: 'good',
         score: 8,
-        summary: '乙/丁、九地与杜门/开门同宫，乃鬼遁之格，主暗中操作、私下成事。',
+        summary: `${guiDunStem}奇、九地与${door}同宫，乃鬼遁之格，主暗中操作、私下成事。`,
         modern: '今天用私下沟通、内部协调的方式更容易成事，别公开摊牌。',
         manifestation: '暗中成事、私下沟通有效',
         palace: gong,
@@ -575,7 +575,7 @@ function getDunPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[] {
         name: '云遁',
         tone: 'good',
         score: 7,
-        summary: '开门、乙奇加天盘辛，乃云遁之格，主升迁、求职、上行通达。',
+        summary: '开门、天盘乙奇加地盘辛，乃云遁之格，主升迁、求职、上行通达。',
         modern: '今天适合求贵人、跑升职、谈进阶，向上的事会有回应。',
         manifestation: '机会向上升、贵人从远方来',
         palace: gong,
@@ -637,7 +637,7 @@ function getSanQiDeShiPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[] {
         const qiNameMap: Record<string, string> = { 乙: '日奇', 丙: '月奇', 丁: '星奇' };
         out.push({
           key: `pattern:deShiPlusGoodDoor:${palace.gong}:${heavenStem}`,
-          name: `${qiNameMap[heavenStem]}得地`,
+          name: `${qiNameMap[heavenStem]}得使临吉门`,
           tone: 'good',
           score: 11,
           summary: `${qiNameMap[heavenStem]}得使又临吉门${palace.renPan.door}，得门得使，双重吉利。`,
@@ -666,8 +666,8 @@ function getBaoJianSanQiDeShiPatterns(
   if (!zhiShi || !auspiciousDoors.includes(zhiShi)) return [];
 
   const palace = findDoorPalace(jiuGongGe, zhiShi);
-  const qiStem = palace ? getTianPanStems(palace).find((stem) => sanQi.includes(stem)) : undefined;
-  if (!palace || !qiStem) return [];
+  const qiStem = palace?.diPan.stem;
+  if (!palace || !qiStem || !sanQi.includes(qiStem)) return [];
 
   const qiNameMap: Record<string, string> = { 乙: '日奇', 丙: '月奇', 丁: '星奇' };
   const qiName = qiNameMap[qiStem] || `${qiStem}奇`;
@@ -678,8 +678,8 @@ function getBaoJianSanQiDeShiPatterns(
       name: '宝鉴三奇得使',
       tone: 'good',
       score: 9,
-      summary: `值使${zhiShi}为三吉门，直使加天盘${qiStem}奇于${palace.name}，合《奇门宝鉴御定》“得三吉门、直使加奇”为三奇得使，谋为尤利。`,
-      modern: `值使门本身带${qiName}，关键入口和关键资源重合，适合推进重要谋划。`,
+      summary: `值使${zhiShi}为三吉门，加临地盘${qiStem}奇于${palace.name}，合《奇门宝鉴御定》“得三吉门、直使加奇”为三奇得使，谋为尤利。`,
+      modern: `值使门加临地盘${qiName}，关键入口和关键资源重合，适合推进重要谋划。`,
       manifestation: '关键入口得奇、谋事尤利、资源与行动窗口重合',
       palace: palace.gong,
       tokens: [zhiShi, qiStem],

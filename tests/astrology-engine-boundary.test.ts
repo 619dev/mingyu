@@ -494,3 +494,53 @@ test('月亮行运在精确相位附近仍按当前运动方向识别入相', ()
   assert.equal(result.transits.find((item) => item.natalPoint === '入相点')!.phase, 'applying');
   assert.equal(result.transits.find((item) => item.natalPoint === '出相点')!.phase, 'separating');
 });
+
+test('本命格局只由十大星体及已列出的组成相位支持', () => {
+  const input = {
+    year: 1995,
+    month: 5,
+    day: 20,
+    hour: 12,
+    minute: 30,
+    timezone: 8,
+    latitude: 39.9042,
+    longitude: 116.4074,
+  };
+  const aspectTypes = [
+    AspectType.Conjunction,
+    AspectType.Sextile,
+    AspectType.Square,
+    AspectType.Trine,
+    AspectType.Opposition,
+  ];
+  const options = { aspectTypes, minimumAspectStrength: 30 };
+  const basic = calculateChart(input, options);
+  const expanded = calculateChart(input, {
+    ...options,
+    includeAsteroids: true,
+    includeChiron: true,
+    includeNodes: true,
+    includeLilith: true,
+    includeLots: true,
+  });
+  assert.deepEqual(expanded.summary.patterns, basic.summary.patterns);
+  assert.deepEqual(expanded.summary.patterns, ['T字刑（火星、冥王星、太阳，焦点火星）']);
+  for (const [first, second, type] of [
+    ['Sun', 'Pluto', AspectType.Opposition],
+    ['Sun', 'Mars', AspectType.Square],
+    ['Mars', 'Pluto', AspectType.Square],
+  ] as const) {
+    assert.ok(
+      expanded.aspects.all.some(
+        (aspect) =>
+          aspect.type === type &&
+          ((aspect.body1 === first && aspect.body2 === second) ||
+            (aspect.body1 === second && aspect.body2 === first)),
+      ),
+    );
+  }
+  assert.deepEqual(
+    calculateChart(input, { ...options, aspectTypes: [AspectType.Conjunction] }).summary.patterns,
+    [],
+  );
+});

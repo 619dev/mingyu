@@ -337,6 +337,11 @@ export const TAIYI_MODEL_INFO: TaiyiModelInfo = {
       url: 'https://www.shidianguji.com/book/SK1615/chapter/1l9lir94lo45l',
       evidence: '用于计算三门直使、五将发不发与太乙及上下二目和算的阴阳配合条件',
     },
+    {
+      title: '《太乙统宗宝鉴》卷五·明三门具不具',
+      url: 'https://www.shidianguji.com/book/CADAL02055529/chapter/1l5erimkclsn3',
+      evidence: '三门具不具按太乙、天目所临开、休、生门判定；各目所临八门另行保留',
+    },
   ],
 };
 
@@ -762,6 +767,18 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
     guestNature,
     conditions,
   });
+  const mainGateRoles = conditions.threeGates.roles
+    .filter((role) => role.usedForThreeGate)
+    .map((role) => `${role.role}${role.gate ?? '门位未定'}`)
+    .join('、');
+  const guestGateRole =
+    conditions.threeGates.roles.find((role) => !role.usedForThreeGate)?.gate ?? '门位未定';
+  const gateSummary = [
+    `门将阴阳和：${conditionSummary}`,
+    '主门具按太乙与文昌（主目）是否临开、休、生门判定',
+    `主门位：${mainGateRoles}`,
+    `始击（客目）门位单列：${guestGateRole}。`,
+  ].join('；');
   const prompt = [
     `【太乙神数 · ${scopeInfo.title}】`,
     scope === 'year'
@@ -772,7 +789,7 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
     `核心宫位：太乙在${taiyiPosition}（第${taiyiPalace}宫，${taiyiProfile.gua}卦，${taiyiProfile.dir}，五行${taiyiProfile.wu}）；文昌（主目）在${wenChangPosition}（第${wenChangPalace}宫）；始击（客目）在${shiJiPosition}（第${shiJiPalace}宫）；计神在${jiShenPosition}（第${jiShenPalace}宫）。`,
     `主客定算：主算 ${lordCount}${lordNature ? `（${lordNature}）` : ''}；客算 ${guestCount}${guestNature ? `（${guestNature}）` : ''}；定算 ${setCount}${setNature ? `（${setNature}）` : ''}。`,
     `大局攻守：${formatTaiyiTacticBasis({ lordCount, guestCount, lordNature, guestNature })}。`,
-    `门将阴阳和：${conditionSummary}主门具按太乙与文昌（主目）判定，始击（客目）门位另列。${conditions.threeGates.blockedRoles.length ? `主门具涉及${conditions.threeGates.blockedRoles.join('、')}。` : ''}`,
+    gateSummary,
     `将参：主大将${formatGeneralPalace(lordGeneral)}、主参将${formatGeneralPalace(lordAssistant)}；客大将${formatGeneralPalace(guestGeneral)}、客参将${formatGeneralPalace(guestAssistant)}；定大将${formatGeneralPalace(setGeneral)}、定参将${formatGeneralPalace(setAssistant)}。`,
     `十六神：${sixteenGods.map((item) => `${item.branch}${item.god}`).join('、')}。`,
     ...(() => {

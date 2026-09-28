@@ -540,6 +540,7 @@ export function generateAstrolabe(input: AstrolabeBirthInput): AstrolabeData {
       },
       retrograde: chart.summary.retrograde.map((item) => PLANET_LABELS[item] ?? item),
       patterns: [...new Set(chart.summary.patterns.map((item) => item.trim()).filter(Boolean))],
+      patternBasis: 'ten-main-bodies-selected-aspects',
     },
     timestamp: Date.now(),
   };

@@ -109,6 +109,15 @@ test('星盘格局摘要应按名称去重并保留首次出现顺序', () => {
   const result = generateAstrolabe(validInput);
 
   assert.deepEqual(result.summary.patterns, [...new Set(result.summary.patterns)]);
+  assert.equal(result.summary.patternBasis, 'ten-main-bodies-selected-aspects');
+  const legacy = structuredClone(result);
+  delete legacy.summary.patternBasis;
+  legacy.summary.patterns = ['未经当前相位清单核验的旧格局'];
+  const evidence = analyzeAstrolabeEvidence(legacy);
+  assert.equal(
+    evidence.distributionEvidenceFacts.find((fact) => fact.key === 'distribution:patterns')?.count,
+    0,
+  );
 });
 
 test('星盘真太阳时应透传统一校正证据并纳入总汇总', () => {
@@ -395,7 +404,7 @@ test('星盘无相位、逆行和格局时应输出逐项反证与汇总', () =>
   assert.deepEqual(evidence.counterEvidence, [
     '当前筛选范围内未见主要相位',
     '未见逆行星体',
-    '未见依赖库标记的主要盘面格局',
+    '未列十大星体格局',
   ]);
   assert.match(evidence.counterSummaryFact.promptText, /未见不等于不存在其他关系/);
 });

@@ -1609,6 +1609,8 @@ export interface AstrolabeData {
     modalities: Record<string, string[]>;
     retrograde: string[];
     patterns: string[];
+    /** 旧盘未记录格局是否经过当前相位清单核验。 */
+    patternBasis?: 'ten-main-bodies-selected-aspects';
   };
   timestamp: number;
 }

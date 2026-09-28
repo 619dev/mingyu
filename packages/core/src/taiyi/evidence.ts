@@ -279,6 +279,11 @@ function getImprisonedRoles(data: TaiyiEvidenceInput): string[] {
 
 function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
   const imprisonedRoles = getImprisonedRoles(data);
+  const mainGateRolesText = data.conditions.threeGates.roles
+    .filter((role) => role.usedForThreeGate)
+    .map((role) => `${role.role}${role.gate ?? '门位未定'}`)
+    .join('、');
+  const guestGateRole = data.conditions.threeGates.roles.find((role) => !role.usedForThreeGate);
   const facts: Array<{
     kind: TaiyiConditionFact['kind'];
     matched: boolean;
@@ -320,8 +325,8 @@ function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
       kind: '三门',
       matched: data.conditions.threeGates.complete,
       calculationText: `积数${data.accumulatedValue}按二百四十周期、三十换门得直使${data.conditions.threeGates.directGate}；按${data.conditions.threeGates.gateScope}取门，始击（客目）门位单列`,
-      matchedText: `太乙与文昌（主目）均未落开、休、生三吉门，三门具；直使${data.conditions.threeGates.directGate}，始击门位保留但不并入本栏`,
-      unmatchedText: `三门状态为${data.conditions.threeGates.status}；命中${data.conditions.threeGates.blockedRoles.join('、') || '三吉门条件'}，不得把门条件省略为胜负结论`,
+      matchedText: `太乙与文昌（主目）均未临开、休、生门，三门具；主门位为${mainGateRolesText}，直使${data.conditions.threeGates.directGate}；始击（客目）另临${guestGateRole?.gate ?? '门位未定'}`,
+      unmatchedText: `三门状态为${data.conditions.threeGates.status}；主门位为${mainGateRolesText}，命中${data.conditions.threeGates.blockedRoles.join('、') || '三吉门条件'}；始击（客目）另临${guestGateRole?.gate ?? '门位未定'}，不得把门条件省略为胜负结论`,
     },
     {
       kind: '五将',
@@ -368,6 +373,7 @@ function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
       item.kind === '三门'
         ? [
             '《太乙金镜式经》卷四·推三门具不具',
+            '《太乙统宗宝鉴》卷五·明三门具不具',
             '《太乙金镜式经》卷二·天目、主目与客目定义',
             '三门直使与太乙、文昌主目逐宫比较',
           ]
@@ -524,6 +530,11 @@ function buildSummaryFact(args: {
 
 export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnalysis {
   const scopeLabel = SCOPE_LABELS[data.scope];
+  const mainGateRolesText = data.conditions.threeGates.roles
+    .filter((role) => role.usedForThreeGate)
+    .map((role) => `${role.role}${role.gate ?? '门位未定'}`)
+    .join('、');
+  const guestGateRole = data.conditions.threeGates.roles.find((role) => !role.usedForThreeGate);
   const isCover = data.shiJiPosition === data.taiyiPosition;
   const imprisonedRoles = getImprisonedRoles(data);
   const isImprison = imprisonedRoles.length > 0;
@@ -594,9 +605,10 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
       result: data.conditions.threeGates.status,
       dependsOnStepKeys: ['taiyi:calculation:bureau'],
       basis: data.conditions.threeGates.basis,
-      promptText: `三门：直使${data.conditions.threeGates.directGate}；${data.conditions.threeGates.status}；${data.conditions.threeGates.blockedRoles.join('、') || '太乙与文昌主目均未落三吉门，始击门位单列'}`,
+      promptText: `三门：直使${data.conditions.threeGates.directGate}；${data.conditions.threeGates.status}；主门位${mainGateRolesText}；始击（客目）另临${guestGateRole?.gate ?? '门位未定'}`,
       sources: [
         '《太乙金镜式经》卷四·推三门具不具',
+        '《太乙统宗宝鉴》卷五·明三门具不具',
         '《太乙金镜式经》卷二·天目、主目与客目定义',
         '三门直使与太乙、文昌主目逐宫比较',
       ],
@@ -785,7 +797,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     '【传统依据】',
     ...(data.scope === 'month' ? ['月计按逐月节气换局。'] : []),
     '积数按七十二局循环；主客定大将取算数个位，整十以九去余，参将以大将宫数乘三取个位。',
-    `三门${data.conditions.threeGates.status}，直使${data.conditions.threeGates.directGate}；五将${data.conditions.fiveGenerals.launched ? '发' : '不发'}；阴阳${data.conditions.yinYangHarmony.matched ? '和' : '不和'}。`,
+    `三门${data.conditions.threeGates.status}，直使${data.conditions.threeGates.directGate}，主门位${mainGateRolesText}，始击（客目）另临${guestGateRole?.gate ?? '门位未定'}；五将${data.conditions.fiveGenerals.launched ? '发' : '不发'}；阴阳${data.conditions.yinYangHarmony.matched ? '和' : '不和'}。`,
   ].join('\n');
 
   return {

@@ -338,13 +338,12 @@ export function getQimenPatternTags(params: QimenPatternTagParams): string[] {
   // 《奇门宝鉴御定》：「三奇得使者，谓得三吉门、直使加奇也」
   if (GOOD_DOORS.has(zhiShi)) {
     const zhiShiSanQiPalace = jiuGongGe.find(
-      (gong) =>
-        gong.renPan.door === zhiShi && getTianPanStems(gong).some((stem) => SAN_QI.includes(stem)),
+      (gong) => gong.renPan.door === zhiShi && SAN_QI.includes(gong.diPan.stem),
     );
     if (zhiShiSanQiPalace) {
-      const qiStem = getTianPanStems(zhiShiSanQiPalace).find((stem) => SAN_QI.includes(stem)) || '';
+      const qiStem = zhiShiSanQiPalace.diPan.stem;
       const qiName = SAN_QI_NAME[qiStem] || qiStem;
-      tags.push(`宝鉴三奇得使（值使${zhiShi}加${qiName}于${zhiShiSanQiPalace.name}）`);
+      tags.push(`宝鉴三奇得使（值使${zhiShi}加地盘${qiName}于${zhiShiSanQiPalace.name}）`);
     }
   }
 

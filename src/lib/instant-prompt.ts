@@ -148,7 +148,9 @@ function formatInstantAstrolabeData(data: AstrolabeData) {
       .map((item) => `${item.label}：${item.formatted}`),
     '十二宫宫头：',
     ...data.houses.map((house) => `第${house.house}宫：${house.formatted}`),
-    `主要格局：${data.summary.patterns.join('、') || '未见明显格局'}`,
+    data.summary.patternBasis === 'ten-main-bodies-selected-aspects' && data.summary.patterns.length
+      ? `十大星体格局：${data.summary.patterns.join('、')}`
+      : '',
     '星体位置：',
     ...planets,
     ...(aspectSections.length ? aspectSections : ['相位明细：未见容许度内的主要相位']),

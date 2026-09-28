@@ -39,7 +39,7 @@ function conditionCoversZiweiStar(starName: string, conditions: readonly string[
 function buildTaskBookAnalysisObject(payload: AnalysisPayloadV1) {
   const currentMutagens = payload.active_scope.mutagen_map ?? [];
   const isOrigin = payload.active_scope.scope === 'origin';
-  if (isOrigin) return { 分析对象: `本命盘（${payload.active_scope.solar_date}）。` };
+  if (isOrigin) return { 分析对象: `本命盘（出生日期${payload.basic_info.solar_date}）。` };
 
   const scopeLabel = mapZiweiScopeLabel(payload.active_scope.scope);
   const objectLabel = payload.active_scope.label || scopeLabel;

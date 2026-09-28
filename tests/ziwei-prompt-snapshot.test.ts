@@ -632,7 +632,8 @@ test('紫微本命完整提示词应输出本命分析对象且不输出空运�
   });
 
   assert.match(prompt, /【分析对象】/);
-  assert.match(prompt, /分析对象：本命盘（2026-05-16）。/);
+  assert.match(prompt, /分析对象：本命盘（出生日期1990-05-15）。/);
+  assert.doesNotMatch(prompt, /本命盘（2026-05-16）/);
   assert.doesNotMatch(prompt, /【运限重点】/);
   assert.doesNotMatch(prompt, /【运限命中摘要】/);
   assert.doesNotMatch(prompt, /【当前运限】/);

@@ -527,18 +527,59 @@ const BODY_LABELS: Record<string, string> = {
   Pluto: '冥王星',
 };
 
-function findPatternsFromBodies(bodies: Array<AspectBody & { house: number }>): AspectPattern[] {
+function findPatternsFromBodies(
+  bodies: Array<AspectBody & { house: number }>,
+  selectedAspects: Aspect[],
+): AspectPattern[] {
+  // 格局只使用十大星体；计算点与小行星仍保留在位置和相位明细中。
+  const mainNames = new Set(getMainBodyNames({}));
+  const patternBodies = bodies.filter((body) => mainNames.has(body.name));
   const detected = detectPatternsIn(
     Object.fromEntries(
-      bodies.map((body) => [body.name, { lon: body.longitude, house: body.house }]),
+      patternBodies.map((body) => [body.name, { lon: body.longitude, house: body.house }]),
     ),
-    { bodies: bodies.map((body) => body.name) },
+    { bodies: patternBodies.map((body) => body.name) },
   );
-  const stelliumPlanetNames = new Set(getMainBodyNames({}));
-  const patterns = detected.flatMap((pattern) => {
-    if (pattern.kind !== 'stellium_sign' && pattern.kind !== 'stellium_house') return [pattern];
-    const planetBodies = pattern.bodies.filter((name) => stelliumPlanetNames.has(name));
-    return planetBodies.length >= 3 ? [{ ...pattern, bodies: planetBodies }] : [];
+  const requiredAspects: Record<string, AspectType[]> = {
+    t_square: [AspectType.Opposition, AspectType.Square, AspectType.Square],
+    grand_trine: [AspectType.Trine, AspectType.Trine, AspectType.Trine],
+    grand_cross: [
+      AspectType.Opposition,
+      AspectType.Opposition,
+      ...Array(4).fill(AspectType.Square),
+    ],
+    yod: [AspectType.Sextile, AspectType.Quincunx, AspectType.Quincunx],
+    kite: [
+      AspectType.Opposition,
+      AspectType.Sextile,
+      AspectType.Sextile,
+      ...Array(3).fill(AspectType.Trine),
+    ],
+    mystic_rectangle: [
+      AspectType.Opposition,
+      AspectType.Opposition,
+      AspectType.Sextile,
+      AspectType.Sextile,
+      AspectType.Trine,
+      AspectType.Trine,
+    ],
+  };
+  const patterns = detected.filter((pattern) => {
+    const expected = requiredAspects[pattern.kind];
+    if (!expected) return true;
+    const actual: AspectType[] = [];
+    for (let first = 0; first < pattern.bodies.length; first += 1) {
+      for (let second = first + 1; second < pattern.bodies.length; second += 1) {
+        const aspect = selectedAspects.find(
+          (item) =>
+            (item.body1 === pattern.bodies[first] && item.body2 === pattern.bodies[second]) ||
+            (item.body2 === pattern.bodies[first] && item.body1 === pattern.bodies[second]),
+        );
+        if (!aspect || !expected.includes(aspect.type)) return false;
+        actual.push(aspect.type);
+      }
+    }
+    return actual.sort().join(',') === [...expected].sort().join(',');
   });
   return patterns.map((pattern) => {
     const kind = PATTERN_KIND_LABELS[pattern.kind] ?? pattern.kind;
@@ -753,7 +794,7 @@ export function calculateChart(
     minimumStrength: options.minimumAspectStrength,
   }).aspects.filter((aspect) => aspectTypes.includes(aspect.type));
   const distributions = calculateDistributions(planets);
-  const patterns = findPatternsFromBodies(aspectBodies);
+  const patterns = findPatternsFromBodies(aspectBodies, allAspects);
   const angle = (name: string, longitude: number) => ({ name, ...positionFields(longitude) });
   return {
     planets,

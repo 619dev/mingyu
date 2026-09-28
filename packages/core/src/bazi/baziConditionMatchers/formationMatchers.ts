@@ -19,6 +19,9 @@ const SAN_HUI_KEYWORD_MAP: Record<string, string> = {
 export const sanHeMatcher: Matcher = ({ condition, pillars }) => {
   if (!condition.includes('三合')) return null;
 
+  for (const [name, branches] of Object.entries(SAN_HE_MAP)) {
+    if (condition.includes(name)) return branchesContain(pillars, branches);
+  }
   for (const [keyword, key] of Object.entries(SAN_HE_KEYWORD_MAP)) {
     if (condition.includes(keyword)) {
       return branchesContain(pillars, SAN_HE_MAP[key]);
@@ -33,6 +36,9 @@ export const sanHeMatcher: Matcher = ({ condition, pillars }) => {
 export const sanHuiMatcher: Matcher = ({ condition, pillars }) => {
   if (!condition.includes('三会')) return null;
 
+  for (const [name, branches] of Object.entries(SAN_HUI_MAP)) {
+    if (condition.includes(name)) return branchesContain(pillars, branches);
+  }
   for (const [keyword, key] of Object.entries(SAN_HUI_KEYWORD_MAP)) {
     if (condition.includes(keyword)) {
       return branchesContain(pillars, SAN_HUI_MAP[key]);

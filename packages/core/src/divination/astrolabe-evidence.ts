@@ -117,7 +117,7 @@ export interface AstrolabeDistributionFact {
   status: '有成员' | '无成员';
   promptText: string;
   sources: string[];
-  limitation: '分布字段只统计当前盘面的元素、模式、逆行与依赖库格局成员，不代表能量分数、人格强度、事件概率、吉凶等级或现实结果';
+  limitation: '分布字段只统计当前盘面的元素、模式、逆行与十大星体格局成员，不代表能量分数、人格强度、事件概率、吉凶等级或现实结果';
 }
 
 export interface AstrolabeIlluminationFact {
@@ -148,7 +148,7 @@ export interface AstrolabeCounterEvidenceFact {
   ownerFactKeys: string[];
   promptText: string;
   sources: string[];
-  limitation: '反证事实只记录筛选范围内是否有主要相位、逆行点或依赖库盘面格局；未见不代表不存在其他角度关系或现实不利，有记录也不证明事件结果';
+  limitation: '反证事实只记录筛选范围内是否有主要相位、逆行点或十大星体格局；未见不代表不存在其他角度关系或现实不利，有记录也不证明事件结果';
 }
 
 export interface AstrolabeCounterSummaryFact {
@@ -157,7 +157,7 @@ export interface AstrolabeCounterSummaryFact {
   factKeys: string[];
   promptText: string;
   sources: string[];
-  limitation: '反证汇总只说明当前筛选范围和依赖库输出的资料覆盖情况；不得据数量生成概率、匹配率、吉凶比例或强度分';
+  limitation: '反证汇总只说明当前筛选范围的资料覆盖情况；不得据数量生成概率、匹配率、吉凶比例或强度分';
 }
 
 export interface AstrolabeLimitationFact {
@@ -233,7 +233,7 @@ const ASPECT_FACT_LIMITATION =
 const CALCULATION_FACT_LIMITATION =
   '计算链只证明出生输入、时间处理、天文位置、宫位与相位筛选如何形成当前盘面，不证明占星解释有效性、人格诊断、现实事件或命运结果' as const;
 const DISTRIBUTION_FACT_LIMITATION =
-  '分布字段只统计当前盘面的元素、模式、逆行与依赖库格局成员，不代表能量分数、人格强度、事件概率、吉凶等级或现实结果' as const;
+  '分布字段只统计当前盘面的元素、模式、逆行与十大星体格局成员，不代表能量分数、人格强度、事件概率、吉凶等级或现实结果' as const;
 const STEP_FACT_LIMITATION =
   '单个计算步骤只记录该阶段已知输入、输出和依赖关系；步骤完整不证明底层天文模型无误，也不证明占星解释、人格诊断或现实结果' as const;
 const PRIMARY_FACT_LIMITATION =
@@ -243,9 +243,9 @@ const PRIMARY_COVERAGE_LIMITATION =
 const ILLUMINATION_FACT_LIMITATION =
   '太阳高度、方位、赤纬、均时差与曙暮光只作为出生地点和时刻的天文背景；不直接证明人格、心理状态、现实事件、健康或吉凶结果' as const;
 const COUNTER_FACT_LIMITATION =
-  '反证事实只记录筛选范围内是否有主要相位、逆行点或依赖库盘面格局；未见不代表不存在其他角度关系或现实不利，有记录也不证明事件结果' as const;
+  '反证事实只记录筛选范围内是否有主要相位、逆行点或十大星体格局；未见不代表不存在其他角度关系或现实不利，有记录也不证明事件结果' as const;
 const COUNTER_SUMMARY_LIMITATION =
-  '反证汇总只说明当前筛选范围和依赖库输出的资料覆盖情况；不得据数量生成概率、匹配率、吉凶比例或强度分' as const;
+  '反证汇总只说明当前筛选范围的资料覆盖情况；不得据数量生成概率、匹配率、吉凶比例或强度分' as const;
 const LIMITATION_FACT_LIMITATION =
   '限制事实用于约束星盘位置、相位、分布、输入和光照资料可以支持的解释范围，不得被反向当作人格、事件或命运证据' as const;
 const SUMMARY_FACT_LIMITATION =
@@ -465,10 +465,13 @@ function buildCalculationFact(
         elementCategoryCount: Object.keys(data.summary.elements).length,
         modalityCategoryCount: Object.keys(data.summary.modalities).length,
         retrogradeCount: data.summary.retrograde.length,
-        patternCount: data.summary.patterns.length,
+        patternCount:
+          data.summary.patternBasis === 'ten-main-bodies-selected-aspects'
+            ? data.summary.patterns.length
+            : 0,
       },
       dependsOnStepKeys: ['astrolabe:calculation:chart'],
-      promptText: '汇总元素、模式、逆行与依赖库盘面格局，作为盘面构成辅证',
+      promptText: '汇总元素、模式、逆行与十大星体格局，作为盘面构成辅证',
       sources: ['Caelus 星体位置与明御盘面元素、模式、逆行及格局汇总'],
       limitation: STEP_FACT_LIMITATION,
     },
@@ -564,8 +567,8 @@ function buildDistributionFacts(
     build(
       'distribution:patterns',
       '盘面格局',
-      '依赖库盘面格局',
-      data.summary.patterns,
+      '十大星体格局',
+      data.summary.patternBasis === 'ten-main-bodies-selected-aspects' ? data.summary.patterns : [],
       'Caelus 星体位置与明御盘面格局汇总',
     ),
   ];
@@ -707,9 +710,9 @@ function buildCounterEvidenceFacts(
       status: patternFact?.count ? '有可用证据' : '未见',
       ownerFactKeys: patternFact ? [patternFact.key] : ['distribution:patterns'],
       promptText: patternFact?.count
-        ? `依赖库列出${patternFact.count}项盘面格局`
-        : '未见依赖库标记的主要盘面格局',
-      sources: ['依赖库盘面格局汇总'],
+        ? `列出${patternFact.count}项十大星体格局`
+        : '未列十大星体格局',
+      sources: ['十大星体位置及已列相位核验'],
       limitation: COUNTER_FACT_LIMITATION,
     },
   ];

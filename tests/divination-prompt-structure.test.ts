@@ -1541,7 +1541,7 @@ test('星盘提示词应直接给出太阳月亮上升和主要相位资料', ()
   assert.match(prompt, /太阳金牛座 29°，第10宫/);
   assert.match(prompt, /月亮处女座 08°，第2宫/);
   assert.match(prompt, /核心位置：太阳金牛座 29°；月亮处女座 08°；上升狮子座 12°/);
-  assert.match(prompt, /格局：土象偏强/);
+  assert.doesNotMatch(prompt, /格局：土象偏强|十大星体格局：/);
   assert.doesNotMatch(prompt, /逆行星体无/);
   assert.match(prompt, /相位明细：/);
   assert.doesNotMatch(prompt, /强度\d+%/);

@@ -34,6 +34,23 @@ test('昼夜盘口径与福点计算同源，省级近似坐标如实进入提�
   assert.match(formatAstrolabeForPrompt(day), /昼夜盘：昼盘/);
   assert.match(formatAstrolabeForPrompt(night), /昼夜盘：夜盘/);
   assert.match(formatAstrolabeForPrompt(day), /出生坐标精度：省级近似位置/);
+  assert.match(formatAstrolabeForPrompt(day), /十大星体格局：/);
+  assert.match(buildInstantAstrolabePrompt(day, '当前情况如何', '当地钟表时间'), /十大星体格局：/);
+  const legacy = structuredClone(day);
+  delete legacy.summary.patternBasis;
+  legacy.summary.patterns = ['未经当前相位清单核验的旧格局'];
+  assert.doesNotMatch(formatAstrolabeForPrompt(legacy), /十大星体格局：/);
+  assert.doesNotMatch(
+    buildInstantAstrolabePrompt(legacy, '当前情况如何', '当地钟表时间'),
+    /十大星体格局：/,
+  );
+  const withoutPattern = structuredClone(day);
+  withoutPattern.summary.patterns = [];
+  assert.doesNotMatch(formatAstrolabeForPrompt(withoutPattern), /十大星体格局：/);
+  assert.doesNotMatch(
+    buildInstantAstrolabePrompt(withoutPattern, '当前情况如何', '当地钟表时间'),
+    /十大星体格局：/,
+  );
   assert.doesNotMatch(formatAstrolabeForPrompt(day), /province-approximation/);
   assert.match(
     formatAstrolabeForPrompt({

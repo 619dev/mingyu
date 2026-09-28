@@ -6,6 +6,27 @@ const start = Date.UTC(2022, 5, 1);
 const hour = 3_600_000;
 const normalize = (angle: number) => ((angle % 360) + 360) % 360;
 
+test('流曜周期空结果注明已覆盖星曜及吊照对象范围', () => {
+  const result = scanQizhengPeriodEvents({
+    natalStars: [
+      { name: '太阳', longitude: 0 },
+      { name: '辰星(水)', longitude: 30 },
+    ],
+    twelvePalaces: [],
+    startUtcMs: start,
+    endUtcMs: start + hour,
+    timezone: 8,
+    mode: 'yearly',
+    // 年度范围不扫描计都；它跨宫也不能导出“全盘未见事件”的断言。
+    sampleLongitudes: (utcMs) => [{ name: '计都(土余)', longitude: 29 + (utcMs - start) / hour }],
+  });
+  assert.deepEqual(result.events, []);
+  assert.match(result.promptText, /周期事件参考：流曜太阳、.*罗睺\(火余\)；吊照本命太阳/);
+  assert.doesNotMatch(result.promptText, /周期事件参考：[^\n]*辰星\(水\)/);
+  assert.match(result.promptText, /所列流曜未见换宫、停逆或精确吊照/);
+  assert.doesNotMatch(result.promptText, /本窗口未见/);
+});
+
 for (const direction of [1, -1]) {
   test(`七政精确吊照${direction === 1 ? '顺行' : '逆行'}跨越角度边界时不产生对侧假事件`, () => {
     for (const [target, expected] of [

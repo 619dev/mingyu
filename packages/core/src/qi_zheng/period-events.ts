@@ -385,13 +385,14 @@ export function scanQizhengPeriodEvents(params: {
   const axisSummary = formatAxisSummary(priorityEvents, ordered.length);
   const promptText = [
     `范围：${startDateTime} 至 ${endDateTime}`,
+    `周期事件参考：流曜${bodies.join('、')}；吊照本命${natalTargets.map((star) => star.name).join('、') || '星曜未列'}；角度关系${aspectKinds.map((aspect) => aspect.type).join('、')}`,
     axisSummary
       ? `周期主轴：${axisSummary}`
-      : '周期主轴：本窗口未见停逆、换入重点宫或精确合相对照三方',
+      : '周期主轴：所列流曜未见停逆、换入重点宫或精确合相对照三方',
     windows.length ? `关键窗口：${windows.join('；')}` : '',
     ordered.length
       ? `完整明细：\n${ordered.map((item) => item.promptText).join('\n')}`
-      : '完整明细：本窗口未见换宫、停逆或精确吊照',
+      : '完整明细：所列流曜未见换宫、停逆或精确吊照',
   ]
     .filter(Boolean)
     .join('\n');

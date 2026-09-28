@@ -124,7 +124,9 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
         .join('；') || '未记录'
     }`,
     `逆行：${formatStringList(data.summary.retrograde, '无')}`,
-    `格局：${formatStringList(data.summary.patterns, '未列明显格局')}`,
+    data.summary.patternBasis === 'ten-main-bodies-selected-aspects' && data.summary.patterns.length
+      ? `十大星体格局：${data.summary.patterns.join('、')}`
+      : '',
     ...data.angles.map((point) => `${point.label}：${point.formatted}`),
     data.houses?.length
       ? `十二宫宫头：${data.houses.map((point) => `${point.label} ${point.formatted}`).join('；')}`

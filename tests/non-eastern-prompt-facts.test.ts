@@ -39,9 +39,7 @@ test('星盘格局与宫位制以中文名称配必要英文术语', () => {
   });
   const prompt = formatAstrolabeForPrompt(chart);
   assert.match(prompt, /宫位制：普拉西德斯宫制（Placidus）/);
-  assert.ok(
-    chart.summary.patterns.some((pattern) => pattern.includes('北交点（True North Node）')),
-  );
+  assert.ok(chart.summary.patterns.every((pattern) => !pattern.includes('北交点')));
   assert.doesNotMatch(
     chart.summary.patterns.join('、'),
     /(?<!（)True North Node|kite|grand_trine|stellium_sign/,

@@ -56,3 +56,27 @@ test('太乙提示词以将参宫位呈现中宫事实，不重复生成同义�
   assert.match(result.prompt, /将参：主大将5中宫、主参将5中宫/);
   assert.doesNotMatch(result.prompt, /判断：[^\n]*主大将或主参将居中宫/);
 });
+
+test('太乙在线提示词列出逐角色门位并说明门具依据', () => {
+  const result = generateTaiyi({ year: 2020 });
+  assert.deepEqual(
+    result.conditions.threeGates.roles.map((role) => [role.role, role.gate]),
+    [
+      ['太乙', '伤门'],
+      ['文昌（主目）', '惊门'],
+      ['始击（客目）', '惊门'],
+    ],
+  );
+  assert.match(
+    result.prompt,
+    /三门具.*主门位：太乙伤门、文昌（主目）惊门；始击（客目）门位单列：惊门/u,
+  );
+  const prompt = buildMetaphysicsPrompt(result.prompt, undefined, {
+    method: 'taiyi',
+    currentTime: new Date('2026-05-19T10:30:00+08:00'),
+  });
+  assert.match(prompt, /门具依据太乙与文昌（主目）是否临开、休、生门判定/u);
+  assert.ok(
+    result.model.sources.some((source) => source.title === '《太乙统宗宝鉴》卷五·明三门具不具'),
+  );
+});
