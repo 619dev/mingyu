@@ -45,6 +45,16 @@ test('梅花旧盘取数与卦数不一致时不输出错误算式', () => {
   assert.doesNotMatch(formatMeihuaFacts(mismatched).join('\n'), /起卦取数：/u);
 });
 
+test('梅花盘面时柱与取数时支不一致时不输出旧取数算式', () => {
+  const data = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
+    method: 'number',
+    number: 42,
+  });
+  assert.match(formatMeihuaFacts(data).join('\n'), /起卦取数：/u);
+  data.ganzhi.hour = '甲子';
+  assert.doesNotMatch(formatMeihuaFacts(data).join('\n'), /起卦取数：/u);
+});
+
 test('梅花提示词重新核验逐爻、关系和卦爻辞，不采信旧证据缓存', () => {
   const makeChart = () =>
     generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {

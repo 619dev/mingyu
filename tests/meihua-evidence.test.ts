@@ -104,6 +104,28 @@ test('梅花起卦证据应核对取数与盘面，并准确表达整除时的�
   assert.match(summaryStep?.promptText ?? '', /起卦计算记录不一致/u);
 });
 
+test('梅花以时支取数时应核对起卦记录与盘面时柱', () => {
+  const settings = [
+    { method: 'time' as const },
+    { method: 'timeTrigram' as const },
+    { method: 'number' as const, number: 123 },
+    { method: 'sound' as const, soundCount: 3 },
+    { method: 'direction' as const, direction: 'south' as const, objectType: 'fire' as const },
+  ];
+
+  for (const setting of settings) {
+    const data = structuredClone(generateMeihua(fixedDate, setting));
+    assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
+    data.ganzhi.hour = `甲${data.calculation?.timeZhi === '巳' ? '午' : '巳'}`;
+    data.evidenceAnalysis = undefined;
+
+    const rebuilt = analyzeMeihuaEvidence(data);
+    assert.equal(rebuilt.calculationFact.status, '计算不一致', setting.method);
+    assert.match(rebuilt.calculationFact.promptText, /起卦时支与盘面时柱不一致/u);
+    assert.deepEqual(rebuilt.calculationFact.steps, []);
+  }
+});
+
 test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () => {
   const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
   const mutations = [

@@ -242,6 +242,8 @@ function estimateYingQi(params: {
     periods.push('用克体，外部事项对体卦形成压力，须先观察阻力是否缓解');
   } else if (isKe(tiElement, yongElement)) {
     periods.push('体克用，体卦能够制约事项，但须核验投入和消耗是否可承受');
+  } else if (isSheng(tiElement, yongElement)) {
+    periods.push('体生用，体卦向事项泄气，可观察投入消耗与恢复条件');
   }
 
   // 3. 旺衰提供相对迟速条件，须与体用生克、互变共同判断。

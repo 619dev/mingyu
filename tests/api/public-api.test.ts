@@ -5082,7 +5082,8 @@ test('公开 API 黄历择日提示词不强制填写问题', async () => {
     /主疾病|主死丧|主灾病死亡|主哭泣死亡|必见灾殃|毒气入肠|大凶|辅助加分/,
   );
   assert.doesNotMatch(body.data.prompt, /【问题】/);
-  assert.match(body.data.prompt, /给出首选、备选与慎用日期/);
+  assert.match(body.data.prompt, /有多个候选时说明首选与备选/);
+  assert.doesNotMatch(body.data.prompt, /有候选时辰资料时/);
   assert.doesNotMatch(body.data.prompt, /先直接回答【问题】/);
 });
 

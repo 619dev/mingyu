@@ -83,6 +83,13 @@ test('金口诀古本算例关系沿用人元干与贵神本属并明确被生�
   assert.equal(data.positions.renYuan.element, '火');
   assert.equal(data.positions.guiShen.stem, '戊');
   assert.equal(data.positions.guiShen.element, '水');
+  assert.notEqual(data.positions.guiShen.branch, data.positions.diFen.branch);
+  const summary = getDivinationSummaryBlocks('jinkoujue', data);
+  assert.ok(
+    summary.tags.includes(
+      `贵神：${data.positions.guiShen.god}（本属${data.positions.guiShen.branch}）`,
+    ),
+  );
   for (const format of formatters) {
     const text = format('jinkoujue', data);
     assert.match(text, /贵神水与将神水比和/);

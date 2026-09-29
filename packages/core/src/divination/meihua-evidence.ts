@@ -796,6 +796,19 @@ function validateMeihuaCalculation(data: MeihuaData): {
         missing.push('可识别的梅花起卦方式');
     }
 
+    if (
+      calculation.methodKey === 'time' ||
+      calculation.methodKey === 'timeTrigram' ||
+      calculation.methodKey === 'number' ||
+      calculation.methodKey === 'sound' ||
+      calculation.methodKey === 'direction'
+    ) {
+      const chartHourBranch = data.ganzhi.hour.slice(-1);
+      if (!dizhi.includes(chartHourBranch) || calculation.timeZhi !== chartHourBranch) {
+        mismatches.push('起卦时支与盘面时柱不一致');
+      }
+    }
+
     const checkBoardTrigram = (label: string, index: unknown, name: string) => {
       if (!Number.isSafeInteger(index)) return;
       const trigram = trigramsByIndex[index as number];

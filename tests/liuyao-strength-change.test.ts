@@ -109,6 +109,9 @@ test('六爻：生旺墓绝应分别核验日辰、明动爻与自身变爻', ()
   );
   assert.equal(woodYao.isDongMu, true);
   assert.equal(woodYao.isRuMu, true);
+  const detailedPrompt = formatEnhancedDivinationInfo('liuyao', data);
+  assert.match(detailedPrompt, /本爻木在日辰支十二长生死/);
+  assert.match(detailedPrompt, /本爻木在明动爻支十二长生[^，]*第6爻未墓/);
 
   const changingYaos = data.yaosDetail.filter((yao) => yao.isChanging);
   assert.ok(changingYaos.every((yao) => yao.changedLifeStage));
@@ -127,6 +130,23 @@ test('六爻：生旺墓绝应分别核验日辰、明动爻与自身变爻', ()
   assert.equal(huaMuYao.changedLifeStage, '墓');
   assert.equal(huaMuYao.isHuaMu, true);
   assert.match(huaMuData.evidenceAnalysis?.promptText ?? '', /动而化墓|化墓/);
+});
+
+test('六爻：变爻地支的十二长生阶段以本爻五行为参照', () => {
+  const data = generateLiuyao(SAMPLE_DATE, { yaos: [7, 9, 7, 7, 7, 7] });
+  const movingYao = data.yaosDetail[1];
+
+  assert.equal(data.originalName, '乾为天');
+  assert.equal(data.changedName, '天火同人');
+  assert.equal(movingYao.najiaDizhi, '寅');
+  assert.equal(movingYao.wuxing, '木');
+  assert.equal(movingYao.changedYao?.dizhi, '丑');
+  assert.equal(movingYao.changedYao?.wuxing, '土');
+  assert.equal(movingYao.changedLifeStage, '冠带');
+
+  const prompt = formatEnhancedDivinationInfo('liuyao', data);
+  assert.match(prompt, /本爻木在变爻丑支十二长生冠带/);
+  assert.doesNotMatch(prompt, /变爻十二长生冠带/);
 });
 
 test('六爻：单个辰土爻发动不因自身辰支判作入动墓', () => {

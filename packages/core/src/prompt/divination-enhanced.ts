@@ -165,12 +165,14 @@ function formatLiuyaoTriggerRelations(
 
 function formatLiuyaoLifeStages(item: LiuyaoData['yaosDetail'][number]) {
   return [
-    item.dayLifeStage ? `日辰十二长生${item.dayLifeStage}` : '',
+    item.dayLifeStage ? `本爻${item.wuxing}在日辰支十二长生${item.dayLifeStage}` : '',
     item.shiErGong ? `本爻十二长生${item.shiErGong}` : '',
     item.movingLifeStages?.length
-      ? `明动十二长生${item.movingLifeStages.map((stage) => `第${stage.position}爻${stage.branch}${stage.stage}`).join('、')}`
+      ? `本爻${item.wuxing}在明动爻支十二长生${item.movingLifeStages.map((stage) => `第${stage.position}爻${stage.branch}${stage.stage}`).join('、')}`
       : '',
-    item.changedLifeStage ? `变爻十二长生${item.changedLifeStage}` : '',
+    item.changedLifeStage && item.changedYao
+      ? `本爻${item.wuxing}在变爻${item.changedYao.dizhi}支十二长生${item.changedLifeStage}`
+      : '',
     item.isRiMu ? '入日墓' : '',
     item.isDongMu ? '入动墓' : '',
     item.isHuaMu ? '动而化墓' : '',

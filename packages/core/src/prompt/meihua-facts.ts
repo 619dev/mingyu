@@ -42,6 +42,7 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
   }
   const c = data.calculation;
   if (c) {
+    const hasMatchingHourBranch = c.timeZhi === data.ganzhi.hour.slice(-1);
     const hasResolvedIndices =
       trigramsByIndex[c.upperTrigramIndex ?? 0]?.name === data.mainHexagram.upper &&
       trigramsByIndex[c.lowerTrigramIndex ?? 0]?.name === data.mainHexagram.lower &&
@@ -53,6 +54,7 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
     if (
       hasResolvedIndices &&
       (c.methodKey === 'time' || c.methodKey === 'timeTrigram') &&
+      hasMatchingHourBranch &&
       c.yearZhi &&
       c.timeZhi &&
       c.yearZhiIndex === dizhi.indexOf(c.yearZhi) + 1 &&
@@ -75,6 +77,7 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
     } else if (
       hasResolvedIndices &&
       c.methodKey === 'number' &&
+      hasMatchingHourBranch &&
       Number.isSafeInteger(c.number) &&
       c.number! > 0 &&
       c.timeZhi &&
@@ -91,6 +94,7 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
     } else if (
       hasResolvedIndices &&
       c.methodKey === 'sound' &&
+      hasMatchingHourBranch &&
       Number.isSafeInteger(c.soundCount) &&
       c.soundCount! > 0 &&
       c.timeZhi &&
@@ -118,6 +122,7 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
     } else if (
       hasResolvedIndices &&
       c.methodKey === 'direction' &&
+      hasMatchingHourBranch &&
       typeof c.objectTrigramIndex === 'number' &&
       typeof c.directionTrigramIndex === 'number' &&
       c.timeZhi &&

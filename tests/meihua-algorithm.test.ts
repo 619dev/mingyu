@@ -245,6 +245,18 @@ test('梅花：用生体应期描述应保留验证条件且不带多余标点',
   assert.ok(data.analysis.yingQi?.every((item) => !item.includes('顺势）')));
 });
 
+test('梅花：体生用时应期条件应记录体卦泄气', () => {
+  const data = generateMeihua(SAMPLE_DATE, { method: 'number', number: 3 });
+
+  assert.equal(data.analysis.tiYongRaw, '体生用');
+  assert.ok(data.analysis.yingQi?.includes('体生用，体卦向事项泄气，可观察投入消耗与恢复条件'));
+  assert.ok(
+    data.evidenceAnalysis?.timingFacts.some((fact) =>
+      fact.promptText.includes('体生用，体卦向事项泄气'),
+    ),
+  );
+});
+
 test('梅花：timeTrigram 兼容入口应回到年月日时起卦', () => {
   const timeData = generateMeihua(SAMPLE_DATE, { method: 'time' });
   const compatData = generateMeihua(SAMPLE_DATE, { method: 'timeTrigram' });

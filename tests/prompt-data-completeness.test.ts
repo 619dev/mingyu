@@ -67,7 +67,8 @@ test('六爻提示词逐爻保留原爻、月日旺衰、十二长生与反伏�
       new RegExp(`第${yao.position}爻[^\\n]*原爻${yao.yaoType}（${rawLabels[yao.rawValue]}）`),
     );
     assert.match(text, new RegExp(`月令${yao.seasonState}`));
-    if (yao.dayLifeStage) assert.match(text, new RegExp(`日辰十二长生${yao.dayLifeStage}`));
+    if (yao.dayLifeStage)
+      assert.match(text, new RegExp(`本爻${yao.wuxing}在日辰支十二长生${yao.dayLifeStage}`));
   }
 
   const fanfu = data.fanfuRelations?.fanyin[0] ?? data.fanfuRelations?.fuyin[0];

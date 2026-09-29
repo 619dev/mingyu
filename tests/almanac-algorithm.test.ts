@@ -11,6 +11,7 @@ import {
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
+import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 
 const ALMANAC_CROSS_CENTURY_TRUTH = [
   ['1900-01-01', '己亥', '丙子', '甲戌'],
@@ -606,4 +607,26 @@ test('黄历择日：工作时间应同时避开周末并限定常规办事时�
       );
     }
   }
+});
+
+test('黄历任务只在提示词列出候选时辰时要求分析时段', () => {
+  const common = {
+    topic: 'contract' as const,
+    startDate: '2026-06-09',
+    endDate: '2026-06-09',
+  };
+  const dateOnly = generateAlmanacSelection(common);
+  const withHours = generateAlmanacSelection({ ...common, timePreferences: ['work-hours'] });
+  const question = '哪天适合签约？';
+  const datePrompt = buildDivinationPrompt({ method: 'almanac', data: dateOnly, question });
+  const hourPrompt = buildDivinationPrompt({ method: 'almanac', data: withHours, question });
+  const taskText = (prompt: string) => prompt.split('【任务】')[1]?.split('【问题】')[0] ?? '';
+
+  assert.ok(withHours.evidenceAnalysis?.candidates[0]?.usableHours.length);
+  assert.doesNotMatch(datePrompt, /时辰写法：|时段条件：/);
+  assert.doesNotMatch(taskText(datePrompt), /时辰|时段/);
+  assert.match(taskText(datePrompt), /有多个候选时说明首选与备选/);
+  assert.match(hourPrompt, /时辰写法：|时段条件：/);
+  assert.match(hourPrompt, /时辰[^\n]*[0-9]{2}:00-/);
+  assert.match(taskText(hourPrompt), /有候选时辰资料时，说明所列时段的取舍与适用条件/);
 });

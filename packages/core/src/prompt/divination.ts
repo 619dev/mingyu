@@ -346,7 +346,7 @@ export function getDivinationSummaryBlocks(
           `起课方式：${item.methodLabel}`,
           `地分：${positions.diFen.branch}`,
           `将神：${positions.jiangShen.branch}`,
-          `贵神：${positions.guiShen.branch}`,
+          `贵神：${positions.guiShen.god}（本属${positions.guiShen.branch}）`,
           `人元：${positions.renYuan.stem || ''}${positions.renYuan.branch}`,
         ],
         lines: [
