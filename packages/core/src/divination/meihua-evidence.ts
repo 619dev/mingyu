@@ -533,12 +533,12 @@ function createStage(params: {
     ],
     limitation: STAGE_FACT_LIMITATION,
   };
-  stage.promptText = `${formatStage(stage)}；依据：${stage.basis}；支持：${stage.support.join('、') || '未见额外增强'}；限制：${stage.constraints.join('、') || '未见明确盘内限制'}${stage.status === '卦象资料缺失' ? '；对应卦象结构资料缺失，不得补造卦名、卦符或上下经卦' : ''}`;
+  stage.promptText = `${formatStage(stage)}；依据：${stage.basis}${stage.status === '卦象资料缺失' ? '；卦象结构资料未记录' : ''}`;
   return stage;
 }
 
 function formatStage(stage: MeihuaStageEvidence) {
-  return `${stage.label}${stage.hexagram}：体卦${stage.ti.name}${stage.ti.element}（月令${stage.ti.seasonState}），用卦${stage.yong.name}${stage.yong.element}（月令${stage.yong.seasonState}），关系${stage.relation}`;
+  return `${stage.label}${stage.hexagram}：体卦${stage.ti.name}${stage.ti.element}，用卦${stage.yong.name}${stage.yong.element}，关系${stage.relation}`;
 }
 
 function hasFiniteNumber(value: unknown): value is number {

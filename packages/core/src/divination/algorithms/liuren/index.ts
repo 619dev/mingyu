@@ -584,7 +584,7 @@ export function generateLiuren(
     },
   ];
   const timingEvidence = [
-    `一级发用：先看初传${firstTransmission.branch}${firstTransmission.isVoid ? '空亡，待出空或冲实' : '不空，可直接作为起始信号'}`,
+    `一级发用：先看初传${firstTransmission.branch}${firstTransmission.isVoid ? '空亡，待出空或冲实' : '不空，按月令旺衰、日支关系和事项类神核对发端条件'}`,
     `二级三传：${threeTransmissions.map((item) => `${item.stage}${item.branch}（月令${item.seasonState}${item.isVoid ? '、空' : ''}）`).join('→')}`,
     `三级日月：以日支${dayBranch}、月支${ganzhi.month.charAt(1)}对初传和类神的同支、冲合与旺衰作为触发条件`,
     '以问题期限、三传先后和现实触发条件核对应期',

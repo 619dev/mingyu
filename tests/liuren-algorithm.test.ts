@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 
 import type { LiurenLesson, LiurenPlateItem } from 'mingyu-core/types';
 import { calculateSolarTermEvidence, TimeManager } from 'mingyu-core/calendar';
-import { analyzeLiurenEvidence, generateLiuren } from 'mingyu-core/divination/liuren';
+import {
+  analyzeLiurenEvidence,
+  generateLiuren,
+} from '../packages/core/src/divination/algorithms/liuren';
 import { buildTimeInfoText } from 'mingyu-core/prompt';
 import {
   getLiurenGuaTiFacts,
@@ -120,7 +123,7 @@ test('大六壬应输出分层取用与应期证据', () => {
         item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => factKeys.has(key)),
     ),
   );
-  assert.match(evidence.promptText, /计算链：[\s\S]*证据汇总：[\s\S]*解释限制：/);
+  assert.match(evidence.promptText, /起盘事实：[\s\S]*四课取传与初传发用：[\s\S]*【任务】/);
   for (const transmission of result.threeTransmissions) {
     assert.ok(transmission.wuxing);
     assert.ok(transmission.seasonState);

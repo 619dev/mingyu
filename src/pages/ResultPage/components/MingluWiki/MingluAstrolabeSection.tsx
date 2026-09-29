@@ -16,7 +16,7 @@ export const MingluAstrolabeSection: React.FC<Props> = ({ data }) => {
         <div className="minglu-section-title-wrap">
           <h2 className="minglu-section-title">第十章：西洋占星本命图谱与相位网格</h2>
           <p className="minglu-section-subtitle">
-            十大行星、四轴四宫、全量本命相位网格与元素形态分布（
+            本命星体、四轴、全量本命相位网格与元素形态分布（
             {dayNight.isDayChart ? '日生盘' : '夜生盘'}）
           </p>
         </div>
@@ -24,7 +24,7 @@ export const MingluAstrolabeSection: React.FC<Props> = ({ data }) => {
 
       {/* 行星与四轴落宫表格 */}
       <div id="astrolabe-planets-table" className="minglu-subblock">
-        <h3 className="minglu-subblock-title">十大星体与四轴落点</h3>
+        <h3 className="minglu-subblock-title">星体、计算点与四轴落点</h3>
         <div className="minglu-table-wrap">
           <table className="minglu-table">
             <thead>
@@ -33,12 +33,12 @@ export const MingluAstrolabeSection: React.FC<Props> = ({ data }) => {
                 <th>黄道星座</th>
                 <th>度数分秒</th>
                 <th>落入宫位</th>
-                <th>状态</th>
+                <th>逆行状态</th>
               </tr>
             </thead>
             <tbody>
-              {[...points, ...angles].map((p, idx) => (
-                <tr key={idx}>
+              {points.map((p) => (
+                <tr key={p.name}>
                   <td className="font-bold">
                     <MingluLink targetAnchorId="glossary-encyclopedia" category="占星">
                       {p.label} ({p.name})
@@ -46,8 +46,21 @@ export const MingluAstrolabeSection: React.FC<Props> = ({ data }) => {
                   </td>
                   <td className="font-medium text-amber-700 dark:text-amber-400">{p.sign}</td>
                   <td className="font-mono text-sm">{p.formatted}</td>
-                  <td>第 {p.house} 宫</td>
-                  <td>{p.isRetrograde ? '逆行 ℞' : '顺行'}</td>
+                  <td>{p.house === undefined ? '未定' : `第 ${p.house} 宫`}</td>
+                  <td>{p.isRetrograde === undefined ? '—' : p.isRetrograde ? '逆行 ℞' : '顺行'}</td>
+                </tr>
+              ))}
+              {angles.map((p) => (
+                <tr key={p.name}>
+                  <td className="font-bold">
+                    <MingluLink targetAnchorId="glossary-encyclopedia" category="占星">
+                      {p.label} ({p.name})
+                    </MingluLink>
+                  </td>
+                  <td className="font-medium text-amber-700 dark:text-amber-400">{p.sign}</td>
+                  <td className="font-mono text-sm">{p.formatted}</td>
+                  <td>四轴</td>
+                  <td>—</td>
                 </tr>
               ))}
             </tbody>

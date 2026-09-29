@@ -746,24 +746,33 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
   assert.match(prompt, /《奇门遁甲统宗》/);
   assert.match(prompt, /参考流派：宝鉴派、统宗派/);
   const promptDateFact = data.eventClusters
+    ?.filter((cluster) => !cluster.key.includes(':day:void-fill:'))
     ?.flatMap((cluster) => cluster.triggerDates ?? [])
     .find((fact) => fact.ganzhi);
   assert.ok(promptDateFact?.date, '提示词应带具体日级日期事实');
   assert.ok(prompt.includes(promptDateFact!.date), '提示词应保留可复核的完整日期');
   const promptDateLines = prompt.split('\n').filter((line) => line.includes('可复核日期：'));
+  const dailyVoidFillClusters = data.eventClusters?.filter((cluster) =>
+    cluster.key.includes(':day:void-fill:'),
+  );
+  const dailyVoidFillDates = [
+    ...new Set(
+      dailyVoidFillClusters?.flatMap((cluster) =>
+        (cluster.triggerDates ?? []).map((fact) => fact.date),
+      ) ?? [],
+    ),
+  ].sort();
+  assert.ok(dailyVoidFillDates.length);
+  assert.ok(
+    prompt.includes(
+      `日级空亡填实条件：日支逢本命旬空地支${data.baseChart.voidBranches?.join('、')}；核验范围${data.input.periodRange?.startDate ?? dailyVoidFillDates[0]}至${data.input.periodRange?.endDate ?? dailyVoidFillDates.at(-1)}，各年符合条件的日数见下。`,
+    ),
+  );
   const dailyClusters =
     data.eventClusters?.filter((cluster) => cluster.key.includes(':day:')) ?? [];
   assert.ok(dailyClusters.length > 0);
   for (const cluster of dailyClusters) {
     const firstDate = cluster.triggerDates![0]!;
-    const datesByGanzhi = new Map<string, string[]>();
-    for (const fact of cluster.triggerDates!) {
-      const dates = datesByGanzhi.get(fact.ganzhi!) ?? [];
-      dates.push(fact.date);
-      datesByGanzhi.set(fact.ganzhi!, dates);
-    }
-    const entries = [...datesByGanzhi].map(([ganzhi, dates]) => `${ganzhi}：${dates.join('、')}`);
-    const expectedDateLine = `  可复核日期：${entries.join('；')}；日干支关系：${firstDate.relation}`;
     assert.ok(
       prompt
         .split('\n')
@@ -773,6 +782,21 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
             line.includes(`共${cluster.triggerDates!.length}个日辰`),
         ),
     );
+    if (cluster.key.includes(':day:void-fill:')) {
+      assert.ok(
+        !promptDateLines.some((line) => line.includes(`日干支关系：${firstDate.relation}`)),
+        '本命空亡填实保留年份数量，不逐日展开日期清单',
+      );
+      continue;
+    }
+    const datesByGanzhi = new Map<string, string[]>();
+    for (const fact of cluster.triggerDates!) {
+      const dates = datesByGanzhi.get(fact.ganzhi!) ?? [];
+      dates.push(fact.date);
+      datesByGanzhi.set(fact.ganzhi!, dates);
+    }
+    const entries = [...datesByGanzhi].map(([ganzhi, dates]) => `${ganzhi}：${dates.join('、')}`);
+    const expectedDateLine = `  可复核日期：${entries.join('；')}；日干支关系：${firstDate.relation}`;
     assert.ok(promptDateLines.includes(expectedDateLine), '同一日辰事件簇应保留完整干支分组与日期');
     assert.equal(
       expectedDateLine.split(`日干支关系：${firstDate.relation}`).length - 1,
@@ -786,6 +810,7 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
   assert.doesNotMatch(prompt, /交节日前后是否出现阶段性决策、迁动或环境变化/);
   assert.doesNotMatch(prompt, /指定日期窗口引动本命/u);
   assert.doesNotMatch(prompt, /至2027-12-31关键动应日/u);
+  assert.doesNotMatch(prompt, /日干支关系：本命空亡填实/u);
 
   // 3. 严禁泄漏工程术语与内部层位键名
   assert.doesNotMatch(prompt, /ownerFactKeys/);
@@ -803,6 +828,63 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
   // 4. 严禁出现无古籍依据的数字总分与成功率
   assert.doesNotMatch(prompt, /综合评分\s*\d+/);
   assert.doesNotMatch(prompt, /成功率\s*\d+%/);
+});
+
+test('奇门终身局提示词将年支空亡填实保留为事实并折叠日级日期', () => {
+  const { data, prompt } = generateQimenLifetimePrompt(
+    {
+      birthDateTime: '1990-05-15T14:30:00',
+      timeZoneId: 'Asia/Shanghai',
+      periodRange: { startDate: '2026-01-01', endDate: '2029-12-31' },
+    },
+    '未来四年的阶段变化',
+  );
+
+  assert.match(prompt, /2028年（戊申）[^\n]*本命空亡地支【申】逢流年填实。/u);
+  assert.match(prompt, /2029年（己酉）[^\n]*本命空亡地支【酉】逢流年填实。/u);
+  assert.doesNotMatch(prompt, /潜藏势能全面激活/u);
+  assert.doesNotMatch(prompt, /日干支关系：本命空亡填实/u);
+
+  const annualVoidFillClusters =
+    data.eventClusters?.filter(
+      (cluster) => cluster.timeSpan === '2028年（戊申）' || cluster.timeSpan === '2029年（己酉）',
+    ) ?? [];
+  assert.equal(annualVoidFillClusters.length, 2);
+  assert.ok(
+    annualVoidFillClusters.every(
+      (cluster) =>
+        cluster.triggerFact.includes('本命空亡地支') &&
+        !cluster.triggerFact.includes('潜藏势能全面激活'),
+    ),
+  );
+
+  const dailyVoidFillClusters =
+    data.eventClusters?.filter((cluster) => cluster.key.includes(':day:void-fill:')) ?? [];
+  assert.ok(dailyVoidFillClusters.length);
+  const dailyVoidFillDates = [
+    ...new Set(
+      dailyVoidFillClusters.flatMap((cluster) =>
+        (cluster.triggerDates ?? []).map((fact) => fact.date),
+      ),
+    ),
+  ].sort();
+  assert.ok(
+    prompt.includes(
+      `日级空亡填实条件：日支逢本命旬空地支${data.baseChart.voidBranches?.join('、')}；核验范围${data.input.periodRange?.startDate ?? dailyVoidFillDates[0]}至${data.input.periodRange?.endDate ?? dailyVoidFillDates.at(-1)}，各年符合条件的日数见下。`,
+    ),
+  );
+  for (const cluster of dailyVoidFillClusters) {
+    assert.ok(cluster.triggerDates?.length);
+    assert.ok(
+      prompt
+        .split('\n')
+        .some(
+          (line) =>
+            line.startsWith(cluster.timeSpan) &&
+            line.includes(`共${cluster.triggerDates!.length}个日辰`),
+        ),
+    );
+  }
 });
 
 test('奇门终身局阶段只引用本命格局名称，完整条件保留在基础盘', () => {

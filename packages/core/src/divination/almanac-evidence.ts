@@ -1168,9 +1168,13 @@ function formatCandidateForPrompt(item: AlmanacCandidateEvidence): string {
   const directionGods = item.traditionalFacts
     .filter((fact) => fact.kind === '全年方位神')
     .map((fact) => `${fact.name}${fact.branch}${fact.direction}`);
+  const gods = item.godFacts.map((fact) =>
+    fact.classification === '未分级' ? fact.name : `${fact.name}（${fact.classification}）`,
+  );
   const usableHours = item.usableHours.map(
     (hour) => `${hour.name}${hour.range}（${hour.ganzhi}，${hour.twelveStar}）`,
   );
+  const hourResult = item.decisionFact.steps.find((step) => step.stage === '可用时辰')?.result;
   return [
     `${item.date} ${item.status}：${item.calendarFact.promptText}`,
     `原始宜项：${item.rawTabooFact.recommends.join('、') || '未列'}；原始忌项：${item.rawTabooFact.avoids.join('、') || '未列'}`,
@@ -1181,9 +1185,10 @@ function formatCandidateForPrompt(item: AlmanacCandidateEvidence): string {
       ? ['当前事项宜忌并存，具体安排按所做步骤与原始列项核对']
       : []),
     ...(participantRelations.length ? [`参与人关系：${participantRelations.join('；')}`] : []),
+    ...(gods.length ? [`值日神煞：${gods.join('、')}`] : []),
     ...(traditional.length ? [`传统资料：${traditional.join('、')}`] : []),
     ...(directionGods.length ? [`岁支方位：${directionGods.join('、')}`] : []),
-    ...(usableHours.length ? [`候选时辰：${usableHours.join('、')}`] : []),
+    `候选时辰：${usableHours.join('、') || hourResult || '未提供逐时资料'}`,
     `中国标准时间正午月相：${item.moonPhaseFact.eightPhaseName}`,
   ].join('；');
 }
@@ -1707,11 +1712,22 @@ export function analyzeAlmanacEvidence(data: AlmanacData): AlmanacEvidenceAnalys
     },
   ];
   const evidence: PromptEvidenceBundle = { title: '黄历择日透明约束与候选证据', items };
+  const timePreferences = data.timePreferences ?? [];
+  const preferenceTexts = [
+    ...(data.weekendPreference === 'prefer'
+      ? ['同一候选等级内周末优先']
+      : data.weekendPreference === 'avoid'
+        ? ['同一候选等级内工作日优先']
+        : []),
+    ...(timePreferences.includes('work-hours') ? ['候选时辰限巳、午、未、申时'] : []),
+    ...(timePreferences.includes('morning') ? ['上午时辰优先'] : []),
+    ...(timePreferences.includes('afternoon') ? ['下午时辰优先'] : []),
+  ];
   const promptText = [
     '【传统依据】',
-    '《钦定协纪辨方书》的宜忌、四离四绝事项规则，结合建除值日、十二神、二十八宿、九星、彭祖百忌与岁支方位资料。',
+    '黄历原始宜忌与《钦定协纪辨方书》的四离四绝事项规则，结合建除值日、十二神、值日神煞、二十八宿、九星、彭祖百忌与岁支方位资料。',
     '【择日事项】',
-    `${data.topicLabel}；日期范围${data.startDate}至${data.endDate}。`,
+    `${data.topicLabel}；日期范围${data.startDate}至${data.endDate}${preferenceTexts.length ? `；排序与时段偏好：${preferenceTexts.join('、')}` : ''}。`,
     '【候选日期】',
     ...(candidates.length
       ? candidates.map(formatCandidateForPrompt)

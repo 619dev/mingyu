@@ -11,18 +11,18 @@ export function buildEnhancedAstrolabeSection(data: AstrolabeData): MingluAstrol
     name: p.name,
     label: p.label,
     sign: p.sign,
-    house: p.house,
+    house: p.house > 0 ? p.house : undefined,
     degree: p.degree,
     minute: p.minute,
     formatted: p.formatted,
-    isRetrograde: p.retrograde,
+    // 衍生点没有黄经日运动时，不把来源层的默认 false 解释成顺行。
+    isRetrograde: p.longitudeSpeed === undefined ? undefined : p.retrograde,
   }));
 
   const angles = data.angles.map((a) => ({
     name: a.name,
     label: a.label,
     sign: a.sign,
-    house: a.house,
     degree: a.degree,
     minute: a.minute,
     formatted: a.formatted,

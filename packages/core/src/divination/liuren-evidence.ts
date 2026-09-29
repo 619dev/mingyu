@@ -5,7 +5,6 @@ import type {
   LiurenOrdinaryTransmissionStage,
   LiurenTransmission,
 } from '../types/divination';
-import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import { getBranchWuxing, getStemWuxing, isKe, isSheng } from '../ganzhi';
 import {
@@ -704,7 +703,7 @@ function buildTimingFacts(
       matcher: (text) => text.startsWith('一级发用：'),
       computed: initial.isVoid
         ? `一级发用：初传${initial.branch}空亡，以出空、填实、冲实或条件落实为应期触发`
-        : `一级发用：初传${initial.branch}不空，为当前起始信号`,
+        : `一级发用：先看初传${initial.branch}不空，按月令旺衰、日支关系和事项类神核对发端条件`,
       sources: ['初传地支与日柱旬空核验'],
     },
     {
@@ -739,7 +738,9 @@ function buildTimingFacts(
       sourceStatus: rawText ? '原结果提供' : '由盘面补齐',
       ...(rawText ? { rawText } : {}),
       promptText:
-        definition.type === '期限边界' ? definition.computed : (rawText ?? definition.computed),
+        definition.type === '期限边界' || (definition.type === '初传状态' && !initial.isVoid)
+          ? definition.computed
+          : (rawText ?? definition.computed),
       sources: rawText
         ? ['当前大六壬结果已保存的应期条件', ...definition.sources]
         : definition.sources,
@@ -1466,15 +1467,7 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
     limitation: FOCUS_SUMMARY_LIMITATION,
   };
   const { timingFacts, normalizedInput: timingEvidence } = buildTimingFacts(data, transmissions);
-  const timingConditions = [
-    transmissions[0].isVoid
-      ? `初传${initial.branch}空亡，先等待填实、冲实或现实条件落实再验`
-      : `初传${initial.branch}不空，可作为当前起始信号，但仍须现实事件验证`,
-    `三传顺序${transmissions.map((item) => `${item.stage}${item.branch}`).join(' → ')}只表示阶段推进`,
-    `月支${data.ganzhi.month.slice(-1)}与日支${data.ganzhi.day.slice(-1)}用于核验旺衰、同支、冲合及空亡触发`,
-    '未给期限时不换算唯一日期，不以神煞或课体单项指定应期',
-    ...timingEvidence,
-  ];
+  const timingConditions = timingFacts.map((item) => item.promptText);
   const classicalRuleKeys = traditionalFacts
     .filter((item) => item.kind === '经典取传规则')
     .map((item) => item.key);
@@ -1697,9 +1690,7 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
           {
             level: '应期' as const,
             title: '应期触发证据',
-            detail: timingFacts
-              .map((fact) => `${fact.promptText}（${fact.sourceStatus}；边界：${fact.limitation}）`)
-              .join('；'),
+            detail: timingFacts.map((fact) => fact.promptText).join('；'),
             source: Array.from(new Set(timingFacts.flatMap((fact) => fact.sources))).join('、'),
             tags: ['应期', '触发条件'],
           },
@@ -1729,17 +1720,19 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
   const evidence: PromptEvidenceBundle = { title: '大六壬四课取传与三传推进结构化证据', items };
   const promptText = [
     '【大六壬四课取传与三传推进结构化证据】',
-    ...formatPromptEvidenceBundle(evidence),
-    `取传规则事实：${transmissionRuleFact.promptText}；边界：${transmissionRuleFact.limitation}`,
-    `普通宗门裁决：${ordinaryTransmissionAdjudicationFact.promptText}；候选${ordinaryTransmissionAdjudicationFact.candidateFacts.map((item) => item.promptText).join('；') || '无'}；边界：${ordinaryTransmissionAdjudicationFact.limitation}`,
+    `起盘事实：${calculationFacts.join('；')}`,
+    `天地盘：${plateFact.status === '完整' ? plateFacts.join('；') : '逐位资料待核'}`,
+    `四课取传与初传发用：${lessons.map((item) => item.promptText).join('；')}`,
+    `取传规则事实：${transmissionRuleFact.rule ? transmissionRuleFact.promptText : `初传${initial.branch}乘${initial.god}，取传规则名待核`}`,
+    `普通宗门裁决：${ordinaryTransmissionAdjudicationFact.status === '缺少轨迹' ? '普通宗门候选与裁决轨迹待核' : ordinaryTransmissionAdjudicationFact.promptText}`,
+    `三传：${transmissions.map((item) => item.promptText).join('；')}`,
     `推进关系：${transitionFacts.map((item) => item.promptText).join('；')}`,
-    `反证限制：${counterSummaryFact.promptText}${counterEvidenceFacts.length ? `；明细${counterEvidenceFacts.map((item) => item.promptText).join('；')}` : ''}；边界：${counterSummaryFact.limitation}`,
-    `触发条件：${timingFacts.map((item) => `${item.promptText}（${item.sourceStatus}）`).join('；')}`,
-    `类神焦点状态：${focusSummaryFact.promptText}；边界：${focusSummaryFact.limitation}`,
-    '应期边界：未给期限时不换算唯一日期，不以神煞、课体或单项关系指定应期。',
-    `计算链：${calculationChain.join(' → ')}`,
-    `证据汇总：${summaryFact.promptText}。`,
-    `解释限制：${limitations.join('；')}。`,
+    ...(counterEvidenceFacts.length
+      ? [`盘内限制：${counterEvidenceFacts.map((item) => item.promptText).join('；')}`]
+      : []),
+    `应期触发证据：${timingConditions.join('；')}`,
+    `类神焦点状态：${focusFacts.length ? focusFacts.map((item) => `${item.target}${item.role}：${item.evidence.join('、')}`).join('；') : '事项类神按所问事项核对'}`,
+    '【任务】结合所问事项核对四课取传、三传推进、类神位置与应期触发条件，给出有盘面依据的条件化判断。',
   ].join('\n');
   return {
     key: 'liuren:evidence',

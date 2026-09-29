@@ -290,7 +290,8 @@ test('梅花旧结果缺少逐爻或互卦阶段时应明确标记缺口且不�
   assert.deepEqual(incompleteResult.stageCoverageFact.incompleteStages, ['result']);
   assert.equal(resultStage?.status, '卦象资料缺失');
   assert.equal(resultStage?.hexagramFactKey, null);
-  assert.match(resultStage?.promptText ?? '', /不得补造卦名、卦符或上下经卦/);
+  assert.match(resultStage?.promptText ?? '', /卦象结构资料未记录/);
+  assert.doesNotMatch(resultStage?.promptText ?? '', /不得补造/);
 
   const duplicateYao = analyzeMeihuaEvidence({
     ...data,

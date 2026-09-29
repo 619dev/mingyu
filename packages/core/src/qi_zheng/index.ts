@@ -1752,7 +1752,7 @@ function resolveQizhengFlowCivilInput(natal: QizhengInput):
         second: 0,
       }),
       timestampNote:
-        natal.flowHour === undefined
+        natal.flowHour === undefined && natal.flowMinute === undefined
           ? `流曜周期按${natal.flowYear}年${natal.flowMonth}月${natal.flowDay}日扫描；落宫取当日 12:00`
           : `流曜周期按${natal.flowYear}年${natal.flowMonth}月${natal.flowDay}日扫描；落宫取 ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
     };

@@ -73,6 +73,22 @@ test('三元九运：2024 应落入下元九运区间附近可复现运表', () 
   assert.match(period.label, /运/);
 });
 
+test('九运周期跨公元元年时使用无公元0年的民用纪年', () => {
+  const period = resolveXuanKongPeriod(1);
+  assert.equal(period.startYear, -17);
+  assert.equal(period.endYear, 3);
+  assert.equal(period.label, '中元6运（公元前17年—公元3年）');
+  assert.equal(resolveXuanKongPeriod(3).label, period.label);
+  assert.deepEqual(
+    [
+      resolveXuanKongPeriod(4).startYear,
+      resolveXuanKongPeriod(4).endYear,
+      resolveXuanKongPeriod(4).yun,
+    ],
+    [4, 23, 7],
+  );
+});
+
 test('飞星入中：方向由调用方明确提供，不再按星数奇偶猜测', () => {
   const oneForward = flyStars(1, '顺飞');
   const oneReverse = flyStars(1, '逆飞');

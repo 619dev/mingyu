@@ -694,6 +694,35 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
   );
 
   const eventHeaders = events.map(lifetimeEventHeader);
+  const dailyVoidFillEvents = events.filter(
+    (event) => text(event.key)?.includes(':day:void-fill:') && records(event.triggerDates).length,
+  );
+  if (dailyVoidFillEvents.length) {
+    const branches = texts(baseChart.voidBranches);
+    const dates = unique(
+      dailyVoidFillEvents.flatMap((event) =>
+        records(event.triggerDates)
+          .map((item) => text(item.date))
+          .filter((date): date is string => Boolean(date)),
+      ),
+    ).sort();
+    const range = record(input.periodRange);
+    if (branches.length && dates.length) {
+      facts.push(
+        ...collect([
+          fact(
+            'qimen-lifetime.event.void-fill-rule',
+            '日级空亡填实条件：',
+            [
+              `日支逢本命旬空地支${branches.join('、')}`,
+              `核验范围${text(range?.startDate) ?? dates[0]}至${text(range?.endDate) ?? dates.at(-1)}`,
+            ],
+            { scope: eventSectionScope, unit: 'line' },
+          ),
+        ]),
+      );
+    }
+  }
   facts.push(
     ...collect(
       events.flatMap((event, index) => {
@@ -713,7 +742,9 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
           : '';
         const stageFact = stageIndices ? `涉及阶段${stageIndices}` : undefined;
         const triggerDates = records(event.triggerDates);
-        const triggerDateLines = formatLifetimeTriggerLines(triggerDates, dailyCount > 0);
+        const triggerDateLines = text(event.key)?.includes(':day:void-fill:')
+          ? []
+          : formatLifetimeTriggerLines(triggerDates, dailyCount > 0);
         return [
           fact(
             `qimen-lifetime.event.${index}.header`,

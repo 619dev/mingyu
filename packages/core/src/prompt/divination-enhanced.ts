@@ -413,6 +413,29 @@ function formatLiuyaoInfo(
 
   const fanfuRelationText = formatLiuyaoFanFuRelation(data);
   const evidenceAnalysis = analyzeLiuyaoEvidence(data, { topic });
+  const lineCoverage = evidenceAnalysis.lineCoverageFact;
+  const coverageNotes = [
+    lineCoverage.status !== '完整'
+      ? [
+          lineCoverage.actualPositions.length
+            ? `逐爻资料已列第${lineCoverage.actualPositions.join('、')}爻`
+            : '逐爻资料未列',
+          lineCoverage.missingPositions.length
+            ? `缺少第${lineCoverage.missingPositions.join('、')}爻`
+            : '',
+          lineCoverage.duplicatePositions.length
+            ? `第${lineCoverage.duplicatePositions.join('、')}爻重复`
+            : '',
+          lineCoverage.invalidPositions.length
+            ? `越界爻位${lineCoverage.invalidPositions.join('、')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('；')
+      : '',
+    evidenceAnalysis.hiddenSpiritCoverageFact.status === '字段缺失' ? '伏神记录未提供' : '',
+  ].filter(Boolean);
+  const coverageText = coverageNotes.length ? `资料覆盖：${coverageNotes.join('；')}。` : '';
   const selectedUsefulGod = evidenceAnalysis.candidates.find(
     (item) => item.key === evidenceAnalysis.selectionFact.selectedCandidateKey,
   );
@@ -446,6 +469,7 @@ function formatLiuyaoInfo(
     '占法：六爻',
     ...(data.generation?.method === 'yarrow' ? evidenceAnalysis.generationFacts : []),
     `核心结构：主卦${data.originalName}${data.palace?.name ? `（${data.palace.name}宫）` : ''}；变卦${data.changingYaos.length ? data.changedName || '未列' : '无'}；互卦${data.interName || '无'}${data.specialPattern ? `；卦式${data.specialPattern}${formatLiuyaoSpecialAdvice(data) ? `：${formatLiuyaoSpecialAdvice(data)}` : ''}` : ''}`,
+    coverageText,
     data.palaceStage ? `八宫卦位：${data.palaceStage}` : '',
     data.guaShen?.branch
       ? `卦身：在【${data.guaShen.branch}】，居第${data.guaShen.position}爻${data.guaShen.sixRelative ? `，六亲${data.guaShen.sixRelative}` : ''}`
@@ -465,7 +489,7 @@ function formatLiuyaoInfo(
       : '',
     data.yaosDetail?.length
       ? [
-          '六爻全表：',
+          lineCoverage.status === '完整' ? '六爻全表：' : '六爻逐爻资料（覆盖不完整）：',
           ...data.yaosDetail.map((item) => {
             const god = data.sixGods?.[item.position - 1] || '';
             const lineFacts = formatLiuyaoLineFacts(item, data);
@@ -1045,7 +1069,7 @@ function formatLiurenInfo(data: LiurenData) {
     guaTiSection,
     guaTiFacts.length ? `课体判据：\n${guaTiFacts.join('\n')}` : '',
     analysis.transmissions[0]?.isVoid
-      ? '毕法断诀：【旬在空亡发用虚】，发端有声无实，谋事防中途落空'
+      ? '毕法断诀：【旬在空亡发用虚】；初传空亡，结合填实、三传及所问期限判断发端条件'
       : '',
     shenShaText ? `神煞：${shenShaText}` : '',
     shenShaAppendix ? `神煞附录：${shenShaAppendix}` : '',

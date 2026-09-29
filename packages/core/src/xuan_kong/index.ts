@@ -100,6 +100,7 @@ export interface XuanKongPeriod {
   yuan: '上元' | '中元' | '下元';
   yun: number;
   yunStar: number;
+  /** 民用年区间；负数表示公元前年份的负值，正数表示公元年，不使用0。 */
   startYear: number;
   endYear: number;
   label: string;
@@ -341,14 +342,28 @@ function normalizeYear(year: number): number {
   return value;
 }
 
+function toCivilYear(year: number): number {
+  return year <= 0 ? year - 1 : year;
+}
+
+function formatCivilYear(year: number): string {
+  return year < 0 ? `公元前${-year}年` : `公元${year}年`;
+}
+
 export function resolveXuanKongPeriod(year: number): XuanKongPeriod {
   const y = normalizeYear(year);
   const offset = y - PERIOD_BASE_YEAR;
   const cycleIndex = ((Math.floor(offset / 20) % 9) + 9) % 9;
   const yun = cycleIndex + 1;
-  const startYear = PERIOD_BASE_YEAR + Math.floor(offset / 20) * 20;
-  const endYear = startYear + 19;
+  const astronomicalStartYear = PERIOD_BASE_YEAR + Math.floor(offset / 20) * 20;
+  const astronomicalEndYear = astronomicalStartYear + 19;
+  const startYear = toCivilYear(astronomicalStartYear);
+  const endYear = toCivilYear(astronomicalEndYear);
   const yuan: XuanKongPeriod['yuan'] = yun <= 3 ? '上元' : yun <= 6 ? '中元' : '下元';
+  const periodRange =
+    startYear < 0 || endYear < 0
+      ? `${formatCivilYear(startYear)}—${formatCivilYear(endYear)}`
+      : `${startYear}-${endYear}`;
   return {
     year: y,
     yuan,
@@ -356,7 +371,7 @@ export function resolveXuanKongPeriod(year: number): XuanKongPeriod {
     yunStar: yun,
     startYear,
     endYear,
-    label: `${yuan}${yun}运（${startYear}-${endYear}）`,
+    label: `${yuan}${yun}运（${periodRange}）`,
   };
 }
 

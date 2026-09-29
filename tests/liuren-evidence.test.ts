@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeLiurenEvidence, generateLiuren } from 'mingyu-core/divination/liuren';
+import {
+  analyzeLiurenEvidence,
+  generateLiuren,
+} from '../packages/core/src/divination/algorithms/liuren';
 import {
   describeRelation,
   TIANJIANG_ATTRIBUTES,
@@ -216,8 +219,8 @@ test('大六壬旧结果缺少取传名、应期与焦点时应明确标记来�
   assert.equal(evidence.focusFacts.length, 0);
   assert.equal(evidence.focusSummaryFact.status, '缺少焦点');
   assert.match(evidence.focusSummaryFact.promptText, /不得自行把日支、天将或神煞固定当作用神/);
-  assert.match(evidence.promptText, /由盘面补齐/);
-  assert.match(evidence.promptText, /类神焦点资料缺失/);
+  assert.match(evidence.promptText, /事项类神按所问事项核对/);
+  assert.doesNotMatch(evidence.promptText, /由盘面补齐|原结果提供/);
 });
 
 test('大六壬旧结果只有最终取传名时不得冒充普通宗门竞争可重建', () => {
@@ -233,12 +236,31 @@ test('大六壬旧结果只有最终取传名时不得冒充普通宗门竞争�
   assert.equal(evidence.calculationSteps[3]?.status, '资料不足');
 });
 
-test('大六壬证据应保留类神未选定限制，不把日支或神煞固定当作用神', () => {
+test('大六壬结构化边界保留在字段中，提示词按事项核对类神与应期', () => {
   const evidence = analyzeLiurenEvidence(generateLiuren(fixedDate));
 
-  assert.match(evidence.promptText, /未按具体问题选定类神/);
-  assert.match(evidence.promptText, /不得把日支或任一神煞固定当作用神/);
-  assert.match(evidence.promptText, /未给期限时不换算唯一日期/);
+  assert.match(evidence.focusSummaryFact.limitation, /缺少焦点时不得/);
+  assert.match(evidence.promptText, /类神焦点状态：/);
+  assert.match(evidence.promptText, /应期触发证据：/);
+  assert.doesNotMatch(evidence.promptText, /边界：|不得|不换算|原结果提供|由盘面补齐/);
+  assert.deepEqual(
+    evidence.timingConditions,
+    evidence.timingFacts.map((item) => item.promptText),
+  );
+  const timingItem = evidence.evidence.items.find((item) => item.title === '应期触发证据');
+  assert.ok(timingItem);
+  assert.doesNotMatch(timingItem.detail, /原结果提供|由盘面补齐|边界：/);
+});
+
+test('大六壬资料有缺口且未列反证时提示词不宣称盘内未见限制', () => {
+  const data = generateLiuren(new Date('2026-08-14T10:30:00+08:00'));
+  data.heavenlyPlate = data.heavenlyPlate.slice(0, 11);
+  const evidence = analyzeLiurenEvidence(data);
+
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+  assert.equal(evidence.counterSummaryFact.status, '未见明确反证');
+  assert.equal(evidence.counterEvidenceFacts.length, 0);
+  assert.doesNotMatch(evidence.promptText, /盘内限制：|当前课传未见明确/);
 });
 
 test('大六壬起盘链、天地盘、课体神煞与天将属性应进入统一证据条目', () => {

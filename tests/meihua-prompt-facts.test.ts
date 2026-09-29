@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateMeihua } from '@core/divination/algorithms/meihua';
+import { buildDivinationPrompt as buildCoreDivinationPrompt } from '@core/prompt/divination';
 import { formatMeihuaFacts } from '@core/prompt/meihua-facts';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 import { ZHOUYI_HEXAGRAMS_TEXT } from '@core/classics/zhouyi';
@@ -112,16 +113,62 @@ test('梅花字占保留原字及分笔，方位取象使用中文资料', () =>
   assert.doesNotMatch(direction.evidenceAnalysis?.promptText ?? '', /所见物类earth|方位north/u);
 });
 
-test('梅花完整提示词保留主互变逐阶段体用旺衰与制约条件', () => {
+test('梅花在线提示词保留六个体用角色的月令关系且阶段不重复状态分类', () => {
   const data = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
-    method: 'time',
+    method: 'number',
+    number: 42,
   });
-  const prompt = buildDivinationPrompt('meihua', '请做整体解读。', data);
+  const prompt = buildCoreDivinationPrompt({
+    method: 'meihua',
+    data,
+    question: '请做整体解读。',
+    currentTime: new Date('2026-05-19T10:30:00+08:00'),
+  });
   assert.ok(data.evidenceAnalysis?.stages.length);
   for (const stage of data.evidenceAnalysis.stages) {
     assert.ok(prompt.includes(stage.promptText));
+    assert.doesNotMatch(stage.promptText, /月令|支持：|限制：/u);
   }
+  const stageSection = prompt.split('体用阶段：\n')[1]?.split('\n起卦法：')[0] ?? '';
+  assert.ok(stageSection);
+  assert.doesNotMatch(stageSection, /月令|支持：|限制：/u);
+
+  const monthFacts = formatMeihuaFacts(data).filter((fact) => fact.startsWith('月令作用：'));
+  assert.equal(monthFacts.length, 6);
+  for (const fact of monthFacts) assert.equal(prompt.split(fact).length - 1, 1, fact);
+
+  const origin = data.evidenceAnalysis.stages.find((stage) => stage.stage === 'origin');
+  assert.ok(origin?.support.includes(`体卦得月令${origin.ti.seasonState}`));
+  assert.ok(origin?.constraints.includes(`用卦月令${origin.yong.seasonState}`));
+  assert.ok(origin?.constraints.includes('体卦存在泄耗'));
   assert.doesNotMatch(prompt, /ownerFactKeys|limitationFacts|sourceStatus/);
+});
+
+test('梅花在线提示词对缺少卦象结构的阶段使用中性事实', () => {
+  const data = structuredClone(
+    generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
+      method: 'number',
+      number: 42,
+    }),
+  );
+  delete data.changedHexagram;
+  delete data.evidenceAnalysis;
+
+  const prompt = buildCoreDivinationPrompt({
+    method: 'meihua',
+    data,
+    question: '请做整体解读。',
+    currentTime: new Date('2026-05-19T10:30:00+08:00'),
+  });
+  const resultStage =
+    prompt
+      .split('体用阶段：\n')[1]
+      ?.split('\n起卦法：')[0]
+      .split('\n')
+      .find((line) => line.startsWith('结果')) ?? '';
+
+  assert.match(resultStage, /卦象结构资料未记录/u);
+  assert.doesNotMatch(resultStage, /不得|禁止|不要|不能/u);
 });
 
 test('梅花逐爻体用只补充归属与动爻，不重复主卦阴阳爻象', () => {

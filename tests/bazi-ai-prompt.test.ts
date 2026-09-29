@@ -165,6 +165,22 @@ test('普通成格提示词保留结论并省略重复的格局条件', () => {
   assert.doesNotMatch(prompt, /【格局条件】|取格分层候选：正印格|候选取用：/);
 });
 
+test('单一格局的在线任务只核对本盘已列成败事实', () => {
+  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const prompts = [
+    buildBaziPrompt({ result, fortuneScope: 'natal' }),
+    buildBaziPrompt({ result, fortuneScope: 'full' }),
+    buildBaziPromptForResult({ result, fortuneScope: 'natal' }),
+  ];
+
+  for (const prompt of prompts) {
+    assert.match(prompt, /格局: 正印格/);
+    assert.match(prompt, /当前成败判定：成格/);
+    assert.match(prompt, /已列取格依据与格局成败/);
+    assert.doesNotMatch(prompt, /候选格局(?:逐核|分别核对)/);
+  }
+});
+
 test('财格身承财条件已在成败理由和旺衰事实呈现时不另起条件段', () => {
   const result = createBaziResult({ year: 1990, month: 7, day: 7, timeIndex: 6 });
   const conditions = formatBaziPatternConditions(result);

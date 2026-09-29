@@ -487,7 +487,7 @@ export interface MingluAstrolabePointData {
   name: string;
   label: string;
   sign: string;
-  house: number;
+  house?: number;
   degree: number;
   minute: number;
   formatted: string;

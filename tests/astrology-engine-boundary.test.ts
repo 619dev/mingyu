@@ -11,6 +11,8 @@ import {
   getApparentPosition,
   toJulianDate,
 } from '../packages/core/src/astrology/engine';
+import { generateAstrolabe } from '../packages/core/src/divination/algorithms/astrolabe';
+import { formatAstrolabeForPrompt } from '../packages/core/src/prompt/astrolabe';
 
 test('行运入口拒绝无效时间、黄经、强度及未知星体相位', () => {
   const points = [{ name: '本命点', longitude: 0, type: 'planet' as const }];
@@ -578,4 +580,52 @@ test('本命格局只由十大星体及已列出的组成相位支持', () => {
     calculateChart(input, { ...options, aspectTypes: [AspectType.Conjunction] }).summary.patterns,
     [],
   );
+});
+
+test('风筝的对冲端不标为焦点，合相替代星体仍分别保留构型', () => {
+  const chart = calculateChart({
+    year: 1993,
+    month: 4,
+    day: 8,
+    hour: 23,
+    minute: 34,
+    timezone: 8,
+    latitude: 1.3521,
+    longitude: 103.8198,
+  });
+  assert.deepEqual(
+    chart.summary.patterns.filter((pattern) => pattern.startsWith('风筝')),
+    ['风筝（火星、水星、海王星、冥王星）', '风筝（火星、水星、冥王星、天王星）'],
+  );
+  assert.ok(chart.summary.patterns.includes('T字刑（火星、海王星、太阳，焦点太阳）'));
+  assert.ok(chart.summary.patterns.includes('T字刑（火星、太阳、天王星，焦点太阳）'));
+  assert.ok(
+    chart.aspects.all.some(
+      (aspect) =>
+        aspect.type === AspectType.Conjunction &&
+        new Set([aspect.body1, aspect.body2]).size === 2 &&
+        ['Uranus', 'Neptune'].includes(aspect.body1) &&
+        ['Uranus', 'Neptune'].includes(aspect.body2),
+    ),
+  );
+
+  const prompt = formatAstrolabeForPrompt(
+    generateAstrolabe({
+      name: '星盘构型样本',
+      gender: '男',
+      year: '1993',
+      month: '4',
+      day: '8',
+      hour: '23',
+      minute: '34',
+      timezone: '8',
+      latitude: '1.3521',
+      longitude: '103.8198',
+    }),
+  );
+  const patternLine = prompt.split('\n').find((line) => line.startsWith('十大星体格局：'));
+  assert.ok(patternLine);
+  assert.match(patternLine, /风筝（火星、水星、海王星、冥王星）/);
+  assert.match(patternLine, /风筝（火星、水星、冥王星、天王星）/);
+  assert.doesNotMatch(patternLine, /风筝（[^）]*焦点/);
 });

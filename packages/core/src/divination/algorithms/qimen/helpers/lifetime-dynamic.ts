@@ -575,7 +575,7 @@ export function scanLifetimeDynamicEvents(
 
     // 2. 虚实填实检查
     if (baseChart.voidBranches && baseChart.voidBranches.includes(flowYearBranch)) {
-      triggerDescription += `本命空亡地支【${flowYearBranch}】逢流年填实，该宫潜藏势能全面激活。`;
+      triggerDescription += `本命空亡地支【${flowYearBranch}】逢流年填实。`;
       supportEvidence.push(`原局逢空之${basePalace.name}得太岁填实，虚转为实`);
       verificationQuestions.push('此前悬而未决、等待推进的事宜是否在当年取得实质进展？');
     }

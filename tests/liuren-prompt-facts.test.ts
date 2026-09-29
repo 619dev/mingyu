@@ -188,6 +188,47 @@ test('大六壬在线提示词用取传依据和期限条件表达候选取舍',
   }
 });
 
+test('初传不空及空亡古诀只列发端条件，不直接断定现实进展', () => {
+  const nonVoid = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  assert.equal(nonVoid.threeTransmissions[0].isVoid, false);
+  assert.equal(nonVoid.threeTransmissions[0].seasonState, '死');
+  const nonVoidPrompt = buildDivinationPrompt({
+    method: 'liuren',
+    data: nonVoid,
+    question: '问合作进度',
+  });
+  assert.match(nonVoidPrompt, /初传酉不空，按月令旺衰、日支关系和事项类神核对发端条件/);
+  assert.doesNotMatch(nonVoidPrompt, /可直接作为起始信号|为当前起始信号/);
+
+  const recomputed = analyzeLiurenEvidence({ ...nonVoid, timingEvidence: [] });
+  assert.match(recomputed.timingFacts[0].promptText, /按月令旺衰、日支关系和事项类神核对发端条件/);
+  assert.deepEqual(
+    recomputed.timingConditions,
+    recomputed.timingFacts.map((item) => item.promptText),
+  );
+  assert.doesNotMatch(recomputed.promptText, /原结果提供|由盘面补齐|应期边界|不得|不换算/);
+
+  const legacy = structuredClone(nonVoid);
+  legacy.timingEvidence![0] = '一级发用：先看初传酉不空，可直接作为起始信号';
+  const legacyPrompt = buildDivinationPrompt({
+    method: 'liuren',
+    data: legacy,
+    question: '问合作进度',
+  });
+  assert.match(legacyPrompt, /初传酉不空，按月令旺衰、日支关系和事项类神核对发端条件/);
+  assert.doesNotMatch(legacyPrompt, /可直接作为起始信号/);
+
+  const voidData = generateLiuren(new Date('2026-05-02T10:30:00+08:00'));
+  assert.equal(voidData.threeTransmissions[0].isVoid, true);
+  const voidPrompt = buildDivinationPrompt({
+    method: 'liuren',
+    data: voidData,
+    question: '问合作进度',
+  });
+  assert.match(voidPrompt, /毕法断诀：【旬在空亡发用虚】；初传空亡/);
+  assert.doesNotMatch(voidPrompt, /发端有声无实|谋事防中途落空/);
+});
+
 test('大六壬未在四课行标明的空亡反证仍保留', () => {
   const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
   data.xunKong = [...new Set([...(data.xunKong ?? []), data.fourLessons[0].upper])];

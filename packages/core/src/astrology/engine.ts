@@ -589,7 +589,10 @@ function findPatternsFromBodies(
   return patterns.map((pattern) => {
     const kind = PATTERN_KIND_LABELS[pattern.kind] ?? pattern.kind;
     const members = pattern.bodies.map((item) => BODY_LABELS[item] ?? item).join('、');
-    const apex = pattern.apex ? (BODY_LABELS[pattern.apex] ?? pattern.apex) : '';
+    const apex =
+      pattern.apex && (pattern.kind === 't_square' || pattern.kind === 'yod')
+        ? (BODY_LABELS[pattern.apex] ?? pattern.apex)
+        : '';
     const signIndex = SIGN_NAMES.indexOf(pattern.sign as (typeof SIGN_NAMES)[number]);
     const extra = pattern.sign
       ? `，${signIndex >= 0 ? SIGN_LABELS[signIndex] : pattern.sign}`

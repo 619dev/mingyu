@@ -67,6 +67,20 @@ function formatDailyTriggerDates(items: TriggerDate[]): string[] {
   return [`  可复核日期：${entries.join('；')}；日干支关系：${relations[0]}`];
 }
 
+function formatDailyVoidFillSummary(data: QimenLifetimeData): string {
+  const clusters = (data.eventClusters ?? []).filter((item) =>
+    item.key.includes(':day:void-fill:'),
+  );
+  const branches = data.baseChart.voidBranches ?? [];
+  const dates = [
+    ...new Set(clusters.flatMap((item) => item.triggerDates ?? []).map((item) => item.date)),
+  ].sort();
+  if (branches.length === 0 || dates.length === 0) return '';
+  const startDate = data.input.periodRange?.startDate ?? dates[0]!;
+  const endDate = data.input.periodRange?.endDate ?? dates.at(-1)!;
+  return `日级空亡填实条件：日支逢本命旬空地支${branches.join('、')}；核验范围${startDate}至${endDate}，各年符合条件的日数见下。`;
+}
+
 /**
  * 构建终身局自包含提示词任务书
  */
@@ -272,13 +286,16 @@ export function buildLifetimePrompt(
   // 7. 【周期触发与事件簇】
   if (data.eventClusters && data.eventClusters.length > 0) {
     lines.push(`【周期触发与事件簇】`);
+    const dailyVoidFillSummary = formatDailyVoidFillSummary(data);
+    if (dailyVoidFillSummary) lines.push(dailyVoidFillSummary);
     for (const ec of data.eventClusters) {
       const triggerDates = ec.triggerDates ?? [];
       const isDailyRelation = ec.key.includes(':day:') && triggerDates.length > 0;
+      const isDailyVoidFill = isDailyRelation && ec.key.includes(':day:void-fill:');
       lines.push(
         `${ec.timeSpan}${ec.stageIndices?.length ? `（涉及阶段${ec.stageIndices.map((index) => index + 1).join('、')}）` : ec.stageIndex === undefined ? '（阶段表范围外）' : ''} ${isDailyRelation ? `共${triggerDates.length}个日辰` : ec.triggerFact}（节奏：${ec.rhythm}）`,
       );
-      if (triggerDates.length > 0) {
+      if (triggerDates.length > 0 && !isDailyVoidFill) {
         lines.push(
           ...(isDailyRelation
             ? formatDailyTriggerDates(triggerDates)

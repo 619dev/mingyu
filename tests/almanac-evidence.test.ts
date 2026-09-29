@@ -4,7 +4,7 @@ import {
   analyzeAlmanacEvidence,
   conditionAlmanacTraditionalText,
   generateAlmanacSelection,
-} from 'mingyu-core/divination/almanac';
+} from '../packages/core/src/divination/algorithms/almanac.ts';
 
 test('原始宜项未命中当前事项时列为条件候选并保留证据', () => {
   const result = generateAlmanacSelection({
@@ -258,6 +258,28 @@ test('工作时段偏好下无可用时辰的日期不得仍列为可用候选�
   }
 });
 
+test('在线提示词保留时段偏好、无可用时辰原因和值日神煞事实', () => {
+  const result = generateAlmanacSelection({
+    topic: 'renovation',
+    startDate: '2026-03-03',
+    endDate: '2026-03-03',
+    timePreferences: ['work-hours', 'morning'],
+  });
+  const candidate = result.evidenceAnalysis?.candidates[0];
+  const prompt = result.evidenceAnalysis?.promptText ?? '';
+
+  assert.ok(candidate);
+  assert.equal(candidate.status, '条件候选');
+  assert.equal(candidate.usableHours.length, 0);
+  assert.match(
+    prompt,
+    /排序与时段偏好：同一候选等级内工作日优先、候选时辰限巳、午、未、申时、上午时辰优先/,
+  );
+  assert.match(prompt, /2026-03-03 条件候选：[\s\S]*值日神煞：[^；]+（(?:吉神|凶神)）/);
+  assert.match(prompt, /候选时辰：未筛出无强冲突时辰/);
+  assert.doesNotMatch(prompt, /2026-03-03 可用候选/);
+});
+
 test('缺少逐时资料时应标记未提供，不误报无可用时辰', () => {
   const data = generateAlmanacSelection({
     topic: 'travel',
@@ -274,6 +296,8 @@ test('缺少逐时资料时应标记未提供，不误报无可用时辰', () =>
   );
   assert.ok(candidate.limitations.includes('未提供逐时资料'));
   assert.ok(!evidence.counterEvidenceFacts.some((fact) => fact.type === '无可用时辰'));
+  assert.match(evidence.promptText, /候选时辰：未提供逐时资料/);
+  assert.doesNotMatch(evidence.promptText, /排序与时段偏好：/);
 });
 
 test('择日证据应保留日课、宿曜、九星、百忌、方位神与逐时时课来源', () => {

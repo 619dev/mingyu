@@ -20,6 +20,24 @@ test('未提供性别时流曜提示词只要求使用已生成的目标时段�
   assert.doesNotMatch(result.prompt, /目标时段结合流曜、小限与太岁分析/);
 });
 
+test('只指定流分时，流曜采样时刻与提示词时间一致', () => {
+  const result = generateQizheng({
+    year: 1993,
+    month: 4,
+    day: 8,
+    hour: 23,
+    minute: 34,
+    timezone: 8,
+    flowYear: 2022,
+    flowMonth: 6,
+    flowDay: 15,
+    flowMinute: 37,
+  });
+  assert.equal(result.flowingStars?.localDateTime, '2022-06-15T12:37:00');
+  assert.match(result.flowingStars?.timestampNote ?? '', /落宫取 12:37/);
+  assert.match(result.prompt, /落宫取 12:37；落宫时刻 2022-06-15T12:37:00/);
+});
+
 test('流曜吊照逐条绑定采样时刻和本命宫位，角距两端来自不同时间盘', () => {
   const result = generateQizheng({
     year: 1993,

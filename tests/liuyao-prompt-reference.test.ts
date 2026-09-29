@@ -67,6 +67,23 @@ test('六爻有实际伏神时保留伏藏位置和飞神资料', () => {
   assert.match(text, /伏于官鬼辰土下/);
 });
 
+test('六爻旧结果缺爻位或伏神字段时提示资料覆盖状态', () => {
+  const completeData = generateLiuyao(new Date('2025-06-18T10:30:00+08:00'), {
+    method: 'manual',
+    yaos: [7, 8, 8, 8, 7, 8],
+  });
+  const incompleteData = structuredClone(completeData);
+  incompleteData.yaosDetail = incompleteData.yaosDetail.slice(0, 5);
+  delete incompleteData.hiddenSpirits;
+
+  const text = formatSourceLiuyaoPrompt('liuyao', incompleteData);
+
+  assert.match(text, /六爻逐爻资料（覆盖不完整）/);
+  assert.match(text, /资料覆盖：逐爻资料已列第1、2、3、4、5爻；缺少第6爻；伏神记录未提供/);
+  assert.doesNotMatch(text, /六爻全表：/);
+  assert.doesNotMatch(text, /伏神0爻/);
+});
+
 test('六爻静卦按实际世应和空爻给出月日生克及冲空对象', () => {
   const data = generateLiuyao(new Date('2026-05-19T10:30:00+08:00'), {
     method: 'manual',

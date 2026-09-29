@@ -11,6 +11,7 @@ import type {
   BirthProfileLocation,
   BirthProfileTimeRange,
 } from 'mingyu-core/profile';
+import { resolveBirthPlace } from 'mingyu-core/location';
 
 export type FrontendBirthSubject = 'primary' | 'partner';
 
@@ -101,6 +102,20 @@ function buildLocation(
   // 仅有地点名称时不创建会被核心地点校验拒绝的半成品 location。
   if (longitude === undefined && latitude === undefined) return undefined;
   if (longitude === undefined) throw new RangeError('出生地点提供纬度时必须同时提供经度。');
+
+  const selectedPlace = name ? resolveBirthPlace(name) : null;
+  if (
+    selectedPlace &&
+    selectedPlace.longitude === longitude &&
+    selectedPlace.latitude === latitude
+  ) {
+    return {
+      regionId: selectedPlace.regionId,
+      ...(fixedBeijing
+        ? { timezone: RANGE_OFFSET_HOURS }
+        : { timeZoneId: FRONTEND_DEFAULT_TIME_ZONE_ID }),
+    };
+  }
 
   return {
     ...(name ? { name } : {}),

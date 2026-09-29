@@ -366,3 +366,13 @@ test('住宅风水无居住人时门向测量参数应执行与八宅一致的�
     assert.throws(() => generateResidentialFengshui(input));
   }
 });
+
+test('住宅跨公元元年的运期在主提示词和结构化证据中使用可读纪年', () => {
+  const result = generateResidentialFengshui({ year: 1, sitMountain: '子' });
+
+  assert.ok(result.xuankong);
+  assert.equal(result.xuankong.period.startYear, -17);
+  assert.equal(result.xuankong.period.endYear, 3);
+  assert.match(result.prompt, /中元6运（公元前17年—公元3年）/);
+  assert.match(result.evidencePromptText, /中元6运（公元前17年—公元3年）/);
+});

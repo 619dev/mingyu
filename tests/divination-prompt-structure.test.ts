@@ -1076,7 +1076,9 @@ test('梅花提示词会保留体用、互卦、变卦与起卦细节', () => {
   assert.match(prompt, /核心结构：主卦火地晋；互卦水山蹇；变卦火水未济/);
   assert.match(prompt, /体用：体卦离（火）；用卦坤（土）；动爻第2爻；体用关系体生用/);
   assert.match(prompt, /互卦：水山蹇；体互坎（水）；用互艮（土）；体互克原体；原体生用互/);
-  assert.match(prompt, /结果火水未济：体卦离火（月令死），用卦坎水（月令旺），关系用克体/);
+  assert.match(prompt, /结果火水未济：体卦离火，用卦坎水，关系用克体/);
+  assert.match(prompt, /月令作用：子月令水克变后体卦离火，变后体卦为死/);
+  assert.match(prompt, /月令作用：变后用卦坎水与子月令水同类，变后用卦为旺/);
   assert.match(prompt, /主卦体用月令条件：主卦体生用，体卦月令死、用卦月令囚/);
   assert.match(prompt, /起卦法：数字起卦法/);
   assert.match(
