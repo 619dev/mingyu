@@ -57,6 +57,21 @@ test('小六壬真太阳时跨民用零点时，农历日按实际东八区日�
   assert.equal(lunarLine(chart), lunarLine(civil));
 });
 
+test('小六壬真太阳时跨节气时，四柱按校正时刻而农历月日按民用时刻', () => {
+  const actual = new Date('2025-06-05T18:00:00+08:00');
+  const corrected = new Date('2025-06-05T17:30:00+08:00');
+  const chart = generateXiaoliuren({ customDate: corrected, termReferenceDate: actual });
+  const correctedClock = generateXiaoliuren({ customDate: corrected });
+  const actualClock = generateXiaoliuren({ customDate: actual });
+
+  assert.deepEqual(chart.ganzhi, correctedClock.ganzhi);
+  assert.equal(correctedClock.ganzhi.month, '辛巳');
+  assert.equal(actualClock.ganzhi.month, '壬午');
+  assert.equal(chart.lunarMonth, actualClock.lunarMonth);
+  assert.equal(chart.lunarDay, actualClock.lunarDay);
+  assert.equal(chart.hourIndex, correctedClock.hourIndex);
+});
+
 test('小六壬：古法二月例、闰月与子时边界保持同一偏移，旧盘沿用通行法', () => {
   const secondMonth = generateXiaoliuren({
     rule: 'duoneng',

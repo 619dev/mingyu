@@ -285,6 +285,18 @@ function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
     .map((role) => `${role.role}${role.gate ?? '门位未定'}`)
     .join('、');
   const guestGateRole = data.conditions.threeGates.roles.find((role) => !role.usedForThreeGate);
+  const fiveGenerals = data.conditions.fiveGenerals;
+  const fiveGeneralsBlockingFacts = [
+    !fiveGenerals.shiJiNoCoverOrHit
+      ? `始击${fiveGenerals.shiJiRelationToTaiyi === '同宫' ? '掩太乙' : '击太乙'}`
+      : undefined,
+    !fiveGenerals.wenChangNoImprisonOrPressure
+      ? `文昌${fiveGenerals.wenChangRelationToTaiyi === '同宫' ? '囚太乙' : '迫太乙'}`
+      : undefined,
+    ...fiveGenerals.relations
+      .filter((item) => item.kind === '主客同宫关')
+      .map((item) => `${item.left}与${item.right}同在第${item.leftPalace}宫`),
+  ].filter((item): item is string => item !== undefined);
   const facts: Array<{
     kind: TaiyiConditionFact['kind'];
     matched: boolean;
@@ -335,7 +347,7 @@ function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
       calculationText: `按${data.conditions.fiveGenerals.launchRule}；二目五行${data.conditions.fiveGenerals.hostGuestElementRelation.hostPosition}/${data.conditions.fiveGenerals.hostGuestElementRelation.guestPosition}另列为${data.conditions.fiveGenerals.hostGuestElementRelation.relation}`,
       matchedText:
         '始击无掩击、文昌无囚迫，主客四将未见同宫关，按卷四三项条件记为五将发；格、对及二目五行关系仍须分别阅读，不直接断战果',
-      unmatchedText: `五将不发：${data.conditions.fiveGenerals.relations.map((item) => `${item.kind}${item.left}第${item.leftPalace}宫与${item.right}第${item.rightPalace}宫${item.relation}`).join('、') || '至少一项发将条件未满足'}`,
+      unmatchedText: `五将不发：${fiveGeneralsBlockingFacts.join('、')}`,
     },
     {
       kind: '阴阳和',

@@ -668,7 +668,9 @@ function calculateAccumulatedValue(
   }
 
   if (scope === 'day') {
-    const rawValue = 708011105 - 185 + daysSince(date, 1900, 6, 19);
+    // 本计日干支在子初 23 时换日，积日也须在同一时刻进一日。
+    const dayOffset = readCivilParts(date).hour === 23 ? 1 : 0;
+    const rawValue = 708011105 - 185 + daysSince(date, 1900, 6, 19) + dayOffset;
     return alignToGanZhi(rawValue, ganZhi);
   }
 

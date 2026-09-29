@@ -323,13 +323,15 @@ function assertSixDayDateTimeZones(
   timeZoneId: string | undefined,
 ): number | undefined {
   if (timezone !== undefined) assertFixedTimezoneHours(timezone, '六日逐爻公历时间的 timezone');
-  if (timeZoneId !== undefined && timezone === undefined) {
-    if (target.embeddedTimezone !== undefined || epoch.embeddedTimezone !== undefined) {
-      throw new Error(
-        '使用 timeZoneId 时，sixDayDateTime 与 sixDayEpochDateTime 不得内嵌固定时区偏移。',
-      );
+  if (timeZoneId !== undefined) {
+    if (
+      timezone !== undefined &&
+      target.embeddedTimezone !== undefined &&
+      target.embeddedTimezone !== timezone
+    ) {
+      throw new Error('sixDayDateTime 的时区偏移与 timezone 不一致。');
     }
-    return undefined;
+    return timezone ?? target.embeddedTimezone;
   }
 
   const inferredTimezone = timezone ?? target.embeddedTimezone ?? epoch.embeddedTimezone;
@@ -351,11 +353,15 @@ function assertSixDayTargetTimezone(
   timeZoneId: string | undefined,
 ): number | undefined {
   if (timezone !== undefined) assertFixedTimezoneHours(timezone, '六日逐爻公历时间的 timezone');
-  if (timeZoneId !== undefined && timezone === undefined) {
-    if (target.embeddedTimezone !== undefined) {
-      throw new Error('使用 timeZoneId 时，sixDayDateTime 不得内嵌固定时区偏移。');
+  if (timeZoneId !== undefined) {
+    if (
+      timezone !== undefined &&
+      target.embeddedTimezone !== undefined &&
+      target.embeddedTimezone !== timezone
+    ) {
+      throw new Error('六日逐爻公历时间内的时区偏移与 timezone 不一致。');
     }
-    return undefined;
+    return timezone ?? target.embeddedTimezone;
   }
   const inferredTimezone = timezone ?? target.embeddedTimezone;
   if (inferredTimezone === undefined) {
@@ -575,13 +581,7 @@ function calculateCivilDateDifference(start: CivilDateTimeParts, end: CivilDateT
 function resolveExplicitEpoch(input: HuangjiSixDayExplicitDateInput, targetMillisecond: number) {
   const epochParts = parseSixDayDateTimeParts(input.epochDateTime, '六日逐爻显式历元');
   if (
-    input.timeZoneId !== undefined &&
-    input.timezone === undefined &&
-    epochParts.embeddedTimezone !== undefined
-  ) {
-    throw new Error('使用 timeZoneId 时，sixDayEpochDateTime 不得内嵌固定时区偏移。');
-  }
-  if (
+    input.timeZoneId === undefined &&
     input.timezone !== undefined &&
     epochParts.embeddedTimezone !== undefined &&
     epochParts.embeddedTimezone !== input.timezone
@@ -596,6 +596,8 @@ function resolveExplicitEpoch(input: HuangjiSixDayExplicitDateInput, targetMilli
   ) {
     throw new Error('六日逐爻显式历元必须是当地子半（00:00:00.000）。');
   }
+  const epochTimezone =
+    input.timeZoneId !== undefined ? epochParts.embeddedTimezone : input.timezone;
   const target = resolveCivilTime({
     year: input.year,
     month: input.month,
@@ -613,7 +615,7 @@ function resolveExplicitEpoch(input: HuangjiSixDayExplicitDateInput, targetMilli
     hour: epochParts.hour,
     minute: epochParts.minute,
     second: epochParts.second,
-    ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
+    ...(epochTimezone !== undefined ? { timezone: epochTimezone } : {}),
     ...(input.timeZoneId !== undefined ? { timeZoneId: input.timeZoneId } : {}),
   });
   const actualElapsedDays = calculateCivilDateDifference(epoch.localTime, target.localTime);

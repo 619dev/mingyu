@@ -647,6 +647,17 @@ test('太乙二目五行关系单列，不冒充五将发不发条件', () => {
   assert.equal(hostControlsGuest.fiveGenerals.hostGuestElementRelation.complete, false);
 });
 
+test('太乙五将不发只列卷四三项阻碍，格与对不冒充发将原因', () => {
+  const result = generateTaiyi({ year: 1979, scope: 'year' });
+  const { fiveGenerals } = result.conditions;
+  assert.equal(result.bureau, 8);
+  assert.equal(fiveGenerals.wenChangRelationToTaiyi, '迫');
+  assert.ok(fiveGenerals.relations.some((item) => item.kind === '客目/客将格'));
+  assert.equal(fiveGenerals.launched, false);
+  const fact = result.evidenceAnalysis.conditionFacts.find((item) => item.kind === '五将');
+  assert.equal(fact?.promptText, '五将不发：文昌迫太乙');
+});
+
 test('太乙五将同入中宫仍计主客同宫关，不因中宫不参与邻对关系而漏判', () => {
   const conditions = evaluateTaiyiConditions({
     accumulatedValue: 1,
@@ -681,6 +692,25 @@ test('太乙积时在公元九十九年与一百年交接连续', () => {
   const firstDay = generateTaiyi({ scope: 'day', date: before });
   const secondDay = generateTaiyi({ scope: 'day', date: after });
   assert.equal(secondDay.accumulatedValue, firstDay.accumulatedValue + 1);
+});
+
+test('太乙日计在子初与日干支同步换日，午夜不重复换局', () => {
+  const before = generateTaiyi({
+    scope: 'day',
+    date: new Date('2026-01-15T22:59:59+08:00'),
+  });
+  const atZi = generateTaiyi({
+    scope: 'day',
+    date: new Date('2026-01-15T23:00:00+08:00'),
+  });
+  const midnight = generateTaiyi({
+    scope: 'day',
+    date: new Date('2026-01-16T00:00:00+08:00'),
+  });
+  assert.equal(atZi.accumulatedValue, before.accumulatedValue + 1);
+  assert.equal(atZi.ganZhi, midnight.ganZhi);
+  assert.equal(midnight.accumulatedValue, atZi.accumulatedValue);
+  assert.equal(midnight.bureau, atZi.bureau);
 });
 
 test('太乙时计在历法切换日沿用干支历的连续日序', () => {

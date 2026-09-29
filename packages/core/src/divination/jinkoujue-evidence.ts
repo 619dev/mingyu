@@ -240,7 +240,8 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
     expectedXunKong.some((branch) => !data.xunKong.includes(branch)) ||
     allPositions.some(
       (position) =>
-        position.isVoid !== expectedXunKong.includes(position.branch) ||
+        position.isVoid !==
+          (position.elementBasis !== '人元干' && expectedXunKong.includes(position.branch)) ||
         position.seasonState !== getSeasonState(position.element, monthBranch),
     )
   ) {

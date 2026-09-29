@@ -333,6 +333,35 @@ test('金口诀：古本二月戌将丙寅日午时申地原例应得子将、�
   );
 });
 
+test('金口诀：丙寅日亥地旬空只记地分，不把遁出的人元干重复判空', () => {
+  const data = generateJinkoujue({
+    method: 'branch',
+    branch: '亥',
+    customDate: new Date('2020-03-24T12:00:00+08:00'),
+  });
+
+  assert.equal(data.ganzhi.day, '丙寅');
+  assert.deepEqual(new Set(data.xunKong), new Set(['戌', '亥']));
+  assert.equal(data.positions.diFen.isVoid, true);
+  assert.equal(data.positions.renYuan.stem, '己');
+  assert.equal(data.positions.renYuan.branch, '亥');
+  assert.equal(data.positions.renYuan.isVoid, false);
+  assert.ok(!data.positions.renYuan.constraints.includes('落日旬空'));
+  assert.doesNotMatch(data.positions.renYuan.promptText, /旬空|不空/u);
+  assert.deepEqual(
+    data.evidenceAnalysis?.counterEvidenceFacts
+      .filter((item) => item.type === '旬空')
+      .map((item) => item.detail),
+    ['地分亥落日旬空'],
+  );
+  assert.doesNotMatch(data.evidenceAnalysis?.promptText ?? '', /人元亥落日旬空/u);
+  assert.doesNotMatch(formatJinkoujueJudgmentFacts(data).join('\n'), /人元亥落日旬空/u);
+
+  const falseVoid = structuredClone(data);
+  falseVoid.positions.renYuan.isVoid = true;
+  assert.throws(() => analyzeJinkoujueEvidence(falseVoid), /旬空或月令旺衰与日月柱及四位不一致/u);
+});
+
 test('金口诀：数字起课 1-12 映射子至亥，大于 12 按 12 归一', () => {
   const zi = generateJinkoujue({ method: 'number', number: 1, customDate: SAMPLE_DATE });
   const hai = generateJinkoujue({ method: 'number', number: 12, customDate: SAMPLE_DATE });
@@ -509,7 +538,10 @@ test('金口诀：六十日柱乘昼夜与十二地分的 1440 课应逐项符�
         );
         assert.deepEqual(
           positions.map((position) => position.isVoid),
-          positions.map((position) => data.xunKong.includes(position.branch)),
+          positions.map(
+            (position) =>
+              position.elementBasis !== '人元干' && data.xunKong.includes(position.branch),
+          ),
         );
         assert.ok(positions.every((position) => BRANCHES.includes(position.branch)));
         assert.ok(positions.every((position) => WUXING.includes(position.element)));

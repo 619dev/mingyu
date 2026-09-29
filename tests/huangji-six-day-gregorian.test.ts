@@ -72,6 +72,40 @@ test('IANA 夏令时只影响真实瞬时，不改变显式历元的当地日期
   assert.equal(result.calendar.actualElapsedSeconds, 169200);
 });
 
+test('IANA 回拨重复小时以目标偏移消歧，显式历元保留自身历史偏移', () => {
+  const epoch = '2026-03-07T00:00:00-05:00';
+  const earlier = calculateHuangjiSixDayCycleFromDate(
+    parseSixDay('2026-11-01T01:30:00-04:00', epoch, undefined, 'America/New_York'),
+  );
+  const later = calculateHuangjiSixDayCycleFromDate(
+    parseSixDay('2026-11-01T01:30:00-05:00', epoch, undefined, 'America/New_York'),
+  );
+
+  assert.equal(earlier.anchor.timezone, -5);
+  assert.equal(earlier.civilTime.timezone, -4);
+  assert.equal(earlier.civilTime.utcDateTime, '2026-11-01T05:30:00.000Z');
+  assert.equal(later.civilTime.utcDateTime, '2026-11-01T06:30:00.000Z');
+  assert.equal(earlier.calendar.actualElapsedDays, later.calendar.actualElapsedDays);
+  assert.equal(later.calendar.actualElapsedSeconds - earlier.calendar.actualElapsedSeconds, 3600);
+  assert.throws(
+    () => parseSixDay('2026-11-01T01:30:00-04:00', epoch, -5, 'America/New_York'),
+    /sixDayDateTime 的时区偏移与 timezone 不一致/,
+  );
+});
+
+test('IANA 回拨重复小时的比例模型也可用时间字符串偏移消歧', () => {
+  const earlier = calculateHuangjiSixDayCycleFromDate(
+    parseProportionalSixDay('2026-11-01T01:30:00-04:00', undefined, 'America/New_York'),
+  );
+  const later = calculateHuangjiSixDayCycleFromDate(
+    parseProportionalSixDay('2026-11-01T01:30:00-05:00', undefined, 'America/New_York'),
+  );
+
+  assert.equal(earlier.civilTime.utcDateTime, '2026-11-01T05:30:00.000Z');
+  assert.equal(later.civilTime.utcDateTime, '2026-11-01T06:30:00.000Z');
+  assert.equal(later.calendar.actualElapsedSeconds - earlier.calendar.actualElapsedSeconds, 3600);
+});
+
 test('六日逐爻公历入口拒绝未经校定的模型、历元和坐标范围', () => {
   assert.throws(
     () =>

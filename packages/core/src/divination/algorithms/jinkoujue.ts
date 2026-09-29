@@ -297,7 +297,8 @@ function buildPosition(params: {
   }
   const stemElement = params.stem ? getStemWuxing(params.stem) : undefined;
   const seasonState = getSeasonState(params.element, params.monthBranch);
-  const isVoid = params.xunKong.includes(params.branch);
+  // 人元是地分上遁得的天干；地分旬空不等于人元干也落旬空。
+  const isVoid = params.elementBasis !== '人元干' && params.xunKong.includes(params.branch);
   const support: string[] = [];
   const constraints: string[] = [];
 
@@ -326,7 +327,7 @@ function buildPosition(params: {
       `${params.yinYang}${params.element}（按${params.elementBasis}）`,
       stemElement && params.elementBasis !== '人元干' ? `遁干${params.stem}属${stemElement}` : '',
       `月令${seasonState}`,
-      isVoid ? '旬空' : '不空',
+      params.elementBasis === '人元干' ? '' : isVoid ? '旬空' : '不空',
     ]
       .filter(Boolean)
       .join('；'),

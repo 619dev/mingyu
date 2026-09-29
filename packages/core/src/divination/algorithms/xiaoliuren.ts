@@ -116,7 +116,6 @@ export function generateXiaoliuren(params?: {
   const { ganzhi, timeInfo, timestamp } = getDivinationTime(
     params?.customDate,
     DEFAULT_CHINA_TIMEZONE_HOURS * 60,
-    params?.termReferenceDate,
   );
   const civilLunar = params?.termReferenceDate
     ? getDivinationTime(params.termReferenceDate, DEFAULT_CHINA_TIMEZONE_HOURS * 60).timeInfo.lunar
