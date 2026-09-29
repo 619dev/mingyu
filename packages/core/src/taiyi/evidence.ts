@@ -344,9 +344,9 @@ function buildConditionFacts(data: TaiyiEvidenceInput): TaiyiConditionFact[] {
     {
       kind: '五将',
       matched: data.conditions.fiveGenerals.launched,
-      calculationText: `按${data.conditions.fiveGenerals.launchRule}；二目五行${data.conditions.fiveGenerals.hostGuestElementRelation.hostPosition}/${data.conditions.fiveGenerals.hostGuestElementRelation.guestPosition}另列为${data.conditions.fiveGenerals.hostGuestElementRelation.relation}`,
+      calculationText: `按${data.conditions.fiveGenerals.launchRule}；二目五行只记录文昌${data.conditions.fiveGenerals.hostGuestElementRelation.hostPosition}属${data.conditions.fiveGenerals.hostGuestElementRelation.hostElement ?? '未定'}、始击${data.conditions.fiveGenerals.hostGuestElementRelation.guestPosition}属${data.conditions.fiveGenerals.hostGuestElementRelation.guestElement ?? '未定'}，日计纳音判层未复算`,
       matchedText:
-        '始击无掩击、文昌无囚迫，主客四将未见同宫关，按卷四三项条件记为五将发；格、对及二目五行关系仍须分别阅读，不直接断战果',
+        '始击无掩击、文昌无囚迫，主客四将未见同宫关，按卷四三项条件记为五将发；不直接断战果',
       unmatchedText: `五将不发：${fiveGeneralsBlockingFacts.join('、')}`,
     },
     {
@@ -637,7 +637,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
       result: data.conditions.fiveGenerals.launched ? '发' : '不发',
       dependsOnStepKeys: ['taiyi:calculation:bureau'],
       basis: data.conditions.fiveGenerals.basis,
-      promptText: `五将：${data.conditions.fiveGenerals.launched ? '发' : '不发'}；始击${data.conditions.fiveGenerals.shiJiNoCoverOrHit ? '无掩击' : '有掩击'}；文昌${data.conditions.fiveGenerals.wenChangNoImprisonOrPressure ? '无囚迫' : '有囚迫'}；主客四将${data.conditions.fiveGenerals.hostGuestNoSamePalaceRelation ? '无同宫关' : '有同宫关'}；客目/客将格、文昌对及二目五行关系另列为${data.conditions.fiveGenerals.hostGuestElementRelation.relation}`,
+      promptText: `五将：${data.conditions.fiveGenerals.launched ? '发' : '不发'}；始击${data.conditions.fiveGenerals.shiJiNoCoverOrHit ? '无掩击' : '有掩击'}；文昌${data.conditions.fiveGenerals.wenChangNoImprisonOrPressure ? '无囚迫' : '有囚迫'}；主客四将${data.conditions.fiveGenerals.hostGuestNoSamePalaceRelation ? '无同宫关' : '有同宫关'}`,
       sources: [
         '《太乙金镜式经》卷四·推五将发不发',
         '《太乙金镜式经》卷三·推关法、推格法、推对法',

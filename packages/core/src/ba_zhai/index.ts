@@ -7,6 +7,7 @@
 import { calculateMingGua } from '../bazi/mingGua';
 import { SolarTerm } from 'tyme4ts';
 import { createUtcTimestamp, daysInGregorianMonth } from '../calendar/date-validation';
+import { resolveCivilTime } from '../calendar/civil-time';
 import {
   getHouseTrigram,
   getEightMansion,
@@ -41,6 +42,13 @@ export interface BaZhaiInput {
   /** 出生公历月日，用于准确处理立春换年。 */
   birthMonth?: number;
   birthDay?: number;
+  /** 出生地民用时分；立春当天可据此核定命卦年界。 */
+  birthHour?: number;
+  birthMinute?: number;
+  /** 出生地相对 UTC 的小时偏移；未提供时按北京时间 UTC+8。 */
+  birthTimezone?: number;
+  /** 出生地 IANA 历史时区，例如 Asia/Shanghai。 */
+  birthTimeZoneId?: string;
   /** 性别 */
   gender?: 'male' | 'female';
   /** 也可直接给定命卦（坎坤震巽乾兑艮离） */
@@ -55,6 +63,10 @@ export interface BaZhaiResult {
     birthYear?: number;
     birthMonth?: number;
     birthDay?: number;
+    birthHour?: number;
+    birthMinute?: number;
+    birthTimezone?: number;
+    birthTimeZoneId?: string;
     gender?: 'male' | 'female';
     directMingGua?: string;
     sitMountain?: string;
@@ -247,6 +259,41 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
   const hasMonth = input.birthMonth !== undefined;
   const hasDay = input.birthDay !== undefined;
   if (hasMonth !== hasDay) throw new Error('八宅立春换年需同时提供出生月和出生日。');
+  if (input.birthHour === undefined && input.birthMinute !== undefined) {
+    throw new Error('提供出生分钟时需同时提供出生小时。');
+  }
+  if (input.birthHour === undefined && input.birthTimezone !== undefined) {
+    throw new Error('提供出生时区时需同时提供出生小时。');
+  }
+  if (input.birthHour === undefined && input.birthTimeZoneId !== undefined) {
+    throw new Error('提供出生历史时区时需同时提供出生小时。');
+  }
+  if (
+    input.birthHour !== undefined &&
+    (!Number.isInteger(input.birthHour) || input.birthHour < 0 || input.birthHour > 23)
+  ) {
+    throw new Error('出生小时需在 0-23 之间。');
+  }
+  if (
+    input.birthMinute !== undefined &&
+    (!Number.isInteger(input.birthMinute) || input.birthMinute < 0 || input.birthMinute > 59)
+  ) {
+    throw new Error('出生分钟需在 0-59 之间。');
+  }
+  if (
+    input.birthTimezone !== undefined &&
+    (!Number.isFinite(input.birthTimezone) || input.birthTimezone < -12 || input.birthTimezone > 14)
+  ) {
+    throw new Error('出生时区需在 UTC-12 至 UTC+14 之间。');
+  }
+  if (
+    !hasMonth &&
+    (input.birthHour !== undefined ||
+      input.birthTimezone !== undefined ||
+      input.birthTimeZoneId !== undefined)
+  ) {
+    throw new Error('提供出生时刻或时区时需同时提供出生月日。');
+  }
   if (!hasMonth || !hasDay) {
     return {
       year,
@@ -262,27 +309,49 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
   if (!Number.isInteger(day) || day < 1 || day > maxDay) {
     throw new Error(`出生日期需在 1-${maxDay} 之间。`);
   }
-  // 日期入口沿用当日正午口径，直接比较当年立春，避免反查上一干支年时越过历库下界。
+  // 缺少时分时沿用北京时间正午口径；已知时分则按指定时区转换真实瞬时。
   const lichun = SolarTerm.fromIndex(year, 3).getJulianDay().getSolarTime();
-  const birthCivil = createUtcTimestamp(year, month - 1, day, 12);
-  const lichunCivil = createUtcTimestamp(
-    lichun.getYear(),
-    lichun.getMonth() - 1,
-    lichun.getDay(),
-    lichun.getHour(),
-    lichun.getMinute(),
-    lichun.getSecond(),
-  );
+  const hasBirthTime = input.birthHour !== undefined;
+  const birthTime = hasBirthTime
+    ? resolveCivilTime(
+        {
+          year,
+          month,
+          day,
+          hour: input.birthHour!,
+          minute: input.birthMinute ?? 0,
+          second: 0,
+          ...(input.birthTimezone !== undefined ? { timezone: input.birthTimezone } : {}),
+          ...(input.birthTimeZoneId ? { timeZoneId: input.birthTimeZoneId } : {}),
+        },
+        { defaultTimezone: 8 },
+      )
+    : null;
+  const birthCivil =
+    birthTime?.utcTimestamp ?? createUtcTimestamp(year, month - 1, day, 12) - 8 * 3_600_000;
+  const lichunCivil =
+    createUtcTimestamp(
+      lichun.getYear(),
+      lichun.getMonth() - 1,
+      lichun.getDay(),
+      lichun.getHour(),
+      lichun.getMinute(),
+      lichun.getSecond(),
+    ) -
+    8 * 3_600_000;
   const effectiveYear = birthCivil >= lichunCivil ? year : year - 1;
   const isLichunDate =
     year === lichun.getYear() && month === lichun.getMonth() && day === lichun.getDay();
   return {
     year: effectiveYear,
-    note: isLichunDate
-      ? `出生日期与 ${year} 年立春同日，未提供出生时刻；现按当日正午与立春时刻比较，命卦暂按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算，请按准确出生时刻复核。`
-      : effectiveYear === year
-        ? `出生日期已过 ${year} 年立春，命卦按 ${year} 年计算。`
-        : `出生日期在 ${year} 年立春前，命卦按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算。`,
+    note:
+      isLichunDate && !hasBirthTime
+        ? `出生日期与 ${year} 年立春同日，未提供出生时刻；现按当日正午与立春时刻比较，命卦暂按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算，请按准确出生时刻复核。`
+        : isLichunDate
+          ? `出生日期与 ${year} 年立春同日，已按出生时分（${birthTime?.timeZoneId ? `${birthTime.timeZoneId}，` : ''}UTC${birthTime!.timezone >= 0 ? '+' : ''}${birthTime!.timezone}）与立春瞬时核定命卦年份为 ${effectiveYear} 年。`
+          : effectiveYear === year
+            ? `${hasBirthTime ? '出生时刻' : '出生日期'}已过 ${year} 年立春，命卦按 ${year} 年计算。`
+            : `${hasBirthTime ? '出生时刻' : '出生日期'}在 ${year} 年立春前，命卦按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算。`,
   };
 }
 
@@ -417,6 +486,10 @@ export function analyzeBaZhai(input: BaZhaiInput): BaZhaiResult {
       ...(input.birthYear !== undefined ? { birthYear: input.birthYear } : {}),
       ...(input.birthMonth !== undefined ? { birthMonth: input.birthMonth } : {}),
       ...(input.birthDay !== undefined ? { birthDay: input.birthDay } : {}),
+      ...(input.birthHour !== undefined ? { birthHour: input.birthHour } : {}),
+      ...(input.birthMinute !== undefined ? { birthMinute: input.birthMinute } : {}),
+      ...(input.birthTimezone !== undefined ? { birthTimezone: input.birthTimezone } : {}),
+      ...(input.birthTimeZoneId !== undefined ? { birthTimeZoneId: input.birthTimeZoneId } : {}),
       ...(input.gender ? { gender: input.gender } : {}),
       ...(input.mingGua ? { directMingGua: input.mingGua } : {}),
       ...(input.sitMountain ? { sitMountain: input.sitMountain } : {}),

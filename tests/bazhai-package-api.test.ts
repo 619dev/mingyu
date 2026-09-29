@@ -119,6 +119,60 @@ test('八宅出生日期落在立春当天且缺少时刻时应标为待复核',
   assert.equal(result.evidenceAnalysis.summaryFact.status, '证据链有缺口');
 });
 
+test('八宅立春当天已知出生时分按真实瞬时核定命卦', () => {
+  const base = { birthYear: 2024, birthMonth: 2, birthDay: 4, gender: 'male' as const };
+  const before = analyzeBaZhai({ ...base, birthHour: 16, birthMinute: 20 });
+  const after = analyzeBaZhai({ ...base, birthHour: 16, birthMinute: 30 });
+  const overseas = analyzeBaZhai({
+    ...base,
+    birthHour: 3,
+    birthMinute: 30,
+    birthTimezone: -5,
+  });
+
+  assert.equal(before.mingGua, '巽');
+  assert.equal(after.mingGua, '震');
+  assert.equal(overseas.mingGua, after.mingGua);
+  const crossDate = analyzeBaZhai({
+    birthYear: 2024,
+    birthMonth: 2,
+    birthDay: 3,
+    birthHour: 23,
+    birthMinute: 0,
+    birthTimezone: -12,
+    gender: 'male',
+  });
+  assert.equal(crossDate.mingGua, '震');
+  assert.match(crossDate.birthYearBoundaryNote, /出生时刻已过/);
+  assert.equal(after.evidenceAnalysis.calculationFact.yearBoundaryStatus, '已核定');
+  assert.match(after.prompt, /已按出生时分（UTC\+8）与立春瞬时核定/);
+  assert.doesNotMatch(after.prompt, /未提供出生时刻/);
+});
+
+test('八宅立春年界按上海历史时区复核出生时分', () => {
+  const birth = {
+    birthYear: 1942,
+    birthMonth: 2,
+    birthDay: 4,
+    gender: 'male' as const,
+    birthTimeZoneId: 'Asia/Shanghai',
+  };
+  const historicalBefore = analyzeBaZhai({ ...birth, birthHour: 19, birthMinute: 0 });
+  const historicalAfter = analyzeBaZhai({ ...birth, birthHour: 20, birthMinute: 0 });
+  const fixedEight = analyzeBaZhai({
+    ...birth,
+    birthTimeZoneId: undefined,
+    birthTimezone: 8,
+    birthHour: 19,
+    birthMinute: 0,
+  });
+
+  assert.equal(historicalBefore.effectiveBirthYear, 1941);
+  assert.equal(historicalAfter.effectiveBirthYear, 1942);
+  assert.equal(fixedEight.effectiveBirthYear, 1942);
+  assert.match(historicalBefore.prompt, /Asia\/Shanghai，UTC\+9/);
+});
+
 test('八宅大游年应符合八宅逐宫传统真值', () => {
   const palaceOrder = ['坎', '艮', '震', '巽', '离', '坤', '兑', '乾'];
   const cases = [

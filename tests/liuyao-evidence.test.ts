@@ -6,6 +6,7 @@ import {
 } from '../packages/core/src/divination/algorithms/liuyao.ts';
 import { isKe, isSheng } from 'mingyu-core/ganzhi';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedYaos = [7, 8, 9, 6, 7, 8] as const;
@@ -420,52 +421,197 @@ test('感情和怪异主题只列盘面线索，明确指定六亲时才可取�
 });
 
 test('六爻整卦关系、反吟伏吟与三合应形成独立结构事实', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
-  const evidence = analyzeLiuyaoEvidence({
-    ...data,
-    hexagramRelations: {
-      original: '六冲卦',
-      changed: '六合卦',
-      transition: '六冲变六合',
-    },
-    fanfuRelations: {
-      fanyin: [
-        {
-          kind: '卦反吟',
-          scope: '内卦',
-          label: '内卦反吟',
-          description: '内卦主变地支相冲',
-        },
-      ],
-      fuyin: [],
-      labels: ['内卦反吟'],
-    },
-    specialPattern: '全动卦',
-    specialAdvice: '只作动爻密集结构参考',
-    sanheWithDay: {
-      group: '申子辰水局',
-      members: ['申', '子', '辰'],
-      description: '动变支与日支组成申子辰三合',
-    },
-    evidenceAnalysis: undefined,
+  const date = new Date('2025-01-01T00:00:00+08:00');
+  const sanhe = generateLiuyao(date, {
+    method: 'manual',
+    yaos: [7, 6, 7, 7, 7, 6],
   });
+  const fanyin = generateLiuyao(date, {
+    method: 'manual',
+    yaos: [9, 7, 7, 9, 7, 7],
+  });
+  const staticChart = generateLiuyao(date, {
+    method: 'manual',
+    yaos: [7, 7, 7, 7, 7, 7],
+  });
+  assert.equal(sanhe.sanheWithDay?.group, '火局');
+  assert.equal(fanyin.fanfuRelations?.labels[0], '内外反吟');
+  assert.equal(staticChart.specialPattern, '静卦');
+  const evidence = [sanhe, fanyin, staticChart].map((data) => analyzeLiuyaoEvidence(data));
 
   assert.deepEqual(
-    new Set(evidence.structureFacts.map((item) => item.kind)),
+    new Set(evidence.flatMap((item) => item.structureFacts.map((fact) => fact.kind))),
     new Set(['整卦六合六冲', '反吟伏吟', '特殊卦象', '日辰三合']),
   );
   assert.ok(
-    evidence.structureFacts.every(
-      (item) =>
-        item.key.startsWith('liuyao:structure:') &&
-        item.status === '已计算' &&
-        item.originalText &&
-        item.promptText &&
-        item.sources.length > 0 &&
-        item.limitation.includes('不得直接写成现实和合'),
-    ),
+    evidence
+      .flatMap((item) => item.structureFacts)
+      .every(
+        (item) =>
+          item.key.startsWith('liuyao:structure:') &&
+          item.status === '已计算' &&
+          item.originalText &&
+          item.promptText &&
+          item.sources.length > 0 &&
+          item.limitation.includes('不得直接写成现实和合'),
+      ),
   );
-  assert.ok(evidence.timingFacts.some((item) => item.type === '反吟伏吟节奏'));
+  assert.ok(evidence[1].timingFacts.some((item) => item.type === '反吟伏吟节奏'));
+});
+
+test('六爻整卦、反伏与特殊卦式须复算后才进入摘要和详细任务书', () => {
+  const date = new Date('2025-01-01T00:00:00+08:00');
+  const fanyin = generateLiuyao(date, { method: 'manual', yaos: [9, 7, 7, 9, 7, 7] });
+  const staticChart = generateLiuyao(date, { method: 'manual', yaos: [7, 7, 7, 7, 7, 7] });
+  assert.match(formatDetailedDivinationInfo('liuyao', fanyin), /内外反吟/u);
+  assert.match(formatDetailedDivinationInfo('liuyao', staticChart), /静卦/u);
+  const mutations: Array<{
+    source: typeof fanyin;
+    change: (data: typeof fanyin) => void;
+    error: RegExp;
+  }> = [
+    {
+      source: fanyin,
+      change: (data) => {
+        data.hexagramRelations!.original = '六合卦';
+      },
+      error: /整卦六合六冲关系与原始爻值、纳甲不一致/u,
+    },
+    {
+      source: fanyin,
+      change: (data) => {
+        data.fanfuRelations!.labels = ['内卦伏吟'];
+      },
+      error: /反吟伏吟关系与原始爻值、纳甲不一致/u,
+    },
+    {
+      source: fanyin,
+      change: (data) => {
+        data.fanfuRelations!.fanyin[0].description = '虚构反吟';
+      },
+      error: /反吟伏吟关系与原始爻值、纳甲不一致/u,
+    },
+    {
+      source: staticChart,
+      change: (data) => {
+        data.specialPattern = '全动卦';
+      },
+      error: /特殊卦式与原始爻值、动爻数量不一致/u,
+    },
+    {
+      source: staticChart,
+      change: (data) => {
+        data.specialAdvice = '虚构六爻俱动';
+      },
+      error: /特殊卦式与原始爻值、动爻数量不一致/u,
+    },
+  ];
+  for (const { source, change, error } of mutations) {
+    const changed = structuredClone(source);
+    change(changed);
+    assert.throws(() => analyzeLiuyaoEvidence(changed), error);
+    assert.throws(() => formatEnhancedDivinationInfo('liuyao', changed), error);
+    assert.throws(() => formatDetailedDivinationInfo('liuyao', changed), error);
+  }
+
+  const oldResult = structuredClone(fanyin);
+  delete oldResult.hexagramRelations;
+  delete oldResult.fanfuRelations;
+  delete oldResult.specialPattern;
+  delete oldResult.specialAdvice;
+  assert.ok(analyzeLiuyaoEvidence(oldResult));
+});
+
+test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该字段仍可分析', () => {
+  const source = generateLiuyao(new Date('2025-01-01T00:00:00+08:00'), {
+    method: 'manual',
+    yaos: [7, 6, 7, 7, 7, 6],
+  });
+  assert.equal(source.sanheWithDay?.group, '火局');
+  assert.ok(analyzeLiuyaoEvidence(source).structureFacts.some((fact) => fact.kind === '日辰三合'));
+  assert.match(
+    formatEnhancedDivinationInfo('liuyao', source),
+    /三合局：日辰午引动火局（寅、午、戌）/u,
+  );
+
+  const mutations: Array<(data: typeof source) => void> = [
+    (data) => {
+      data.sanheWithDay = {
+        group: '水局',
+        members: ['申', '子', '辰'],
+        description: '日辰午引动三合水局',
+      };
+    },
+    (data) => {
+      data.sanheWithDay!.description = '日辰午引动三合金局';
+    },
+    (data) => {
+      data.sanheWithMonth = source.sanheWithDay;
+    },
+  ];
+  for (const mutate of mutations) {
+    const changed = structuredClone(source);
+    mutate(changed);
+    assert.throws(() => analyzeLiuyaoEvidence(changed), /三合与原始爻值、纳甲及月日支不一致/u);
+    assert.throws(
+      () => formatEnhancedDivinationInfo('liuyao', changed),
+      /三合与原始爻值、纳甲及月日支不一致/u,
+    );
+    assert.throws(
+      () => formatDetailedDivinationInfo('liuyao', changed),
+      /三合与原始爻值、纳甲及月日支不一致/u,
+    );
+  }
+
+  const staticChart = generateLiuyao(new Date('2025-01-01T00:00:00+08:00'), {
+    method: 'manual',
+    yaos: [7, 8, 7, 8, 7, 8],
+  });
+  assert.equal(staticChart.sanheWithDay, null);
+  staticChart.sanheWithDay = source.sanheWithDay;
+  assert.throws(() => analyzeLiuyaoEvidence(staticChart), /三合与原始爻值、纳甲及月日支不一致/u);
+  assert.throws(
+    () => formatEnhancedDivinationInfo('liuyao', staticChart),
+    /三合与原始爻值、纳甲及月日支不一致/u,
+  );
+  assert.throws(
+    () => formatDetailedDivinationInfo('liuyao', staticChart),
+    /三合与原始爻值、纳甲及月日支不一致/u,
+  );
+
+  const oldResult = structuredClone(source);
+  delete oldResult.sanheWithDay;
+  delete oldResult.sanheWithMonth;
+  assert.ok(analyzeLiuyaoEvidence(oldResult));
+});
+
+test('六爻三刑须由本卦纳甲支复算后才进入提示词', () => {
+  const source = generateLiuyao(new Date('2025-01-01T00:00:00+08:00'), {
+    method: 'manual',
+    yaos: [7, 6, 7, 7, 7, 6],
+  });
+  assert.deepEqual(source.sanxingInYaos?.[0], {
+    branches: ['丑', '未'],
+    type: '恃势之刑',
+  });
+  assert.match(formatEnhancedDivinationInfo('liuyao', source), /丑、未构成恃势之刑/u);
+  assert.match(formatDetailedDivinationInfo('liuyao', source), /丑、未为恃势之刑/u);
+
+  const changed = structuredClone(source);
+  changed.sanxingInYaos = [{ branches: ['寅', '巳', '申'], type: '无恩之刑' }];
+  assert.throws(() => analyzeLiuyaoEvidence(changed), /三刑关系与原始爻值、纳甲不一致/u);
+  assert.throws(
+    () => formatEnhancedDivinationInfo('liuyao', changed),
+    /三刑关系与原始爻值、纳甲不一致/u,
+  );
+  assert.throws(
+    () => formatDetailedDivinationInfo('liuyao', changed),
+    /三刑关系与原始爻值、纳甲不一致/u,
+  );
+
+  const oldResult = structuredClone(source);
+  delete oldResult.sanxingInYaos;
+  assert.ok(analyzeLiuyaoEvidence(oldResult));
 });
 
 test('鬼神怪异主题必须保留现实解释限制', () => {

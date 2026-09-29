@@ -729,6 +729,13 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
         month: Number(inputState.month),
         day: Number(inputState.day),
         gender: inputState.gender,
+        ...(inputState.birthHour !== ''
+          ? {
+              hour: Number(inputState.birthHour),
+              minute: inputState.birthMinute === '' ? 0 : Number(inputState.birthMinute),
+              ...getFrontendBirthTimeZone(inputState.birthReverseSource),
+            }
+          : {}),
       },
       inputState.dateType,
       inputState.isLeapMonth,

@@ -247,6 +247,18 @@ function buildCalculationFact(
         ...(data.calculationInput.birthDay !== undefined
           ? { birthDay: data.calculationInput.birthDay }
           : {}),
+        ...(data.calculationInput.birthHour !== undefined
+          ? { birthHour: data.calculationInput.birthHour }
+          : {}),
+        ...(data.calculationInput.birthMinute !== undefined
+          ? { birthMinute: data.calculationInput.birthMinute }
+          : {}),
+        ...(data.calculationInput.birthTimezone !== undefined
+          ? { birthTimezone: data.calculationInput.birthTimezone }
+          : {}),
+        ...(data.calculationInput.birthTimeZoneId !== undefined
+          ? { birthTimeZoneId: data.calculationInput.birthTimeZoneId }
+          : {}),
         ...(data.calculationInput.gender ? { gender: data.calculationInput.gender } : {}),
         boundaryNote: data.birthYearBoundaryNote,
         ...(data.effectiveBirthYear !== null

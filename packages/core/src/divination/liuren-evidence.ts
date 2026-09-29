@@ -7,6 +7,7 @@ import type {
   LiurenTransmission,
 } from '../types/divination';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
+import { stableStringify } from '../shared/result';
 import { getBranchWuxing, getStemWuxing, isKe, isSheng } from '../ganzhi';
 import {
   buildHeavenlyPlate,
@@ -1409,7 +1410,7 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
     ) {
       throw new Error('大六壬三传与天地盘不一致，无法生成证据。');
     }
-    if (data.transmissionRule) {
+    if (data.transmissionRule || data.ordinaryTransmissionAdjudication) {
       const expected = resolveInitialTransmission(data.fourLessons, {
         dayStem,
         dayBranch,
@@ -1426,10 +1427,17 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
         getUpperByUnder(data.heavenlyPlate, middle),
       ];
       if (
-        data.transmissionRule !== expected.rule ||
+        (data.transmissionRule && data.transmissionRule !== expected.rule) ||
         data.threeTransmissions.some((item, index) => item.branch !== expectedBranches[index])
       ) {
         throw new Error('大六壬取传规则或三传与四课、天地盘不一致，无法生成证据。');
+      }
+      if (
+        data.ordinaryTransmissionAdjudication &&
+        stableStringify(data.ordinaryTransmissionAdjudication) !==
+          stableStringify(expected.ordinaryAdjudication)
+      ) {
+        throw new Error('大六壬普通宗门裁决与四课、三传、天地盘不一致，无法生成证据。');
       }
     }
     if (data.guaTiFacts !== undefined) {

@@ -323,7 +323,7 @@ export function buildHuangjiJingshiPrompt(
                   '岁周交接：下一冬至当地日首点已到、冬至真实瞬时尚未到，当前仍属上一岁周，逻辑位置暂封顶于第360个逻辑日。',
                 ]
               : []),
-            `冬至所在当地公历日干支：${sixDayCycle.anchor.dayGanZhi}（六十甲子序号${sixDayCycle.anchor.dayIndex}）；经卦${sixDayCycle.hexagrams.jing.name}第${sixDayCycle.dayLine}爻当日，${sixDayCycle.hourRange}时变卦${sixDayCycle.hexagrams.hourly.name}，每四小时一爻。`,
+            `冬至所在当地公历日干支：${sixDayCycle.anchor.dayGanZhi}；经卦${sixDayCycle.hexagrams.jing.name}第${sixDayCycle.dayLine}爻当日，${sixDayCycle.hourRange}时变卦${sixDayCycle.hexagrams.hourly.name}，每四小时一爻。`,
           ]
       : [];
     const dateTimeLines = dateTimeForecast

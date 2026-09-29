@@ -4,6 +4,7 @@ import { analyzeBaZhaiByDoorDegree } from '../packages/core/src/ba_zhai/index.ts
 import { PROMPT_GUIDANCE_TEXT } from '../packages/core/src/prompt/guidance.ts';
 import { buildMetaphysicsPrompt } from '../packages/core/src/prompt/metaphysics.ts';
 import { generateResidentialFengshui } from '../packages/core/src/residential_fengshui/index.ts';
+import { buildResidentialCoreInput } from '../src/lib/residential-fengshui-chart.ts';
 import { assertPromptHasSingleRole, assertPromptIsPortableTaskText } from './prompt-assertions.ts';
 
 test('八宅与住宅核心盘及在线包装各保留一份完整任务', () => {
@@ -47,6 +48,17 @@ test('八宅与住宅核心盘及在线包装各保留一份完整任务', () =>
     assert.match(prompt, /候选震宅八方：/);
     assertPromptIsPortableTaskText(prompt);
   }
+});
+
+test('住宅统一入口把已知出生时分传给八宅立春年界', () => {
+  const input = buildResidentialCoreInput({
+    birthData: { year: 2024, month: 2, day: 4, hour: 16, minute: 30, gender: 'male' },
+  });
+  const result = generateResidentialFengshui(input);
+  assert.equal(input.birthHour, 16);
+  assert.equal(result.bazhai?.mingGua, '震');
+  assert.match(result.prompt, /已按出生时分（UTC\+8）与立春瞬时核定/);
+  assert.doesNotMatch(result.prompt, /未提供出生时刻/);
 });
 
 test('住宅门向与额外坐向必须描述同一住宅，不能分别用于八宅和玄空', () => {

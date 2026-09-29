@@ -165,6 +165,37 @@ test('普通成格提示词保留结论并省略重复的格局条件', () => {
   assert.doesNotMatch(prompt, /【格局条件】|取格分层候选：正印格|候选取用：/);
 });
 
+test('普通格流派提示词只列一次取格依据', () => {
+  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const basis = formatPatternBasisForPrompt(result.analysis.mingGe.basis ?? '');
+  assert.ok(basis);
+
+  for (const options of [
+    { school: 'ziping' as const },
+    { school: 'mangpai' as const },
+    { school: 'xinpai' as const },
+    { schools: ['ziping', 'mangpai'] as const },
+  ]) {
+    const prompt = buildBaziPrompt({ result, fortuneScope: 'natal', ...options });
+    assert.equal(prompt.split(basis).length - 1, 1);
+    assert.match(prompt, /取格依据：/);
+    assert.doesNotMatch(prompt, /【格局条件】|所取格局：|格局条件：/);
+  }
+});
+
+test('本命流派提示词不附完整大运，完整命限仅在所选范围出现', () => {
+  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  for (const school of ['ziping', 'mangpai', 'xinpai'] as const) {
+    const natal = buildBaziPrompt({ result, school, fortuneScope: 'natal' });
+    assert.doesNotMatch(natal, /出生后\s*\d+\s*年.*起运|大运\w+（\d{4}年起/);
+    assert.doesNotMatch(natal, /【命限资料】/);
+
+    const full = buildBaziPrompt({ result, school, fortuneScope: 'full' });
+    assert.match(full, /【命限资料】/);
+    assert.match(full, /完整大运流年：/);
+  }
+});
+
 test('单一格局的在线任务只核对本盘已列成败事实', () => {
   const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
   const prompts = [

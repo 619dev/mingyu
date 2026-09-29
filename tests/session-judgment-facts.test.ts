@@ -114,16 +114,9 @@ test('太乙 aiPrompt 应保留三门、五将与阴阳和判断条件', () => {
   assert.ok(session.aiPrompt.includes('主客吉凶条件相等时，再以算之长短比较'));
   assert.doesNotMatch(session.aiPrompt, /盘面条件：/);
   assert.ok(session.aiPrompt.includes(`主大将${data.lordGeneral}宫`));
-  assert.ok(
-    session.aiPrompt.includes(data.conditions.fiveGenerals.hostGuestElementRelation.relation),
-  );
-  const relation = data.conditions.fiveGenerals.hostGuestElementRelation;
-  assert.ok(session.aiPrompt.includes(`文昌${relation.hostPosition}属${relation.hostElement}`));
-  assert.ok(session.aiPrompt.includes(`始击${relation.guestPosition}属${relation.guestElement}`));
-  assert.match(
-    session.aiPrompt,
-    /二目五行（位置关系）.*日计纳音另论.*五将发不发依同宫关等条件另判/,
-  );
+  assert.doesNotMatch(session.aiPrompt, /二目五行|日计纳音另论|主关客|客关主|未判定/);
+  assert.ok(session.aiPrompt.includes(`文昌${data.wenChangPosition}`));
+  assert.ok(session.aiPrompt.includes(`始击${data.shiJiPosition}`));
   assert.doesNotMatch(session.aiPrompt, /sourceUrl|evidenceAnalysis|https?:\/\//);
 });
 

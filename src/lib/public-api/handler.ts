@@ -1934,6 +1934,29 @@ export function getPublicApiOpenApiDocument(
               maximum: 31,
               description: '出生公历日期（八宅立春换年）',
             },
+            birthHour: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 23,
+              description: '出生地民用小时（八宅立春换年）',
+            },
+            birthMinute: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 59,
+              description: '出生地民用分钟；省略按 0 分（八宅）',
+            },
+            birthTimezone: {
+              type: 'number',
+              minimum: -12,
+              maximum: 14,
+              description: '出生地固定 UTC 小时偏移；省略按北京时间（八宅）',
+            },
+            birthTimeZoneId: {
+              type: 'string',
+              minLength: 1,
+              description: '出生地 IANA 历史时区，如 Asia/Shanghai（八宅）',
+            },
             gender: { enum: ['male', 'female'], description: '性别（八宅）' },
             mingGua: { type: 'string', description: '直接给定命卦（八宅）' },
             sitMountain: { type: 'string', description: '坐山，如「子」（八宅）' },
@@ -2059,6 +2082,29 @@ export function getPublicApiOpenApiDocument(
               minimum: 1,
               maximum: 31,
               description: '居住人出生公历日期。',
+            },
+            birthHour: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 23,
+              description: '居住人出生地民用小时；用于八宅立春换年。',
+            },
+            birthMinute: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 59,
+              description: '居住人出生地民用分钟；省略按 0 分。',
+            },
+            birthTimezone: {
+              type: 'number',
+              minimum: -12,
+              maximum: 14,
+              description: '居住人出生地固定 UTC 小时偏移；省略按北京时间。',
+            },
+            birthTimeZoneId: {
+              type: 'string',
+              minLength: 1,
+              description: '居住人出生地 IANA 历史时区，如 Asia/Shanghai。',
             },
             gender: { enum: ['male', 'female'], description: '居住人性别。' },
             mingGua: {
@@ -4136,6 +4182,11 @@ function calculateBaZhaiApi(input: JsonRecord) {
   const birthYear = optInt(input, 'birthYear', 1900, 2100);
   const birthMonth = optInt(input, 'birthMonth', 1, 12);
   const birthDay = optInt(input, 'birthDay', 1, 31);
+  const birthHour = optInt(input, 'birthHour', 0, 23);
+  const birthMinute = optInt(input, 'birthMinute', 0, 59);
+  const birthTimezone = optNumber(input, 'birthTimezone', -12, 14);
+  const birthTimeZoneId =
+    input.birthTimeZoneId === undefined ? undefined : readRequiredString(input, 'birthTimeZoneId');
   const mingGua = readString(input, 'mingGua', '');
   const sitMountain = readString(input, 'sitMountain', '');
   const doorToInteriorDegree = optNumber(input, 'doorToInteriorDegree', 0, 360);
@@ -4164,21 +4215,44 @@ function calculateBaZhaiApi(input: JsonRecord) {
     birthYear?: number;
     birthMonth?: number;
     birthDay?: number;
+    birthHour?: number;
+    birthMinute?: number;
+    birthTimezone?: number;
+    birthTimeZoneId?: string;
     gender?: 'male' | 'female';
     mingGua?: string;
   } = {
-    ...(birthYear !== undefined ? { birthYear, gender, birthMonth, birthDay } : {}),
+    ...(birthYear !== undefined
+      ? {
+          birthYear,
+          gender,
+          birthMonth,
+          birthDay,
+          birthHour,
+          birthMinute,
+          birthTimezone,
+          birthTimeZoneId,
+        }
+      : {}),
     mingGua: mingGua || undefined,
   };
-  return doorToInteriorDegree !== undefined
-    ? bazhai.analyzeBaZhaiByDoorDegree({
-        ...baseInput,
-        doorToInteriorDegree,
-        northReference: northReference as 'unspecified' | 'magnetic' | 'true' | undefined,
-        magneticDeclinationDegrees,
-        measurementUncertaintyDegrees,
-      })
-    : bazhai.analyzeBaZhai({ ...baseInput, sitMountain: sitMountain || undefined });
+  try {
+    return doorToInteriorDegree !== undefined
+      ? bazhai.analyzeBaZhaiByDoorDegree({
+          ...baseInput,
+          doorToInteriorDegree,
+          northReference: northReference as 'unspecified' | 'magnetic' | 'true' | undefined,
+          magneticDeclinationDegrees,
+          measurementUncertaintyDegrees,
+        })
+      : bazhai.analyzeBaZhai({ ...baseInput, sitMountain: sitMountain || undefined });
+  } catch (error) {
+    throw new ApiError(
+      400,
+      'BAD_REQUEST',
+      error instanceof Error ? error.message : '八宅参数无效。',
+    );
+  }
 }
 
 function buildBaZhaiPrompt(input: JsonRecord) {
@@ -4654,6 +4728,11 @@ function calculateResidentialApi(input: JsonRecord) {
   const birthYear = optInt(input, 'birthYear', 1900, 2100);
   const birthMonth = optInt(input, 'birthMonth', 1, 12);
   const birthDay = optInt(input, 'birthDay', 1, 31);
+  const birthHour = optInt(input, 'birthHour', 0, 23);
+  const birthMinute = optInt(input, 'birthMinute', 0, 59);
+  const birthTimezone = optNumber(input, 'birthTimezone', -12, 14);
+  const birthTimeZoneId =
+    input.birthTimeZoneId === undefined ? undefined : readRequiredString(input, 'birthTimeZoneId');
   const gender =
     input.gender === 'female' ? 'female' : input.gender === 'male' ? 'male' : undefined;
   const mingGua = input.mingGua === undefined ? undefined : readString(input, 'mingGua', '');
@@ -4704,6 +4783,10 @@ function calculateResidentialApi(input: JsonRecord) {
       ...(birthYear !== undefined ? { birthYear } : {}),
       ...(birthMonth !== undefined ? { birthMonth } : {}),
       ...(birthDay !== undefined ? { birthDay } : {}),
+      ...(birthHour !== undefined ? { birthHour } : {}),
+      ...(birthMinute !== undefined ? { birthMinute } : {}),
+      ...(birthTimezone !== undefined ? { birthTimezone } : {}),
+      ...(birthTimeZoneId !== undefined ? { birthTimeZoneId } : {}),
       ...(gender ? { gender } : {}),
       ...(mingGua ? { mingGua } : {}),
       ...(sitMountain ? { sitMountain } : {}),

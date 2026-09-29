@@ -188,6 +188,13 @@ function buildResidentialInputs(input: QueryInputState, prompt: QueryPromptState
             month: Number(birthMonth),
             day: Number(birthDay),
             gender: input.gender,
+            ...(input.birthHour !== ''
+              ? {
+                  hour: Number(input.birthHour),
+                  minute: input.birthMinute === '' ? 0 : Number(input.birthMinute),
+                  ...getFrontendBirthTimeZone(input.birthReverseSource),
+                }
+              : {}),
           },
           input.dateType,
           input.isLeapMonth,

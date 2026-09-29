@@ -18,6 +18,19 @@ function parseProportionalSixDay(target: string, timezone?: number, timeZoneId?:
   return parseHuangjiSixDayDateTime(target, timezone, timeZoneId, PROPORTIONAL_MODEL);
 }
 
+test('冬至甲子日向在线任务书只呈现干支，不展示内部索引', () => {
+  const result = calculateHuangjiJingshi({
+    sixDayDate: parseProportionalSixDay('2025-12-25T12:00:00+08:00'),
+  });
+  assert.equal(result.sixDayCycle?.anchor.kind, 'winter-solstice-civil-midnight');
+  if (result.sixDayCycle?.anchor.kind !== 'winter-solstice-civil-midnight') return;
+  assert.equal(result.sixDayCycle.anchor.dayGanZhi, '甲子');
+  assert.equal(result.sixDayCycle.anchor.dayIndex, 0);
+  assert.match(result.prompt, /冬至所在当地公历日干支：甲子；/);
+  assert.match(result.sixDayCycle.calculationChain.join('；'), /对应的甲子接续六日逐爻周期/);
+  assert.doesNotMatch(result.prompt, /六十甲子序号|零基偏移/);
+});
+
 test('六日逐爻使用显式子半历元直接进入三百六十日坐标', () => {
   const result = calculateHuangjiSixDayCycleFromDate(
     parseSixDay('2025-01-01T23:03:05+08:00', '2025-01-01T00:00:00+08:00'),

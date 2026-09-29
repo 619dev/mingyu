@@ -2361,7 +2361,7 @@ test('八字提示词按流派输出不同任务、依据与盘面证据', () =>
   assert.match(mangpai, /十神显隐：/);
   assert.match(mangpai, /墓库与空亡：/);
   assert.match(mangpai, /柱位阶段取象：年柱早年、月柱青年、日柱中年、时柱晚年/);
-  assert.match(mangpai, /起运出生后[^；\n]+；大运[^；\n]+（\d{4}年起，约\d+岁/);
+  assert.doesNotMatch(mangpai, /起运出生后|大运[^；\n]+（\d{4}年起/);
   assert.doesNotMatch(
     mangpai,
     /年柱约对应1至16岁|月柱约对应17至32岁|日柱约对应33至48岁|时柱约对应49岁以后/,
@@ -2379,7 +2379,7 @@ test('八字提示词按流派输出不同任务、依据与盘面证据', () =>
   assert.match(xinpai, /十神结构：已见/);
   assert.doesNotMatch(xinpai, /旺衰依据：|十神流通：候选链条/);
   assert.match(xinpai, /喜忌落位：/);
-  assert.match(xinpai, /动态岁运：/);
+  assert.doesNotMatch(xinpai, /动态岁运：/);
   assert.doesNotMatch(xinpai, /不把旺相休囚死|限制事实|工程上下文/);
   assert.notEqual(mangpai, xinpai);
   assert.doesNotMatch(`${mangpai}\n${xinpai}`, /undefined|\[object Object\]/);
@@ -6191,6 +6191,67 @@ test('公开 API 新增术数提示词应包含用户问题和统一章节', asy
   assert.match(body.data.prompt, /【任务】/);
   assert.doesNotMatch(body.data.prompt, /【输出要求】/);
   assert.doesNotMatch(body.data.prompt, /结构化证据|证据汇总|解释限制|计算链|主证、辅证、反证/);
+});
+
+test('八宅与住宅公开接口贯通出生时分和出生地时区，旧请求仍可使用', async () => {
+  const post = (value: object) => ({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(value),
+  });
+  const birth = { birthYear: 2024, birthMonth: 2, birthDay: 4, gender: 'male' };
+  const before = { ...birth, birthHour: 16, birthMinute: 20, birthTimezone: 8 };
+  const after = {
+    ...birth,
+    birthHour: 16,
+    birthMinute: 30,
+    birthTimeZoneId: 'Asia/Shanghai',
+  };
+  const bazhai = await callApi('metaphysics/bazhai/calculate', post(before));
+  assert.equal(bazhai.response.status, 200);
+  assert.equal(bazhai.body.data.effectiveBirthYear, 2023);
+  assert.equal(bazhai.body.data.calculationInput.birthTimezone, 8);
+  const bazhaiPrompt = await callApi(
+    'metaphysics/bazhai/prompt',
+    post({ ...after, responseMode: 'full', question: '命卦如何核定？' }),
+  );
+  assert.equal(bazhaiPrompt.response.status, 200);
+  assert.equal(bazhaiPrompt.body.data.result.effectiveBirthYear, 2024);
+  assert.equal(bazhaiPrompt.body.data.result.calculationInput.birthTimeZoneId, 'Asia/Shanghai');
+
+  const residential = await callApi('metaphysics/residential/calculate', post(before));
+  assert.equal(residential.response.status, 200);
+  assert.equal(residential.body.data.bazhai.effectiveBirthYear, 2023);
+  assert.equal(residential.body.data.bazhai.calculationInput.birthHour, 16);
+  const residentialPrompt = await callApi(
+    'metaphysics/residential/prompt',
+    post({ ...after, responseMode: 'full', question: '住宅与命卦如何配合？' }),
+  );
+  assert.equal(residentialPrompt.response.status, 200);
+  assert.equal(residentialPrompt.body.data.result.bazhai.effectiveBirthYear, 2024);
+  assert.equal(
+    residentialPrompt.body.data.result.bazhai.calculationInput.birthTimeZoneId,
+    'Asia/Shanghai',
+  );
+
+  for (const path of ['metaphysics/bazhai/calculate', 'metaphysics/residential/calculate']) {
+    const oldRequest = await callApi(path, post(birth));
+    assert.equal(oldRequest.response.status, 200);
+    const invalidClock = await callApi(path, post({ ...birth, birthHour: 24 }));
+    assert.equal(invalidClock.response.status, 400);
+    assert.equal(invalidClock.body.error.code, 'BAD_REQUEST');
+  }
+
+  const openapi = await callApi('openapi.json');
+  for (const schemaName of ['MetaphysicsRequest', 'ResidentialFengshuiRequest']) {
+    const properties = openapi.body.data.components.schemas[schemaName].properties;
+    assert.deepEqual(
+      ['birthHour', 'birthMinute', 'birthTimezone', 'birthTimeZoneId'].map(
+        (key) => properties[key]?.type,
+      ),
+      ['integer', 'integer', 'number', 'string'],
+    );
+  }
 });
 
 test('公开 API 七政四余应返回十一星、真实距星宿界、证据链与提示词', async () => {

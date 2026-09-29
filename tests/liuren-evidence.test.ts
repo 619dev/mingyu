@@ -414,6 +414,28 @@ test('大六壬取传规则与四课裁决不一致时不生成完整证据链',
   assert.throws(() => analyzeLiurenEvidence(data), /取传规则或三传与四课、天地盘不一致/);
 });
 
+test('大六壬普通宗门裁决轨迹与真实发用错位时拒绝生成证据', () => {
+  const data = generateLiuren(fixedDate);
+  assert.equal(data.transmissionRule, '重审法');
+  assert.equal(data.threeTransmissions[0].branch, '酉');
+  assert.equal(data.ordinaryTransmissionAdjudication?.status, 'selected');
+  data.ordinaryTransmissionAdjudication!.selectedInitial = '子';
+  data.ordinaryTransmissionAdjudication!.selectedRule = '元首法';
+
+  assert.throws(() => analyzeLiurenEvidence(data), /普通宗门裁决与四课、三传、天地盘不一致/);
+});
+
+test('大六壬普通宗门裁决字段顺序变化但事实相同时仍可生成证据', () => {
+  const data = generateLiuren(fixedDate);
+  const adjudication = data.ordinaryTransmissionAdjudication;
+  assert.ok(adjudication);
+  data.ordinaryTransmissionAdjudication = Object.fromEntries(
+    Object.entries(adjudication).reverse(),
+  ) as typeof adjudication;
+
+  assert.equal(analyzeLiurenEvidence(data).summaryFact.status, '证据链完整');
+});
+
 test('大六壬已登记课体条件与当前盘面不一致时拒绝生成证据', () => {
   const staleCondition = generateLiuren(fixedDate);
   assert.ok(staleCondition.guaTiFacts?.length);

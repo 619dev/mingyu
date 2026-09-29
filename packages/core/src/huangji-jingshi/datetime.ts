@@ -821,7 +821,7 @@ function calculateHuangjiSixDayCycleFromProportionalDate(
       `以${anchorDateTime}的冬至天文时刻确定所属${anchor.termYear}冬至岁周；该瞬时在目标地点为${anchorLocalDateTime}。`,
       `以冬至所在当地公历日${anchorDayStartDateTime}${anchor.dayBoundary === '当地子半' ? '子半' : '首个实际时刻'}为起点，至下一冬至当地公历日首点的实际跨度为${(yearLengthMilliseconds / MILLISECONDS_PER_DAY).toFixed(6)}日（${yearLengthMilliseconds}毫秒），按三百六十逻辑日比例映射。`,
       `目标距当地日首点实际经过${actualElapsedSeconds}秒（${actualElapsedDays}个完整UTC日），逻辑位置为${mapped.logicalPosition.toFixed(9)}日，即第${mapped.logicalElapsedDays + 1}个逻辑日的${mapped.logicalDayFraction.toFixed(9)}。`,
-      `以冬至所在当地公历日首点对应的${anchor.dayGanZhi}（六十甲子序号${anchor.dayIndex}）接续六日逐爻周期，得到周期第${cycleElapsedDays + 1}日；每四小时取一爻，当前为${cycle.hourRange}。`,
+      `以冬至所在当地公历日首点对应的${anchor.dayGanZhi}接续六日逐爻周期，得到周期第${cycleElapsedDays + 1}日；每四小时取一爻，当前为${cycle.hourRange}。`,
     ],
     sources: HUANGJI_SIX_DAY_SOURCES.map((source) => ({ ...source })),
     limitations: [

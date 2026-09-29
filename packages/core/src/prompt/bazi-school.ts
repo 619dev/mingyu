@@ -199,6 +199,14 @@ function formatSchoolPatternFacts(
     special?.status === '成立' && special.kind === '曲直格' && basis && !patternBasisIsVisible
       ? `成格依据：${formatPatternBasisForPrompt(basis)}`
       : '';
+  const ordinaryPatternBasis =
+    embedded &&
+    basis &&
+    !patternBasisIsVisible &&
+    special?.status !== '成立' &&
+    pattern.transformation?.status !== '成化'
+      ? `取格依据：${formatPatternBasisForPrompt(basis)}`
+      : '';
   const specialFacts = facts
     .filter(
       (item) =>
@@ -250,6 +258,7 @@ function formatSchoolPatternFacts(
     .filter((item) => !curveFactsInChart || !/^(?:特殊格条件|成员支藏干保留)：/u.test(item));
   if (embedded)
     return [
+      ordinaryPatternBasis,
       conciseCurveBasis,
       ...specialFacts.filter((item) => !item.startsWith('从儿五行流向：')),
     ].filter(Boolean);
@@ -379,7 +388,7 @@ function formatZipingFacts(
               .join('、') || '未记录'
           }`
     }`,
-    `岁运：${formatFortune(result)}`,
+    embedded ? '' : `岁运：${formatFortune(result)}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -408,7 +417,7 @@ function formatMangpaiFacts(
     `四柱组合与做功线索：${formatRelations(result)}；从主宾之间的制、化、合、冲关系观察十神作用与组合取象。`,
     `墓库与空亡：${formatTombAndVoid(result)}`,
     `纳音旁参：${PILLAR_KEYS.map((key) => `${PILLAR_LABELS[key]}${result.nayin[key] || '未记录'}`).join('、')}`,
-    `柱位阶段取象：年柱早年、月柱青年、日柱中年、时柱晚年；${formatFortune(result)}`,
+    `柱位阶段取象：年柱早年、月柱青年、日柱中年、时柱晚年${embedded ? '' : `；${formatFortune(result)}`}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -439,7 +448,7 @@ function formatXinpaiFacts(
     '喜忌落位：',
     formatUsefulGodPlacements(result),
     `原局作用：${formatRelations(result)}`,
-    `动态岁运：${formatFortune(result)}`,
+    embedded ? '' : `动态岁运：${formatFortune(result)}`,
   ]
     .filter(Boolean)
     .join('\n');

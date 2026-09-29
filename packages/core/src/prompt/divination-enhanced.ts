@@ -1325,7 +1325,7 @@ function formatLenormandInfo(data: LenormandData) {
   const evidenceAnalysis = analyzeLenormandEvidence(data);
   const cardLines = evidenceAnalysis.cards.map((card) => {
     const placement = [
-      card.house ? `落${card.house}宫` : '',
+      card.house && !card.position.includes(`（${card.house}宫）`) ? `落${card.house}宫` : '',
       card.row && card.column ? `第${card.row}排第${card.column}列` : '',
     ]
       .filter(Boolean)
@@ -1388,7 +1388,8 @@ export function formatTaiyiInfo(data: TaiyiResult) {
         `三门：${conditions.threeGates.status}；直使${conditions.threeGates.directGate}；${mainGateRoles.map((item) => `${item.role}${item.gate ?? '中宫无八门'}`).join('、')}`,
         `五将：${conditions.fiveGenerals.launched ? '发' : '不发'}`,
         `阴阳：${conditions.yinYangHarmony.matched ? '和' : `不和（${mismatchedPairs.map((item) => item.role).join('、')}）`}`,
-        elementRelation?.hostElement &&
+        elementRelation?.complete &&
+        elementRelation.hostElement &&
         elementRelation.guestElement &&
         elementRelation.relation !== '未形成五行相制' &&
         elementRelation.relation !== '未判定'

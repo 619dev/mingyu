@@ -442,12 +442,27 @@ test('起名与选字数量必须为安全整数，避免NaN绕过候选上限',
   for (const limit of [NaN, Infinity, -Infinity, 1.5]) {
     assert.throws(() => generateChineseNames({ surname: '李', limit }), /安全整数/);
     assert.throws(() => selectNamingCharacters({ limit }), /安全整数/);
+    assert.throws(() => selectChineseCharacters({ limit }), /安全整数/);
   }
   assert.throws(() => selectNamingCharacters({ gender: '未知' as never }), /性别取值无效/);
   assert.throws(
     () => generateChineseNames({ surname: '李', givenNameLength: 3 as never }),
     /名字长度/,
   );
+});
+
+test('汉字筛选的笔画范围必须是1至64的安全整数', () => {
+  for (const strokes of [NaN, Infinity, -Infinity, 0, 1.5, 65]) {
+    assert.throws(() => selectChineseCharacters({ strokes }), /笔画筛选需为1至64的安全整数/);
+    assert.throws(
+      () => selectChineseCharacters({ strokesMin: strokes }),
+      /笔画筛选需为1至64的安全整数/,
+    );
+    assert.throws(
+      () => selectChineseCharacters({ strokesMax: strokes }),
+      /笔画筛选需为1至64的安全整数/,
+    );
+  }
 });
 
 test('号码解读关键词在每次结果与分组间独立保存', () => {

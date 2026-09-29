@@ -235,10 +235,6 @@ function formatTaiyiJudgmentFacts(data: TaiyiResult): string[] {
     lines.push(
       `阴阳和：${conditions.yinYangHarmony.matched ? '和' : '不和'}${conditions.yinYangHarmony.pairFacts.length ? `；${conditions.yinYangHarmony.pairFacts.map((item) => `${item.role}${item.polarity}${item.count}${item.countPolarity}${item.matched ? '和' : '不和'}`).join('、')}` : ''}`,
     );
-    const relation = fiveGenerals.hostGuestElementRelation;
-    lines.push(
-      `二目五行（位置关系）：文昌${relation.hostPosition}属${relation.hostElement ?? '未列'}，始击${relation.guestPosition}属${relation.guestElement ?? '未列'}；${relation.relation}；主客相关的日计纳音另论，五将发不发依同宫关等条件另判。`,
-    );
   }
 
   if (specialJudgments.length) lines.push(`判断：${specialJudgments.join('；')}`);

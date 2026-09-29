@@ -83,7 +83,7 @@ test('npm 提示词入口应生成自包含的八字任务书', () => {
   assert.doesNotMatch(prompt, /API|MCP|仓库|项目名|工程上下文/);
 });
 
-test('npm 八字提示词入口应输出完整且有差异的盲派与新派资料', () => {
+test('npm 八字本命提示词入口应输出有差异的盲派与新派资料', () => {
   const result = createChart('female', 15);
   const mangpai = buildBaziPrompt({
     result,
@@ -105,7 +105,7 @@ test('npm 八字提示词入口应输出完整且有差异的盲派与新派资�
   assert.match(xinpai, /十神结构/);
   assert.match(xinpai, /十神结构/);
   assert.match(xinpai, /喜忌落位/);
-  assert.match(xinpai, /动态岁运/);
+  assert.doesNotMatch(xinpai, /动态岁运/);
   assert.notEqual(mangpai, xinpai);
   assert.doesNotMatch(`${mangpai}\n${xinpai}`, /API|MCP|仓库|项目名|工程上下文/);
 });

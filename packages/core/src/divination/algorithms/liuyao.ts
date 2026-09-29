@@ -32,6 +32,7 @@ import type { RandomOptions, RandomTrace } from '../../shared/random';
 import { createRandomContext, hasRandomOptions, randomInt } from '../../shared/random';
 import { attachResultMeta, MingyuCoreError } from '../../shared/result';
 import { analyzeLiuyaoEvidence } from '../liuyao-evidence';
+import { getLiuyaoSanheWithTrigger } from '../liuyao-sanhe';
 import {
   getLiuyaoChangeDirection,
   getLiuyaoChangeRelation,
@@ -49,7 +50,6 @@ import {
   isLiuchong,
   BRANCH_ORDER,
   CHANGSHENG_ORDER,
-  SANHE_GROUPS,
 } from '../../ganzhi';
 
 export { getLiuyaoChangeDirection, getLiuyaoChangeRelation, getLiuyaoChangeRelations };
@@ -96,33 +96,6 @@ function getShiErGong(wuxing: string, branch: string): string {
     throw new Error(`六爻十二长生无法定位 ${wuxing} 在 ${branch} 支的状态。`);
   }
   return stage;
-}
-
-/**
- * 检测月建/日辰对爻的三合局触发（《卜筮正宗》卷三《三合局章》）：
- * 若月建或日辰为三合局中一支，再有两爻相配，即为完整三合局。
- * "三合主久远、多人协力，事势增强，吉凶随局而定。"
- */
-function checkSanheWithTrigger(
-  activeBranches: string[],
-  triggerBranch: string,
-  triggerLabel: '日辰' | '月建',
-): { group: string; members: string[]; description: string } | null {
-  const activeBranchSet = new Set(activeBranches);
-  for (const [group, members] of Object.entries(SANHE_GROUPS)) {
-    if (!members.includes(triggerBranch)) {
-      continue;
-    }
-    const requiredYaoBranches = members.filter((member) => member !== triggerBranch);
-    if (requiredYaoBranches.every((member) => activeBranchSet.has(member))) {
-      return {
-        group,
-        members,
-        description: `${triggerLabel}${triggerBranch}引动三合${group}，三合局成，事势增强`,
-      };
-    }
-  }
-  return null;
 }
 
 // 六合月日暗助检测（已在 yaosDetail 中通过月令旺衰、日冲与动静状态实现暗动判定）
@@ -259,7 +232,9 @@ export function getLiuyaoHexagramRelations(
   };
 }
 
-function collectSanxingInBranches(branches: string[]): Array<{ branches: string[]; type: string }> {
+export function collectSanxingInBranches(
+  branches: string[],
+): Array<{ branches: string[]; type: string }> {
   const uniqueBranches = Array.from(new Set(branches));
   const result: Array<{ branches: string[]; type: string }> = [];
   const mutualGroups = [
@@ -656,7 +631,7 @@ function getWorldAndResponseArray(shiYing: { shi: number; ying: number }): strin
   return result;
 }
 
-function getSpecialPattern(
+export function getSpecialPattern(
   changingCount: number,
   mainHexagramName: string,
 ): {
@@ -1074,8 +1049,8 @@ export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOpti
     }
     return yao.changedYao ? [yao.najiaDizhi, yao.changedYao.dizhi] : [yao.najiaDizhi];
   });
-  const sanheWithDay = checkSanheWithTrigger(activeBranches, dayBranch, '日辰');
-  const sanheWithMonth = checkSanheWithTrigger(activeBranches, monthBranch, '月建');
+  const sanheWithDay = getLiuyaoSanheWithTrigger(activeBranches, dayBranch, '日辰');
+  const sanheWithMonth = getLiuyaoSanheWithTrigger(activeBranches, monthBranch, '月建');
 
   const sanxingInYaos = collectSanxingInBranches(yaoBranches);
 

@@ -636,6 +636,13 @@ function normalizePinyin(value: string) {
 }
 
 function searchChars(filter: CharacterSearchFilter = {}) {
+  for (const strokes of [filter.strokes, filter.strokesMin, filter.strokesMax]) {
+    if (strokes !== undefined && (!Number.isSafeInteger(strokes) || strokes < 1 || strokes > 64)) {
+      throw new Error('笔画筛选需为1至64的安全整数');
+    }
+  }
+  const limit = filter.limit ?? 50;
+  if (!Number.isSafeInteger(limit)) throw new Error('汉字筛选数量必须为安全整数');
   const pinyin = normalizePinyin(filter.pinyin ?? '');
   const unique = new Set<string>();
   const results = [];
@@ -657,9 +664,7 @@ function searchChars(filter: CharacterSearchFilter = {}) {
       continue;
     results.push(item);
   }
-  return results
-    .slice(0, Math.min(Math.max(filter.limit ?? 50, 0), 200))
-    .map((item) => ({ ...item }));
+  return results.slice(0, Math.min(Math.max(limit, 0), 200)).map((item) => ({ ...item }));
 }
 
 function shuliEntry(number: number) {

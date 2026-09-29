@@ -30,6 +30,10 @@ export interface ResidentialFengshuiInput {
   birthYear?: number;
   birthMonth?: number;
   birthDay?: number;
+  birthHour?: number;
+  birthMinute?: number;
+  birthTimezone?: number;
+  birthTimeZoneId?: string;
   gender?: 'male' | 'female';
   mingGua?: string;
   sitMountain?: string;
@@ -169,6 +173,10 @@ function buildBazhai(
     ...(input.birthYear != null ? { birthYear: input.birthYear } : {}),
     ...(input.birthMonth != null ? { birthMonth: input.birthMonth } : {}),
     ...(input.birthDay != null ? { birthDay: input.birthDay } : {}),
+    ...(input.birthHour != null ? { birthHour: input.birthHour } : {}),
+    ...(input.birthMinute != null ? { birthMinute: input.birthMinute } : {}),
+    ...(input.birthTimezone != null ? { birthTimezone: input.birthTimezone } : {}),
+    ...(input.birthTimeZoneId ? { birthTimeZoneId: input.birthTimeZoneId } : {}),
     ...(input.gender ? { gender: input.gender } : {}),
     ...(input.mingGua ? { mingGua: input.mingGua } : {}),
   };

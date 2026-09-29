@@ -1712,6 +1712,72 @@ test('MCP 排盘工具默认保留盘面并省略冗长证据', async () => {
   });
 });
 
+test('八宅与住宅 MCP 计算及提示词入口传递出生时分和历史时区', async () => {
+  await withMcpClient(async (client) => {
+    const birth = { birthYear: 2024, birthMonth: 2, birthDay: 4, gender: 'male' };
+    for (const [name, input, expectedYear] of [
+      [
+        'metaphysics_bazhai',
+        { ...birth, birthHour: 16, birthMinute: 20, birthTimezone: 8, detailMode: 'full' },
+        2023,
+      ],
+      [
+        'bazhai_prompt',
+        {
+          ...birth,
+          birthHour: 16,
+          birthMinute: 30,
+          birthTimeZoneId: 'Asia/Shanghai',
+          question: '命卦如何核定？',
+        },
+        2024,
+      ],
+      [
+        'metaphysics_residential',
+        { ...birth, birthHour: 16, birthMinute: 20, birthTimezone: 8, detailMode: 'full' },
+        2023,
+      ],
+      [
+        'residential_prompt',
+        {
+          ...birth,
+          birthHour: 16,
+          birthMinute: 30,
+          birthTimeZoneId: 'Asia/Shanghai',
+          question: '住宅与命卦如何配合？',
+        },
+        2024,
+      ],
+    ] as const) {
+      const response = await client.callTool({ name, arguments: input });
+      assert.notEqual(response.isError, true, name);
+      const result = (
+        response.structuredContent as {
+          result: {
+            bazhai?: { effectiveBirthYear: number; calculationInput: Record<string, unknown> };
+            effectiveBirthYear?: number;
+            calculationInput?: Record<string, unknown>;
+          };
+        }
+      ).result;
+      const bazhai = result.bazhai ?? result;
+      assert.equal(bazhai.effectiveBirthYear, expectedYear, name);
+      assert.equal(bazhai.calculationInput?.birthHour, 16, name);
+      assert.equal(bazhai.calculationInput?.birthMinute, expectedYear === 2023 ? 20 : 30, name);
+      assert.equal(
+        bazhai.calculationInput?.[expectedYear === 2023 ? 'birthTimezone' : 'birthTimeZoneId'],
+        expectedYear === 2023 ? 8 : 'Asia/Shanghai',
+        name,
+      );
+    }
+
+    for (const name of ['metaphysics_bazhai', 'metaphysics_residential'] as const) {
+      const oldRequest = await client.callTool({ name, arguments: birth });
+      assert.notEqual(oldRequest.isError, true, name);
+    }
+  });
+});
+
 test('MCP 生肖流年应拒绝缺失或互相冲突的年份依据', async () => {
   await withMcpClient(async (client) => {
     for (const [name, arguments_] of [

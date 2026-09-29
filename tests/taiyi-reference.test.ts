@@ -35,6 +35,25 @@ test('太乙巽位十六神名称传入盘面证据与任务书', () => {
   assert.match(formatTaiyiInfo(result), /巽大炅/);
 });
 
+test('太乙二目五行关系未完成日计纳音复算时不进入在线任务书', () => {
+  const result = generateTaiyi({ year: 1974, scope: 'year' });
+  const relation = result.conditions.fiveGenerals.hostGuestElementRelation;
+  assert.equal(relation.relation, '未判定');
+  assert.equal(relation.complete, false);
+  assert.match(relation.basis, /未接入独立日计纳音判层/);
+  assert.equal(relation.hostElement, '土');
+  assert.equal(relation.guestElement, '水');
+  assert.match(
+    result.evidenceAnalysis.conditionFacts.find((fact) => fact.kind === '五将')?.calculationText ??
+      '',
+    /日计纳音判层未复算/,
+  );
+  for (const text of [formatTaiyiInfo(result), result.prompt, result.evidenceAnalysis.promptText]) {
+    assert.doesNotMatch(text, /二目五行：|主关客|客关主|未复算|纳音判层/);
+  }
+  assert.doesNotMatch(JSON.stringify(result), /主关客|客关主/);
+});
+
 test('太乙阳遁二三局按十六神原位区分掩击与囚迫', () => {
   // 《太乙秘书》阳遁第二局：太乙一宫，始击阴主（戌）击；
   // 第三局：太乙一宫，天目阴主（戌）辰迫。
@@ -629,7 +648,9 @@ test('太乙二目五行关系单列，不冒充五将发不发条件', () => {
     shiJiPosition: '酉',
     shiJiPalace: 6,
   });
-  assert.equal(guestControlsHost.fiveGenerals.hostGuestElementRelation.relation, '客关主');
+  assert.equal(guestControlsHost.fiveGenerals.hostGuestElementRelation.relation, '未判定');
+  assert.equal(guestControlsHost.fiveGenerals.hostGuestElementRelation.hostElement, '木');
+  assert.equal(guestControlsHost.fiveGenerals.hostGuestElementRelation.guestElement, '金');
   assert.equal(guestControlsHost.fiveGenerals.hostGuestElementRelation.complete, false);
   assert.equal(
     guestControlsHost.fiveGenerals.hostGuestElementRelation.usedForFiveGeneralsLaunch,
@@ -643,7 +664,9 @@ test('太乙二目五行关系单列，不冒充五将发不发条件', () => {
     shiJiPosition: '子',
     shiJiPalace: 8,
   });
-  assert.equal(hostControlsGuest.fiveGenerals.hostGuestElementRelation.relation, '主关客');
+  assert.equal(hostControlsGuest.fiveGenerals.hostGuestElementRelation.relation, '未判定');
+  assert.equal(hostControlsGuest.fiveGenerals.hostGuestElementRelation.hostElement, '土');
+  assert.equal(hostControlsGuest.fiveGenerals.hostGuestElementRelation.guestElement, '水');
   assert.equal(hostControlsGuest.fiveGenerals.hostGuestElementRelation.complete, false);
 });
 

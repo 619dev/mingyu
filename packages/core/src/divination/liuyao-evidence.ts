@@ -29,8 +29,15 @@ import {
   getLiuyaoChangeRelations,
 } from './liuyao-change';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
-import { MingyuCoreError } from '../shared/result';
+import { MingyuCoreError, stableStringify } from '../shared/result';
 import { generateYarrow } from './algorithms/yarrow';
+import {
+  collectSanxingInBranches,
+  getLiuyaoFanFuRelations,
+  getLiuyaoHexagramRelations,
+  getSpecialPattern,
+} from './algorithms/liuyao';
+import { getLiuyaoSanheWithTrigger } from './liuyao-sanhe';
 import type { YarrowResult, YarrowLine } from './algorithms/yarrow';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import {
@@ -643,6 +650,78 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
     ) {
       throw new Error(`六爻第${yao.position}爻纳甲、世应、动变或月日空破与盘面不一致。`);
     }
+  }
+
+  const activeBranches = data.yaoArray.flatMap((raw, index) => {
+    const branch = mainNaJia[index];
+    const changing = raw === 6 || raw === 9;
+    const season = getSeasonState(getBranchWuxing(branch), monthBranch);
+    const hiddenMove =
+      !changing && isLiuchong(branch, dayBranch) && (season === '旺' || season === '相');
+    if (!changing && !hiddenMove) return [];
+    return changing ? [branch, changedNaJia![index]] : [branch];
+  });
+  const expectedDaySanhe = getLiuyaoSanheWithTrigger(activeBranches, dayBranch, '日辰');
+  const expectedMonthSanhe = getLiuyaoSanheWithTrigger(activeBranches, monthBranch, '月建');
+  const matchesSanhe = (
+    actual: LiuyaoData['sanheWithDay'],
+    expected: NonNullable<LiuyaoData['sanheWithDay']> | null,
+  ) =>
+    actual == null
+      ? expected === null
+      : expected !== null &&
+        actual.group === expected.group &&
+        actual.description === expected.description &&
+        Array.isArray(actual.members) &&
+        actual.members.length === expected.members.length &&
+        expected.members.every((branch, index) => actual.members[index] === branch);
+  if (
+    (data.sanheWithDay !== undefined && !matchesSanhe(data.sanheWithDay, expectedDaySanhe)) ||
+    (data.sanheWithMonth !== undefined && !matchesSanhe(data.sanheWithMonth, expectedMonthSanhe))
+  ) {
+    throw new Error('六爻日辰或月建三合与原始爻值、纳甲及月日支不一致。');
+  }
+  if (
+    data.sanxingInYaos !== undefined &&
+    stableStringify(data.sanxingInYaos) !== stableStringify(collectSanxingInBranches(mainNaJia))
+  ) {
+    throw new Error('六爻三刑关系与原始爻值、纳甲不一致。');
+  }
+
+  const hasChangingYaos = movingPositions.length > 0;
+  const expectedHexagramRelations = getLiuyaoHexagramRelations(
+    expectedMain.name,
+    expectedChanged.name,
+    hasChangingYaos,
+  );
+  if (
+    data.hexagramRelations !== undefined &&
+    stableStringify(data.hexagramRelations) !== stableStringify(expectedHexagramRelations)
+  ) {
+    throw new Error('六爻整卦六合六冲关系与原始爻值、纳甲不一致。');
+  }
+  const expectedFanFuRelations = getLiuyaoFanFuRelations(
+    expectedMain.name,
+    expectedChanged.name,
+    hasChangingYaos,
+  );
+  if (
+    data.fanfuRelations !== undefined &&
+    stableStringify(data.fanfuRelations) !== stableStringify(expectedFanFuRelations)
+  ) {
+    throw new Error('六爻反吟伏吟关系与原始爻值、纳甲不一致。');
+  }
+  const expectedSpecialPattern = getSpecialPattern(movingPositions.length, expectedMain.name);
+  if (
+    (data.specialPattern !== undefined &&
+      data.specialPattern !== expectedSpecialPattern.specialPattern) ||
+    (data.specialAdvice !== undefined &&
+      data.specialAdvice !== expectedSpecialPattern.specialAdvice) ||
+    (data.isChaotic !== undefined && data.isChaotic !== expectedSpecialPattern.isChaotic) ||
+    (data.chaoticReason !== undefined &&
+      data.chaoticReason !== expectedSpecialPattern.chaoticReason)
+  ) {
+    throw new Error('六爻特殊卦式与原始爻值、动爻数量不一致。');
   }
 }
 

@@ -279,40 +279,19 @@ function buildGateCondition(data: TaiyiConditionInput): TaiyiThreeGateCondition 
   };
 }
 
-function controls(source: TaiyiWuxing, target: TaiyiWuxing): boolean {
-  return (
-    (source === '木' && target === '土') ||
-    (source === '土' && target === '水') ||
-    (source === '水' && target === '火') ||
-    (source === '火' && target === '金') ||
-    (source === '金' && target === '木')
-  );
-}
-
 function buildHostGuestElementRelation(data: TaiyiConditionInput): TaiyiHostGuestElementFact {
   const hostElement = TAIYI_POINT_WUXING[data.wenChangPosition];
   const guestElement = TAIYI_POINT_WUXING[data.shiJiPosition];
-  let relation: TaiyiHostGuestElementRelation = '未判定';
-  if (hostElement && guestElement) {
-    relation =
-      hostElement === guestElement
-        ? '同类'
-        : controls(guestElement, hostElement)
-          ? '客关主'
-          : controls(hostElement, guestElement)
-            ? '主关客'
-            : '未形成五行相制';
-  }
   return {
     hostPosition: data.wenChangPosition,
     hostElement,
     guestPosition: data.shiJiPosition,
     guestElement,
-    relation,
+    relation: '未判定',
     complete: false,
     usedForFiveGeneralsLaunch: false,
     basis:
-      '卷四《推主客相关法》称“皆用日计纳音以决之”，并以地目、天目五行相制举例；本栏按二目所在十六神的五行记录客关主、主关客或未形成相制，未接入独立日计纳音判层，不能替代卷三同宫关，也不参与五将发不发。',
+      '卷四《推主客相关法》称“皆用日计纳音以决之”，并以地目、天目五行相制举例；本栏只记录二目所在十六神的五行，尚未接入独立日计纳音判层，故不判主客相关，亦不参与五将发不发。',
   };
 }
 

@@ -19,6 +19,10 @@ export type ResidentialChartInput = {
   year?: number;
   month?: number;
   day?: number;
+  hour?: number;
+  minute?: number;
+  timezone?: number;
+  timeZoneId?: string;
   gender?: 'male' | 'female';
   houseYear?: number;
   doorToInteriorDegree?: number;
@@ -36,13 +40,21 @@ export type ResidentialChartInput = {
   flowDay?: number;
 };
 
-export type ResidentialBirthData = Pick<ResidentialChartInput, 'year' | 'month' | 'day' | 'gender'>;
+export type ResidentialBirthData = Pick<
+  ResidentialChartInput,
+  'year' | 'month' | 'day' | 'hour' | 'minute' | 'timezone' | 'timeZoneId' | 'gender'
+>;
+
+type CompleteResidentialBirthDate = Required<
+  Pick<ResidentialBirthData, 'year' | 'month' | 'day' | 'gender'>
+> &
+  Pick<ResidentialBirthData, 'hour' | 'minute' | 'timezone' | 'timeZoneId'>;
 
 export function resolveResidentialBirthDate(
-  birth: Required<ResidentialBirthData>,
+  birth: CompleteResidentialBirthDate,
   dateType: 'solar' | 'lunar',
   isLeapMonth: boolean,
-): Required<ResidentialBirthData> {
+): CompleteResidentialBirthDate {
   if (dateType === 'solar') return birth;
   const solar = LunarDay.fromYmd(
     birth.year,
@@ -54,6 +66,10 @@ export function resolveResidentialBirthDate(
     month: solar.getMonth(),
     day: solar.getDay(),
     gender: birth.gender,
+    ...(birth.hour != null ? { hour: birth.hour } : {}),
+    ...(birth.minute != null ? { minute: birth.minute } : {}),
+    ...(birth.timezone != null ? { timezone: birth.timezone } : {}),
+    ...(birth.timeZoneId ? { timeZoneId: birth.timeZoneId } : {}),
   };
 }
 
@@ -115,6 +131,10 @@ function toCoreInput(input: ResidentialChartInput): ResidentialFengshuiInput {
     ...(input.year != null ? { birthYear: input.year } : {}),
     ...(input.month != null ? { birthMonth: input.month } : {}),
     ...(input.day != null ? { birthDay: input.day } : {}),
+    ...(input.hour != null ? { birthHour: input.hour } : {}),
+    ...(input.minute != null ? { birthMinute: input.minute } : {}),
+    ...(input.timezone != null ? { birthTimezone: input.timezone } : {}),
+    ...(input.timeZoneId ? { birthTimeZoneId: input.timeZoneId } : {}),
     ...(input.gender ? { gender: input.gender } : {}),
     ...(input.houseYear != null ? { year: input.houseYear } : {}),
     ...(input.doorToInteriorDegree != null

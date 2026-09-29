@@ -1305,6 +1305,20 @@ test('雷诺曼提示词保留逐牌基础牌义与真实布局，不扩写普�
   assert.match(ninePrompt, /布局关系：/);
   assert.match(ninePrompt, /九宫第2排第2列的中心位置为/);
   assert.match(ninePrompt, /左上至右下对角线依次为/);
+
+  const grandTableauPrompt = buildDivinationPrompt(
+    'lenormand',
+    '这件事的整体布局是什么？',
+    drawLenormandSpread('grandTableau', {
+      manualCardIds: Array.from({ length: 36 }, (_, index) => index + 1),
+    }),
+  );
+  const firstGrandTableauCard = grandTableauPrompt
+    .split('\n')
+    .find((line) => line.includes('第1宫（骑士宫）：骑士；'));
+  assert.ok(firstGrandTableauCard);
+  assert.match(firstGrandTableauCard, /第1排第1列/);
+  assert.doesNotMatch(firstGrandTableauCard, /落骑士宫/);
 });
 
 test('灵签提示词保留完整签谱资料', () => {
