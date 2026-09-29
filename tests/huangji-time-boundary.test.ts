@@ -74,6 +74,27 @@ test('皇极年月日时盘的时经卦按北京时间四小时段切换', () =>
   assert.equal(at.hourRange, '16:00—20:00');
 });
 
+test('皇极真太阳时跨冬至按实际瞬时定节气和年，仍按校正钟表定时段', () => {
+  const actual = new Date('2025-12-21T23:03:04+08:00');
+  const corrected = new Date('2025-12-22T00:03:06+08:00');
+  const result = calculateHuangjiJingshi({
+    date: corrected,
+    termReferenceDate: actual,
+  });
+  const dateTime = result.dateTimeForecast!;
+  assert.equal(dateTime.civilTime.dateTime, '2025-12-22 00:03:06');
+  assert.equal(dateTime.civilTime.termReferenceDateTime, '2025-12-21 23:03:04');
+  assert.equal(dateTime.calendar.forecastYear, 2025);
+  assert.equal(dateTime.calendar.hourSegment, 1);
+  assert.equal(
+    dateTime.calendar.activeSolarTerm,
+    calculateHuangjiJingshi({ date: actual }).dateTimeForecast?.calendar.activeSolarTerm,
+  );
+  assert.equal(result.input.year, 2025);
+  assert.match(result.prompt, /节气与皇极年参照实际占时：2025-12-21 23:03:04/);
+  assert.notEqual(calculateHuangjiJingshi({ date: corrected }).input.year, result.input.year);
+});
+
 test('皇极固定北京时间口径不随全局占卜时区覆盖改变', () => {
   const date = new Date('2025-12-21T23:03:06+08:00');
   const expected = calculateHuangjiJingshi({ date }).dateTimeForecast;

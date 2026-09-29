@@ -1436,6 +1436,9 @@ export async function generateDivinationSession(
             : {
                 scope,
                 date: calculationDate ?? new Date(),
+                ...(timing?.context.standard === 'true-solar'
+                  ? { termReferenceDate: baseDate }
+                  : {}),
               },
         ) as TaiyiResult);
       break;
@@ -1460,6 +1463,7 @@ export async function generateDivinationSession(
           huangjiRange?.branches[0]?.data ??
           module.calculateHuangjiJingshi({
             date: calculationDate ?? new Date(),
+            ...(timing?.context.standard === 'true-solar' ? { termReferenceDate: baseDate } : {}),
             question: inputQuestion,
           });
       }

@@ -1799,6 +1799,8 @@ export interface TaiyiResult {
   scope: TaiyiScope;
   ganZhi: string;
   dateTime: string;
+  /** 真太阳时起局时，用于节气与年月干支的实际占时。 */
+  termReferenceDateTime?: string;
   accumulatedValue: number;
   accumulatedLabel: '积年' | '积月' | '积日' | '积时';
   /** @deprecated 年家兼容字段；其他计式与 accumulatedValue 相同。 */

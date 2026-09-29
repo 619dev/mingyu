@@ -215,7 +215,15 @@ function formatSchoolPatternFacts(
           item.startsWith('原支藏印官事实：')),
     )
     .flatMap((item) => {
-      if (item.startsWith('特殊格裁决：') && specialDecisionIsVisible) return [];
+      if (item.startsWith('特殊格裁决：')) {
+        if (specialDecisionIsVisible || conciseCurveBasis) return [];
+        if (
+          special?.kind === '从儿格' &&
+          special.satisfied.some((condition) => condition.includes('食伤在月建当权'))
+        ) {
+          return [item.replace('；路径：月建食伤当权', '')];
+        }
+      }
       if (item.startsWith('特殊格条件：') && special) {
         const conditions = special.satisfied.filter(
           (condition) =>

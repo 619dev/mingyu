@@ -80,6 +80,8 @@ export interface HuangjiJingshiInput {
   elapsedYears?: number;
   /** 年月日时起盘时间；提供时不得同时提供 epochYear、year 或 elapsedYears。 */
   date?: Date;
+  /** 真太阳时起盘时用于节气、皇极年和日序的实际占时，须与 date 同时提供。 */
+  termReferenceDate?: Date;
   /** 六日逐爻专用的带时区当地公历时间与显式历元；提供时不得同时提供 date 或年份坐标。 */
   sixDayDate?: HuangjiSixDayDateInput;
   /** 可选问题，只用于生成完整提示词，不改变换算。 */
@@ -327,6 +329,11 @@ export function buildHuangjiJingshiPrompt(
     const dateTimeLines = dateTimeForecast
       ? [
           `起盘时间：${dateTimeForecast.civilTime.dateTime}（${dateTimeForecast.civilTime.timezone}）`,
+          ...(dateTimeForecast.civilTime.termReferenceDateTime
+            ? [
+                `节气与皇极年参照实际占时：${dateTimeForecast.civilTime.termReferenceDateTime}（${dateTimeForecast.civilTime.timezone}）`,
+              ]
+            : []),
           `皇极历位：${formatHuangjiCivilYear(dateTimeForecast.calendar.forecastYear)}，${dateTimeForecast.calendar.monthBranch}月第${dateTimeForecast.calendar.dayOfMonth}日，${dateTimeForecast.calendar.activeSolarTerm}后第${dateTimeForecast.calendar.actualDayInSolarTerm}日`,
           `日序口径：皇极年内第${dateTimeForecast.calendar.dayOfYear}日；本节气实际第${dateTimeForecast.calendar.actualDayInSolarTerm}日映射为皇极节气第${dateTimeForecast.calendar.mappedDayInSolarTerm}日。下列统辖范围均按皇极日序定位。`,
           `月经卦：${dateTimeForecast.hexagrams.monthJing.name}（由${dateTimeForecast.hexagrams.monthJing.derivedFrom}卦第${dateTimeForecast.hexagrams.monthJing.changedLine}爻变得）`,
@@ -485,6 +492,9 @@ export function calculateHuangjiJingshi(input: HuangjiJingshiInput): HuangjiJing
   if (!input || typeof input !== 'object') throw new Error('皇极经世输入不能为空。');
   const hasDate = input.date !== undefined;
   const hasSixDayDate = input.sixDayDate !== undefined;
+  if (input.termReferenceDate !== undefined && !hasDate) {
+    throw new Error('皇极经世实际占时必须与年月日时起盘时间同时提供。');
+  }
   if (
     (hasDate || hasSixDayDate) &&
     (input.epochYear !== undefined || input.year !== undefined || input.elapsedYears !== undefined)
@@ -495,7 +505,7 @@ export function calculateHuangjiJingshi(input: HuangjiJingshiInput): HuangjiJing
     throw new Error('customDate 与六日逐爻公历时间只能选择一项。');
   }
   const dateTimeForecast = hasDate
-    ? calculateHuangjiDateTimeForecast(input.date as Date)
+    ? calculateHuangjiDateTimeForecast(input.date as Date, input.termReferenceDate)
     : undefined;
   const sixDayCycle = hasSixDayDate
     ? calculateHuangjiSixDayCycleFromDate(input.sixDayDate as HuangjiSixDayDateInput)

@@ -55,7 +55,7 @@ function* sampleFacts(sample: AstrolabeDynamicSample, endpoint: string): Generat
     if (scope.transitFacts) {
       yield `${prefix}行运相位：${scope.transitFacts.status}，共${scope.transitFacts.facts.length}项。`;
       for (const [index, fact] of scope.transitFacts.facts.entries()) {
-        yield `${prefix}行运相位第${index + 1}项：${fact.promptText}；${fact.line}；实际夹角${fact.actualAngle}度，精确角${fact.exactAngle}度，偏差${fact.deviation}度，容许度${fact.allowedOrb}度；${fact.isOutOfSign ? '跨星座相位' : '同类星座关系内相位'}。`;
+        yield `${prefix}行运相位第${index + 1}项：${fact.promptText}；${fact.line}；实际夹角${fact.actualAngle}度，精确角${fact.exactAngle}度，容许度${fact.allowedOrb}度；${fact.isOutOfSign ? '跨星座相位' : '同类星座关系内相位'}。`;
       }
     }
     for (const fact of scope.transitHouseFacts?.facts ?? []) {

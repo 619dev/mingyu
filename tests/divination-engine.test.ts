@@ -4113,6 +4113,44 @@ test('按时间起局的占问应使用地点经度校正真太阳时并写入�
   assert.match(session.prompt, /校正明细：经度修正/);
 });
 
+test('太乙真太阳时跨夏至仍按实际占时切换阴阳遁', async () => {
+  const session = await generateDivinationSession(
+    buildDraft({
+      method: 'taiyi',
+      taiyiScope: 'hour',
+      divinationTimeMode: 'custom',
+      customDivinationDate: '2026-06-21',
+      customDivinationTime: '16:25',
+      divinationTimeStandard: 'true-solar',
+      birthPlace: '测试地点',
+      birthLongitude: '73.5',
+    }),
+  );
+  const data = session.data as TaiyiResult;
+  assert.equal(data.yinYang, '阴遁');
+  assert.equal(data.termReferenceDateTime, '2026-06-21 16:25:00');
+  assert.match(session.prompt, /节气与年月干支参照实际占时：2026-06-21 16:25:00/);
+});
+
+test('皇极真太阳时跨冬至仍按实际占时确定皇极年', async () => {
+  const session = await generateDivinationSession(
+    buildDraft({
+      method: 'huangji',
+      huangjiMethod: 'standard',
+      divinationTimeMode: 'custom',
+      customDivinationDate: '2025-12-21',
+      customDivinationTime: '23:04',
+      divinationTimeStandard: 'true-solar',
+      birthPlace: '测试地点',
+      birthLongitude: '73.5',
+    }),
+  );
+  const data = session.data as HuangjiJingshiResult;
+  assert.equal(data.input.year, 2026);
+  assert.equal(data.dateTimeForecast?.civilTime.termReferenceDateTime, '2025-12-21 23:04:00');
+  assert.match(session.prompt, /节气与皇极年参照实际占时：2025-12-21 23:04:00/);
+});
+
 test('大六壬真太阳时跨雨水时按实际占时确定月将', async () => {
   // 香港天文台 2024 年年历：雨水为 2 月 19 日 12:13（东八区）。
   const cases = [

@@ -6,6 +6,7 @@ import { SolarTerm, SolarTime } from 'tyme4ts';
 import { getBranchWuxing, getSeasonState, getYiMa } from '../../../ganzhi';
 import {
   buildHeavenlyPlate,
+  DAYTIME_BRANCHES,
   DIZHI,
   describeRelation,
   getDayStemResidence,
@@ -41,7 +42,6 @@ const MONTH_LEADER_BY_ZHONGQI: Record<string, string> = {
   冬至: '丑',
   大寒: '子',
 };
-const DAYTIME_BRANCHES = new Set(['卯', '辰', '巳', '午', '未', '申']);
 
 /**
  * 按《六壬大全》分层计算无需本命资料即可确定的月煞和日煞。

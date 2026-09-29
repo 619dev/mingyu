@@ -356,6 +356,39 @@ export function formatQimenPatternBasis(item: QimenPatternEvidenceFact): string 
   return unique([...factualClauses, ...additionalFacts]).join('；') || item.name;
 }
 
+export function selectQimenClassicPatternsForPrompt(
+  classicFacts: QimenPatternEvidenceFact[],
+): QimenPatternEvidenceFact[] {
+  return classicFacts.filter(
+    (item) =>
+      !/^[日月星]奇得使$/u.test(item.name) ||
+      !item.palaces.length ||
+      !item.palaces.every((gong) =>
+        classicFacts.some(
+          (fact) => fact.name === `${item.name}临吉门` && fact.palaces.includes(gong),
+        ),
+      ),
+  );
+}
+
+export function formatQimenClassicPatternBasisForPrompt(
+  item: QimenPatternEvidenceFact,
+  classicFacts: QimenPatternEvidenceFact[],
+): string {
+  const basis = formatQimenPatternBasis(item).replaceAll(`；乃${item.name}之格`, '');
+  const parentName = item.name.match(/^([日月星]奇得使)临吉门$/u)?.[1];
+  if (!parentName) return basis;
+  const parentBases = classicFacts
+    .filter(
+      (fact) =>
+        fact.name === parentName && fact.palaces.some((gong) => item.palaces.includes(gong)),
+    )
+    .map((fact) => formatQimenPatternBasis(fact))
+    .filter((parentBasis) => parentBasis !== parentName);
+  if (!parentBases.length) return basis;
+  return unique([...parentBases, basis.replace(`${parentName}又临吉门`, '同宫临')]).join('；');
+}
+
 function getPatternPalaces(data: QimenData, tag: string): number[] {
   return data.jiuGongGe
     .filter((palace) => tag.includes(palace.name))
@@ -1470,35 +1503,31 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
   ];
   const evidence: PromptEvidenceBundle = { title: '奇门用神宫与宫间作用结构化证据', items };
   const calculationChain = calculationEvidenceFacts.map((item) => item.promptText);
-  const patternLines = promptPatternFacts.map((item) => {
-    const palaces =
-      item.palaces.length || item.kind !== '基础格局'
-        ? item.palaces
-        : getPatternPalaces(data, item.name);
-    const palaceNames = palaces
-      .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
-      .filter((name) => !item.name.includes(name));
-    const tone =
-      item.traditionalTone === '有利'
-        ? '吉格'
-        : item.traditionalTone === '风险'
-          ? '凶格'
-          : item.traditionalTone === '混合'
-            ? '吉凶并见'
-            : '中性格局';
-    let basis = formatQimenPatternBasis(item).replaceAll(`；乃${item.name}之格`, '');
-    const basePattern = item.name.match(/^([日月星]奇得使)临吉门$/u)?.[1];
-    if (
-      basePattern &&
-      classicFactsForPrompt.some(
-        (fact) =>
-          fact.name === basePattern && item.palaces.some((gong) => fact.palaces.includes(gong)),
-      )
-    ) {
-      basis = basis.replace(`${basePattern}又临吉门`, '同宫临');
-    }
-    return `${tone}：${item.name}${palaceNames.length ? `（${palaceNames.join('、')}）` : ''}${basis !== item.name ? `；${basis}` : ''}`;
-  });
+  const promptClassicFacts = selectQimenClassicPatternsForPrompt(classicFactsForPrompt);
+  const patternLines = promptPatternFacts
+    .filter((item) => item.kind !== '经典格局' || promptClassicFacts.includes(item))
+    .map((item) => {
+      const palaces =
+        item.palaces.length || item.kind !== '基础格局'
+          ? item.palaces
+          : getPatternPalaces(data, item.name);
+      const tone =
+        item.traditionalTone === '有利'
+          ? '吉格'
+          : item.traditionalTone === '风险'
+            ? '凶格'
+            : item.traditionalTone === '混合'
+              ? '吉凶并见'
+              : '中性格局';
+      const basis =
+        item.kind === '经典格局'
+          ? formatQimenClassicPatternBasisForPrompt(item, classicFactsForPrompt)
+          : formatQimenPatternBasis(item).replaceAll(`；乃${item.name}之格`, '');
+      const palaceNames = palaces
+        .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
+        .filter((name) => !item.name.includes(name) && !basis.includes(name));
+      return `${tone}：${item.name}${palaceNames.length ? `（${palaceNames.join('、')}）` : ''}${basis !== item.name ? `；${basis}` : ''}`;
+    });
   const palaceLines = [...data.jiuGongGe]
     .sort((left, right) => left.gong - right.gong)
     .map((palace) => {

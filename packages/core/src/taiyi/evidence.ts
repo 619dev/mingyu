@@ -5,6 +5,7 @@ import type { TaiyiRuleConditions } from './conditions';
 export interface TaiyiEvidenceInput {
   scope: TaiyiScope;
   dateTime: string;
+  termReferenceDateTime?: string;
   ganZhi: string;
   accumulatedLabel: '积年' | '积月' | '积日' | '积时';
   accumulatedValue: number;
@@ -662,7 +663,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
   const calculationChain = [
     data.scope === 'year'
       ? `${scopeLabel}以${data.dateTime.split('-')[0]}年及本计干支${data.ganZhi}作为时间输入`
-      : `${scopeLabel}以${data.dateTime}及本计干支${data.ganZhi}作为时间输入`,
+      : `${scopeLabel}以${data.dateTime}及本计干支${data.ganZhi}作为时间输入${data.termReferenceDateTime ? `，节气与年月干支参照实际占时${data.termReferenceDateTime}` : ''}`,
     `按${scopeLabel}独立规则得到${data.accumulatedLabel}${data.accumulatedValue}，折算360周期余数${data.entryYears}`,
     `360周期余数${data.entryYears}分别落在第${data.yuan}个72数段、第${data.ji}个60数段；数段不冒充已统一口径的元纪`,
     `积数按七十二局循环定位${data.yinYang}第${data.bureau}局`,
@@ -787,7 +788,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
   const promptText = [
     `【太乙神数${scopeLabel}】`,
     '【任务】依据本次盘面资料和传统依据，解读太乙、主客定算及门将条件的关系。',
-    `【时间】${timeText}；本计干支${data.ganZhi}。`,
+    `【时间】${timeText}；本计干支${data.ganZhi}${data.termReferenceDateTime ? `；节气与年月干支参照实际占时${data.termReferenceDateTime}（东八区）` : ''}。`,
     '【盘面资料】',
     `${data.accumulatedLabel}${data.accumulatedValue}，${data.yinYang}第${data.bureau}局。`,
     ...positionFacts.map((fact) => fact.promptText),

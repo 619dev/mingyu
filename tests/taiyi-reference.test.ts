@@ -683,6 +683,42 @@ test('太乙时计在夏至与冬至交接秒切换阴阳遁', () => {
   }
 });
 
+test('太乙真太阳时跨交节只校正日时，月计与时计阴阳遁仍按实际占时', () => {
+  const corrected = new Date('2026-06-21T16:24:31+08:00');
+  const actual = new Date('2026-06-21T16:24:29+08:00');
+  const before = generateTaiyi({ scope: 'hour', date: actual });
+  const correctedOnly = generateTaiyi({ scope: 'hour', date: corrected });
+  const aligned = generateTaiyi({
+    scope: 'hour',
+    date: corrected,
+    termReferenceDate: actual,
+  });
+  assert.equal(before.yinYang, '阳遁');
+  assert.equal(correctedOnly.yinYang, '阴遁');
+  assert.equal(aligned.yinYang, before.yinYang);
+  assert.equal(aligned.ganZhi, correctedOnly.ganZhi);
+  assert.equal(aligned.termReferenceDateTime, '2026-06-21 16:24:29');
+  assert.match(aligned.prompt, /节气与年月干支参照实际占时：2026-06-21 16:24:29/);
+  assert.match(aligned.evidenceAnalysis.promptText, /实际占时2026-06-21 16:24:29/);
+
+  const actualBeforeLichun = new Date('2024-02-04T16:26:00+08:00');
+  const correctedAfterLichun = new Date('2024-02-04T16:28:00+08:00');
+  const month = generateTaiyi({
+    scope: 'month',
+    date: correctedAfterLichun,
+    termReferenceDate: actualBeforeLichun,
+  });
+  assert.equal(month.ganZhi, generateTaiyi({ scope: 'month', date: actualBeforeLichun }).ganZhi);
+  assert.equal(
+    month.accumulatedValue,
+    generateTaiyi({ scope: 'month', date: actualBeforeLichun }).accumulatedValue,
+  );
+  assert.notEqual(
+    month.accumulatedValue,
+    generateTaiyi({ scope: 'month', date: correctedAfterLichun }).accumulatedValue,
+  );
+});
+
 test('太乙阴遁七十二局按金镜式经九八七六四三二一逆行', () => {
   // 《太乙金镜式经》卷三阴局立成：每三局居一宫，二十四局一周。
   const palaceOrder = [9, 8, 7, 6, 4, 3, 2, 1];

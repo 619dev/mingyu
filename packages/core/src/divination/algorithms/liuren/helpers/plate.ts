@@ -8,6 +8,7 @@ import { BRANCH_WUXING, getBranchIndex, isKe, isSheng } from '../../../../ganzhi
 
 export const DIZHI = EARTHLY_BRANCHES;
 export const TIANGAN = HEAVENLY_STEMS;
+export const DAYTIME_BRANCHES = new Set(['卯', '辰', '巳', '午', '未', '申']);
 const VALID_WUXING = new Set(['木', '火', '土', '金', '水']);
 
 /**

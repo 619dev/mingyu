@@ -364,6 +364,28 @@ test('从儿格缺少明确财气承接依据时仍保留本盘五行流向', ()
   assert.match(formatBaziPatternConditions(result), /从儿五行流向：食伤土生财金/);
 });
 
+test('从儿格月建条件在页面、公开提示词与合盘中只列一次', () => {
+  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const prompts = [
+    buildBaziPrompt({ result }),
+    buildBaziPromptForResult({ result }),
+    buildPromptFromConfig(
+      '分析原局格局。',
+      { id: 'ai-career', prompt: '分析事业。', scopeLabel: '事业' },
+      result,
+    ).user,
+    buildBaziCompatibilityPrompt({ result1: result, result2: other }),
+    getCompatibilityPrompt('分析双方关系。', result, other).user,
+  ];
+  for (const prompt of prompts) {
+    assert.match(prompt, /《滴天髓阐微·顺局》从儿法成立：月支辰本气戊为食神/);
+    assert.equal(prompt.match(/月建食伤当权/g)?.length ?? 0, 0);
+    assert.equal(prompt.match(/食伤在月建当权/g)?.length, 1);
+    assert.doesNotMatch(prompt, /【(?:第一人)?格局条件】/);
+  }
+});
+
 test('从儿格流派资料不重复五行流向与已列的财星明透条件', () => {
   const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
   assert.equal(result.analysis.mingGe.specialAdjudication?.kind, '从儿格');
@@ -378,6 +400,7 @@ test('从儿格流派资料不重复五行流向与已列的财星明透条件',
     assert.doesNotMatch(prompt, /从儿五行流向：|^财星明透：/m);
     assert.match(prompt, /庚财星明透，承接食伤所生/);
     assert.match(prompt, /特殊格裁决：从儿格成立/);
+    assert.doesNotMatch(prompt, /从儿法成立：月建食伤当权；月支|路径：月建食伤当权/);
     assertNoEngineeringPromptText(prompt);
   }
   const independentSchoolFacts = formatBaziSchoolPrompt(result, 'ziping');
@@ -516,7 +539,8 @@ test('曲直格依据已包含亥卯未木局与成立事实时不再另列格�
       buildBaziPrompt({ result, school: 'ziping' }),
       buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
     ]) {
-      assert.equal(prompt.match(/特殊格裁决：曲直格成立/g)?.length, 1);
+      assert.match(prompt, /成格依据：《三命通会》卷六亥卯未曲直法条件成立/);
+      assert.doesNotMatch(prompt, /特殊格裁决：曲直格成立/);
       assert.doesNotMatch(prompt, /【格局条件】|取用依据:/);
     }
   }
@@ -551,7 +575,8 @@ test('流派提示词不重复曲直格依据中的成立条件、透干和成�
     buildBaziPromptForResult({ result, schools: ['ziping', 'mangpai'] }),
   ]) {
     assert.match(prompt, /格局: 曲直格/);
-    assert.match(prompt, /特殊格裁决：曲直格成立/);
+    assert.match(prompt, /成格依据：《三命通会》卷六亥卯未曲直法条件成立/);
+    assert.doesNotMatch(prompt, /特殊格裁决：曲直格成立/);
     assert.match(prompt, /年柱: [^\n]+[\s\S]*藏干: [^\n]+/);
     assert.doesNotMatch(prompt, /特殊格条件：|^食伤明透：|^财星明透：|^成员支藏干保留：/m);
   }

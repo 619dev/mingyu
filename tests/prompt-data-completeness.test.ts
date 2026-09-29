@@ -139,6 +139,20 @@ test('奇门经典格局保留触发事实而非只列名称', () => {
   assert.ok(facts.length);
   const text = formatDivinationInfo('qimen', data);
   for (const fact of facts) {
+    const coveredByStrongerPattern =
+      /^[日月星]奇得使$/u.test(fact.name) &&
+      facts.some(
+        (candidate) =>
+          candidate.name === `${fact.name}临吉门` &&
+          fact.palaces.every((gong) => candidate.palaces.includes(gong)),
+      );
+    if (coveredByStrongerPattern) {
+      const strongerLine = text.split('\n').find((line) => line.startsWith(`${fact.name}临吉门（`));
+      assert.ok(strongerLine, fact.name);
+      assert.ok(strongerLine.includes(formatQimenPatternBasis(fact).split('；')[0]!));
+      assert.doesNotMatch(text, new RegExp(`^${fact.name}（`, 'mu'));
+      continue;
+    }
     const lines = text.split('\n').filter((item) => item.startsWith(`${fact.name}（`));
     assert.ok(lines.length, fact.name);
     if (

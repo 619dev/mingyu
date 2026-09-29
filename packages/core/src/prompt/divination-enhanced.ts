@@ -37,7 +37,10 @@ import type {
   JinkoujueData,
 } from '../types/divination';
 import { analyzeQimenEvidence } from '../divination/algorithms/qimen';
-import { formatQimenPatternBasis } from '../divination/qimen-evidence';
+import {
+  formatQimenClassicPatternBasisForPrompt,
+  selectQimenClassicPatternsForPrompt,
+} from '../divination/qimen-evidence';
 import { analyzeAlmanacEvidence, formatAlmanacGods } from '../divination/algorithms/almanac';
 import {
   LIUCHONG_MAP,
@@ -831,9 +834,10 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
       ? `${data.horseStar.sourceBranch}时驿马在${data.horseStar.branch}，落${data.horseStar.name}`
       : `${scopePresentation.branchLabel}${data.horseStar.sourceBranch}起驿马在${data.horseStar.branch}，落${data.horseStar.name}`
     : '无';
-  const classicPatternFacts = evidenceAnalysis.patternFacts.filter(
+  const allClassicPatternFacts = evidenceAnalysis.patternFacts.filter(
     (item) => item.kind === '经典格局' && item.status === '已命中',
   );
+  const classicPatternFacts = selectQimenClassicPatternsForPrompt(allClassicPatternFacts);
   const classicPatternLines = [
     ...new Set(
       classicPatternFacts.map((item) => {
@@ -843,17 +847,7 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
             : item.traditionalTone === '风险'
               ? '凶格'
               : '中性格局';
-        let basis = formatQimenPatternBasis(item).replaceAll(`；乃${item.name}之格`, '');
-        const basePattern = item.name.match(/^([日月星]奇得使)临吉门$/u)?.[1];
-        if (
-          basePattern &&
-          classicPatternFacts.some(
-            (fact) =>
-              fact.name === basePattern && item.palaces.some((gong) => fact.palaces.includes(gong)),
-          )
-        ) {
-          basis = basis.replace(`${basePattern}又临吉门`, '同宫临');
-        }
+        const basis = formatQimenClassicPatternBasisForPrompt(item, allClassicPatternFacts);
         const missingPalaces = item.palaces
           .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
           .filter((name) => !basis.includes(name));
@@ -1407,6 +1401,9 @@ export function formatTaiyiInfo(data: TaiyiResult) {
   return [
     `占法：太乙神数（${scopeLabel}）`,
     `起局时间：${dateTime}；本计干支：${data.ganZhi}；${data.yinYang}第${data.bureau}局`,
+    ...(data.termReferenceDateTime
+      ? [`节气与年月干支参照实际占时：${data.termReferenceDateTime}（东八区）`]
+      : []),
     `太乙：${data.taiyiPosition}（第${data.taiyiPalace}宫，${data.taiyiGua}卦，${data.taiyiDir}）`,
     `文昌（主目）：${data.wenChangPosition}；始击（客目）：${data.shiJiPosition}；计神：${data.jiShenPosition}`,
     `主客定算：主算${data.lordCount}；客算${data.guestCount}；定算${data.setCount}${data.countNatures?.set ? `（${data.countNatures.set}）` : ''}`,

@@ -310,6 +310,8 @@ export const TAIYI_16_GODS: { name: string; branch: string }[] = [
 
 export interface TaiyiInput {
   date?: Date;
+  /** 真太阳时起局时的实际占时；节气与年月干支按此瞬时确定。 */
+  termReferenceDate?: Date;
   ganZhi?: string;
   scope?: TaiyiScope;
   year?: number;
@@ -492,7 +494,10 @@ function withTaiyiCalendarSupport<T>(operation: () => T): T {
 }
 
 /** 按东八区民用字段推四柱，替代依赖环境时区的 getGanZhiFromDate。 */
-function getTaiyiGanZhiFromDate(date: Date): {
+function getTaiyiGanZhiFromDate(
+  date: Date,
+  termReferenceDate = date,
+): {
   year: string;
   month: string;
   day: string;
@@ -504,9 +509,25 @@ function getTaiyiGanZhiFromDate(date: Date): {
       .getLunarHour()
       .getEightChar(),
   );
+  const termEightChar =
+    termReferenceDate.getTime() === date.getTime()
+      ? eightChar
+      : withTaiyiCalendarSupport(() => {
+          const termParts = readCivilParts(termReferenceDate);
+          return SolarTime.fromYmdHms(
+            termParts.year,
+            termParts.month,
+            termParts.day,
+            termParts.hour,
+            termParts.minute,
+            termParts.second,
+          )
+            .getLunarHour()
+            .getEightChar();
+        });
   return {
-    year: eightChar.getYear().getName(),
-    month: eightChar.getMonth().getName(),
+    year: termEightChar.getYear().getName(),
+    month: termEightChar.getMonth().getName(),
     day: eightChar.getDay().getName(),
     hour: eightChar.getHour().getName(),
   };
@@ -545,9 +566,9 @@ function getSeasonHalf(date: Date): 'winter' | 'summer' {
     : 'winter';
 }
 
-function resolveYinYang(scope: TaiyiScope, date: Date): '阳遁' | '阴遁' {
+function resolveYinYang(scope: TaiyiScope, termReferenceDate: Date): '阳遁' | '阴遁' {
   if (scope !== 'hour') return '阳遁';
-  return getSeasonHalf(date) === 'winter' ? '阳遁' : '阴遁';
+  return getSeasonHalf(termReferenceDate) === 'winter' ? '阳遁' : '阴遁';
 }
 
 const SCOPE_LABELS: Record<
@@ -564,6 +585,7 @@ function validateInput(input: TaiyiInput): {
   scope: TaiyiScope;
   year: number;
   date: Date;
+  termReferenceDate: Date;
   ganZhi: string;
 } {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -576,6 +598,15 @@ function validateInput(input: TaiyiInput): {
     (!(input.date instanceof Date) || Number.isNaN(input.date.getTime()))
   ) {
     throw new Error('太乙日期无效。');
+  }
+  if (
+    input.termReferenceDate !== undefined &&
+    (!(input.termReferenceDate instanceof Date) || Number.isNaN(input.termReferenceDate.getTime()))
+  ) {
+    throw new Error('太乙实际占时无效。');
+  }
+  if (input.termReferenceDate !== undefined && input.date === undefined) {
+    throw new Error('太乙实际占时必须与起局日期同时提供。');
   }
   if (scope === 'year' && input.year === undefined) {
     throw new Error('太乙年计必须提供公历年份。');
@@ -595,7 +626,8 @@ function validateInput(input: TaiyiInput): {
     throw new Error('太乙年份必须是 1-9999 之间的整数。');
   }
   const date = input.date ?? createYearProbeDate(year);
-  const pillars = getTaiyiGanZhiFromDate(date);
+  const termReferenceDate = input.termReferenceDate ?? date;
+  const pillars = getTaiyiGanZhiFromDate(date, termReferenceDate);
   const calculatedGanZhi = pillars[scope];
   if (input.ganZhi !== undefined) {
     if (!isValidGanZhi(input.ganZhi)) throw new Error(`太乙干支无效：${input.ganZhi}`);
@@ -605,7 +637,7 @@ function validateInput(input: TaiyiInput): {
       );
     }
   }
-  return { scope, year, date, ganZhi: input.ganZhi ?? calculatedGanZhi };
+  return { scope, year, date, termReferenceDate, ganZhi: input.ganZhi ?? calculatedGanZhi };
 }
 
 function alignToGanZhi(value: number, ganZhi: string): number {
@@ -619,6 +651,7 @@ function alignToGanZhi(value: number, ganZhi: string): number {
 function calculateAccumulatedValue(
   scope: TaiyiScope,
   date: Date,
+  termReferenceDate: Date,
   year: number,
   ganZhi: string,
 ): number {
@@ -627,7 +660,8 @@ function calculateAccumulatedValue(
     const monthOrder = TAIYI_MONTH_BRANCHES.indexOf(ganZhi[1]) + 1;
     if (monthOrder === 0) throw new Error(`太乙月建地支无效：${ganZhi}`);
     const solarYear =
-      getTaiyiGanZhiFromDate(date).year === getTaiyiGanZhiFromDate(createYearProbeDate(year)).year
+      getTaiyiGanZhiFromDate(date, termReferenceDate).year ===
+      getTaiyiGanZhiFromDate(createYearProbeDate(year)).year
         ? year
         : year - 1;
     return (TAIYI_BASE_YEARS + solarYear - 1) * 12 + 2 + monthOrder;
@@ -645,12 +679,12 @@ function calculateAccumulatedValue(
 
 /** 生成太乙年、月、日、时四计七十二局基础盘。 */
 export function generateTaiyi(input: TaiyiInput): TaiyiResult {
-  const { scope, year, date, ganZhi } = validateInput(input);
-  const accumulatedValue = calculateAccumulatedValue(scope, date, year, ganZhi);
+  const { scope, year, date, termReferenceDate, ganZhi } = validateInput(input);
+  const accumulatedValue = calculateAccumulatedValue(scope, date, termReferenceDate, year, ganZhi);
   const entryYears = positiveOneBased(accumulatedValue, 360);
   const bureau = positiveOneBased(accumulatedValue, 72);
   const index = bureau - 1;
-  const yinYang = resolveYinYang(scope, date);
+  const yinYang = resolveYinYang(scope, termReferenceDate);
   const taiyiPosition = (yinYang === '阳遁' ? TAIYI_POINTS : YIN_TAIYI_POINTS)[index];
   const wenChangPosition = (yinYang === '阳遁' ? WENCHANG_POINTS : YIN_WENCHANG_POINTS)[index];
   const shiJiPosition = SHIJI_POINTS[index];
@@ -719,9 +753,14 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
   const scopeInfo = SCOPE_LABELS[scope];
   const civil = readCivilParts(date);
   const dateTime = `${civil.year}-${String(civil.month).padStart(2, '0')}-${String(civil.day).padStart(2, '0')} ${String(civil.hour).padStart(2, '0')}:${String(civil.minute).padStart(2, '0')}:${String(civil.second).padStart(2, '0')}`;
+  const actualCivil = readCivilParts(termReferenceDate);
+  const termReferenceDateTime = input.termReferenceDate
+    ? `${actualCivil.year}-${String(actualCivil.month).padStart(2, '0')}-${String(actualCivil.day).padStart(2, '0')} ${String(actualCivil.hour).padStart(2, '0')}:${String(actualCivil.minute).padStart(2, '0')}:${String(actualCivil.second).padStart(2, '0')}`
+    : undefined;
   const evidenceAnalysis = buildTaiyiEvidence({
     scope,
     dateTime,
+    termReferenceDateTime,
     ganZhi,
     accumulatedLabel: scopeInfo.accumulated,
     accumulatedValue,
@@ -785,6 +824,9 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
     scope === 'year'
       ? `分析目标：${year}年年计。`
       : `分析目标：${dateTime}（东八区）起局的${scopeInfo.title}盘。`,
+    ...(termReferenceDateTime
+      ? [`节气与年月干支参照实际占时：${termReferenceDateTime}（东八区）。`]
+      : []),
     `本计干支：${ganZhi}。`,
     `${yinYang}第 ${bureau} 局。`,
     `核心宫位：太乙在${taiyiPosition}（第${taiyiPalace}宫，${taiyiProfile.gua}卦，${taiyiProfile.dir}，五行${taiyiProfile.wu}）；文昌（主目）在${wenChangPosition}（第${wenChangPalace}宫）；始击（客目）在${shiJiPosition}（第${shiJiPalace}宫）；计神在${jiShenPosition}（第${jiShenPalace}宫）。`,
@@ -809,6 +851,7 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
     scope,
     ganZhi,
     dateTime,
+    ...(termReferenceDateTime ? { termReferenceDateTime } : {}),
     accumulatedValue,
     accumulatedLabel: scopeInfo.accumulated,
     accumulatedYears: accumulatedValue,

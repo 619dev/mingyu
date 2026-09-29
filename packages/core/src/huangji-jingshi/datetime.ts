@@ -838,6 +838,8 @@ export interface HuangjiDateTimeForecast {
   model: '经纬卦年月日时推衍';
   civilTime: {
     dateTime: string;
+    /** 真太阳时起盘时，用于确定节气的实际占时。 */
+    termReferenceDateTime?: string;
     timezone: '北京时间（UTC+8）';
     year: number;
     month: number;
@@ -959,6 +961,7 @@ function pad(value: number): string {
 
 function resolveCalendar(
   date: Date,
+  termReferenceDate: Date = date,
 ): HuangjiDateTimeForecast['civilTime'] & HuangjiDateTimeForecast['calendar'] {
   const beijing = new Date(date.getTime() + 8 * 60 * 60 * 1000);
   const year = beijing.getUTCFullYear();
@@ -968,7 +971,7 @@ function resolveCalendar(
   const minute = beijing.getUTCMinutes();
   const second = beijing.getUTCSeconds();
   const millisecond = beijing.getUTCMilliseconds();
-  const targetTimestamp = date.getTime();
+  const targetTimestamp = termReferenceDate.getTime();
   const candidates: Array<{
     forecastYear: number;
     index: number;
@@ -1029,12 +1032,24 @@ function resolveCalendar(
   };
 }
 
-export function calculateHuangjiDateTimeForecast(date: Date): HuangjiDateTimeForecast {
+export function calculateHuangjiDateTimeForecast(
+  date: Date,
+  termReferenceDate?: Date,
+): HuangjiDateTimeForecast {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     throw new Error('皇极经世年月日时起盘时间不是有效日期。');
   }
+  if (
+    termReferenceDate !== undefined &&
+    (!(termReferenceDate instanceof Date) || Number.isNaN(termReferenceDate.getTime()))
+  ) {
+    throw new Error('皇极经世实际占时不是有效日期。');
+  }
 
-  const resolved = resolveCalendar(date);
+  const resolved = resolveCalendar(date, termReferenceDate);
+  const referenceDateTime = termReferenceDate
+    ? resolveCalendar(termReferenceDate).dateTime
+    : undefined;
   const annualForecast = calculateStandardHuangjiForecast(resolved.forecastYear);
   const annual = annualForecast.hexagrams.annual;
   const dayIndex = resolved.dayOfYear - 1;
@@ -1050,6 +1065,7 @@ export function calculateHuangjiDateTimeForecast(date: Date): HuangjiDateTimeFor
     model: '经纬卦年月日时推衍',
     civilTime: {
       dateTime: resolved.dateTime,
+      ...(referenceDateTime ? { termReferenceDateTime: referenceDateTime } : {}),
       timezone: resolved.timezone,
       year: resolved.year,
       month: resolved.month,
@@ -1072,7 +1088,7 @@ export function calculateHuangjiDateTimeForecast(date: Date): HuangjiDateTimeFor
     },
     hexagrams: { annual, monthJing, xunWei, daily, hourJing },
     calculationChain: [
-      `${resolved.dateTime}按北京时间定位于${resolved.activeSolarTerm}后第${resolved.actualDayInSolarTerm}日，对应皇极${resolved.monthBranch}月第${resolved.dayOfMonth}日`,
+      `${resolved.dateTime}按北京时间起盘${referenceDateTime ? `，节气参照实际占时${referenceDateTime}` : ''}，定位于${resolved.activeSolarTerm}后第${resolved.actualDayInSolarTerm}日，对应皇极${resolved.monthBranch}月第${resolved.dayOfMonth}日`,
       `${annual.shortName}值年卦第${monthJingLine}爻变为${monthJing.shortName}月经卦，统${monthJingLine * 2 - 1}至${monthJingLine * 2}月`,
       `${monthJing.shortName}月经卦第${xunWeiLine}爻变为${xunWei.shortName}旬纬卦，日卦再由月经卦顺行六十卦序第${dayInJing + 1}位得${daily.shortName}卦`,
       `${daily.shortName}日卦第${resolved.hourSegment}爻变为${hourJing.shortName}时经卦，对应${resolved.hourRange}`,

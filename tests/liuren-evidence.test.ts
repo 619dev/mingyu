@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeLiurenEvidence, generateLiuren } from 'mingyu-core/divination/liuren';
-import { TIANJIANG_ATTRIBUTES } from '../packages/core/src/divination/algorithms/liuren/helpers/plate';
+import {
+  describeRelation,
+  TIANJIANG_ATTRIBUTES,
+} from '../packages/core/src/divination/algorithms/liuren/helpers/plate';
 import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
@@ -363,6 +366,32 @@ test('大六壬三传天将与完整天地盘错位时不生成互相矛盾的�
   assert.throws(() => analyzeLiurenEvidence(data), /三传与天地盘不一致/);
 });
 
+test('大六壬取传规则与四课裁决不一致时不生成完整证据链', () => {
+  const data = generateLiuren(fixedDate);
+  data.transmissionRule = data.transmissionRule === '元首法' ? '重审法' : '元首法';
+
+  assert.throws(() => analyzeLiurenEvidence(data), /取传规则或三传与四课、天地盘不一致/);
+});
+
+test('大六壬三传地支虽与天将关系自洽，仍须符合四课取传与递传', () => {
+  const data = generateLiuren(fixedDate);
+  const middle = data.threeTransmissions[1];
+  const alternative = data.heavenlyPlate.find(
+    (item) => item.branch !== middle.branch && item.branch !== data.threeTransmissions[0].branch,
+  );
+  assert.ok(alternative);
+  middle.branch = alternative.branch;
+  middle.god = alternative.god;
+  middle.relation = describeRelation(middle.branch, data.threeTransmissions[0].branch);
+  middle.dayRelation = describeRelation(middle.branch, data.ganzhi.day.charAt(1));
+  data.threeTransmissions[2].relation = describeRelation(
+    data.threeTransmissions[2].branch,
+    middle.branch,
+  );
+
+  assert.throws(() => analyzeLiurenEvidence(data), /取传规则或三传与四课、天地盘不一致/);
+});
+
 test('大六壬贵人与日干或地盘位置不一致时不标为完整', () => {
   for (const field of ['noblemanBranch', 'noblemanGroundBranch'] as const) {
     const data = generateLiuren(fixedDate);
@@ -371,6 +400,22 @@ test('大六壬贵人与日干或地盘位置不一致时不标为完整', () =>
     const evidence = analyzeLiurenEvidence(data);
     assert.equal(evidence.plateFact.status, '缺少', field);
     assert.equal(evidence.summaryFact.status, '证据链有缺口', field);
+  }
+});
+
+test('大六壬时柱、占时支与昼夜占互相矛盾时不标为完整', () => {
+  for (const field of ['hour', 'dayNight'] as const) {
+    const data = generateLiuren(fixedDate);
+    if (field === 'hour') {
+      data.ganzhi.hour = `${data.ganzhi.hour.charAt(0)}${data.divinationBranch === '子' ? '丑' : '子'}`;
+    } else {
+      data.dayNight = data.dayNight === '昼占' ? '夜占' : '昼占';
+    }
+
+    const evidence = analyzeLiurenEvidence(data);
+    assert.equal(evidence.plateFact.status, '缺少', field);
+    assert.equal(evidence.summaryFact.status, '证据链有缺口', field);
+    assert.match(evidence.plateFact.promptText, /占时支、时柱或昼夜占记录不一致/);
   }
 });
 

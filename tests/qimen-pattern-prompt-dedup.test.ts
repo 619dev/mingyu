@@ -11,8 +11,11 @@ test('奇门证据提示词保留命中条件并省略同宫格局的重复前�
 
   assert.match(patterns, /吉格：天遁（兑七宫）；生门、丙奇、地盘戊同宫/);
   assert.doesNotMatch(patterns, /乃天遁之格/);
-  assert.match(patterns, /吉格：月奇得使（兑七宫）；丙奇加地盘戊/);
-  assert.match(patterns, /吉格：月奇得使临吉门（兑七宫）；同宫临生门/);
+  assert.doesNotMatch(patterns, /^吉格：月奇得使（/mu);
+  assert.match(
+    patterns,
+    /吉格：月奇得使临吉门；丙奇加地盘戊（甲子\/甲申所遁）于兑七宫；同宫临生门/,
+  );
   assert.doesNotMatch(patterns, /月奇得使又临吉门生门/);
-  assert.match(patterns, /凶格：门迫（巽四宫）；惊门（金）克巽四宫（木）/);
+  assert.match(patterns, /凶格：门迫；惊门（金）克巽四宫（木）/);
 });

@@ -84,6 +84,32 @@ test('动态解读逐页限量且保留每段全部连续事实与首末秒候�
   }
 });
 
+test('行运相位只列一次偏差并保留两端、角度、容许度和入相出相', async () => {
+  const pages = [];
+  for await (const page of iterateAstrolabeDynamicPromptPages(
+    range,
+    async (index) => range.branches[index],
+  )) {
+    pages.push(page.text);
+  }
+  const text = pages.join('\n');
+  for (const sample of [range.branches[0].representative, range.branches[0].last]) {
+    for (const scope of sample.scopes) {
+      const fact = scope.transitFacts?.facts[0];
+      if (!fact) continue;
+      const line = text.split('\n').find((item) => item.includes(fact.promptText));
+      assert.ok(line);
+      assert.equal(line.match(/偏差/g)?.length, 1);
+      assert.ok(line.includes(fact.transiting.label));
+      assert.ok(line.includes(fact.natal.label));
+      assert.ok(line.includes(`实际夹角${fact.actualAngle}度`));
+      assert.ok(line.includes(`精确角${fact.exactAngle}度`));
+      assert.ok(line.includes(`容许度${fact.allowedOrb}度`));
+      assert.match(line, /入相|出相|精准|未判定/);
+    }
+  }
+});
+
 test('连续推运时刻显示北京时间并保留毫秒，不向解读输出机器时间戳', () => {
   const value = start + 123;
   const text = formatAstrolabeRangeContinuousFact(

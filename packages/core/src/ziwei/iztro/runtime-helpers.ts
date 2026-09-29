@@ -184,6 +184,15 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
     config: buildIztroConfig(normalized),
   }) as FunctionalAstrolabe;
 
+  // iztro 的运限计算读取全局配置；星盘构造后若又创建其他口径的盘，
+  // 这张盘的同步 horoscope 调用也必须恢复自己的分界口径。
+  const calculateHoroscope = astrolabe.horoscope.bind(astrolabe);
+  const calculationConfig = buildIztroConfig(normalized);
+  astrolabe.horoscope = (dateStr, hourIndex) => {
+    astro.config(calculationConfig);
+    return calculateHoroscope(dateStr, hourIndex);
+  };
+
   // 盘内星名已经按同一语言生成，精确名称无需逐星反查全部翻译词条。
   // 别名与其他语言仍交给引擎处理；遍历当前星表，保留引擎的末项匹配语义。
   const findTranslatedStar = astrolabe.star.bind(astrolabe);

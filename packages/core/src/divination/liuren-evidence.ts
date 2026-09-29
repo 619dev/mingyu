@@ -10,15 +10,17 @@ import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidenc
 import { getBranchWuxing, getStemWuxing, isKe, isSheng } from '../ganzhi';
 import {
   buildHeavenlyPlate,
+  DAYTIME_BRANCHES,
   DIZHI,
   describeRelation,
   getDayStemResidence,
   getNoblemanBranch,
   getPlateItemByBranch,
+  getUpperByUnder,
   TIANJIANG,
   TIANGAN,
 } from './algorithms/liuren/helpers/plate';
-import { buildFourLessons } from './algorithms/liuren/helpers/lessons';
+import { buildFourLessons, resolveInitialTransmission } from './algorithms/liuren/helpers/lessons';
 import {
   formatLiurenOrdinaryStage,
   getLiurenOrdinaryCandidateStatusLabel,
@@ -827,6 +829,9 @@ function buildPlateCoverageFact(
     TIANJIANG.every((god) => gods.has(god));
   const noblemanBranch = data.noblemanBranch;
   const dayStem = data.ganzhi.day.charAt(0);
+  const dayNightFromHour = DAYTIME_BRANCHES.has(data.divinationBranch) ? '昼占' : '夜占';
+  const timeAligned =
+    data.ganzhi.hour.charAt(1) === data.divinationBranch && data.dayNight === dayNightFromHour;
   const noblemanMatchesDayStem =
     TIANGAN.includes(dayStem as (typeof TIANGAN)[number]) &&
     (data.dayNight === '昼占' || data.dayNight === '夜占') &&
@@ -848,6 +853,7 @@ function buildPlateCoverageFact(
       : [];
   const byEarthBranch = new Map(positions.map((item) => [item.earthBranch, item]));
   const positionsAligned =
+    timeAligned &&
     expectedPlate.length === 12 &&
     expectedPlate.find((item) => item.branch === noblemanBranch)?.under ===
       data.noblemanGroundBranch &&
@@ -865,7 +871,7 @@ function buildPlateCoverageFact(
     promptText:
       status === '完整'
         ? '天地盘十二位与十二天将资料完整，可逐位核验月将加时和贵人顺逆排布。'
-        : `${positions.length < 12 ? `当前结果仅保留${positions.length}/12位天地盘资料` : !completeBranches ? `当前结果保留${positions.length}/12位天地盘资料，地盘、天盘或天将有缺漏或重复` : '当前结果的月将加时或贵人布将与逐位记录不一致'}；月将加时和十二天将排布待复核。`,
+        : `${positions.length < 12 ? `当前结果仅保留${positions.length}/12位天地盘资料` : !completeBranches ? `当前结果保留${positions.length}/12位天地盘资料，地盘、天盘或天将有缺漏或重复` : !timeAligned ? '占时支、时柱或昼夜占记录不一致' : '当前结果的月将加时或贵人布将与逐位记录不一致'}；月将加时和十二天将排布待复核。`,
     sources: ['当前大六壬结果的天地盘逐位记录', '十二地支与十二天将完整性检查'],
     limitation: PLATE_COVERAGE_LIMITATION,
   };
@@ -1344,6 +1350,29 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
       })
     ) {
       throw new Error('大六壬三传与天地盘不一致，无法生成证据。');
+    }
+    if (data.transmissionRule) {
+      const expected = resolveInitialTransmission(data.fourLessons, {
+        dayStem,
+        dayBranch,
+        dayStemResidence,
+        hourStem: data.ganzhi.hour.charAt(0),
+        hourBranch: data.divinationBranch,
+        heavenlyPlate: data.heavenlyPlate,
+      });
+      const middle =
+        expected.branches?.[1] ?? getUpperByUnder(data.heavenlyPlate, expected.initial);
+      const expectedBranches = expected.branches ?? [
+        expected.initial,
+        middle,
+        getUpperByUnder(data.heavenlyPlate, middle),
+      ];
+      if (
+        data.transmissionRule !== expected.rule ||
+        data.threeTransmissions.some((item, index) => item.branch !== expectedBranches[index])
+      ) {
+        throw new Error('大六壬取传规则或三传与四课、天地盘不一致，无法生成证据。');
+      }
     }
   }
   const plateFacts = platePositionFacts.map(

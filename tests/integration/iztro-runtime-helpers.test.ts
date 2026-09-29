@@ -154,6 +154,36 @@ test('紫微排盘封装应补齐 iztro 默认配置，避免前一次排盘配�
   );
 });
 
+test('紫微同步运限应保持本盘分界口径，不受后来创建的星盘影响', async () => {
+  const normalInput = {
+    ...DEFAULT_CHART_INPUT,
+    yearDivide: 'normal' as const,
+    horoscopeDivide: 'normal' as const,
+  };
+  const normalChart = await buildAstrolabeFromInput(normalInput);
+  const before = buildHoroscope(normalChart, '2026-02-06', 6);
+  await buildAstrolabeFromInput({
+    ...DEFAULT_CHART_INPUT,
+    yearDivide: 'exact',
+    horoscopeDivide: 'exact',
+  });
+
+  const after = buildHoroscope(normalChart, '2026-02-06', 6);
+  const direct = normalChart.horoscope('2026-02-06', 6);
+  const restored = await buildHoroscopeFromInput(normalChart, normalInput, '2026-02-06', 6);
+  const signature = (horoscope: typeof before) => ({
+    year: `${horoscope.yearly.heavenlyStem}${horoscope.yearly.earthlyBranch}`,
+    month: `${horoscope.monthly.heavenlyStem}${horoscope.monthly.earthlyBranch}`,
+    yearIndex: horoscope.yearly.index,
+    monthIndex: horoscope.monthly.index,
+  });
+  assert.equal(signature(before).year, '乙巳');
+  assert.equal(signature(before).month, '己丑');
+  for (const horoscope of [after, direct, restored]) {
+    assert.deepEqual(signature(horoscope), signature(before));
+  }
+});
+
 test('紫微排盘封装应拒绝 iztro 会宽松接受的非法出生输入', async () => {
   await assert.rejects(
     () => buildAstrolabeFromInput({ ...DEFAULT_CHART_INPUT, birthDate: 19980813 as never }),

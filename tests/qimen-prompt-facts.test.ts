@@ -76,6 +76,15 @@ test('奇门经典格局保留各宫命中且省略重复条件与通用叠加',
   const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
   const patternBlock = prompt.split('盘面命中格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
   for (const pattern of data.classicPatterns ?? []) {
+    const strongerPattern = (data.classicPatterns ?? []).find(
+      (candidate) =>
+        candidate.name === `${pattern.name}临吉门` &&
+        pattern.palaces.every((gong) => candidate.palaces.includes(gong)),
+    );
+    if (/^[日月星]奇得使$/u.test(pattern.name) && strongerPattern) {
+      assert.doesNotMatch(patternBlock, new RegExp(`^${pattern.name}（吉格`, 'mu'));
+      continue;
+    }
     const tone = pattern.type === 'good' ? '吉格' : pattern.type === 'bad' ? '凶格' : '中性格局';
     const palaces = pattern.palaces.map(
       (gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`,
@@ -104,8 +113,11 @@ test('奇门在线格局省略重复的规则名称和前置条件', () => {
   const prompt = formatEnhancedDivinationInfo('qimen', data);
   assert.match(prompt, /天遁（吉格，兑七宫）：生门、丙奇、地盘戊同宫/);
   assert.doesNotMatch(prompt, /乃天遁之格/);
-  assert.match(prompt, /月奇得使（吉格）：丙奇加地盘戊/);
-  assert.match(prompt, /月奇得使临吉门（吉格，兑七宫）：同宫临生门/);
+  assert.doesNotMatch(prompt, /^月奇得使（吉格/mu);
+  assert.match(
+    prompt,
+    /月奇得使临吉门（吉格）：丙奇加地盘戊（甲子\/甲申所遁）于兑七宫；同宫临生门/,
+  );
   assert.doesNotMatch(prompt, /月奇得使临吉门（吉格，兑七宫）：月奇得使又临吉门/);
 });
 

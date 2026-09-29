@@ -170,7 +170,7 @@ test('奇门在线提示词只输出任务、盘面与传统依据并去掉重�
   assert.match(prompt, /【九宫盘面】/);
   assert.match(prompt, /【传统格局】/);
   assert.match(prompt, /【传统依据】/);
-  assert.match(prompt, /门迫（巽四宫）；惊门（金）克巽四宫（木）/);
+  assert.match(prompt, /凶格：门迫；惊门（金）克巽四宫（木）/);
   assert.match(prompt, /马星（驿马落乾六宫）/);
   assert.doesNotMatch(prompt, /来源[：:]|标签[：:]|限制[：:]|边界[：:]|组成来源|规则命中|qimen:/);
   assert.equal(prompt.split('惊门（金）克巽四宫（木）').length - 1, 1);
