@@ -17,7 +17,12 @@ export const MingluAstrolabeSection: React.FC<Props> = ({ data }) => {
           <h2 className="minglu-section-title">第十章：西洋占星本命图谱与相位网格</h2>
           <p className="minglu-section-subtitle">
             本命星体、四轴、全量本命相位网格与元素形态分布（
-            {dayNight.isDayChart ? '日生盘' : '夜生盘'}）
+            {dayNight.isDayChart === undefined
+              ? '昼夜待定'
+              : dayNight.isDayChart
+                ? '日生盘'
+                : '夜生盘'}
+            ）
           </p>
         </div>
       </div>

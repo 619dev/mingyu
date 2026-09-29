@@ -58,6 +58,44 @@ test('命录占星保留轴点与衍生点的无宫位和无运动状态，不�
   assert.match(html, /星体、计算点与四轴落点/u);
 });
 
+test('命录占星缺太阳高度时沿用已有昼夜盘资料，两者均缺则保留待定', () => {
+  const source = generateAstrolabe({
+    name: '昼夜盘资料核验',
+    gender: '女',
+    year: '1995',
+    month: '5',
+    day: '20',
+    hour: '0',
+    minute: '30',
+    latitude: '39.9042',
+    longitude: '116.4074',
+    timezone: '8',
+    locationName: '北京',
+  });
+  const nightSection = buildEnhancedAstrolabeSection({
+    ...source,
+    solarIllumination: undefined,
+    dayChart: false,
+  });
+  assert.equal(nightSection.dayNight.isDayChart, false);
+  const nightHtml = renderToStaticMarkup(
+    createElement(MingluAstrolabeSection, { data: nightSection }),
+  );
+  assert.match(nightHtml, /夜生盘/u);
+
+  const unknownSection = buildEnhancedAstrolabeSection({
+    ...source,
+    solarIllumination: undefined,
+    dayChart: undefined,
+  });
+  assert.equal(unknownSection.dayNight.isDayChart, undefined);
+  const html = renderToStaticMarkup(
+    createElement(MingluAstrolabeSection, { data: unknownSection }),
+  );
+  assert.match(html, /昼夜待定/u);
+  assert.doesNotMatch(html, /日生盘|夜生盘/u);
+});
+
 test('命录跨体系主题逐项传递原始盘面资料，不把资料并置表述为互证', async () => {
   const person = { name: '三盘传递核验', gender: 'male' as const };
   const baziResult = baziCalculator.calculateBazi({

@@ -143,12 +143,14 @@ test('四正事件交界秒应独立列当前事件，并保持前后事件严�
     '2024-04-23T23:00:00Z',
   ]) {
     const boundary = calculateMoonPhaseEvidence(Date.parse(anchor)).nextPrincipalPhase;
-    for (const offset of [-1000, 0, 1000]) {
+    for (const offset of [-1000, -1, 0, 1, 1000]) {
       const timestamp = boundary.utcTimestamp + offset;
       const evidence = calculateMoonPhaseEvidence(timestamp);
       assert.ok(evidence.previousPrincipalPhase.utcTimestamp < timestamp);
       assert.ok(evidence.nextPrincipalPhase.utcTimestamp > timestamp);
       assert.equal(evidence.currentPrincipalPhase?.key, offset === 0 ? boundary.key : undefined);
+      if (offset < 0) assert.equal(evidence.nextPrincipalPhase.key, boundary.key);
+      if (offset > 0) assert.equal(evidence.previousPrincipalPhase.key, boundary.key);
       assert.equal(evidence.eventSummaryFact.currentEventKey, evidence.currentPrincipalPhase?.key);
       if (offset === 0) {
         assert.match(evidence.promptText, /当前四正相位/);

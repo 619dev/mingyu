@@ -34,7 +34,12 @@ import {
 import { SolarTerm, SolarTime } from 'tyme4ts';
 import { assertOptionalRecord } from '../../shared/validation';
 import type { RandomOptions, RandomTrace } from '../../shared/random';
-import { createRandomContext, hasRandomOptions, randomInt } from '../../shared/random';
+import {
+  assertReplaySamplesConsumed,
+  createRandomContext,
+  hasRandomOptions,
+  randomInt,
+} from '../../shared/random';
 import { attachResultMeta } from '../../shared/result';
 import { analyzeJinkoujueEvidence } from '../jinkoujue-evidence';
 
@@ -532,6 +537,7 @@ export function generateJinkoujue(
       random: context.random,
     });
     randomTrace = context.getTrace();
+    assertReplaySamplesConsumed(params, randomTrace);
   } else {
     diFenResolved = resolveDiFenBranch({
       method,

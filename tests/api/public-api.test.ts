@@ -3405,7 +3405,7 @@ test('公开 API 灵签应返回签号、签题与签诗', async () => {
   const drawn = await callApi('divination/ssgw', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ replay: [0.1, 0.1, 0.9] }),
+    body: JSON.stringify({ replay: [0.1] }),
   });
   assert.equal(drawn.response.status, 200);
   assert.equal(typeof drawn.body.data.number, 'number');
@@ -3417,12 +3417,20 @@ test('公开 API 灵签应返回签号、签题与签诗', async () => {
   assert.equal(drawn.body.data.ritual, undefined);
   assert.equal(drawn.body.data.evidenceAnalysis, undefined);
 
+  const excessReplay = await callApi('divination/ssgw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ replay: [0.1, 0.9] }),
+  });
+  assert.equal(excessReplay.response.status, 400);
+  assert.match(excessReplay.body.error.message, /重放样本有剩余/);
+
   const prompt = await callApi('divination/ssgw/prompt', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       question: '这件事接下来该怎么推进？',
-      replay: [0.1, 0.1, 0.9],
+      replay: [0.1],
     }),
   });
   assert.equal(prompt.response.status, 200);
@@ -4483,7 +4491,7 @@ test('公开 API 星盘应附带真太阳时参考且不改写现代星历时刻
   );
   assert.equal(
     body.data.birth.trueSolarDateTime,
-    `${corrected.year}-${String(corrected.month).padStart(2, '0')}-${String(corrected.day).padStart(2, '0')} ${String(corrected.hour).padStart(2, '0')}:${String(corrected.minute).padStart(2, '0')}`,
+    `${corrected.year}-${String(corrected.month).padStart(2, '0')}-${String(corrected.day).padStart(2, '0')} ${String(corrected.hour).padStart(2, '0')}:${String(corrected.minute).padStart(2, '0')}${corrected.second ? `:${String(corrected.second).padStart(2, '0')}` : ''}`,
   );
 });
 

@@ -490,7 +490,7 @@ export function generateAstrolabe(input: AstrolabeBirthInput): AstrolabeData {
       coordinateAccuracy: input.coordinateAccuracy,
       standardDateTime: formatDateTime(standardBirth),
       trueSolarDateTime: trueSolarResult
-        ? formatDateTime(trueSolarResult.correctedTime, standardBirth.second !== 0)
+        ? formatDateTime(trueSolarResult.correctedTime, trueSolarResult.correctedTime.second !== 0)
         : undefined,
       trueSolarEvidence: trueSolarResult
         ? {

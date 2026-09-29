@@ -468,12 +468,20 @@ function createZiweiThemeFacts(
   const payloads = Object.values(runtime.payloadByScope).filter(Boolean);
   if (definition.id === 'timing') {
     return payloads
-      .filter((payload) => payload.active_scope.scope !== 'origin')
+      .filter(
+        (payload) =>
+          payload.active_scope.scope !== 'origin' && Boolean(payload.active_scope.solar_date),
+      )
       .flatMap((payload) => {
         const active = payload.active_scope;
-        const relevantEvidence = payload.evidence_pool.filter(
-          (item) => item.scope === active.scope && item.type !== 'natal_palace',
+        const landingPalace = runtime.payloadByScope.origin?.palaces.find(
+          (palace) => palace.index === active.palace_index,
         );
+        const relevantEvidence = landingPalace
+          ? payload.evidence_pool.filter(
+              (item) => item.scope === active.scope && item.type !== 'natal_palace',
+            )
+          : [];
         // 来源键与实际写入 detail 的证据保持同一范围，避免登记范围大于实际使用范围
         const usedEvidence = relevantEvidence.slice(0, 12);
         return [
@@ -484,7 +492,7 @@ function createZiweiThemeFacts(
             title: active.label || active.scope,
             detail: unique([
               `${active.solar_date}，虚岁${active.nominal_age}`,
-              active.palace_name ? `运限命宫落${active.palace_name}` : '',
+              landingPalace ? `运限命宫落${landingPalace.name}` : '',
               ...active.mutagen_map.map(
                 (item) =>
                   `${item.star}化${item.mutagen}${item.palace_name ? `入${item.palace_name}` : ''}`,
@@ -579,6 +587,17 @@ export function buildBaziZiweiSynthesis(params: {
   );
   if (!ziweiTimingScopes.has('decadal')) missingFacts.push('运限基准日期缺少对应紫微大限');
   if (!ziweiTimingScopes.has('yearly')) missingFacts.push('运限基准年份缺少对应紫微流年');
+  const originPalaceIndexes = new Set(
+    params.ziwei.payloadByScope.origin?.palaces.map((palace) => palace.index) ?? [],
+  );
+  for (const scope of ['decadal', 'yearly'] as const) {
+    if (
+      ziweiTimingScopes.has(scope) &&
+      !originPalaceIndexes.has(params.ziwei.payloadByScope[scope]?.active_scope.palace_index ?? -1)
+    ) {
+      missingFacts.push(scope === 'decadal' ? '紫微大限落宫未定位' : '紫微流年落宫未定位');
+    }
+  }
 
   const corroboration = evaluateBaziZiweiCorroboration(params.bazi, params.ziwei);
 

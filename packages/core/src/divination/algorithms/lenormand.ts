@@ -4,7 +4,12 @@
  */
 import type { LenormandData, LenormandSpreadType } from '../../types/divination';
 import type { RandomOptions, RandomSource } from '../../shared/random';
-import { createRandomContext, hasRandomOptions, randomInt } from '../../shared/random';
+import {
+  assertReplaySamplesConsumed,
+  createRandomContext,
+  hasRandomOptions,
+  randomInt,
+} from '../../shared/random';
 import { attachResultMeta } from '../../shared/result';
 import { analyzeLenormandEvidence } from '../lenormand-evidence';
 
@@ -528,6 +533,8 @@ export function drawLenormandSpread(
     : interactiveSamples
       ? resolveInteractiveLenormandCards(spreadType, interactiveSamples)
       : shuffleLenormandCards(context!.random).slice(0, spread.positions.length);
+  const randomTrace = context?.getTrace();
+  if (randomTrace) assertReplaySamplesConsumed(options, randomTrace);
   const cards = selectedCards.map((card, index) => {
     const columns = spreadType === 'grandTableau' ? 9 : spreadType === 'nine' ? 3 : 0;
     const houseCard = spreadType === 'grandTableau' ? LENORMAND_CARDS[index] : undefined;

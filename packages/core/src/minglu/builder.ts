@@ -192,10 +192,12 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
   ].filter((theme) => theme.baziEvidence.length > 0);
 
   // 6. 元数据组装
+  const gender =
+    baziResult.gender === 'male' || baziResult.gender === 'female' ? baziResult.gender : '';
   const metadata: MingluMetadata = {
     subjectName: person.name || '命主',
-    gender: person.gender || 'male',
-    genderLabel: person.gender === 'male' ? '乾造 (男命)' : '坤造 (女命)',
+    gender,
+    genderLabel: gender === 'male' ? '乾造 (男命)' : gender === 'female' ? '坤造 (女命)' : '未指定',
     solarDateStr: `${baziResult.solarDate.year}年${baziResult.solarDate.month}月${baziResult.solarDate.day}日`,
     lunarDateStr: `农历${baziResult.lunarDate.monthName}${baziResult.lunarDate.dayName}`,
     shichenName: baziResult.timeInfo.name,

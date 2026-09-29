@@ -258,6 +258,29 @@ test('八字双盘证据应记录跨盘三会来源但不声称成化', () => {
   assert.ok(combination.sourceLayerKeys.length >= 3);
 });
 
+test('日干五合不计入双方日支夫妻宫关系', () => {
+  const { chart1, chart2 } = createPair();
+  chart2.pillars.day = { gan: '辛', zhi: '酉', ganZhi: '辛酉' };
+
+  const result = analyzeBaziCompatibility(chart1, chart2);
+
+  assert.ok(
+    result.crossPillarRelations.some(
+      (item) =>
+        item.layer === '天干' &&
+        item.type === '五合候选' &&
+        item.person1Pillar === 'day' &&
+        item.person2Pillar === 'day',
+    ),
+  );
+  assert.equal(result.spousePalaceRelations.length, 0);
+  assert.equal(result.summaryFact.spousePalaceRelationCount, 0);
+  assert.match(
+    result.counterEvidenceFacts.find((item) => item.type === '夫妻宫关系覆盖')?.promptText ?? '',
+    /双方日支未命中/,
+  );
+});
+
 test('八字双盘证据应双向映射十神和喜忌覆盖', () => {
   const { chart1, chart2 } = createPair();
   const result = analyzeBaziCompatibility(chart1, chart2);

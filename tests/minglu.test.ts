@@ -289,6 +289,25 @@ test('命录应正确生成全息百科大报告与所有补齐计算', () => {
   assert.ok(article.statistics.totalGlossaryEntries >= 20);
 });
 
+test('命录性别元数据按排盘结果标注，未指定性别不冒充男命或女命', () => {
+  const input = { year: 1990, month: 5, day: 15, timeIndex: 5 };
+  const femaleChart = baziCalculator.calculateBazi({ ...input, gender: 'female' });
+  const femaleArticle = buildMingluArticle({
+    person: { name: '样例', gender: 'male' },
+    baziResult: femaleChart,
+  });
+  assert.equal(femaleArticle.metadata.gender, 'female');
+  assert.equal(femaleArticle.metadata.genderLabel, '坤造 (女命)');
+
+  const unspecifiedChart = { ...femaleChart, gender: '' };
+  const unspecifiedArticle = buildMingluArticle({
+    person: { name: '样例', gender: '' },
+    baziResult: unspecifiedChart,
+  });
+  assert.equal(unspecifiedArticle.metadata.gender, '');
+  assert.equal(unspecifiedArticle.metadata.genderLabel, '未指定');
+});
+
 test('命录缺时辰只保留已确定柱与候选场景，不套用空日主或空时柱', () => {
   const baziResult = baziCalculator.calculateBazi({
     year: 2000,

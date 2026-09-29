@@ -7,6 +7,7 @@ import {
   getEssentialDignity,
 } from 'mingyu-core/divination/astrolabe';
 import type { AstrolabeBirthInput, AstrolabeData } from 'mingyu-core/types';
+import { resolveTrueSolarBirthTime } from '../packages/core/src/calendar/true-solar-time';
 
 const validInput: AstrolabeBirthInput = {
   name: '本人',
@@ -135,6 +136,24 @@ test('星盘真太阳时应透传统一校正证据并纳入总汇总', () => {
     /民用出生时间.*进入现代星历.*仅作为传统时间参考/,
   );
   assert.doesNotMatch(result.evidenceAnalysis?.promptText ?? '', /真太阳时.*进入星盘计算/);
+});
+
+test('真太阳时结果保留校正产生的秒数', () => {
+  const result = generateAstrolabe({ ...validInput, useTrueSolarTime: true });
+  const reference = resolveTrueSolarBirthTime({
+    dateType: 'solar',
+    year: 1995,
+    month: 5,
+    day: 20,
+    hour: 12,
+    minute: 30,
+    second: 0,
+    longitude: 116.4074,
+    timezone: 8,
+  });
+
+  assert.notEqual(reference.correctedTime.second, 0);
+  assert.equal(result.birth.trueSolarDateTime, reference.correctedDateTime.replace('T', ' '));
 });
 
 test('现代星盘不得用真太阳时改写实际出生瞬间和盘面', () => {

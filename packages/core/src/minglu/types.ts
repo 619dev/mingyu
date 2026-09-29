@@ -521,7 +521,7 @@ export interface MingluAstrolabeSectionData {
     modalities: Record<string, { count: number; percentage: number; points: string[] }>;
   };
   dayNight: {
-    isDayChart: boolean;
+    isDayChart?: boolean;
     sunAltitude?: number;
   };
 }

@@ -248,6 +248,35 @@ function nearestPrincipalEvents(timestamp: number, phaseAngle: number) {
   );
   let currentEvent: PrincipalMoonPhaseEvent | undefined;
   const currentStepKey = 'moon-phase:calculation:current-principal';
+  // 查询可精确到毫秒，四正事件按整秒呈现；黄经差反映的真实过零点可能
+  // 落在该整秒的另一侧。以前后事件最终呈现的时间戳为准保持严格包围。
+  if (previousEvent.utcTimestamp > timestamp) {
+    nextEvent = {
+      ...previousEvent,
+      ownerFactKeys: ['moon-phase:calculation:next-principal'],
+      calculationStepKeys: ['moon-phase:calculation:next-principal'],
+    };
+    const phaseIndex = PRINCIPAL_PHASES.indexOf(previous.phase);
+    const priorPhase = PRINCIPAL_PHASES[(phaseIndex + 3) % PRINCIPAL_PHASES.length];
+    previousEvent = refinePhaseEvent(
+      timestamp - (90 / MEAN_PHASE_SPEED_DEGREES_PER_DAY) * 86400000,
+      priorPhase,
+      ['moon-phase:calculation:previous-principal'],
+    );
+  } else if (nextEvent.utcTimestamp < timestamp) {
+    previousEvent = {
+      ...nextEvent,
+      ownerFactKeys: ['moon-phase:calculation:previous-principal'],
+      calculationStepKeys: ['moon-phase:calculation:previous-principal'],
+    };
+    const phaseIndex = PRINCIPAL_PHASES.indexOf(next.phase);
+    const followingPhase = PRINCIPAL_PHASES[(phaseIndex + 1) % PRINCIPAL_PHASES.length];
+    nextEvent = refinePhaseEvent(
+      timestamp + (90 / MEAN_PHASE_SPEED_DEGREES_PER_DAY) * 86400000,
+      followingPhase,
+      ['moon-phase:calculation:next-principal'],
+    );
+  }
   if (previousEvent.utcTimestamp === timestamp) {
     currentEvent = {
       ...previousEvent,

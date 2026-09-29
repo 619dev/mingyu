@@ -1036,7 +1036,7 @@ export function analyzeBaziCompatibility(
   };
   const crossPillarRelations = calculateCrossRelations(chart1, chart2);
   const spousePalaceRelations = crossPillarRelations.filter(
-    (item) => item.person1Pillar === 'day' && item.person2Pillar === 'day',
+    (item) => item.layer === '地支' && item.person1Pillar === 'day' && item.person2Pillar === 'day',
   );
   const crossBranchCombinations = calculateCombinations(chart1, chart2);
   const tenGodMappings = [

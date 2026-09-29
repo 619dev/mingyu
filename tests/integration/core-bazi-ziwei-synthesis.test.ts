@@ -315,6 +315,51 @@ test('紫微宫位缺少星曜列表时合参记录资料缺口而不输出残�
   );
 });
 
+test('紫微运限日期或落宫缺失时合参不报告资料完整', async () => {
+  const reading = await getCombinedReading();
+  assert.ok(reading.bundle.bazi);
+  assert.ok(reading.bundle.ziwei);
+  const yearly = reading.bundle.ziwei.payloadByScope.yearly;
+  assert.ok(yearly);
+
+  const missingDate = buildBaziZiweiSynthesis({
+    bazi: reading.bundle.bazi,
+    ziwei: {
+      ...reading.bundle.ziwei,
+      payloadByScope: {
+        ...reading.bundle.ziwei.payloadByScope,
+        yearly: { ...yearly, active_scope: { ...yearly.active_scope, solar_date: '' } },
+      },
+    },
+  });
+  assert.equal(missingDate.status, '资料有缺口');
+  assert.ok(missingDate.missingFacts.includes('运限基准年份缺少对应紫微流年'));
+  assert.equal(
+    missingDate.themes
+      .find((theme) => theme.id === 'timing')
+      ?.ziweiEvidence.some((fact) => fact.scope === 'yearly'),
+    false,
+  );
+
+  const missingPalace = buildBaziZiweiSynthesis({
+    bazi: reading.bundle.bazi,
+    ziwei: {
+      ...reading.bundle.ziwei,
+      payloadByScope: {
+        ...reading.bundle.ziwei.payloadByScope,
+        yearly: { ...yearly, active_scope: { ...yearly.active_scope, palace_index: undefined } },
+      },
+    },
+  });
+  assert.equal(missingPalace.status, '资料有缺口');
+  assert.ok(missingPalace.missingFacts.includes('紫微流年落宫未定位'));
+  const yearlyFact = missingPalace.themes
+    .find((theme) => theme.id === 'timing')
+    ?.ziweiEvidence.find((fact) => fact.scope === 'yearly');
+  assert.ok(yearlyFact);
+  assert.doesNotMatch(yearlyFact.detail, /运限命宫落/);
+});
+
 test('八字旺衰或格局未知时合参应登记资料缺口', async () => {
   const reading = await getCombinedReading();
   assert.ok(reading.bundle.bazi);

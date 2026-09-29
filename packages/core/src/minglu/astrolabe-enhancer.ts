@@ -86,7 +86,9 @@ export function buildEnhancedAstrolabeSection(data: AstrolabeData): MingluAstrol
     }
   });
 
-  const isDayTime = data.solarIllumination ? data.solarIllumination.solarAltitudeDegrees > 0 : true;
+  const isDayTime = data.solarIllumination
+    ? data.solarIllumination.solarAltitudeDegrees > 0
+    : data.dayChart;
 
   return {
     points,

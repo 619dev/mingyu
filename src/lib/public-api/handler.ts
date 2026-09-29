@@ -8600,6 +8600,9 @@ function handleError(error: unknown, runtime: PublicApiRuntime) {
   if (error instanceof ApiError) {
     return json(failure(error.code, error.message, runtime), error.status);
   }
+  if (error instanceof MingyuCoreError && error.category === 'validation') {
+    return json(failure('BAD_REQUEST', error.message, runtime), 400);
+  }
 
   console.error('公开 API 未处理异常', error);
   return json(failure('INTERNAL_ERROR', '服务内部错误。', runtime), 500);
