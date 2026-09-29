@@ -114,7 +114,8 @@ test('小六壬公开接口使用所选底本起课并生成同口径提示词',
   const prompted = await callApi('divination/xiaoliuren/prompt', options(input));
   assert.equal(prompted.response.status, 200);
   assert.match(prompted.body.data.prompt, /多能鄙事/);
-  assert.match(prompted.body.data.prompt, /公历占时（北京时间）：2025-01-29 00:30/);
+  assert.match(prompted.body.data.prompt, /公历：2025年1月29日 0时30分/);
+  assert.doesNotMatch(prompted.body.data.prompt, /公历占时（北京时间）：2025-01-29 00:30/);
   assert.match(prompted.body.data.prompt, /占得宫：留连/);
   assert.doesNotMatch(prompted.body.data.prompt, /通行俗传/);
   for (const xiaoliurenRule of ['bad', false, ['duoneng']]) {

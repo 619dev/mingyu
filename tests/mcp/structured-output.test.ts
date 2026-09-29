@@ -5847,7 +5847,8 @@ test('MCP 小六壬多能鄙事口径贯穿课盘与完整提示词', async () =
     const prompt = (response.structuredContent as { prompt: string }).prompt;
     assert.match(prompt, /多能鄙事/);
     assert.match(prompt, /月宫大安下一宫起初一/);
-    assert.match(prompt, /公历占时（北京时间）：2025-01-29 00:30/);
+    assert.match(prompt, /公历：2025年1月29日 0时30分/);
+    assert.doesNotMatch(prompt, /公历占时（北京时间）：2025-01-29 00:30/);
     assert.match(prompt, /占得宫：留连/);
     assert.doesNotMatch(prompt, /通行俗传/);
   });
