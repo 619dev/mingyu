@@ -59,6 +59,7 @@ export const BING_YOU_CLIMATE_RULES: ClimateRule[] = [
     dayStems: ['丙'],
     requiredVisibleStems: ['壬', '戊'],
     minWuxingCounts: { 土: 3 },
+    minStemTotalCounts: { 戊: 2 },
     usefulWuxing: '水',
     favorableOrder: ['水', '金'],
     traceHints: ['破格因素:戊多困水', '成格层次:假作斯文'],

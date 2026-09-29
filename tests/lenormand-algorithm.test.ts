@@ -314,6 +314,20 @@ test('雷诺曼在线提示词重新核对牌面和组合，不采信过期证�
   assert.doesNotMatch(text, /伪造牌名|伪造关键词|伪造牌义/);
 });
 
+test('雷诺曼在线文字保留牌义主题与固定组合，避免把婚约写成已发生事实', () => {
+  const data = drawLenormandSpread('three', { manualCardIds: [24, 25, 1] });
+  const texts = [
+    ...getDivinationSummaryBlocks('lenormand', data).lines,
+    formatEnhancedDivinationInfo('lenormand', data),
+    formatDetailedDivinationInfo('lenormand', data),
+  ];
+  const rendered = texts.join('\n');
+  assert.match(rendered, /起因：心；关键词：感情、喜欢、热情/);
+  assert.match(rendered, /心\+戒指：传统固定组合/);
+  assert.match(rendered, /关系承诺、契约或婚约议题/);
+  assert.doesNotMatch(rendered, /基础牌义：情感动机强|心\+戒指：感情的承诺或婚约/);
+});
+
 test('雷诺曼含先后语义的固定组合只在原牌序命中', () => {
   for (const [firstName, secondName] of [
     ['骑士', '心'],
@@ -415,7 +429,7 @@ test('雷诺曼在线提示词使用重算后的关系牌阵组合事实', () =>
   assert.equal(first?.position2, '对方状态');
   assert.match(
     session.aiPrompt,
-    /你的状态骑士（消息、到来）与对方状态三叶草（机会、短暂好运）是牌序相邻的两组线索/u,
+    /相邻合读 骑士\+三叶草：相邻牌骑士\+三叶草通过你的状态与对方状态的牌序相邻形成消息、到来、进展、机会、短暂好运、轻松的合读范围/u,
   );
   assert.doesNotMatch(session.aiPrompt, /前后相接|先按|再看/u);
 });

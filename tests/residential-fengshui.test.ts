@@ -338,6 +338,22 @@ test('住宅风水仅有山向时可出玄空，不出八宅', () => {
   assert.match(result.prompt, /^【任务】\n请依据以下玄空宅运盘/);
 });
 
+test('住宅风水不得静默忽略已填写但不完整的居住人资料', () => {
+  const house = { year: 2024, sitMountain: '子' };
+  assert.throws(
+    () => generateResidentialFengshui({ ...house, birthYear: 1990 }),
+    /居住人资料需提供出生年与性别/,
+  );
+  assert.throws(
+    () => generateResidentialFengshui({ ...house, gender: 'male' }),
+    /居住人资料需提供出生年与性别/,
+  );
+  assert.throws(
+    () => generateResidentialFengshui({ mingGua: '坎', year: 0 }),
+    /住宅建造年或起运年/,
+  );
+});
+
 test('住宅风水门向度数会同步八宅与玄空山向', () => {
   const result = generateResidentialFengshui({
     birthYear: 1990,

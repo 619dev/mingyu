@@ -27,6 +27,82 @@ function context(visibleStems: string[]) {
   };
 }
 
+test('丙火酉月戊多困水只计戊干，不把己土合计为戊多', () => {
+  const ruleId = 'you-month-bing-wu-heavy-false-scholar';
+  const base = {
+    ...context(['壬', '戊', '丙', '己']),
+    monthBranch: '酉',
+    dayMaster: '火',
+    dayStem: '丙',
+    wuxingCounts: { 木: 0, 火: 1, 土: 3, 金: 1, 水: 1 },
+  };
+  const find = (hiddenStems: string[]) =>
+    collectClimateRuleCandidates({ ...base, hiddenStems }).find(
+      (candidate) => candidate.rule.id === ruleId,
+    );
+
+  assert.equal(find(['己'])?.status, '不满足');
+  assert.equal(find(['戊'])?.status, '满足');
+});
+
+test('戊土辰月甲乙并透不能由甲透乙藏替代', () => {
+  const find = (visibleStems: string[], hiddenStems: string[], id: string) =>
+    collectClimateRuleCandidates({
+      ...context(visibleStems),
+      monthBranch: '辰',
+      dayMaster: '土',
+      dayStem: '戊',
+      hiddenStems,
+      formationWuxings: ['木'],
+    }).find((candidate) => candidate.rule.id === id)?.status;
+
+  const withGeng = 'chen-month-wu-officer-party-geng';
+  const noGeng = 'chen-month-wu-officer-party-no-geng';
+  assert.equal(find(['甲', '庚', '戊', '癸'], ['乙'], withGeng), '不满足');
+  assert.equal(find(['甲', '乙', '戊', '庚'], ['乙'], withGeng), '满足');
+  assert.equal(find(['甲', '癸', '戊', '壬'], ['乙'], noGeng), '不满足');
+  assert.equal(find(['甲', '乙', '戊', '癸'], ['乙'], noGeng), '满足');
+});
+
+test('丙火午月丁壬隔位不能据同透断合绊，紧贴也只列核对条件', () => {
+  const id = 'wu-month-bing-ding-ren-he';
+  const find = (visibleStems: string[]) =>
+    collectClimateRuleCandidates({
+      ...context(visibleStems),
+      monthBranch: '午',
+      dayMaster: '火',
+      dayStem: '丙',
+    }).find((candidate) => candidate.rule.id === id);
+
+  assert.equal(find(['丁', '甲', '丙', '壬'])?.status, '不满足');
+  const adjacent = find(['丁', '壬', '丙', '甲']);
+  assert.equal(adjacent?.status, '满足');
+  assert.doesNotMatch(
+    `${adjacent?.rule.hint}；${adjacent?.rule.traceHints?.join('；')}`,
+    /化合|平人/u,
+  );
+});
+
+test('戊土申酉月全无荐干须连藏干一并核对', () => {
+  const find = (monthBranch: string, hiddenStems: string[], id: string) =>
+    collectClimateRuleCandidates({
+      ...context(['戊', '辛', '戊', '庚']),
+      monthBranch,
+      dayMaster: '土',
+      dayStem: '戊',
+      hiddenStems,
+    }).find((candidate) => candidate.rule.id === id)?.status;
+
+  const shenNoGuiJia = 'shen-month-wu-no-gui-no-jia';
+  const shenNone = 'shen-month-wu-no-bing-no-gui-no-jia';
+  const youNone = 'you-month-wu-no-bing-no-gui';
+  assert.equal(find('申', ['甲'], shenNoGuiJia), '不满足');
+  assert.equal(find('申', ['丙'], shenNone), '不满足');
+  assert.equal(find('酉', ['癸'], youNone), '不满足');
+  assert.equal(find('申', [], shenNone), '满足');
+  assert.equal(find('酉', [], youNone), '满足');
+});
+
 test('调候月令取用对应本月原文，不把虚构等级写入规则', () => {
   const cases = [
     {

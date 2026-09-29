@@ -31,7 +31,7 @@ test('梅花数字加时辰的安全边界应覆盖十二时辰', () => {
     const largest = Number.MAX_SAFE_INTEGER - index - 1;
     const result = resolveNumberMethod(largest, branch);
     assert.equal(result.calculation.totalWithTime, Number.MAX_SAFE_INTEGER);
-    assert.equal(result.lowerTrigramIndex, 7);
+    assert.equal(result.lowerTrigramIndex, (index + 1) % 8 || 8);
     assert.equal(result.movingYaoIndex, 1);
     assert.throws(() => resolveNumberMethod(largest + 1, branch), /之和必须在安全整数范围/);
   }

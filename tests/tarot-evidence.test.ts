@@ -8,6 +8,7 @@ import {
 } from '../packages/core/src/divination/tarot.ts';
 import type { TarotData, TarotSpreadType } from '../packages/core/src/types/divination.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 
 const spreadTypes = Object.keys(tarotSpreads) as TarotSpreadType[];
 
@@ -63,6 +64,36 @@ test('塔罗提示词按牌号与本次牌面重建逐牌资料和相邻关系',
   assert.match(prompt, new RegExp(originalName, 'u'));
   assert.doesNotMatch(prompt, /伪造牌名|伪造关键词|伪造相邻关系/u);
   assert.match(prompt, /相邻牌元素关系：/u);
+});
+
+test('残缺多牌阵保留原牌阵类型并列出实际牌位与缺口', () => {
+  const complete = drawTarotSpread('three', {
+    manualCards: [1, 2, 3].map((id) => ({ id, reversed: false })),
+  });
+  const incomplete: TarotData = {
+    ...complete,
+    cards: complete.cards.slice(0, 1),
+    evidenceAnalysis: undefined,
+  };
+  const prompt = buildDivinationPrompt({
+    method: 'tarot',
+    question: '请结合当前情况解读。',
+    data: incomplete,
+  });
+  const task = prompt.match(/【任务】\n([\s\S]*?)\n\n【问题】/u)?.[1];
+
+  assert.ok(task);
+  assert.match(prompt, /牌阵时间流牌阵/);
+  assert.match(
+    prompt,
+    /牌位覆盖：预设3张（过去、现在、未来）；实际记录1张；实际牌位：过去；缺少牌位：现在、未来/u,
+  );
+  assert.match(task, /围绕已记录牌位与牌面整理本次问题的象征主题/u);
+  assert.match(task, /当前记录1张/u);
+  assert.match(task, /现在、未来/u);
+  assert.doesNotMatch(task, /依据唯一牌位/u);
+  assert.doesNotMatch(task, /按过去、现在、未来三个牌位/u);
+  assert.doesNotMatch(prompt, /塔罗单牌以牌位职能/u);
 });
 
 test('凯尔特十字十牌位保留韦特原著的目标、基础、过去影响及希望恐惧', () => {

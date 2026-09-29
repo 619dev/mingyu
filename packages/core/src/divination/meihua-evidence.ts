@@ -718,7 +718,12 @@ function validateMeihuaCalculation(data: MeihuaData): {
         const totalWithTime = sum(sourceValue, timeZhiIndex);
         compare('数字与时支合数', calculation.totalWithTime, totalWithTime);
         compareRemainder('上卦索引', calculation.upperTrigramIndex, sourceValue, 8);
-        compareRemainder('下卦索引', calculation.lowerTrigramIndex, totalWithTime, 8);
+        compareRemainder(
+          '下卦索引',
+          calculation.lowerTrigramIndex,
+          calculation.methodKey === 'number' ? timeZhiIndex : totalWithTime,
+          8,
+        );
         compareRemainder('动爻索引', calculation.movingYaoIndex, totalWithTime, 6);
         break;
       }
@@ -1147,8 +1152,8 @@ function buildCalculationFacts(data: MeihuaData): string[] {
         ),
         formatRemainderCalculation(
           '下卦',
-          String(calculation.totalWithTime),
-          calculation.totalWithTime,
+          String(calculation.timeZhiIndex),
+          calculation.timeZhiIndex,
           8,
           calculation.lowerTrigramIndex,
         ),
@@ -1379,6 +1384,7 @@ function buildMeihuaCalculationFact(data: MeihuaData): MeihuaCalculationFact {
       inputs.totalWithTime = calculation.totalWithTime;
     if (
       hasFiniteNumber(calculation.number) &&
+      hasFiniteNumber(calculation.timeZhiIndex) &&
       hasFiniteNumber(calculation.totalWithTime) &&
       hasFiniteNumber(calculation.upperTrigramIndex) &&
       hasFiniteNumber(calculation.lowerTrigramIndex) &&
@@ -1403,14 +1409,14 @@ function buildMeihuaCalculationFact(data: MeihuaData): MeihuaCalculationFact {
         {
           key: 'meihua:calculation:lower',
           target: '下卦',
-          expression: String(calculation.totalWithTime),
+          expression: String(calculation.timeZhiIndex),
           modulus: 8,
-          remainder: calculation.totalWithTime % 8,
+          remainder: calculation.timeZhiIndex % 8,
           result: calculation.lowerTrigramIndex,
           promptText: formatRemainderCalculation(
             '下卦',
-            String(calculation.totalWithTime),
-            calculation.totalWithTime,
+            String(calculation.timeZhiIndex),
+            calculation.timeZhiIndex,
             8,
             calculation.lowerTrigramIndex,
           ),

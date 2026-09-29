@@ -79,9 +79,9 @@ test('梅花起卦证据应核对取数与盘面，并准确表达整除时的�
   const evidence = data.evidenceAnalysis;
   const lowerStep = evidence?.calculationFact.steps.find((item) => item.target === '下卦');
 
-  assert.equal(lowerStep?.remainder, 0);
-  assert.equal(lowerStep?.result, 8);
-  assert.match(lowerStep?.promptText ?? '', /除以8，余数为0（余0按8计索引），索引为8/u);
+  assert.equal(lowerStep?.remainder, 5);
+  assert.equal(lowerStep?.result, 5);
+  assert.match(lowerStep?.promptText ?? '', /下卦=\(5\)除以8，余数为5，索引为5/u);
 
   const inconsistent = structuredClone(data);
   inconsistent.calculation!.number = 124;
@@ -134,14 +134,14 @@ test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () =>
       change: (item: typeof data) => {
         item.interHexagram!.upper = '乾';
       },
-      diagnostic: /互卦记录与主卦六爻推得的水山蹇不一致/u,
+      diagnostic: /互卦记录与主卦六爻推得的泽天夬不一致/u,
     },
     {
       label: '变卦',
       change: (item: typeof data) => {
         item.changedHexagram!.lower = '坤';
       },
-      diagnostic: /变卦记录与主卦六爻推得的火水未济不一致/u,
+      diagnostic: /变卦记录与主卦六爻推得的火山旅不一致/u,
     },
     {
       label: '体互',
@@ -214,9 +214,9 @@ test('梅花体互用互应沿用原体所在方位，不得上下颠倒', () =>
   assert.equal(lowerMoving.interYongGua?.name, lowerMoving.interHexagram?.lower);
   assert.equal(lowerProcess?.ti.name, lowerMoving.interHexagram?.upper);
   assert.equal(lowerProcess?.yong.name, lowerMoving.interHexagram?.lower);
-  assert.equal(lowerProcess?.relation, '用克体');
-  assert.equal(lowerMoving.analysis.inter1Relation, '体互克原体');
-  assert.equal(lowerMoving.analysis.inter2Relation, '原体生用互');
+  assert.equal(lowerProcess?.relation, '比和');
+  assert.equal(lowerMoving.analysis.inter1Relation, '原体克体互');
+  assert.equal(lowerMoving.analysis.inter2Relation, '原体克用互');
   assert.match(lowerProcess?.basis ?? '', /原体在上.*上互为体互、下互为用互/);
 
   const upperMoving = generateMeihua(fixedDate, { method: 'number', number: 5 });
@@ -546,8 +546,8 @@ test('梅花排盘传统事实应只让当前动爻参与提示词', () => {
 
 test('乾卦用九应保留原文但不在单动爻排盘中启用', () => {
   const qian = generateMeihua(new Date('2025-01-01T14:00:00+08:00'), {
-    method: 'number',
-    number: 1,
+    method: 'random',
+    replay: [0, 0, 0.4],
   });
   const qianYong = qian.evidenceAnalysis?.traditionalFacts.find(
     (item) => item.stage === '主卦' && item.kind === '用辞',

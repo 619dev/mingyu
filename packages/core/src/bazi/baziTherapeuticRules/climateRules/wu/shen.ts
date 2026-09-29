@@ -49,7 +49,7 @@ export const WU_SHEN_CLIMATE_RULES: ClimateRule[] = [
       {
         stems: ['癸', '甲'],
         maxDistinctCount: 0,
-        scope: 'visible',
+        scope: 'total',
       },
     ],
     usefulWuxing: '火',
@@ -69,7 +69,7 @@ export const WU_SHEN_CLIMATE_RULES: ClimateRule[] = [
       {
         stems: ['丙', '癸', '甲'],
         maxDistinctCount: 0,
-        scope: 'visible',
+        scope: 'total',
       },
     ],
     usefulWuxing: '火',

@@ -3,7 +3,7 @@
  * @description 通过运行环境 Intl/IANA 数据库解析当地钟表时刻的历史 UTC 偏移，并识别 DST 歧义与缺失时刻。
  */
 
-import { createUtcTimestamp } from './date-validation';
+import { createUtcTimestamp, daysInGregorianMonth, isValidClockTime } from './date-validation';
 
 export interface HistoricalTimezoneInput {
   year: number;
@@ -196,6 +196,16 @@ export function resolveHistoricalTimezone(
   input: HistoricalTimezoneInput,
 ): HistoricalTimezoneEvidence {
   if (!input.timeZoneId?.trim()) throw new Error('IANA 时区名不能为空。');
+  const maxDay = daysInGregorianMonth(input.year, input.month);
+  if (!Number.isInteger(input.day) || input.day < 1 || input.day > maxDay) {
+    throw new Error(`当地日期需在 1-${maxDay} 日之间。`);
+  }
+  if (!isValidClockTime(input.hour, input.minute, input.second)) {
+    throw new Error('当地时刻需要有效的 24 小时制时分秒。');
+  }
+  if (input.fixedOffsetHours !== undefined && !Number.isFinite(input.fixedOffsetHours)) {
+    throw new Error('固定 UTC 偏移需要有效数字。');
+  }
   const timeZoneId = input.timeZoneId.trim();
   const formatter = getFormatter(timeZoneId);
   const target: WallClockParts = {

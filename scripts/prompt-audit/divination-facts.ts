@@ -7,8 +7,12 @@
  */
 import type { PromptFactExpectation } from './facts';
 import { resolveSsgwStoryContent } from '../../packages/core/src/divination/ssgw-content';
+import { conditionLenormandTraditionalText } from '../../packages/core/src/divination/lenormand-evidence';
 import { isKe, isSheng } from '../../packages/core/src/ganzhi';
-import type { SsgwData } from '../../packages/core/src/types/divination';
+import type {
+  LenormandCombinationRelation,
+  SsgwData,
+} from '../../packages/core/src/types/divination';
 
 export type DivinationPromptFact = PromptFactExpectation;
 export type DivinationFactExtractor = (data: unknown) => DivinationPromptFact[];
@@ -892,7 +896,11 @@ function extractXiaoliurenFacts(data: unknown): DivinationPromptFact[] {
       { scope: { start: '起课过程：', end: '定位用途' } },
     ),
     fact('xiaoliuren.location', '定位用途：', [
-      month ? '月宫是初一的起数位置' : undefined,
+      month
+        ? text(d.rule) === 'duoneng'
+          ? `月宫是月份起数位置；初一从${text(firstDayPalace?.name) || ''}起数`
+          : '月宫是初一的起数位置'
+        : undefined,
       day ? '日宫是子时的起数位置' : undefined,
     ]),
     fact('xiaoliuren.rule', '起课口径：', [
@@ -1016,6 +1024,7 @@ function extractLenormandFacts(data: unknown): DivinationPromptFact[] {
   if (!d) return [];
   const cards = records(d.cards);
   const combinations = records(d.combinations);
+  const cardByName = new Map(cards.map((card) => [text(card.name), card]));
   return collect([
     fact('lenormand.core', '核心结构：', [`牌阵${text(d.spreadName)}`, `共${cards.length}张牌`]),
     ...cards.map((card, index) => {
@@ -1028,7 +1037,9 @@ function extractLenormandFacts(data: unknown): DivinationPromptFact[] {
         [
           `${position}：${name}`,
           `关键词：${join(card.keywords) || '未列'}`,
-          text(card.meaning) ? `基础牌义：${text(card.meaning)}` : undefined,
+          text(card.meaning)
+            ? `基础牌义：${conditionLenormandTraditionalText(text(card.meaning)!, { cardNames: [name], keywords: texts(card.keywords) }).split('；')[0]}`
+            : undefined,
           text(card.house) ? `落${text(card.house)}宫` : undefined,
           card.row !== undefined && card.column !== undefined
             ? `第${text(card.row)}排第${text(card.column)}列`
@@ -1042,11 +1053,31 @@ function extractLenormandFacts(data: unknown): DivinationPromptFact[] {
       const card1 = text(item.card1);
       const card2 = text(item.card2);
       const pair = card1 && card2 ? `${card1}+${card2}` : undefined;
+      const first = card1 ? cardByName.get(card1) : undefined;
+      const second = card2 ? cardByName.get(card2) : undefined;
+      const positions = [
+        text(item.position1) ?? text(first?.position),
+        text(item.position2) ?? text(second?.position),
+      ].filter((value): value is string => Boolean(value));
+      const meaning = text(item.meaning);
       return pair
         ? [
-            fact(`lenormand.combination.${index}`, `${pair}：`, [item.meaning], {
-              scope: { start: '固定组合：', end: '【任务】' },
-            }),
+            fact(
+              `lenormand.combination.${index}`,
+              `${pair}：`,
+              [
+                conditionLenormandTraditionalText(meaning ?? '', {
+                  kind: '固定组合',
+                  cardNames: [card1!, card2!],
+                  keywords: [...texts(first?.keywords), ...texts(second?.keywords)],
+                  relation: text(item.relation) as LenormandCombinationRelation | undefined,
+                  positions,
+                }).split('；')[0],
+              ],
+              {
+                scope: { start: '固定组合：', end: '【任务】' },
+              },
+            ),
           ]
         : [];
     }),
@@ -1058,6 +1089,11 @@ function extractSsgwFacts(data: unknown): DivinationPromptFact[] {
   if (!d) return [];
   const details: AnyRecord = record(d.details) || {};
   const poemLines = nonEmptyLines(d.poem);
+  const compactText = (value: string) => value.replace(/[\s，。；、！？!?]/gu, '');
+  const poemText = compactText(text(d.poem) || '');
+  const basicInterpretation = ['核心寓意', '解签', '签意', '解签总论']
+    .map((key) => text(details[key])?.trim())
+    .find((value) => value && !poemText.includes(compactText(value)));
   // 本签典故按签谱口径合并；跨签引用不属于本次签谱资料。
   const storyContent = resolveSsgwStoryContent(d as unknown as SsgwData);
   const stories = [storyContent.canonicalStory, storyContent.extraStory].filter(Boolean);
@@ -1073,12 +1109,10 @@ function extractSsgwFacts(data: unknown): DivinationPromptFact[] {
       unit: 'block',
       scope: { start: '典故：', end: '基础解签：' },
     }),
-    fact(
-      'ssgw.basic-interpretation',
-      '基础解签：',
-      [details['核心寓意'], details['解签'], details['签意'], details['解签总论']],
-      { unit: 'block', scope: { start: '基础解签：' } },
-    ),
+    fact('ssgw.basic-interpretation', '基础解签：', [basicInterpretation], {
+      unit: 'block',
+      scope: { start: '基础解签：' },
+    }),
   ]);
 }
 

@@ -445,7 +445,7 @@ test('六爻：动爻的变爻可以与日辰补成完整三合局', () => {
   );
   assert.equal(data.sanheWithDay?.group, '火局');
   assert.deepEqual(data.sanheWithDay?.members, ['寅', '午', '戌']);
-  assert.match(data.sanheWithDay?.description || '', /日辰午引动三合火局/);
+  assert.match(data.sanheWithDay?.description || '', /日辰午与动变爻同见三合火局三支/);
   assert.equal(data.sanheWithMonth, null);
 });
 

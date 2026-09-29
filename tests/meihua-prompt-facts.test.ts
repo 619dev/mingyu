@@ -144,7 +144,7 @@ test('梅花旧盘派生月令和走势文字不直接进入两种提示词', ()
   });
   assert.doesNotMatch(prompt, /伪造的月令断语|伪造的走势|盘内关系走势始终受制/u);
   assert.ok(prompt.includes(`主卦体用月令条件：${verifiedSeasonEvaluation}`));
-  assert.match(prompt, /盘内关系走势先顺后阻/u);
+  assert.match(prompt, /盘内关系走势先难后易/u);
 
   data.analysis.inter1Relation = '伪造的体互关系';
   assert.throws(() => getDivinationSummaryBlocks('meihua', data), /梅花盘面与起卦资料不一致/u);
@@ -217,9 +217,17 @@ test('梅花在线提示词保留六个体用角色的月令关系且阶段不�
   for (const fact of monthFacts) assert.equal(prompt.split(fact).length - 1, 1, fact);
 
   const origin = data.evidenceAnalysis.stages.find((stage) => stage.stage === 'origin');
-  assert.ok(origin?.support.includes(`体卦得月令${origin.ti.seasonState}`));
-  assert.ok(origin?.constraints.includes(`用卦月令${origin.yong.seasonState}`));
-  assert.ok(origin?.constraints.includes('体卦存在泄耗'));
+  assert.ok(origin);
+  for (const [role, state] of [
+    ['体', origin.ti.seasonState],
+    ['用', origin.yong.seasonState],
+  ] as const) {
+    if (state === '旺' || state === '相') {
+      assert.ok(origin.support.includes(`${role}卦得月令${state}`));
+    } else {
+      assert.ok(origin.constraints.includes(`${role}卦月令${state}`));
+    }
+  }
   assert.doesNotMatch(prompt, /ownerFactKeys|limitationFacts|sourceStatus/);
 });
 
@@ -262,51 +270,51 @@ test('梅花逐爻体用只补充归属与动爻，不重复主卦阴阳爻象',
 });
 
 test('梅花主卦生体而变卦克体时保留条件，不把旺衰写成吉凶或固定快慢', () => {
-  const settings = { method: 'number' as const, number: 1 };
+  const settings = { method: 'number' as const, number: 42 };
   for (const [date, state, speed, strength] of [
     ['2025-06-18', '死', '偏缓', '较强'],
     ['2025-08-18', '旺', '偏快', '较弱'],
   ]) {
-    const data = generateMeihua(new Date(`${date}T10:30:00+08:00`), settings);
+    const data = generateMeihua(new Date(`${date}T12:30:00+08:00`), settings);
     const prompt = buildDivinationPrompt('meihua', '请分析后续进展。', data, {
       meihuaSettings: settings,
     });
 
-    assert.equal(data.originalName, '天山遁');
-    assert.equal(data.changedName, '天火同人');
+    assert.equal(data.originalName, '泽山咸');
+    assert.equal(data.changedName, '泽火革');
     assert.equal(data.analysis.tiYongRaw, '用生体');
     assert.equal(data.analysis.changedTiYongRelation, '用克体');
     assert.equal(data.analysis.tiSeasonState, state);
     assert.ok(data.analysis.tiYongSeasonEvaluation?.includes(`生体条件${strength}`));
     assert.ok(data.analysis.yingQi?.includes(`体卦月令${state}，可作应期${speed}的盘内参考`));
     assert.match(prompt, /主卦体用月令条件：主卦用生体/u);
-    assert.match(prompt, /结果天火同人：.*关系用克体/u);
+    assert.match(prompt, /结果泽火革：.*关系用克体/u);
     assert.match(prompt, /盘内关系走势先顺后阻；体用强弱与应期合参主互变、所问事项及现实进展/u);
     assert.equal(prompt.split('体用强弱与应期合参主互变').length - 1, 1);
-    assert.match(prompt, /起卦取数：数字1除8取余/u);
+    assert.match(prompt, /起卦取数：数字42除8取余/u);
     assert.match(prompt, /起卦法：数字起卦法/u);
     assert.match(
       prompt,
       new RegExp(
-        `数字1加时支${data.calculation.timeZhi}序数${data.calculation.timeZhiIndex}，除8取余得下卦数${data.calculation.lowerTrigramIndex}，除6取余得动爻${data.calculation.movingYaoIndex}`,
+        `时支${data.calculation.timeZhi}序数${data.calculation.timeZhiIndex}除8取余得下卦数${data.calculation.lowerTrigramIndex}；数字42与时支序数相加除6取余得动爻${data.calculation.movingYaoIndex}`,
       ),
     );
     assert.doesNotMatch(prompt, /应期线索：|月令与起卦：|阶段关系：主卦用\/体：/u);
     assert.doesNotMatch(prompt, /上下卦数和/u);
-    assert.equal(data.calculation.totalWithTime, 7);
+    assert.equal(data.calculation.totalWithTime, 49);
     assert.equal(data.calculation.movingYaoIndex, 1);
-    assert.equal(data.calculation.upperTrigramIndex! + data.calculation.lowerTrigramIndex!, 8);
+    assert.equal(data.calculation.upperTrigramIndex! + data.calculation.lowerTrigramIndex!, 9);
     assert.doesNotMatch(prompt, /贵人相助，大吉之象|应期迟缓|应期快于常规|体用吉凶实效/u);
   }
 });
 
 test('梅花各类体用关系的月令描述保持盘面条件', () => {
   for (const [number, hour, relation] of [
-    [1, '10:30', '用生体'],
-    [3, '10:30', '体克用'],
-    [7, '10:30', '用克体'],
-    [10, '10:30', '体生用'],
-    [2, '12:30', '比和'],
+    [10, '10:30', '用生体'],
+    [7, '10:30', '体克用'],
+    [3, '10:30', '用克体'],
+    [1, '10:30', '体生用'],
+    [7, '12:30', '比和'],
   ] as const) {
     const data = generateMeihua(new Date(`2025-06-18T${hour}:00+08:00`), {
       method: 'number',
@@ -327,12 +335,12 @@ test('梅花各类体用关系的月令描述保持盘面条件', () => {
 
 test('梅花用克体保留体旺用衰与用旺体衰的局部强弱差异', () => {
   for (const [date, expected] of [
-    ['2025-05-18', '体旺用衰，克体条件较轻'],
-    ['2025-02-18', '用旺体衰，克体条件较重'],
+    ['2025-08-18', '体旺用衰，克体条件较轻'],
+    ['2025-05-18', '用旺体衰，克体条件较重'],
   ]) {
-    const data = generateMeihua(new Date(`${date}T10:30:00+08:00`), {
+    const data = generateMeihua(new Date(`${date}T04:30:00+08:00`), {
       method: 'number',
-      number: 7,
+      number: 17,
     });
     assert.equal(data.analysis.tiYongRaw, '用克体');
     assert.ok(data.analysis.tiYongSeasonEvaluation?.includes(expected));
@@ -365,7 +373,7 @@ test('梅花旧盘缺少互变与应期时不输出空内容行', () => {
   };
   const prompt = buildDivinationPrompt('meihua', '请分析当前情境。', data);
 
-  assert.match(prompt, /核心结构：主卦天山遁/u);
+  assert.match(prompt, /核心结构：主卦天水讼/u);
   assert.doesNotMatch(prompt, /互卦：无|变卦：无|阶段关系：|应期条件：|起卦法：未给出|undefined/u);
 
   const nameOnly = buildDivinationPrompt('meihua', '请分析当前情境。', {
@@ -374,7 +382,7 @@ test('梅花旧盘缺少互变与应期时不输出空内容行', () => {
     changedName: complete.changedName,
     analysis: { ...data.analysis, inter1Relation: '', inter2Relation: '', changedRelation: '' },
   });
-  assert.match(nameOnly, /核心结构：主卦天山遁；互卦天风姤；变卦天火同人/u);
+  assert.match(nameOnly, /核心结构：主卦天水讼；互卦风火家人；变卦天泽履/u);
   assert.doesNotMatch(nameOnly, /^互卦：|^变卦：/mu);
 });
 
@@ -412,11 +420,11 @@ test('梅花物象锚点只由完整方位起卦资料形成', () => {
 
 test('纯乾纯坤互卦取爻事实与变卦来源及阴阳一致', () => {
   const date = new Date('2025-01-01T14:00:00+08:00');
-  for (const [number, expected] of [
-    [1, '变卦第2至4爻阳阴阳为下卦离；第3至5爻阴阳阳为上卦巽，合为风火家人'],
-    [8, '变卦第2至4爻阴阴阳为下卦艮；第3至5爻阴阳阴为上卦坎，合为水山蹇'],
+  for (const [replay, expected] of [
+    [[0, 0, 0.4], '变卦第2至4爻阳阴阳为下卦离；第3至5爻阴阳阳为上卦巽，合为风火家人'],
+    [[0.99, 0.99, 0.55], '变卦第2至4爻阴阴阳为下卦艮；第3至5爻阴阳阴为上卦坎，合为水山蹇'],
   ] as const) {
-    const data = generateMeihua(date, { method: 'number', number });
+    const data = generateMeihua(date, { method: 'random', replay });
     const fact = formatMeihuaFacts(data).find((item) => item.startsWith('互卦取爻：'));
     assert.ok(fact);
     assert.equal(fact, `互卦取爻：乾坤无互，改取${expected}`);
@@ -528,16 +536,16 @@ test('梅花旧盘缺少动爻取数结果时不输出不完整算式', () => {
 });
 
 test('梅花比和判辞保留同盘在五种月令中的实际旺衰', () => {
-  const settings = { method: 'number' as const, number: 42 };
+  const settings = { method: 'number' as const, number: 7 };
   for (const [date, state] of [
-    ['2026-01-19', '相'],
-    ['2026-02-19', '囚'],
-    ['2026-05-19', '死'],
-    ['2026-08-19', '旺'],
-    ['2026-11-19', '休'],
+    ['2026-01-19', '旺'],
+    ['2026-02-19', '死'],
+    ['2026-05-19', '相'],
+    ['2026-08-19', '休'],
+    ['2026-11-19', '囚'],
   ]) {
     const data = generateMeihua(new Date(`${date}T12:30:00+08:00`), settings);
-    assert.equal(data.originalName, '泽天夬');
+    assert.equal(data.originalName, '艮为山');
     assert.equal(data.analysis.tiSeasonState, state);
     assert.equal(data.analysis.yongSeasonState, state);
     const prompt = buildDivinationPrompt('meihua', '请做整体解读。', data, {
@@ -575,14 +583,14 @@ test('梅花年月日时原生提示词保留初三取数、屯二爻阴变阳�
   assert.match(prompt, /第2至4爻阴阴阴为下卦坤；第3至5爻阴阴阳为上卦艮，合为山地剥/);
 });
 
-test('梅花午时数字卦明确变后巽木生月火为休，上卦动与余零保留实际结果', () => {
+test('梅花午时数字卦保留变后月令关系、上卦动与余零结果', () => {
   const noon = generateMeihua(new Date('2026-05-19T12:30:00+08:00'), {
     method: 'number',
     number: 42,
   });
   const prompt = formatMeihuaFacts(noon).join('\n');
-  assert.match(prompt, /变后用卦巽木生巳月令火，卦气泄出，变后用卦为休/);
-  assert.match(prompt, /主卦第1爻阳变阴；动爻位于下卦/);
+  assert.match(prompt, /变后用卦离火与巳月令火同类，变后用卦为旺/);
+  assert.match(prompt, /主卦第1爻阴变阳；动爻位于下卦/);
   const morning = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
     method: 'number',
     number: 42,

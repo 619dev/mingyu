@@ -11,6 +11,25 @@ test('全角数字字母与半角输入产生相同磁场', () => {
   assert.equal(analyzeNumber('ａｚ').energySequence, '126');
 });
 
+test('单次出现的磁场不标作高频，重复出现时才列高频磁场', () => {
+  const single = analyzeNumber('13');
+  assert.deepEqual(single.dominantFields, []);
+  assert.doesNotMatch(buildNumberEnergyPrompt({ analysis: single }), /高频磁场|先概括高频磁场/);
+
+  const unique = analyzeNumber('139');
+  assert.deepEqual(unique.dominantFields, []);
+  assert.doesNotMatch(buildNumberEnergyPrompt({ analysis: unique }), /高频磁场/);
+
+  const repeated = analyzeNumber('131');
+  assert.deepEqual(repeated.dominantFields, ['天医']);
+  assert.match(buildNumberEnergyPrompt({ analysis: repeated }), /高频磁场：天医/);
+});
+
+test('原始号码不能靠大量分隔符绕过64位输入上限', () => {
+  assert.throws(() => analyzeNumber(`${'-'.repeat(64)}13`), /1 至 64 位号码/);
+  assert.equal(analyzeNumber(`${'-'.repeat(62)}13`).alphanumeric, '13');
+});
+
 test('提示词完整保留首尾及仅含0和5的序列位置', () => {
   const analysis = analyzeNumber('0135');
   assert.equal(analysis.energyPairs.length, 1);

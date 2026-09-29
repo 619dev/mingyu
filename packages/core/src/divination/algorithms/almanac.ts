@@ -1535,6 +1535,54 @@ function buildDayCandidate(
   };
 }
 
+export function recalculateAlmanacDayForVerification(
+  dateKey: string,
+  topic: AlmanacTopic,
+  participants: AlmanacParticipantProfile[],
+): Pick<
+  AlmanacDayCandidate,
+  | 'highlights'
+  | 'cautions'
+  | 'participantNotes'
+  | 'topicMatchFacts'
+  | 'godFacts'
+  | 'participantRelationFacts'
+  | 'annualDirectionGods'
+  | 'hours'
+> {
+  const date = parseDateText(dateKey, '候选日期').date;
+  const solarDay = SolarDay.fromYmd(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate(),
+  );
+  const lunarDay = solarDay.getLunarDay();
+  const noonTime = getNoonSolarTime(date);
+  const noonEightChar = noonTime.getLunarHour().getEightChar();
+  const noonCycleDay = noonTime.getSixtyCycleHour().getSixtyCycleDay();
+  const cycleDay = noonCycleDay.getSixtyCycle();
+  const facts = buildDayFacts({
+    dateKey,
+    topic,
+    dayStem: cycleDay.getHeavenStem().getName(),
+    dayBranch: cycleDay.getEarthBranch().getName(),
+    recommends: normalizeTaboos(noonCycleDay.getRecommends()),
+    avoids: normalizeTaboos(noonCycleDay.getAvoids()),
+    gods: getHuangliSolarDayGods(solarDay, noonTime),
+    fourTerminationTerm: getFourTerminationTerm(date),
+    participants,
+  });
+  const jieBoundaryNote = getJieBoundaryNote(solarDay);
+  if (jieBoundaryNote) facts.cautions.push(jieBoundaryNote);
+  return {
+    ...facts,
+    annualDirectionGods: getAlmanacAnnualDirectionGods(
+      noonEightChar.getYear().getEarthBranch().getName(),
+    ),
+    hours: buildHourCandidates(dateKey, lunarDay, participants, topic),
+  };
+}
+
 /**
  * 生成黄历择日结果
  *
@@ -1567,6 +1615,19 @@ export function generateAlmanacSelection(params: {
   timePreferences?: Array<'work-hours' | 'morning' | 'afternoon'>;
 }): AlmanacData {
   assertAlmanacTopic(params.topic);
+  if (
+    params.weekendPreference !== undefined &&
+    !['any', 'prefer', 'avoid'].includes(params.weekendPreference)
+  ) {
+    throw new Error('周末偏好必须为不限、优先周末或避开周末');
+  }
+  if (
+    params.timePreferences !== undefined &&
+    (!Array.isArray(params.timePreferences) ||
+      params.timePreferences.some((item) => !['work-hours', 'morning', 'afternoon'].includes(item)))
+  ) {
+    throw new Error('时段偏好只能为工作时间、上午或下午');
+  }
   const start = parseDateText(params.startDate, '开始日期');
   const end = parseDateText(params.endDate, '结束日期');
   const diffDays = Math.round((end.date.getTime() - start.date.getTime()) / 86400000);

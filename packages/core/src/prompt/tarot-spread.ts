@@ -1,3 +1,4 @@
+import { analyzeTarotEvidence } from '../divination/tarot-evidence';
 import type { TarotData, TarotSpreadType } from '../types/divination';
 import { buildPromptTask } from './guidance';
 
@@ -107,14 +108,28 @@ export const TAROT_SPREAD_PROMPT_FRAMEWORKS: Record<TarotSpreadType, TarotSpread
   },
 };
 
-const GENERIC_TAROT_SPREAD_PROMPT_FRAMEWORK: TarotSpreadPromptFramework = {
-  mainLine: '按实际记录的牌位顺序追踪问题的状态与发展。',
-  connections: '结合相邻牌位、正逆位与牌序组合说明牌面之间的支持、冲突与转折。',
-  conclusion: '归纳核心趋势、主要阻力、可用条件与当前应对重点。',
+const INCOMPLETE_TAROT_SPREAD_PROMPT_FRAMEWORK: TarotSpreadPromptFramework = {
+  mainLine: '围绕已记录牌位与牌面整理本次问题的象征主题。',
+  connections: '比较当前已有牌位之间能够对应的主题，并联系可观察信息与现实条件。',
+  conclusion: '归纳现有牌面主题、缺失位置和仍需结合现实资料判断的部分。',
 };
 
-export function buildTarotSpreadTask(data: Pick<TarotData, 'spreadType' | 'cards'>) {
-  const isSingleCard = data.cards.length === 1;
+function formatTarotSpreadCoverageNote(
+  data: TarotData,
+  coverage: ReturnType<typeof analyzeTarotEvidence>['spreadCoverageFact'],
+) {
+  if (coverage.status === '完整') return '';
+  const actualPositions = coverage.actualPositions.join('、') || '无';
+  if (coverage.expectedCardCount === null) {
+    return `牌位记录：当前为${data.spreadName}，已记录${coverage.actualCardCount}张，实际牌位为${actualPositions}。`;
+  }
+  return `牌位记录：${data.spreadName}预设${coverage.expectedCardCount}张（${coverage.expectedPositions.join('、')}），当前记录${coverage.actualCardCount}张；实际牌位：${actualPositions}；缺少牌位：${coverage.missingPositions.join('、') || '无'}；重复牌位：${coverage.duplicatePositions.join('、') || '无'}；额外牌位：${coverage.unexpectedPositions.join('、') || '无'}；顺序异常位置：${coverage.positionOrderMismatches.join('、') || '无'}；重复牌号：${coverage.duplicateCardIds.join('、') || '无'}。`;
+}
+
+export function buildTarotSpreadTask(data: TarotData) {
+  const coverage = analyzeTarotEvidence(data).spreadCoverageFact;
+  const isSingleCard =
+    data.spreadType === 'single' && data.cards.length === 1 && coverage.status === '完整';
   if (isSingleCard) {
     return buildPromptTask(
       '依据唯一牌位、牌名、正逆位、关键词与牌面象征，结合问题中可观察的信息和现实条件回答【问题】。',
@@ -122,17 +137,22 @@ export function buildTarotSpreadTask(data: Pick<TarotData, 'spreadType' | 'cards
     );
   }
   const framework =
-    TAROT_SPREAD_PROMPT_FRAMEWORKS[data.spreadType as TarotSpreadType] ??
-    GENERIC_TAROT_SPREAD_PROMPT_FRAMEWORK;
+    coverage.status === '完整'
+      ? TAROT_SPREAD_PROMPT_FRAMEWORKS[data.spreadType as TarotSpreadType]
+      : INCOMPLETE_TAROT_SPREAD_PROMPT_FRAMEWORK;
+  const coverageNote = formatTarotSpreadCoverageNote(data, coverage);
   return buildPromptTask(
     [
       '依据牌阵、牌位、正逆位与牌序组合回答【问题】。',
       '事实核对：逐张对应牌位、牌名、正逆位、关键词、元素与牌阶主题；结合相邻或对照牌位的象征关系解读。',
       '现实核对：联系问题中可观察的信息说明判断依据、现实条件与可能分支。',
+      coverageNote,
       `解读主线：${framework.mainLine}`,
       `牌位联动：${framework.connections}`,
       `结论重点：${framework.conclusion}`,
-    ].join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
     'tarot',
   );
 }

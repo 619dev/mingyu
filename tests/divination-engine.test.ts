@@ -4551,8 +4551,8 @@ test('六爻提示词应写出动爻、变爻与日辰月建形成的三合局',
 
   assert.equal(data.sanheWithDay?.group, '火局');
   assert.equal(data.sanheWithMonth?.group, '水局');
-  assert.match(session.prompt, /日辰午引动火局（寅、午、戌）/);
-  assert.match(session.prompt, /月建子引动水局（申、子、辰）/);
+  assert.match(session.prompt, /日辰午与动变爻同见火局三支（寅、午、戌）/);
+  assert.match(session.prompt, /月建子与动变爻同见水局三支（申、子、辰）/);
 });
 
 test('前端占卜链路应把手动六爻爻值原样传入核心算法', async () => {

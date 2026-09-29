@@ -859,6 +859,9 @@ const NAMING_CHARACTERS: Record<NamingGender, string> = {
 export function analyzeChineseCharacters(text: string) {
   const normalized = text.trim();
   if (!normalized || [...normalized].length > 20) throw new Error('请输入 1 至 20 个汉字');
+  if ([...normalized].some((char) => !/\p{Script=Han}/u.test(char))) {
+    throw new Error('汉字解析只能包含汉字');
+  }
   const characters = [...normalized].map((char) => ({ char, detail: charDetail(char) }));
   return {
     text: normalized,
@@ -1685,9 +1688,10 @@ function analyzeNumberEnergySequence(alphanumeric: string) {
     }),
     magneticDistribution,
     magneticSegments,
-    dominantFields: magneticDistribution
-      .filter((item) => item.count === maxCount)
-      .map((item) => item.name),
+    dominantFields:
+      maxCount > 1
+        ? magneticDistribution.filter((item) => item.count === maxCount).map((item) => item.name)
+        : [],
     magneticSummary: {
       pairCount: energyPairs.length,
       supportiveCount: energyPairs.filter((item) => item.nature === '助益').length,
@@ -1701,6 +1705,7 @@ export function analyzeNumber(input: string, purpose: NumberPurpose = 'general')
   if (purpose !== 'phone' && purpose !== 'plate' && purpose !== 'general') {
     throw new Error('号码类型必须为手机号、车牌号或一般编号');
   }
+  if (input.length > 64) throw new Error('请输入 1 至 64 位号码');
   const normalized = input
     .replace(/[！-～]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
     .trim()
@@ -1810,7 +1815,9 @@ export function buildNumberEnergyPrompt(input: {
     ...(analysis.energyPairs.length
       ? [
           `磁场分布：${distribution}`,
-          `高频磁场：${analysis.dominantFields.join('、')}`,
+          ...(analysis.dominantFields.length
+            ? [`高频磁场：${analysis.dominantFields.join('、')}`]
+            : []),
           '',
           '【磁场组合】',
           pairs,
@@ -1857,7 +1864,7 @@ export function buildNumberEnergyPrompt(input: {
       : '将号码序列作为民俗象意解释，并以实际使用体验和个人选择为现实判断依据。',
     usageFocus,
     analysis.energyPairs.length
-      ? '先概括高频磁场，再按号码顺序解释每组磁场及其衔接，结合号码类型说明资源、行动、关系、表达与稳定性等现实倾向，最后给出平衡使用这些倾向的建议。'
+      ? `先概括磁场分布${analysis.dominantFields.length ? '及重复出现的磁场' : ''}，再按号码顺序解释每组磁场及其衔接，结合号码类型说明资源、行动、关系、表达与稳定性等现实倾向，最后给出平衡使用这些倾向的建议。`
       : `结合号码类型与能量序列${analysis.modifiers.length ? '中0与5的位置' : ''}，说明实际使用时可观察的侧重点和个人选择。`,
   ].join('\n');
 }

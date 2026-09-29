@@ -558,11 +558,11 @@ export function getDivinationSummaryBlocks(
               (candidate) =>
                 candidate.kind === '单牌牌义' && candidate.positions.includes(card.position),
             );
-            return `${card.position}：${card.name}；${fact?.promptText ?? conditionLenormandTraditionalText(card.meaning, { cardNames: [card.name], keywords: card.keywords })}`;
+            return `${card.position}：${card.name}；${(fact?.promptText ?? conditionLenormandTraditionalText(card.meaning, { cardNames: [card.name], keywords: card.keywords })).split('；')[0]}`;
           }),
           ...combinations.map(
             (combination) =>
-              `${combination.kind} ${combination.cardNames.join('+')}：${combination.originalText}`,
+              `${combination.kind} ${combination.cardNames.join('+')}：${combination.promptText.split('；')[0]}`,
           ),
         ].filter(Boolean),
       };
@@ -879,7 +879,9 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
         ? 'wuyun-liuqi'
         : options.method;
   const singleCardGuidance =
-    options.method === 'tarot' && (options.data as TarotData).cards.length === 1
+    options.method === 'tarot' &&
+    (options.data as TarotData).spreadType === 'single' &&
+    (options.data as TarotData).cards.length === 1
       ? buildPromptSection('传统依据', '塔罗单牌以牌位职能、正逆位、牌组属性与单牌牌义为主要资料。')
       : options.method === 'lenormand' && (options.data as LenormandData).cards.length === 1
         ? buildPromptSection('传统依据', '雷诺曼单牌以当前牌位、基础牌义和问题语境为主要资料。')

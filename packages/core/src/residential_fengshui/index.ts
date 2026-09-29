@@ -475,6 +475,26 @@ function buildPrompt(result: {
 export function generateResidentialFengshui(
   input: ResidentialFengshuiInput = {},
 ): ResidentialFengshuiResult {
+  if (
+    input.year !== undefined &&
+    (!Number.isSafeInteger(input.year) || input.year < 1 || input.year > 9999)
+  ) {
+    throw new Error('住宅建造年或起运年需为 1-9999 之间的整数。');
+  }
+  const hasPersonFields = [
+    input.birthYear,
+    input.birthMonth,
+    input.birthDay,
+    input.birthHour,
+    input.birthMinute,
+    input.birthTimezone,
+    input.birthTimeZoneId,
+    input.gender,
+    input.mingGua,
+  ].some((value) => value !== undefined);
+  if (hasPersonFields && !hasPersonInput(input)) {
+    throw new Error('居住人资料需提供出生年与性别，或直接给定命卦。');
+  }
   if (!hasPersonInput(input) && !hasOrientationInput(input)) {
     throw new Error('住宅风水至少需要提供山向，或居住人出生年与性别/命卦。');
   }

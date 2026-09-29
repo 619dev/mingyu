@@ -34,7 +34,7 @@ export const WU_YOU_CLIMATE_RULES: ClimateRule[] = [
       {
         stems: ['丙', '癸'],
         maxDistinctCount: 0,
-        scope: 'visible',
+        scope: 'total',
       },
     ],
     usefulWuxing: '火',

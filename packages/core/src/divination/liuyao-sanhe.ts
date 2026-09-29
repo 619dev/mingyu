@@ -1,6 +1,6 @@
 import { SANHE_GROUPS } from '../ganzhi';
 
-/** 按动爻、暗动爻及其变爻，复算月建或日辰触发的三合局。 */
+/** 按动爻、暗动爻及其变爻，复算月建或日辰参与的三合三支。 */
 export function getLiuyaoSanheWithTrigger(
   activeBranches: readonly string[],
   triggerBranch: string,
@@ -14,7 +14,7 @@ export function getLiuyaoSanheWithTrigger(
       return {
         group,
         members,
-        description: `${triggerLabel}${triggerBranch}引动三合${group}，三合局成，事势增强`,
+        description: `${triggerLabel}${triggerBranch}与动变爻同见三合${group}三支`,
       };
     }
   }

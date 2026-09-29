@@ -51,6 +51,15 @@ test('黄历基础资料缺失或输入非法时应明确报错', () => {
   assert.throws(() => getAlmanacPengZuDetails('甲', '无'), /彭祖地支百忌资料缺失/);
   assert.throws(() => getAlmanacPengZuDetails('无', '子'), /彭祖天干百忌资料缺失/);
   assert.throws(() => getAlmanacAnnualDirectionGods('无'), /年支无效/);
+  const dates = { topic: 'move' as const, startDate: '2026-06-01', endDate: '2026-06-01' };
+  assert.throws(
+    () => generateAlmanacSelection({ ...dates, weekendPreference: '任意' as never }),
+    /周末偏好/,
+  );
+  assert.throws(
+    () => generateAlmanacSelection({ ...dates, timePreferences: ['未知时段' as never] }),
+    /时段偏好/,
+  );
 });
 
 test('黄历择日：二十八宿与九星详情应使用经过校勘的原始属性', () => {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { QimenJiuGongGe } from '../packages/core/src/types/divination';
 import { getClassicPatterns } from '../packages/core/src/divination/algorithms/qimen/helpers/classic-patterns';
+import { detectQimenPatternCombos } from '../packages/core/src/divination/algorithms/qimen/helpers/pattern-combos';
 import { getQimenPatternTags } from '../packages/core/src/divination/algorithms/qimen/helpers/patterns';
 
 function palace(heavenStem: string, earthStem: string, door: string, god = ''): QimenJiuGongGe {
@@ -66,4 +67,66 @@ test('三奇得使兼临吉门的名称不误作三奇得地', () => {
     zhiShi: '',
   });
   assert.ok(matched.some((pattern) => pattern.name === '日奇得使临吉门'));
+});
+
+test('单个吉格所在宫逢空时也命中吉格逢空', () => {
+  const board = [palace('戊', '己', '开门')];
+  const classicPatterns = [
+    {
+      key: 'pattern:single:1',
+      name: '单个吉格',
+      tone: 'good' as const,
+      score: 5,
+      summary: '单个吉格落坎一宫。',
+      modern: '单个吉格。',
+      palace: 1,
+    },
+  ];
+  const combos = detectQimenPatternCombos({
+    jiuGongGe: board,
+    classicPatterns,
+    voidPalaces: [{ branch: '子', palace: 1, name: '坎一宫' }],
+  });
+  assert.deepEqual(
+    combos.filter((item) => item.key === 'combo:goodVoid:1').map((item) => item.sources),
+    [['单个吉格']],
+  );
+});
+
+test('得使临吉门不与得使本格重复充作三吉聚气', () => {
+  const makePattern = (key: string, name: string) => ({
+    key,
+    name,
+    tone: 'good' as const,
+    score: 5,
+    summary: name,
+    modern: name,
+    palace: 1,
+  });
+  const classics = [
+    makePattern('pattern:riQiDeShi:1', '日奇得使'),
+    makePattern('pattern:deShiPlusGoodDoor:1:乙', '日奇得使临吉门'),
+    makePattern('pattern:other:1', '另一独立吉格'),
+  ];
+  const context = { jiuGongGe: [palace('乙', '己', '开门')], classicPatterns: classics };
+  assert.ok(!detectQimenPatternCombos(context).some((item) => item.key === 'combo:triGood:1'));
+
+  const withThird = detectQimenPatternCombos({
+    ...context,
+    classicPatterns: [...classics, makePattern('pattern:third:1', '第三个独立吉格')],
+  });
+  assert.deepEqual(withThird.find((item) => item.key === 'combo:triGood:1')?.sources, [
+    '日奇得使',
+    '另一独立吉格',
+    '第三个独立吉格',
+  ]);
+});
+
+test('丁奇升殿在兑金宫不误称为火的本气之地', () => {
+  const dingInDui = { ...palace('丁', '戊', '生门'), gong: 7, name: '兑七宫', element: '金' };
+  const pattern = getClassicPatterns({ jiuGongGe: [dingInDui], zhiFu: '', zhiShi: '' }).find(
+    (item) => item.name === '丁奇升殿',
+  );
+  assert.match(pattern?.summary ?? '', /火临兑金，升殿得位/);
+  assert.doesNotMatch(pattern?.summary ?? '', /得本气之地/);
 });

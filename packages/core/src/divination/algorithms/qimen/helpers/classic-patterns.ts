@@ -909,12 +909,10 @@ function getJiaPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[] {
  * 识别三奇升殿格局
  *
  * 《烟波钓叟歌》：「三奇得地升殿吉」
- * 三奇各临本气得地之宫为升殿：
- *   乙奇（木）临震三宫/巽四宫（木地）为升殿
- *   丙奇（火）临离九宫（火地）为升殿
- *   丁奇（火）临兑七宫（火克金得制）为升殿
+ * 乙奇临震三宫/巽四宫、丙奇临离九宫、丁奇临兑七宫为升殿；
+ * 丁奇在兑七宫属火克金，不属于火的本气宫。
  *
- * @param jiuGongGe - 九宫格数据（检查地盘三奇位置）
+ * @param jiuGongGe - 九宫格数据（检查天盘三奇位置）
  * @returns 检测到的三奇升殿格局列表
  */
 function getSanQiShengDianPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[] {
@@ -924,7 +922,7 @@ function getSanQiShengDianPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[
     const allowedGongs = sanQiShengDian[qi];
     if (!allowedGongs) return;
 
-    // 天盘或地盘落升殿宫都算升殿（以天盘为准，地盘为辅）
+    // 本格只按天盘三奇落宫判断。
     const palace = jiuGongGe.find((p) => hasTianPanStem(p, qi) && allowedGongs.includes(p.gong));
     if (!palace) return;
 
@@ -945,7 +943,7 @@ function getSanQiShengDianPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[
       name: shengDianName[qi],
       tone: 'good',
       score: 5,
-      summary: `${qiDisplay}入${palace.name}，得本气之地，升殿得位。`,
+      summary: `${qiDisplay}入${palace.name}，${qi === '丁' ? '火临兑金，' : '得本气之地，'}升殿得位。`,
       modern:
         qi === '乙'
           ? '今天柔性的、协商的、文书的事更容易出效果。'
@@ -1651,7 +1649,7 @@ function getYuNvShouMenPattern(jiuGongGe: QimenJiuGongGe[], zhiShi: string): Cla
  * 识别门迫格局
  *
  * 《烟波钓叟歌》：「门迫宫兮事难行」
- * 门克宫为门迫。如惊门（金）落离九宫（火）或开门（金）落离九宫（火）等。
+ * 门克宫为门迫。如惊门（金）落巽四宫（木）或开门（金）落震三宫（木）等。
  * 门迫主该宫位的事情受阻、不易推进。
  *
  * @param jiuGongGe - 九宫格数据

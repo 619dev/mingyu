@@ -466,13 +466,13 @@ function formatLiuyaoInfo(
   const monthDayEvidence = createLiuyaoMonthDayEvidence(data);
   const sanheParts = [
     data.sanheWithDay
-      ? `日辰${getGanzhiBranch(data.ganzhi.day)}引动${data.sanheWithDay.group}（${data.sanheWithDay.members.join('、')}）`
+      ? `日辰${getGanzhiBranch(data.ganzhi.day)}与动变爻同见${data.sanheWithDay.group}三支（${data.sanheWithDay.members.join('、')}）`
       : '',
     data.sanheWithMonth
-      ? `月建${getGanzhiBranch(data.ganzhi.month)}引动${data.sanheWithMonth.group}（${data.sanheWithMonth.members.join('、')}）`
+      ? `月建${getGanzhiBranch(data.ganzhi.month)}与动变爻同见${data.sanheWithMonth.group}三支（${data.sanheWithMonth.members.join('、')}）`
       : '',
   ].filter(Boolean);
-  const sanheDetail = sanheParts.length ? `三合局：${sanheParts.join('；')}` : null;
+  const sanheDetail = sanheParts.length ? `三合三支：${sanheParts.join('；')}` : null;
   const sanxingDetail = data.sanxingInYaos?.length
     ? `三刑：${data.sanxingInYaos.map((s) => `${s.branches.join('、')}构成${s.type}`).join('；')}`
     : null;
@@ -696,7 +696,9 @@ function formatXiaoliurenInfo(data: XiaoliurenData, omitRepeatedCivilTime = fals
     `  定月宫：${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月从大安顺数，落${data.sequence.month.name}`,
     `  定日宫：从月宫${data.sequence.month.name}${rule.dayStartOffset ? '下一宫' : ''}起初一（${firstDayPalace.name}），顺数至${data.lunarDay}日，落${data.sequence.day.name}`,
     `  定时宫：从日宫${data.sequence.day.name}起子时，顺数至${data.hourLabel}，落${data.sequence.hour.name}`,
-    '定位用途：月宫是初一的起数位置；日宫是子时的起数位置',
+    rule.dayStartOffset
+      ? `定位用途：月宫是月份起数位置；初一从${firstDayPalace.name}起数；日宫是子时的起数位置`
+      : '定位用途：月宫是初一的起数位置；日宫是子时的起数位置',
     calendarBasis ? `历法口径：${calendarBasis}` : '',
     '时点范围：本课说明当前起课时点的占得宫；其他日期或时辰的宫位采用对应农历月日与时辰重新顺数',
     `起课口径：${rule.source}`,
@@ -1076,6 +1078,11 @@ function formatLiurenInfo(data: LiurenData) {
 
 function formatTarotInfo(data: TarotData) {
   const evidence = analyzeTarotEvidence(data);
+  const coverage = evidence.spreadCoverageFact;
+  const coverageLine =
+    coverage.status === '完整'
+      ? ''
+      : `牌位覆盖：预设${coverage.expectedCardCount === null ? '未列配置' : `${coverage.expectedCardCount}张（${coverage.expectedPositions.join('、')}）`}；实际记录${coverage.actualCardCount}张；实际牌位：${coverage.actualPositions.join('、') || '无'}；缺少牌位：${coverage.missingPositions.join('、') || '无'}；重复牌位：${coverage.duplicatePositions.join('、') || '无'}；额外牌位：${coverage.unexpectedPositions.join('、') || '无'}；顺序异常位置：${coverage.positionOrderMismatches.join('、') || '无'}；重复牌号：${coverage.duplicateCardIds.join('、') || '无'}`;
   const cardLines = evidence.cards.map(
     (card) =>
       `  ${card.position}：${card.name}（${card.orientation}）${card.keywords.length ? `；关键词：${card.keywords.join('、')}` : ''}${card.element !== '元素未列' ? `；牌组属性：${card.element}` : ''}${card.archetype !== '牌阶主题未列' ? `；基础牌义：${card.archetype}` : ''}`,
@@ -1091,6 +1098,7 @@ function formatTarotInfo(data: TarotData) {
   return [
     '占法：塔罗',
     `核心结构：牌阵${data.spreadName}；共${evidence.cards.length}张牌`,
+    coverageLine,
     evidence.cards.some((card) => card.orientation === '逆位')
       ? '正逆位口径：逆位表示该牌主题可能受阻、过度、内化或方向偏离，结合所在牌位与整组牌序判断'
       : '',
@@ -1108,23 +1116,40 @@ function formatSsgwInfo(data: SsgwData) {
   const details = data.details ?? {};
   const compactText = (value: string) => value.replace(/[\s，。；、！？!?]/gu, '');
   const poemText = compactText(data.poem);
-  const seen = new Set<string>();
-  const basicKeys = ['核心寓意', '解签', '签意', '解签总论'];
-  const interpretations = basicKeys.flatMap((key) => {
-    const value = details[key]?.trim();
-    if (!value || poemText.includes(compactText(value)) || seen.has(compactText(value))) return [];
-    seen.add(compactText(value));
-    return [value];
-  });
-  const basicInterpretation = interpretations.join('\n');
-  const excludedFields = new Set(['吉凶', '典故', ...basicKeys, '行动建议', '风险提醒']);
-  const supplementaryInterpretationLines = Object.entries(details)
-    .filter(([key, value]) => {
-      if (excludedFields.has(key) || !value.trim() || seen.has(compactText(value))) return false;
-      seen.add(compactText(value));
+  const basicInterpretation =
+    ['核心寓意', '解签', '签意', '解签总论']
+      .map((key) => details[key]?.trim())
+      .find((value) => value && !poemText.includes(compactText(value))) ?? '';
+  const seen = new Set([compactText(basicInterpretation)]);
+  const poemGlosses = (details['解签总论'] ?? '')
+    .split(/\s+-\s+/u)
+    .slice(1, 3)
+    .map((sentence) =>
+      sentence
+        .split('——')[1]
+        ?.trim()
+        .split(/[，。；！？!?]/u)[0]
+        ?.trim(),
+    )
+    .filter((value): value is string => Boolean(value))
+    .filter((value) => {
+      const normalized = compactText(value);
+      if (poemText.includes(normalized) || seen.has(normalized)) return false;
+      seen.add(normalized);
       return true;
-    })
-    .map(([key, value]) => `${key}：${value.trim()}`);
+    });
+  const supplementaryInterpretation = poemGlosses.length
+    ? `诗句取象：${poemGlosses.join('；')}。`
+    : ['行动建议', '风险提醒']
+        .map((key) => details[key]?.trim())
+        .filter((value): value is string => Boolean(value))
+        .filter((value) => {
+          const normalized = compactText(value);
+          if (poemText.includes(normalized) || seen.has(normalized)) return false;
+          seen.add(normalized);
+          return true;
+        })
+        .join('');
   const storyContent = resolveSsgwStoryContent(data);
   const story = [storyContent.canonicalStory, storyContent.extraStory].filter(Boolean).join('\n');
 
@@ -1136,8 +1161,7 @@ function formatSsgwInfo(data: SsgwData) {
     details['吉凶']?.trim() ? `吉凶级别：${details['吉凶'].trim()}` : '',
     story ? `典故：${story}` : '',
     basicInterpretation ? `基础解签：${basicInterpretation}` : '',
-    supplementaryInterpretationLines.length ? '补充解释：' : '',
-    ...supplementaryInterpretationLines.map((item) => `  ${item}`),
+    supplementaryInterpretation ? `补充解释：${supplementaryInterpretation}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -1223,6 +1247,7 @@ function formatAlmanacInfo(data: AlmanacData) {
     const candidate = evidenceAnalysis.candidates.find(
       (candidateItem) => candidateItem.date === item.date,
     );
+    if (!candidate) throw new Error(`黄历${item.date}候选证据缺失，请重新排盘。`);
     const unique = (values: string[]) => [...new Set(values.filter(Boolean))];
     const topicFacts = item.topicMatchFacts ?? [];
     const allRecommendations = unique(item.recommends);
@@ -1302,7 +1327,7 @@ function formatAlmanacInfo(data: AlmanacData) {
       hourText ? `时辰${hourText}` : '',
     ].filter(Boolean);
     return [
-      `  第${index + 1}日：${item.date} ${item.weekday}；${item.lunarDate}；正午干支${item.ganzhi.year}/${item.ganzhi.month}/${item.ganzhi.day}；建${item.dayOfficer}；值神${item.twelveStar}；宿${item.twentyEightStarDetail?.fullName ?? item.twentyEightStar}${item.twentyEightStarDetail?.fortune ? `（${item.twentyEightStarDetail.fortune}）` : ''}；${item.clash}`,
+      `  第${index + 1}日：${candidate.date} ${candidate.calendarFact.weekday}；${candidate.calendarFact.lunarDate}；正午干支${candidate.calendarFact.ganzhi.year}/${candidate.calendarFact.ganzhi.month}/${candidate.calendarFact.ganzhi.day}；建${candidate.calendarFact.dayOfficer}；值神${candidate.calendarFact.twelveStar}；宿${candidate.traditionalFacts.find((fact) => fact.kind === '二十八宿')?.originalText ?? item.twentyEightStar}；${candidate.calendarFact.clash}`,
       conciseFacts.length ? `    ${conciseFacts.join('；')}` : '',
     ].filter(Boolean);
   });
@@ -1351,20 +1376,23 @@ function formatAlmanacInfo(data: AlmanacData) {
 function formatLenormandInfo(data: LenormandData) {
   const evidenceAnalysis = analyzeLenormandEvidence(data);
   const cardLines = evidenceAnalysis.cards.map((card) => {
+    const meaning = evidenceAnalysis.traditionalFacts
+      .find((fact) => fact.kind === '单牌牌义' && fact.cardFactKeys.includes(card.key))
+      ?.promptText.split('；')[0];
     const placement = [
       card.house && !card.position.includes(`（${card.house}宫）`) ? `落${card.house}宫` : '',
       card.row && card.column ? `第${card.row}排第${card.column}列` : '',
     ]
       .filter(Boolean)
       .join('，');
-    return `  ${card.position}：${card.name}；关键词：${card.keywords.join('、')}${card.meaning ? `；基础牌义：${card.meaning}` : ''}${placement ? `；${placement}` : ''}`;
+    return `  ${card.position}：${card.name}；关键词：${card.keywords.join('、')}${meaning ? `；基础牌义：${meaning}` : ''}${placement ? `；${placement}` : ''}`;
   });
   const combinationLines = (
     evidenceAnalysis.spreadCoverageFact.status === '完整' &&
     evidenceAnalysis.cards.every((card) => card.status === '已映射')
-      ? evidenceAnalysis.fixedCombinations
+      ? evidenceAnalysis.traditionalFacts.filter((fact) => fact.kind === '固定组合')
       : []
-  ).map((item) => `  ${item.card1}+${item.card2}：${item.meaning}`);
+  ).map((item) => `  ${item.cardNames.join('+')}：${item.promptText.split('；')[0]}`);
   const layoutLines = evidenceAnalysis.structuredLayoutFacts
     .filter((item) => item.kind !== '大桌宫位')
     .map((item) => `  ${item.factText}`);

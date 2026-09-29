@@ -576,7 +576,7 @@ test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该�
   assert.ok(analyzeLiuyaoEvidence(source).structureFacts.some((fact) => fact.kind === '日辰三合'));
   assert.match(
     formatEnhancedDivinationInfo('liuyao', source),
-    /三合局：日辰午引动火局（寅、午、戌）/u,
+    /三合三支：日辰午与动变爻同见火局三支（寅、午、戌）/u,
   );
 
   const mutations: Array<(data: typeof source) => void> = [

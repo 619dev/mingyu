@@ -788,10 +788,52 @@ test('紫微双盘提示词应分别输出双方真实计算的真太阳时校�
   assert.ok(primaryCorrection);
   assert.ok(partnerCorrection);
   assert.notEqual(primaryCorrection, partnerCorrection);
+  assert.match(
+    primaryCorrection,
+    /当地钟表时间：1992-08-18T12:00:00；法定时区：UTC\+8；出生经度：116\.4°；真太阳时：/,
+  );
+  assert.match(
+    partnerCorrection,
+    /当地钟表时间：1990-05-12T23:50:00；法定时区：UTC\+8；出生经度：87\.6°；真太阳时：/,
+  );
+  assert.match(partnerCorrection, /；时辰：/);
   assert.ok(prompt.includes(`【甲方出生时间校正】\n${primaryCorrection}`));
   assert.ok(prompt.includes(`【乙方出生时间校正】\n${partnerCorrection}`));
   assert.ok(prompt.indexOf('【甲方出生时间校正】') < prompt.indexOf('【甲方盘面】'));
   assert.ok(prompt.indexOf('【乙方出生时间校正】') < prompt.indexOf('【乙方盘面】'));
+});
+
+test('紫微时间校正任务书保留历史时区消歧和已执行的夏令时还原', () => {
+  const newYork = resolveZiweiTrueSolarBirth({
+    dateType: 'solar',
+    year: '2024',
+    month: '11',
+    day: '3',
+    isLeapMonth: false,
+    birthHour: '1',
+    birthMinute: '30',
+    birthLongitude: '-74',
+    timezone: -4,
+    timeZoneId: 'America/New_York',
+  });
+  const chinaDst = resolveZiweiTrueSolarBirth({
+    dateType: 'solar',
+    year: '1988',
+    month: '6',
+    day: '1',
+    isLeapMonth: false,
+    birthHour: '12',
+    birthMinute: '0',
+    birthLongitude: '116.4',
+    timezone: 8,
+    applyChinaDst: true,
+  });
+
+  assert.match(
+    formatZiweiTrueSolarEvidence(newYork.trueSolarEvidence),
+    /当地钟表时间：2024-11-03T01:30:00；法定时区：America\/New_York，UTC-4/,
+  );
+  assert.match(formatZiweiTrueSolarEvidence(chinaDst.trueSolarEvidence), /夏令时还原：回拨60分钟/);
 });
 
 test('紫微证据池应输出大限流年流月流日落宫与运限四化飞入证据', () => {

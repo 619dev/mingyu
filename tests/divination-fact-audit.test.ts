@@ -110,7 +110,7 @@ test('雷诺曼提示词按逐牌资料核验普通相邻关系，并保留固�
   const fixedFacts = extractDivinationPromptFacts('lenormand', fixed);
   assert.deepEqual(auditPromptFacts(fixedPrompt, fixedFacts).missing, []);
   assert.ok(fixedFacts.some((item) => item.id === 'lenormand.combination.0'));
-  const changed = fixedPrompt.replace('从迷茫走向清晰', '从清晰走向迷茫');
+  const changed = fixedPrompt.replace('信息由模糊转向清晰的线索', '信息由清晰转向模糊的线索');
   assert.ok(auditPromptFacts(changed, fixedFacts).missing.includes('lenormand.combination.0'));
 });
 

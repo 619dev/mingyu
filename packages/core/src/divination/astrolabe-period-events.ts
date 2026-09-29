@@ -532,7 +532,7 @@ export function resolveAstrolabePeriodWindow(
   }
   const timeZoneId = getTimeZoneId(source);
   const timezoneLabel = timeZoneId
-    ? `${timeZoneId}（UTC${start.timezone >= 0 ? '+' : ''}${start.timezone}）`
+    ? `${timeZoneId}（各时刻按当地历史时区规则换算）`
     : `UTC${start.timezone >= 0 ? '+' : ''}${start.timezone}`;
   return {
     start,

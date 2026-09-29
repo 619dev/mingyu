@@ -1015,7 +1015,7 @@ const testCases: Array<{
     },
   },
   {
-    name: '调候候选分层：wu-month-bing-ding-ren-he（满足，reference，不覆盖扶抑基线，场景1）',
+    name: '调候候选分层：wu-month-bing-ding-ren-he（丁壬紧贴，reference，不覆盖扶抑基线）',
     args: [
       '身强',
       { pattern: '伤官格', isSpecial: false },
@@ -1024,7 +1024,13 @@ const testCases: Array<{
       undefined,
       '丙',
       {
-        visibleStems: ['丙', '丁', '壬', '甲'],
+        visibleStems: ['丁', '壬', '丙', '甲'],
+        visibleStemSources: [
+          { pillar: 'year', stem: '丁' },
+          { pillar: 'month', stem: '壬' },
+          { pillar: 'day', stem: '丙' },
+          { pillar: 'hour', stem: '甲' },
+        ],
         wuxingCounts: { 木: 1, 火: 4, 土: 0, 金: 0, 水: 2 },
       },
     ],
@@ -1819,7 +1825,7 @@ const testCases: Array<{
       '丙',
       {
         visibleStems: ['丙', '壬', '戊', '己'],
-        hiddenStems: ['辛', '丁'],
+        hiddenStems: ['辛', '戊'],
         wuxingCounts: { 木: 0, 火: 1, 土: 4, 金: 2, 水: 2 },
       },
     ],
@@ -2085,6 +2091,7 @@ const testCases: Array<{
       '戊',
       {
         visibleStems: ['戊', '辛', '己', '庚'],
+        hiddenStems: [],
         wuxingCounts: { 木: 0, 火: 0, 土: 3, 金: 3, 水: 2 },
       },
     ],
@@ -2140,6 +2147,7 @@ const testCases: Array<{
       '戊',
       {
         visibleStems: ['戊', '辛', '己', '庚'],
+        hiddenStems: [],
         wuxingCounts: { 木: 0, 火: 0, 土: 3, 金: 3, 水: 2 },
       },
     ],
@@ -7403,7 +7411,7 @@ const testCases: Array<{
     },
   },
   {
-    name: '调候候选分层：chen-month-wu-officer-party-geng（满足，reference，不覆盖扶抑基线，场景1）',
+    name: '调候候选分层：chen-month-wu-officer-party-geng（甲藏乙透不满足并透条件）',
     args: [
       '身弱',
       { pattern: '七杀格', isSpecial: false },
@@ -7420,13 +7428,13 @@ const testCases: Array<{
     ],
     expected: {
       favorableEq: ['火', '土'],
-      ruleHas: 'chen-month-wu-officer-party-geng',
+      ruleNotHas: 'chen-month-wu-officer-party-geng',
       baseFavorableEq: ['火', '土'],
       baseUnfavorableEq: ['金', '水', '木'],
       climate: {
         id: 'chen-month-wu-officer-party-geng',
         mode: 'reference',
-        status: '满足',
+        status: '不满足',
         adopted: false,
         order: ['金', '火'],
       },

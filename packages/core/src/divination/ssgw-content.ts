@@ -10,10 +10,10 @@ function sanitizeSsgwText(text: string, currentNumber: number) {
     .map((sentence) => sentence.trim())
     .filter(Boolean)
     .filter((sentence) => {
-      const references = [...sentence.matchAll(/第\s*(\d+)\s*签/gu)].map((match) =>
-        Number(match[1]),
+      const references = [...sentence.matchAll(/第\s*(\d+|[一二三四五六七八九十]{1,3})\s*签/gu)];
+      return references.every(
+        (match) => /^\d+$/u.test(match[1]) && Number(match[1]) === currentNumber,
       );
-      return references.every((number) => number === currentNumber);
     })
     .filter((sentence) => !sentence.includes('全方位的多'))
     .join('');

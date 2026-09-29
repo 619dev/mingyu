@@ -26,6 +26,11 @@ test('汉字解析区分现代笔画与康熙笔画并报告未知字', () => {
   assert.deepEqual(result.unknownCharacters, []);
 });
 
+test('汉字解析拒绝非汉字，避免把无效字符当作字典缺项写入提示词', () => {
+  assert.throws(() => analyzeChineseCharacters('李A'), /只能包含汉字/);
+  assert.throws(() => analyzeChineseCharacters('李·'), /只能包含汉字/);
+});
+
 test('“發”和“髮”按不同繁体字义与康熙笔画解析', async () => {
   const [hair, emit] = ['髮', '發'].map(
     (char) => analyzeChineseCharacters(char).characters[0].detail!,
@@ -360,7 +365,7 @@ test('数字能量覆盖手机号、车牌字母换算、八星磁场与0和5作
   assert.match(prompt, /2651/);
   assert.match(prompt, /延年/);
   assert.match(prompt, /5（增强）/);
-  assert.match(prompt, /高频磁场：/);
+  assert.doesNotMatch(prompt, /高频磁场：/);
   assert.doesNotMatch(prompt, /第[一二三四1234]组|主要磁场/);
   assert.match(prompt, /适合工作使用吗？/);
 });

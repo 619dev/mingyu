@@ -9,6 +9,8 @@ import { generateMeihua } from '../packages/core/src/divination/algorithms/meihu
 import { drawTarotSpread, tarotSpreads } from '../packages/core/src/divination/tarot.ts';
 import { drawLenormandSpread } from '../packages/core/src/divination/algorithms/lenormand.ts';
 import { generateXiaoliuren } from '../packages/core/src/divination/algorithms/xiaoliuren.ts';
+import { generateAlmanacSelection } from '../packages/core/src/divination/algorithms/almanac.ts';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 import { generateLiuren } from '../packages/core/src/divination/algorithms/liuren/index.ts';
 import {
   assertNoPromptPlaceholders,
@@ -424,101 +426,23 @@ function createData(method: FixtureMethod): DivinationData {
 }
 
 function createAlmanacData(): DivinationData {
-  return {
+  return generateAlmanacSelection({
     topic: 'move',
-    topicLabel: '搬家入宅',
     startDate: '2026-06-01',
-    endDate: '2026-06-03',
-    timestamp: Date.now(),
+    endDate: '2026-06-02',
     participants: [
       {
         id: 'self',
         name: '本人',
         gender: '男',
-        solarDate: '1990-01-01',
-        lunarDate: '腊月初五',
-        zodiac: '蛇',
-        constellation: '摩羯座',
-        dayMaster: '丙',
-        dayMasterElement: '火',
-        pillars: { year: '己巳', month: '丙子', day: '丙寅', hour: '甲午' },
-        usefulGods: ['木', '火'],
-        avoidGods: ['水'],
+        year: '1990',
+        month: '1',
+        day: '1',
+        timeIndex: '6',
+        dateType: 'solar',
       },
     ],
-    days: [
-      {
-        date: '2026-06-01',
-        weekday: '星期一',
-        lunarDate: '四月十六',
-        ganzhi: { year: '丙午', month: '癸巳', day: '丙午' },
-        zodiac: '马',
-        dayOfficer: '除',
-        twelveStar: '建',
-        twentyEightStar: '张',
-        nineStar: '一白',
-        gods: ['天德', '月德'],
-        recommends: ['入宅', '移徙', '安床'],
-        avoids: ['开市'],
-        pengZu: '丙不修灶',
-        clash: '冲鼠，煞北',
-        annualDirectionGods: [
-          {
-            god: '太岁',
-            branch: '午',
-            direction: '正南',
-            fortune: '凶',
-            meaning: '犯太岁防宅长大凶',
-          },
-          {
-            god: '太阳',
-            branch: '未',
-            direction: '西南偏南',
-            fortune: '吉',
-            meaning: '修太阳能制诸煞',
-          },
-          {
-            god: '岁破',
-            branch: '子',
-            direction: '正北',
-            fortune: '凶',
-            meaning: '犯岁破忧宅母',
-          },
-          {
-            god: '福德',
-            branch: '卯',
-            direction: '正东',
-            fortune: '吉',
-            meaning: '修福德主添丁生子',
-          },
-        ],
-        score: 86,
-        highlights: ['黄历宜项命中搬家入宅'],
-        cautions: [],
-        participantNotes: ['本人：未见直接刑冲破害提醒'],
-      },
-      {
-        date: '2026-06-02',
-        weekday: '星期二',
-        lunarDate: '四月十七',
-        ganzhi: { year: '丙午', month: '癸巳', day: '丁未' },
-        zodiac: '羊',
-        dayOfficer: '满',
-        twelveStar: '除',
-        twentyEightStar: '翼',
-        nineStar: '二黑',
-        gods: ['天恩'],
-        recommends: ['祭祀'],
-        avoids: ['入宅', '移徙'],
-        pengZu: '丁不剃头',
-        clash: '冲牛，煞西',
-        score: 42,
-        highlights: [],
-        cautions: ['黄历忌项触及搬家入宅'],
-        participantNotes: ['本人：未见直接刑冲破害提醒'],
-      },
-    ],
-  };
+  });
 }
 
 test('各类占卜提示词都使用统一的角色加信息加问题结构', async () => {
@@ -668,31 +592,55 @@ test('自定义占卜问题不强塞应期判断方法', () => {
 });
 
 test('择日提示词保留候选日期、事项和参与人资料', () => {
-  const prompt = buildDivinationPrompt(
-    'almanac',
-    '',
-    createAlmanacData(),
-    createSupplementaryInfo(),
-  );
+  const data = createAlmanacData();
+  const prompt = buildDivinationPrompt('almanac', '', data, createSupplementaryInfo());
 
   assert.match(prompt, /占法：黄历择日/);
-  assert.match(prompt, /候选日期：2026-06-01 至 2026-06-03/);
+  assert.match(prompt, /候选日期：2026-06-01 至 2026-06-02/);
   assert.match(prompt, /核心结构：择日事项：搬家入宅/);
   assert.doesNotMatch(prompt, /事项范围：|日期结论：/);
   assert.doesNotMatch(prompt, /事项未限定|按通用.*口径|当前首列候选/);
   assert.doesNotMatch(prompt, /岁支十二神方位|全年方位神|岁支方位避|可参考太阳|可参考福德/);
   assert.match(prompt, /第1日：2026-06-01/);
   assert.match(prompt, /第2日：2026-06-02/);
-  assert.match(prompt, /忌入宅、移徙/);
+  assert.ok((data as AlmanacData).days.some((day) => prompt.includes(day.avoids.join('、'))));
   assert.doesNotMatch(prompt, /事项权重|优先匹配宜项|事项忌项命中|评分42|高分日期/);
   assert.doesNotMatch(prompt, /结构化证据|证据汇总|反证|解释边界/);
+});
+
+test('旧黄历正午历法事实失配时不进入在线提示词', () => {
+  const data = createAlmanacData() as AlmanacData;
+  data.days[0].ganzhi.day = '甲子';
+  assert.throws(() => buildDivinationPrompt('almanac', '', data), /day.*请重新排盘/);
+  assert.throws(() => formatDetailedDivinationInfo('almanac', data), /day.*请重新排盘/);
+});
+
+test('旧黄历宿曜附文不能覆盖在线提示词的重新计算依据', () => {
+  const data = createAlmanacData() as AlmanacData;
+  data.days[0].twentyEightStarDetail = {
+    ...data.days[0].twentyEightStarDetail!,
+    fullName: '伪造星宿',
+    fortune: '必定大吉',
+  };
+  const prompt = buildDivinationPrompt('almanac', '', data);
+  assert.doesNotMatch(prompt, /伪造星宿|必定大吉/);
+});
+
+test('旧黄历伪造宜项或事项结论时不进入在线提示词', () => {
+  const data = createAlmanacData() as AlmanacData;
+  data.days[0].recommends.push('伪宜项');
+  assert.throws(() => buildDivinationPrompt('almanac', '', data), /原始宜忌.*请重新排盘/);
+
+  data.days[0].recommends.pop();
+  const topicFact = data.days[0].topicMatchFacts?.[0];
+  assert.ok(topicFact);
+  topicFact.promptText = '伪事项结论';
+  assert.throws(() => buildDivinationPrompt('almanac', '', data), /事项匹配.*请重新排盘/);
 });
 
 test('择日保留事项匹配之外的完整当日宜忌', () => {
   const data = createAlmanacData() as AlmanacData;
   const day = data.days[0];
-  day.recommends = ['入宅', '移徙', '安床', '祭祀', '祈福', '求嗣', '出行', '纳采', '订盟'];
-  day.avoids = ['开市', '动土', '破土', '安葬', '修造', '开仓', '伐木', '作灶', '掘井'];
   const prompt = buildDivinationPrompt('almanac', '', data);
   assert.ok(prompt.includes(day.recommends.join('、')));
   assert.ok(prompt.includes(day.avoids.join('、')));
@@ -1074,22 +1022,22 @@ test('梅花提示词会保留体用、互卦、变卦与起卦细节', () => {
     createSupplementaryInfo(),
   );
 
-  assert.match(prompt, /核心结构：主卦火地晋；互卦水山蹇；变卦火水未济/);
-  assert.match(prompt, /体用：体卦离（火）；用卦坤（土）；动爻第2爻；体用关系体生用/);
-  assert.match(prompt, /互卦：水山蹇；体互坎（水）；用互艮（土）；体互克原体；原体生用互/);
-  assert.match(prompt, /结果火水未济：体卦离火，用卦坎水，关系用克体/);
+  assert.match(prompt, /核心结构：主卦火风鼎；互卦泽天夬；变卦火山旅/);
+  assert.match(prompt, /体用：体卦离（火）；用卦巽（木）；动爻第2爻；体用关系用生体/);
+  assert.match(prompt, /互卦：泽天夬；体互兑（金）；用互乾（金）；原体克体互；原体克用互/);
+  assert.match(prompt, /结果火山旅：体卦离火，用卦艮土，关系体生用/);
   assert.match(prompt, /月令作用：子月令水克变后体卦离火，变后体卦为死/);
-  assert.match(prompt, /月令作用：变后用卦坎水与子月令水同类，变后用卦为旺/);
-  assert.match(prompt, /主卦体用月令条件：主卦体生用，体卦月令死、用卦月令囚/);
+  assert.match(prompt, /月令作用：变后用卦艮土克子月令水，卦气耗用，变后用卦为囚/);
+  assert.match(prompt, /主卦体用月令条件：主卦用生体，体卦月令死、用卦月令相/);
   assert.match(prompt, /起卦法：数字起卦法/);
   assert.match(
     prompt,
-    /起卦取数：数字123除8取余得上卦数3；数字123加时支辰序数5，除8取余得下卦数8，除6取余得动爻2/,
+    /起卦取数：数字123除8取余得上卦数3；时支辰序数5除8取余得下卦数5；数字123与时支序数相加除6取余得动爻2/,
   );
-  assert.match(prompt, /动爻变化：主卦第2爻阴变阳；动爻位于下卦，用卦随之变化，体卦保持/);
+  assert.match(prompt, /动爻变化：主卦第2爻阳变阴；动爻位于下卦，用卦随之变化，体卦保持/);
   assert.doesNotMatch(prompt, /应期线索：/);
-  assert.match(prompt, /主卦卦辞：火地晋，康侯用锡马蕃庶/);
-  assert.match(prompt, /动爻爻辞：第2爻，晋如愁如，贞吉/);
+  assert.match(prompt, /主卦卦辞：火风鼎，元吉，亨/);
+  assert.match(prompt, /动爻爻辞：第2爻，鼎有实，我仇有疾/);
   assert.doesNotMatch(prompt, /卦辞分类：|动爻传统资料：/);
   assert.doesNotMatch(prompt, /未发动，不展开爻辞解释/);
   assert.doesNotMatch(prompt, /第1爻（静，属体）：阳爻|结构明细：/);
@@ -1314,7 +1262,7 @@ test('灵签提示词保留完整签谱资料', () => {
   assert.match(prompt, /吉凶级别：中平签/);
   assert.match(prompt, /典故：刘备向东吴借取荆州。/);
   assert.match(prompt, /基础解签：事情仍有转圜空间，宜结合现况审慎研判。/);
-  assert.match(prompt, /补充解释：\n  事业：先核对资源与时机。/);
+  assert.match(prompt, /补充解释：暂缓推进。留意反复。/);
   assert.doesNotMatch(
     prompt,
     /【当前时间】|【问题】|【任务】|占法：|行动建议|风险提醒|掷筊|签谱状态|来源状态|证据汇总/,

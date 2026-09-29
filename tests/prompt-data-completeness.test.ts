@@ -109,7 +109,7 @@ test('梅花保留本互变卦辞与本次动爻辞', () => {
 });
 
 test('梅花单动乾卦不把用九当作当前卦辞', () => {
-  const qian = generateMeihua(new Date('2025-01-01T14:00:00+08:00'), {
+  const qian = generateMeihua(new Date('2025-01-01T00:00:00+08:00'), {
     method: 'number',
     number: 1,
   });
@@ -119,7 +119,7 @@ test('梅花单动乾卦不把用九当作当前卦辞', () => {
   assert.doesNotMatch(text, /见群龙无首，吉/);
 });
 
-test('灵签解释保留完整段落及有效补充并合并同文', () => {
+test('灵签解释合并同文并保留本签所选补充', () => {
   const data = drawRandomSign(date, { seed: 20260521 });
   data.details = {
     ...data.details,
@@ -129,11 +129,13 @@ test('灵签解释保留完整段落及有效补充并合并同文', () => {
     解签总论: '第一句。第二句。第三句仍含完整条件。',
     整体运势: '阶段信息应当保留。',
     此签核心: '另一个有效取义。',
+    行动建议: '先核实条件。',
+    风险提醒: '留意变化。',
   };
   const text = buildDivinationPrompt('ssgw', '整体解读', data);
-  for (const phrase of ['第三句仍含完整条件。', '阶段信息应当保留。', '另一个有效取义。'])
-    assert.ok(text.includes(phrase));
+  for (const phrase of ['先核实条件。', '留意变化。']) assert.ok(text.includes(phrase));
   assert.equal(text.split('初段解释。').length - 1, 1);
+  assert.doesNotMatch(text, /第三句仍含完整条件|阶段信息应当保留|另一个有效取义/);
 });
 
 test('奇门经典格局保留触发事实而非只列名称', () => {

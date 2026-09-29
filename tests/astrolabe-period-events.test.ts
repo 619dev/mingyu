@@ -415,6 +415,20 @@ test('纽约夏令时流年批次的结果时区取父范围起点', () => {
 
   assert.equal(result.timeZoneId, 'America/New_York');
   assert.equal(result.timezone, -5);
+  const winter = resolveAstrolabePeriodWindow(buildAstrolabePeriodContext(newYorkData), 'yearly', {
+    year: 2024,
+    month: 1,
+    day: 1,
+  });
+  const summer = resolveAstrolabePeriodWindow(buildAstrolabePeriodContext(newYorkData), 'monthly', {
+    year: 2024,
+    month: 7,
+    day: 1,
+  });
+  assert.equal(winter.start.timezone, -5);
+  assert.equal(summer.start.timezone, -4);
+  assert.equal(winter.timezoneLabel, 'America/New_York（各时刻按当地历史时区规则换算）');
+  assert.equal(summer.timezoneLabel, winter.timezoneLabel);
   assert.deepEqual(result.parentRange, {
     startDate: '2024-01-01',
     endDate: '2025-01-01',

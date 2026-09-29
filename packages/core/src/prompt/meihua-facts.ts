@@ -85,11 +85,11 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
       c.timeZhiIndex > 0 &&
       Number.isSafeInteger(c.number! + c.timeZhiIndex) &&
       c.upperTrigramIndex === (c.number! % 8 || 8) &&
-      c.lowerTrigramIndex === ((c.number! + c.timeZhiIndex) % 8 || 8) &&
+      c.lowerTrigramIndex === (c.timeZhiIndex % 8 || 8) &&
       c.movingYaoIndex === ((c.number! + c.timeZhiIndex) % 6 || 6)
     ) {
       facts.push(
-        `起卦取数：数字${c.number}除8取余得上卦数${c.upperTrigramIndex}；数字${c.number}加时支${c.timeZhi}序数${c.timeZhiIndex}，除8取余得下卦数${c.lowerTrigramIndex}，除6取余得动爻${c.movingYaoIndex}；卦数余0取8，动爻余0取6`,
+        `起卦取数：数字${c.number}除8取余得上卦数${c.upperTrigramIndex}；时支${c.timeZhi}序数${c.timeZhiIndex}除8取余得下卦数${c.lowerTrigramIndex}；数字${c.number}与时支序数相加除6取余得动爻${c.movingYaoIndex}；卦数余0取8，动爻余0取6`,
       );
     } else if (
       hasResolvedIndices &&

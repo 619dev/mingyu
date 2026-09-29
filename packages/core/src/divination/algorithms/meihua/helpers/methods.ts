@@ -140,7 +140,7 @@ export function resolveNumberMethod(number: number, timeBranch: string): MeihuaM
   if (!Number.isSafeInteger(totalWithTime)) {
     throw new Error('数字与时辰序数之和必须在安全整数范围内');
   }
-  const lowerTrigramIndex = totalWithTime % 8 || 8;
+  const lowerTrigramIndex = timeZhiIndex % 8 || 8;
   const movingYaoIndex = totalWithTime % 6 || 6;
 
   return {

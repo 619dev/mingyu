@@ -234,7 +234,7 @@ const REQUIRED_SAMPLE_FIELDS: RequiredSampleFields[] = [
   {
     sampleName: '三山国王灵签',
     // 签谱提示词按签谱最高约束只保留本次签号、签题、签诗和解签资料。
-    requiredFields: ['签号', '签题', '签诗', '吉凶级别', '典故', '基础解签'],
+    requiredFields: ['签号', '签题', '签诗', '吉凶级别', '典故', '基础解签', '补充解释'],
   },
   {
     sampleName: '择日',

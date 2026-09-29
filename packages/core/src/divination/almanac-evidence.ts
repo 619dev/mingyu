@@ -13,6 +13,15 @@ import {
   type MoonPhaseEvidence,
 } from '../calendar/moon-phase-evidence';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
+import { NineStar, SolarDay, SolarTime, TwentyEightStar } from 'tyme4ts';
+import { SHICHEN_PERIODS } from '../calendar/dateUtils';
+import { getHuangliSolarDayGods } from '../shensha';
+import {
+  ALMANAC_TOPIC_LABELS,
+  getAlmanacAnnualDirectionGods,
+  getAlmanacPengZuDetails,
+  recalculateAlmanacDayForVerification,
+} from './algorithms/almanac';
 
 export type AlmanacCandidateStatus = '可用候选' | '条件候选' | '慎用候选';
 
@@ -327,36 +336,32 @@ export function conditionAlmanacTraditionalText(text: string): string {
 
 function buildTraditionalFacts(day: AlmanacDayCandidate): AlmanacTraditionalFact[] {
   const facts: AlmanacTraditionalFact[] = [];
-  if (day.twentyEightStarDetail) {
-    const detail = day.twentyEightStarDetail;
-    const originalText = `${detail.fullName}，${detail.zone}方七宿，${detail.fortune}`;
-    facts.push({
-      key: `${day.date}:twenty-eight-star:${day.twentyEightStar}`,
-      date: day.date,
-      kind: '二十八宿',
-      name: day.twentyEightStar,
-      originalText,
-      promptText: originalText,
-      sources: [detail.source],
-      fortune: detail.fortune,
-      limitation: TRADITIONAL_FACT_LIMITATION,
-    });
-  }
-  if (day.nineStarDetail) {
-    const detail = day.nineStarDetail;
-    const originalText = `${detail.fullName}，北斗${detail.dipper}，方位${detail.direction}`;
-    facts.push({
-      key: `${day.date}:nine-star:${day.nineStar}`,
-      date: day.date,
-      kind: '九星',
-      name: day.nineStar,
-      originalText,
-      promptText: originalText,
-      sources: [detail.source],
-      limitation: TRADITIONAL_FACT_LIMITATION,
-    });
-  }
-  (day.annualDirectionGods ?? []).forEach((item) => {
+  const twentyEightStar = TwentyEightStar.fromName(day.twentyEightStar);
+  const twentyEightStarText = `${day.twentyEightStar}${twentyEightStar.getSevenStar().getName()}，${twentyEightStar.getZone().getName()}方七宿，${twentyEightStar.getLuck().getName()}`;
+  facts.push({
+    key: `${day.date}:twenty-eight-star:${day.twentyEightStar}`,
+    date: day.date,
+    kind: '二十八宿',
+    name: day.twentyEightStar,
+    originalText: twentyEightStarText,
+    promptText: twentyEightStarText,
+    sources: ['二十八宿传统属性'],
+    fortune: twentyEightStar.getLuck().getName(),
+    limitation: TRADITIONAL_FACT_LIMITATION,
+  });
+  const nineStar = NineStar.fromName(day.nineStar.slice(0, 1));
+  const nineStarText = `${nineStar.toString()}，北斗${nineStar.getDipper().getName()}，方位${nineStar.getDirection().getName()}`;
+  facts.push({
+    key: `${day.date}:nine-star:${day.nineStar}`,
+    date: day.date,
+    kind: '九星',
+    name: day.nineStar,
+    originalText: nineStarText,
+    promptText: nineStarText,
+    sources: ['九星传统属性'],
+    limitation: TRADITIONAL_FACT_LIMITATION,
+  });
+  getAlmanacAnnualDirectionGods(day.ganzhi.year.slice(-1)).forEach((item) => {
     facts.push({
       key: `${day.date}:direction-god:${item.god}:${item.branch}`,
       date: day.date,
@@ -370,14 +375,8 @@ function buildTraditionalFacts(day: AlmanacDayCandidate): AlmanacTraditionalFact
       limitation: TRADITIONAL_FACT_LIMITATION,
     });
   });
-  const separatedPengZu = unique([day.pengZuGan ?? '', day.pengZuZhi ?? '']);
-  const pengZuTexts = separatedPengZu.length
-    ? separatedPengZu
-    : unique(
-        day.pengZu
-          .split(/\s+/)
-          .filter((text) => /^[甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥]不/.test(text)),
-      );
+  const pengZu = getAlmanacPengZuDetails(day.ganzhi.day.slice(0, 1), day.ganzhi.day.slice(-1));
+  const pengZuTexts = [pengZu.gan, pengZu.zhi];
   pengZuTexts.forEach((text, index) => {
     if (!text) return;
     facts.push({
@@ -962,8 +961,7 @@ function buildCandidateEvidence(
   topicLabel: string,
   timePreferences: AlmanacTimePreference[] = [],
 ): AlmanacCandidateEvidence {
-  const moonPhaseEvidence =
-    day.moonPhaseEvidence ?? calculateMoonPhaseEvidence(Date.parse(`${day.date}T04:00:00Z`));
+  const moonPhaseEvidence = calculateMoonPhaseEvidence(Date.parse(`${day.date}T04:00:00Z`));
   const calendarFact = buildCalendarFact(day);
   const rawTabooFact = buildRawTabooFact({
     keyPrefix: day.date,
@@ -1582,7 +1580,235 @@ function buildLimitationFacts(params: {
   }));
 }
 
+function parseVerifiedDate(value: string, label: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) throw new Error(`黄历${label}格式无效，请重新排盘。`);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    year < 1900 ||
+    year > 2100 ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day
+  ) {
+    throw new Error(`黄历${label}无效，请重新排盘。`);
+  }
+  return date;
+}
+
+function sameVerifiedFacts(left: unknown, right: unknown): boolean {
+  const normalize = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(normalize);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value)
+          .filter(([, item]) => item !== undefined)
+          .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+          .map(([key, item]) => [key, normalize(item)]),
+      );
+    }
+    return value;
+  };
+  return JSON.stringify(normalize(left)) === JSON.stringify(normalize(right));
+}
+
+function verifyAlmanacDerivedFacts(data: AlmanacData, day: AlmanacDayCandidate): void {
+  const reference = recalculateAlmanacDayForVerification(day.date, data.topic, data.participants);
+  const check = (label: string, actual: unknown, expected: unknown) => {
+    if (!sameVerifiedFacts(actual, expected)) {
+      throw new Error(`黄历${day.date}的${label}与当前排盘口径不一致，请重新排盘。`);
+    }
+  };
+  check('事项提示', day.highlights, reference.highlights);
+  check('事项限制', day.cautions, reference.cautions);
+  check('参与人提示', day.participantNotes, reference.participantNotes);
+  if (day.topicMatchFacts) check('事项匹配', day.topicMatchFacts, reference.topicMatchFacts);
+  if (day.godFacts) check('值日神煞事实', day.godFacts, reference.godFacts);
+  if (day.participantRelationFacts) {
+    check('参与人关系', day.participantRelationFacts, reference.participantRelationFacts);
+  }
+  if (day.annualDirectionGods) {
+    check('全年方位神', day.annualDirectionGods, reference.annualDirectionGods);
+  }
+  if (day.hours?.length) {
+    for (const [index, hour] of day.hours.entries()) {
+      const source = reference.hours?.[index];
+      check(`${hour.name}时辰提示`, hour.highlights, source?.highlights);
+      check(`${hour.name}时辰限制`, hour.cautions, source?.cautions);
+      check(`${hour.name}参与人提示`, hour.participantNotes, source?.participantNotes);
+      if (hour.topicMatchFacts) {
+        check(`${hour.name}事项匹配`, hour.topicMatchFacts, source?.topicMatchFacts);
+      }
+      if (hour.participantRelationFacts) {
+        check(
+          `${hour.name}参与人关系`,
+          hour.participantRelationFacts,
+          source?.participantRelationFacts,
+        );
+      }
+    }
+  }
+}
+
+function verifyAlmanacCalendarFacts(data: AlmanacData): void {
+  if (data.topicLabel !== ALMANAC_TOPIC_LABELS[data.topic]) {
+    throw new Error('黄历事项名称与排盘口径不一致，请重新排盘。');
+  }
+  const start = parseVerifiedDate(data.startDate, '开始日期');
+  const end = parseVerifiedDate(data.endDate, '结束日期');
+  const expectedCount = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  if (expectedCount < 1 || expectedCount > 180) {
+    throw new Error('黄历候选日期范围无效，请重新排盘。');
+  }
+  if (data.days.length === 0) return;
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  const seen = new Set<string>();
+  for (const day of data.days) {
+    const date = parseVerifiedDate(day.date, '候选日期');
+    if (date < start || date > end || seen.has(day.date)) {
+      throw new Error(`黄历候选日期${day.date}超出范围或重复，请重新排盘。`);
+    }
+    seen.add(day.date);
+    const solarDay = SolarDay.fromYmd(
+      date.getUTCFullYear(),
+      date.getUTCMonth() + 1,
+      date.getUTCDate(),
+    );
+    const lunarDay = solarDay.getLunarDay();
+    const noon = SolarTime.fromYmdHms(
+      date.getUTCFullYear(),
+      date.getUTCMonth() + 1,
+      date.getUTCDate(),
+      12,
+      0,
+      0,
+    );
+    const pillars = noon.getLunarHour().getEightChar();
+    const cycleDay = noon.getSixtyCycleHour().getSixtyCycleDay();
+    const branch = cycleDay.getSixtyCycle().getEarthBranch();
+    const recommends = cycleDay
+      .getRecommends()
+      .map((item) => item.getName())
+      .filter(Boolean);
+    const avoids = cycleDay
+      .getAvoids()
+      .map((item) => item.getName())
+      .filter(Boolean);
+    if (
+      JSON.stringify(day.recommends) !== JSON.stringify(recommends) ||
+      JSON.stringify(day.avoids) !== JSON.stringify(avoids)
+    ) {
+      throw new Error(`黄历${day.date}的原始宜忌与当前历法不一致，请重新排盘。`);
+    }
+    const gods = getHuangliSolarDayGods(solarDay, noon);
+    if (JSON.stringify(day.gods) !== JSON.stringify(gods.map((item) => item.getName()))) {
+      throw new Error(`黄历${day.date}的值日神煞与当前历法不一致，请重新排盘。`);
+    }
+    if (day.godFacts) {
+      const actualGodFacts = day.godFacts.map((item) => [
+        item.key,
+        item.name,
+        item.classification,
+        item.status,
+        item.promptText,
+      ]);
+      const expectedGodFacts = gods.map((god) => {
+        const name = god.getName();
+        const luck = god.getLuck().getName();
+        const classification = luck === '吉' ? '吉神' : luck === '凶' ? '凶神' : '未分级';
+        return [
+          `${day.date}:god:${name}`,
+          name,
+          classification,
+          '已读取',
+          `${name}列为${classification}`,
+        ];
+      });
+      if (JSON.stringify(actualGodFacts) !== JSON.stringify(expectedGodFacts)) {
+        throw new Error(`黄历${day.date}的值日神煞事实与当前历法不一致，请重新排盘。`);
+      }
+    }
+    const expected = {
+      weekday: weekdays[date.getUTCDay()],
+      lunarDate: lunarDay.toString(),
+      year: pillars.getYear().getName(),
+      month: pillars.getMonth().getName(),
+      day: pillars.getDay().getName(),
+      zodiac: pillars.getYear().getEarthBranch().getZodiac().getName(),
+      dayOfficer: cycleDay.getDuty().getName(),
+      twelveStar: cycleDay.getTwelveStar().getName(),
+      twentyEightStar: lunarDay.getTwentyEightStar().getName(),
+      nineStar: lunarDay.getNineStar().getName(),
+      clash: `冲${branch.getOpposite().getName()}，煞${branch.getOminous().getName()}`,
+    };
+    const actual = {
+      weekday: day.weekday,
+      lunarDate: day.lunarDate,
+      year: day.ganzhi.year,
+      month: day.ganzhi.month,
+      day: day.ganzhi.day,
+      zodiac: day.zodiac,
+      dayOfficer: day.dayOfficer,
+      twelveStar: day.twelveStar,
+      twentyEightStar: day.twentyEightStar,
+      nineStar: day.nineStar,
+      clash: day.clash,
+    };
+    for (const key of Object.keys(expected) as Array<keyof typeof expected>) {
+      if (actual[key] !== expected[key]) {
+        throw new Error(`黄历${day.date}的${key}与当前历法不一致，请重新排盘。`);
+      }
+    }
+    if (day.hours?.length) {
+      const sourceHours = lunarDay.getHours();
+      if (day.hours.length !== SHICHEN_PERIODS.length) {
+        throw new Error(`黄历${day.date}的时辰数量不完整，请重新排盘。`);
+      }
+      for (const [index, hour] of day.hours.entries()) {
+        const period = SHICHEN_PERIODS[index];
+        const source = sourceHours[index];
+        if (
+          !period ||
+          !source ||
+          hour.name !== period.name ||
+          hour.range !== period.range ||
+          hour.branch !== period.branch ||
+          hour.ganzhi !== source.getSixtyCycle().getName() ||
+          hour.twelveStar !== source.getTwelveStar().getName()
+        ) {
+          throw new Error(`黄历${day.date}的${hour.name}时辰资料与当前历法不一致，请重新排盘。`);
+        }
+        if (
+          JSON.stringify(hour.recommends) !==
+            JSON.stringify(
+              source
+                .getRecommends()
+                .map((item) => item.getName())
+                .filter(Boolean),
+            ) ||
+          JSON.stringify(hour.avoids) !==
+            JSON.stringify(
+              source
+                .getAvoids()
+                .map((item) => item.getName())
+                .filter(Boolean),
+            )
+        ) {
+          throw new Error(
+            `黄历${day.date}的${hour.name}时辰原始宜忌与当前历法不一致，请重新排盘。`,
+          );
+        }
+      }
+    }
+    verifyAlmanacDerivedFacts(data, day);
+  }
+}
+
 export function analyzeAlmanacEvidence(data: AlmanacData): AlmanacEvidenceAnalysis {
+  verifyAlmanacCalendarFacts(data);
   const candidates = data.days.map((day) =>
     buildCandidateEvidence(day, data.topic, data.topicLabel, data.timePreferences),
   );

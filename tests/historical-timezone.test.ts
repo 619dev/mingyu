@@ -222,6 +222,24 @@ test('IANA 历史时区应拒绝春季跳时与无效时区', () => {
   );
 });
 
+test('IANA 历史时区应先拒绝无效当地日期时刻与固定偏移', () => {
+  const input = {
+    year: 2024,
+    month: 2,
+    day: 29,
+    hour: 12,
+    minute: 0,
+    second: 0,
+    timeZoneId: 'Asia/Shanghai',
+  };
+  assert.throws(() => resolveHistoricalTimezone({ ...input, day: 30 }), /当地日期/);
+  assert.throws(() => resolveHistoricalTimezone({ ...input, hour: 24 }), /当地时刻/);
+  assert.throws(
+    () => resolveHistoricalTimezone({ ...input, fixedOffsetHours: Number.NaN }),
+    /固定 UTC 偏移/,
+  );
+});
+
 test('天文时间尺度应直接采用 IANA 解析出的历史偏移', () => {
   const evidence = buildAstronomicalTimeEvidence({
     year: 1990,

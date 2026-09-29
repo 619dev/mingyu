@@ -227,6 +227,129 @@ test('黄历择日候选资料为空时应明确标记缺失，不生成伪最�
   assert.ok(evidence.limitationFacts.every((item) => item.ownerFactKeys.length > 0));
 });
 
+test('旧黄历跨立春日期仍以民用日期正午干支复验，分页候选可只含范围子集', () => {
+  const data = generateAlmanacSelection({
+    topic: 'move',
+    startDate: '2026-02-03',
+    endDate: '2026-02-05',
+  });
+  const paged = { ...data, days: [data.days[1]] };
+  assert.equal(analyzeAlmanacEvidence(paged).candidates.length, 1);
+
+  paged.days = [{ ...data.days[1], ganzhi: { ...data.days[1].ganzhi, month: '甲子' } }];
+  assert.throws(() => analyzeAlmanacEvidence(paged), /month.*请重新排盘/);
+  paged.days = [{ ...data.days[1], weekday: '星期日' }];
+  assert.throws(() => analyzeAlmanacEvidence(paged), /weekday.*请重新排盘/);
+});
+
+test('旧黄历候选日期及非空时辰盘须逐项复验', () => {
+  const data = generateAlmanacSelection({
+    topic: 'move',
+    startDate: '2026-06-01',
+    endDate: '2026-06-02',
+  });
+  const original = data.days[0];
+  data.days = [original, { ...original }];
+  assert.throws(() => analyzeAlmanacEvidence(data), /重复.*请重新排盘/);
+
+  data.days = [{ ...original, date: '2026-06-03' }];
+  assert.throws(() => analyzeAlmanacEvidence(data), /超出范围.*请重新排盘/);
+
+  data.days = [{ ...original, hours: original.hours?.slice(1) }];
+  assert.throws(() => analyzeAlmanacEvidence(data), /时辰数量不完整.*请重新排盘/);
+
+  data.days = [
+    {
+      ...original,
+      hours: original.hours?.map((hour, index) =>
+        index === 0 ? { ...hour, ganzhi: '甲子' } : hour,
+      ),
+    },
+  ];
+  assert.throws(() => analyzeAlmanacEvidence(data), /时辰资料.*请重新排盘/);
+});
+
+test('旧黄历月相与宿曜附文不得覆盖重新计算的传统依据', () => {
+  const data = generateAlmanacSelection({
+    topic: 'move',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
+  });
+  const originalPhase = data.evidenceAnalysis?.candidates[0].moonPhaseFact.eightPhaseName;
+  const day = data.days[0];
+  day.moonPhaseEvidence = { ...day.moonPhaseEvidence!, eightPhaseName: '伪月相' };
+  day.twentyEightStarDetail = { ...day.twentyEightStarDetail!, fortune: '必定大吉' };
+  day.nineStarDetail = { ...day.nineStarDetail!, direction: '伪方位' };
+  const evidence = analyzeAlmanacEvidence(data);
+
+  assert.equal(evidence.candidates[0].moonPhaseFact.eightPhaseName, originalPhase);
+  assert.doesNotMatch(evidence.promptText, /伪月相|必定大吉|伪方位/);
+});
+
+test('旧黄历原始宜忌和值日神煞遭篡改时不能进入证据', () => {
+  const data = generateAlmanacSelection({
+    topic: 'move',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
+  });
+  const day = data.days[0];
+  day.recommends.push('伪宜项');
+  assert.throws(() => analyzeAlmanacEvidence(data), /原始宜忌.*请重新排盘/);
+
+  day.recommends.pop();
+  day.gods.push('伪神煞');
+  assert.throws(() => analyzeAlmanacEvidence(data), /值日神煞.*请重新排盘/);
+});
+
+test('旧黄历事项与参与人派生事实遭篡改时不能改变候选裁决', () => {
+  const data = generateAlmanacSelection({
+    topic: 'move',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
+    participants: [
+      {
+        id: 'person-1',
+        name: '甲方',
+        gender: '男',
+        year: '1990',
+        month: '1',
+        day: '1',
+        timeIndex: '6',
+        dateType: 'solar',
+      },
+    ],
+  });
+  const day = data.days[0];
+  const topicFact = day.topicMatchFacts?.find((item) => item.key.endsWith(':day-recommends'));
+  assert.ok(topicFact);
+  topicFact.promptText = '伪事项支持';
+  assert.throws(() => analyzeAlmanacEvidence(data), /事项匹配.*请重新排盘/);
+
+  topicFact.promptText = data.evidenceAnalysis!.candidates[0].topicMatchFacts.find(
+    (item) => item.key === topicFact.key,
+  )!.promptText;
+  assert.ok(day.participantRelationFacts?.length);
+  day.participantRelationFacts[0].promptText = '伪参与人冲突';
+  assert.throws(() => analyzeAlmanacEvidence(data), /参与人关系.*请重新排盘/);
+});
+
+test('旧黄历方位神与彭祖附文不能伪造传统依据', () => {
+  const data = generateAlmanacSelection({
+    topic: 'renovation',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
+  });
+  const day = data.days[0];
+  day.pengZu = '伪造百忌';
+  day.pengZuGan = '伪造百忌';
+  const evidence = analyzeAlmanacEvidence(data);
+  assert.doesNotMatch(evidence.promptText, /伪造百忌/);
+
+  assert.ok(day.annualDirectionGods?.length);
+  day.annualDirectionGods[0].direction = '伪造方位';
+  assert.throws(() => analyzeAlmanacEvidence(data), /全年方位神.*请重新排盘/);
+});
+
 test('工作时段偏好下无可用时辰的日期不得仍列为可用候选，并保留原始时辰', () => {
   const result = generateAlmanacSelection({
     topic: 'renovation',
@@ -280,7 +403,7 @@ test('在线提示词保留时段偏好、无可用时辰原因和值日神煞�
   assert.doesNotMatch(prompt, /2026-03-03 可用候选/);
 });
 
-test('在线任务书列出条件候选时辰的具体限制', () => {
+test('旧盘额外时辰限制不能改变候选时辰结论', () => {
   const data = generateAlmanacSelection({
     topic: 'travel',
     startDate: '2025-01-01',
@@ -292,19 +415,7 @@ test('在线任务书列出条件候选时辰的具体限制', () => {
   const hour = day?.hours?.find((item) => item.name === firstUsableHour.name);
   assert.ok(hour);
   hour.cautions.push('该时辰的具体安排需核对');
-
-  const evidence = analyzeAlmanacEvidence(data);
-  const candidateHour = evidence.candidates[0]?.usableHours.find((item) => item.name === hour.name);
-  assert.ok(candidateHour);
-  assert.equal(candidateHour.status, '条件候选');
-  const dayLine = evidence.promptText.split('\n').find((line) => line.startsWith(`${day.date} `));
-  assert.ok(dayLine);
-  assert.ok(
-    dayLine.includes(
-      `${hour.name}${hour.range}（${hour.ganzhi}，${hour.twelveStar}，条件候选；限制`,
-    ),
-  );
-  assert.ok(dayLine.includes('该时辰的具体安排需核对'));
+  assert.throws(() => analyzeAlmanacEvidence(data), /时辰限制.*请重新排盘/);
 });
 
 test('缺少逐时资料时应标记未提供，不误报无可用时辰', () => {

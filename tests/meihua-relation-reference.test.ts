@@ -9,11 +9,11 @@ import { buildDivinationPrompt, type DivinationSession } from '../src/lib/divina
 
 test('梅花五种主卦体用关系仅展示命中原文，并附本盘月令、互变条件', () => {
   for (const [number, hour, relation] of [
-    [1, '10:30', '用生体'],
-    [3, '10:30', '体克用'],
-    [7, '10:30', '用克体'],
-    [10, '10:30', '体生用'],
-    [2, '12:30', '体用比和'],
+    [10, '10:30', '用生体'],
+    [7, '10:30', '体克用'],
+    [3, '10:30', '用克体'],
+    [1, '10:30', '体生用'],
+    [7, '12:30', '体用比和'],
   ] as const) {
     const data = generateMeihua(new Date(`2025-06-18T${hour}:00+08:00`), {
       method: 'number',
@@ -55,9 +55,9 @@ test('梅花五种主卦体用关系仅展示命中原文，并附本盘月令�
 });
 
 test('梅花主卦生体而变卦克体时，参考卡保留结果阶段的反向条件', () => {
-  const data = generateMeihua(new Date('2025-06-18T10:30:00+08:00'), {
+  const data = generateMeihua(new Date('2025-06-18T12:30:00+08:00'), {
     method: 'number',
-    number: 1,
+    number: 42,
   });
   assert.equal(data.analysis.tiYongRelation, '用生体');
   assert.equal(data.analysis.changedTiYongRelation, '用克体');
@@ -69,7 +69,7 @@ test('梅花主卦生体而变卦克体时，参考卡保留结果阶段的反�
     data,
   };
   const html = renderToStaticMarkup(createElement(TraditionalDivinationBoard, { session }));
-  assert.match(html, /变卦天火同人：用克体/u);
+  assert.match(html, /变卦泽火革：用克体/u);
   assert.match(html, /原文为主卦体用关系的传统参考/u);
 
   const relationCards = html.slice(

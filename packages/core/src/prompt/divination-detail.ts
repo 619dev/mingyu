@@ -22,7 +22,7 @@ import { formatAstrolabeForPrompt } from './astrolabe';
 import { formatDivinationInfo } from './divination';
 import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
-import { formatAlmanacGods } from '../divination/almanac-evidence';
+import { analyzeAlmanacEvidence, formatAlmanacGods } from '../divination/almanac-evidence';
 import { analyzeLenormandEvidence } from '../divination/lenormand-evidence';
 
 type SupportedMethod = Exclude<DivinationMethodId, 'random'>;
@@ -190,6 +190,7 @@ function formatSsgwDetail(data: SsgwData) {
 }
 
 function formatAlmanacDetail(data: AlmanacData) {
+  analyzeAlmanacEvidence(data);
   const formatRangeTimestamp = (timestamp: number) => {
     const date = new Date(timestamp + 8 * 60 * 60 * 1_000);
     const pad = (value: number) => String(value).padStart(2, '0');
@@ -237,7 +238,7 @@ function formatLenormandDetail(data: LenormandData) {
   return [
     `牌位：${evidence.cards.map((card) => `${card.position}${card.name}（${card.keywords.join('、')}）`).join('；')}`,
     combinations?.length
-      ? `组合：${combinations.map((item) => `${item.kind} ${item.cardNames.join('+')}：${item.originalText}`).join('；')}`
+      ? `组合：${combinations.map((item) => `${item.kind} ${item.cardNames.join('+')}：${item.promptText.split('；')[0]}`).join('；')}`
       : '',
   ];
 }
