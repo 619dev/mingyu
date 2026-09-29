@@ -47,6 +47,7 @@ import { analyzeQimenEvidence } from '../../qimen-evidence';
 import { hasTianPanStar, hasTianPanStem } from './helpers/palace-utils';
 
 export { createQimenPriorityPalaces } from './helpers/guidance';
+export { getDunJiaStem } from './helpers/jushu';
 export type { QimenPriorityPalace } from './helpers/guidance';
 export {
   calculateQimenLifetime,

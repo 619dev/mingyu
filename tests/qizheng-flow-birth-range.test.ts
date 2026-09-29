@@ -333,6 +333,23 @@ test('七政流曜范围计算器锁定流曜目标上下文', () => {
   );
 });
 
+test('七政流曜范围计算器区分 IANA 时区下未提供与明确提供的固定偏移', () => {
+  const input: QizhengInput = {
+    ...DAILY_INPUT,
+    year: 2024,
+    month: 1,
+    day: 15,
+    hour: 12,
+    timezone: undefined,
+    timeZoneId: 'America/New_York',
+  };
+  const calculator = createQizhengFlowRangeCalculator(input);
+  assert.throws(
+    () => calculator.generate({ ...input, timezone: 8 }),
+    /只允许改变出生年月日时分秒/u,
+  );
+});
+
 test('七政流曜出生区间报告进度并拒绝越界、非北京时间及缺少流年', () => {
   const progress: Array<[number, number]> = [];
   generateQizhengFlowBirthRange(

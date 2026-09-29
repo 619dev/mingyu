@@ -352,7 +352,7 @@ const promptToolCalls: Array<[string, Record<string, unknown>, RegExp]> = [
       measurementUncertaintyDegrees: 3,
       question: '办公桌朝向怎么选？',
     },
-    /【八宅风水排盘】[\s\S]*命卦：[\s\S]*命卦八方：[\s\S]*【问题】\n办公桌朝向怎么选？/,
+    /【盘面资料】[\s\S]*命卦：[\s\S]*命卦八方：[\s\S]*【问题】\n办公桌朝向怎么选？/,
   ],
   [
     'residential_prompt',
@@ -366,7 +366,7 @@ const promptToolCalls: Array<[string, Record<string, unknown>, RegExp]> = [
       flowDay: 10,
       question: '这套房怎么看？',
     },
-    /【住宅风水排盘】[\s\S]*八宅完整盘面：[\s\S]*命卦：[\s\S]*【问题】\n这套房怎么看？/,
+    /【盘面资料】[\s\S]*八宅完整盘面：[\s\S]*命卦：[\s\S]*【问题】\n这套房怎么看？/,
   ],
   [
     'xuankong_prompt',

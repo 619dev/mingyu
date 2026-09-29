@@ -39,6 +39,8 @@ import {
 } from 'mingyu-core/huangji-jingshi';
 import { HuangjiReferenceTable } from './HuangjiReferenceTable';
 import { TAIYI_PALACES } from 'mingyu-core/taiyi';
+import { getDunJiaStem } from 'mingyu-core/divination/qimen';
+import { isSheng } from 'mingyu-core/wuxing';
 import type { WuyunLiuqiResult } from 'mingyu-core/wuyun-liuqi';
 import type { KongmingHexagramResult, ZhugeNumberResult } from 'mingyu-core/name-number';
 import { getKongmingInterpretation, getZhugeInterpretation } from 'mingyu-core/name-number';
@@ -1699,14 +1701,32 @@ function gongName(gong: number) {
   return QIMEN_PALACE_META[gong]?.name || `${gong}宫`;
 }
 
+function describeQimenPalaceRelation(
+  firstName: string,
+  firstElement: string,
+  secondName: string,
+  secondElement: string,
+): string {
+  if (!firstElement || !secondElement) return '落宫五行资料不足';
+  if (firstElement === secondElement)
+    return `${firstName}与${secondName}落宫五行比和（${firstElement}）`;
+  if (isSheng(firstElement, secondElement))
+    return `${firstName}落宫（${firstElement}）生${secondName}落宫（${secondElement}）`;
+  if (isSheng(secondElement, firstElement))
+    return `${secondName}落宫（${secondElement}）生${firstName}落宫（${firstElement}）`;
+  if (checkQimenKe(firstElement, secondElement))
+    return `${firstName}落宫（${firstElement}）克${secondName}落宫（${secondElement}）`;
+  return `${secondName}落宫（${secondElement}）克${firstName}落宫（${firstElement}）`;
+}
+
 function getQimenYongShenSummary(
   yongShenId: QimenYongShenId,
   data: QimenData,
   _palaceMap: Map<number, QimenJiuGongGe>,
 ) {
-  const dayStem = data.ganzhi?.day?.slice(0, 1) || '戊';
+  const dayStem = data.ganzhi?.day ? getDunJiaStem(data.ganzhi.day) : undefined;
   const dayPalace = data.jiuGongGe.find(
-    (p) => p.tianPan.stem === dayStem || p.tianPan.companionStem === dayStem,
+    (p) => dayStem && (p.tianPan.stem === dayStem || p.tianPan.companionStem === dayStem),
   );
 
   if (yongShenId === 'wealth') {
@@ -1714,21 +1734,14 @@ function getQimenYongShenSummary(
     const wuPalace = data.jiuGongGe.find(
       (p) => p.tianPan.stem === '戊' || p.tianPan.companionStem === '戊',
     );
-    const shengGong = shengDoorPalace ? shengDoorPalace.gong : 8;
-    const wuGong = wuPalace ? wuPalace.gong : 6;
-
-    const shengEl = QIMEN_PALACE_ELEMENTS[shengGong] || '';
+    const shengEl = shengDoorPalace ? QIMEN_PALACE_ELEMENTS[shengDoorPalace.gong] || '' : '';
     const dayEl = dayPalace ? QIMEN_PALACE_ELEMENTS[dayPalace.gong] || '' : '';
-    const isWuJiXing = wuGong === 3;
-    const isWuRuMu = wuGong === 6;
-
-    let relationText = '生门与日干落宫相生相比，谋财顺畅。';
-    if (shengEl && dayEl) {
-      if (checkQimenKe(shengEl, dayEl)) relationText = '生门落宫克日干落宫，求财阻力大，谨防破耗。';
-      else if (checkQimenKe(dayEl, shengEl))
-        relationText = '日干落宫克生门落宫，求财虽得但劳心费力。';
-      else relationText = '生门生助或比和日干落宫，财星有气，进财有源。';
-    }
+    const isWuJiXing = wuPalace?.gong === 3;
+    const isWuRuMu = wuPalace?.gong === 6;
+    const relationText =
+      shengDoorPalace && dayPalace
+        ? `${describeQimenPalaceRelation('生门', shengEl, '日干', dayEl)}。`
+        : '生门或日干落宫资料不足，暂无法核对两宫关系。';
 
     return {
       title: '求财专项合参',
@@ -1736,25 +1749,23 @@ function getQimenYongShenSummary(
       points: [
         {
           name: '生门（利润/利息）',
-          gong: shengDoorPalace ? `${shengDoorPalace.name}（${shengDoorPalace.gong}宫）` : '中宫',
+          gong: shengDoorPalace ? `${shengDoorPalace.name}（${shengDoorPalace.gong}宫）` : '未记录',
           status: shengDoorPalace
             ? `${shengDoorPalace.tianPan.stem}+${shengDoorPalace.diPan.stem} · 乘${shengDoorPalace.shenPan.god}`
             : '—',
-          advice: '生门临吉星吉神主商贾兴隆；逢凶星凶格宜守旧防套。',
+          advice: '结合生门同宫星神与格局查看其状态。',
         },
         {
           name: '戊（资本/本金）',
-          gong: wuPalace ? `${wuPalace.name}（${wuPalace.gong}宫）` : '中宫',
-          status: isWuJiXing
-            ? '六仪击刑（震3宫）'
-            : isWuRuMu
-              ? '三奇六仪入墓（乾6宫）'
-              : '资本稳固',
-          advice: isWuJiXing
-            ? '天盘戊击刑，防资本亏折损耗、受合伙人拖累。'
-            : isWuRuMu
-              ? '天盘戊入墓，资金流动性受阻，不宜重仓押注。'
-              : '资本运行平稳，适宜按计划运作。',
+          gong: wuPalace ? `${wuPalace.name}（${wuPalace.gong}宫）` : '未记录',
+          status: !wuPalace
+            ? '未记录'
+            : isWuJiXing
+              ? '六仪击刑（震3宫）'
+              : isWuRuMu
+                ? '六仪入墓（乾6宫）'
+                : '未见戊击刑或入墓',
+          advice: '结合戊落宫与同宫格局查看资本象。',
         },
       ],
     };
@@ -1771,41 +1782,37 @@ function getQimenYongShenSummary(
 
     const yiEl = yiPalace ? QIMEN_PALACE_ELEMENTS[yiPalace.gong] || '' : '';
     const gengEl = gengPalace ? QIMEN_PALACE_ELEMENTS[gengPalace.gong] || '' : '';
-    const isLiuHeVoid = liuHePalace
-      ? data.voidPalaces?.some((v) => v.palace === liuHePalace.gong)
-      : false;
+    const isLiuHeVoid =
+      liuHePalace && data.voidPalaces
+        ? data.voidPalaces.some((v) => v.palace === liuHePalace.gong)
+        : undefined;
 
-    let matchText = '乙（女）与庚（男）落宫相生相比，感情和谐。';
-    if (yiEl && gengEl) {
-      if (checkQimenKe(yiEl, gengEl)) matchText = '女方落宫克男方落宫，女方占主动或偶有言语压制。';
-      else if (checkQimenKe(gengEl, yiEl))
-        matchText = '男方落宫克女方落宫，男方性情强势，宜多沟通包容。';
-      else matchText = '双方落宫五行相生，情投意合，琴瑟和鸣。';
-    }
+    const matchText =
+      yiPalace && gengPalace
+        ? `${describeQimenPalaceRelation('乙奇', yiEl, '庚仪', gengEl)}。`
+        : '乙奇或庚仪落宫资料不足，暂无法核对两宫关系。';
 
     return {
       title: '婚恋情感合参',
-      lead: `${matchText}${isLiuHeVoid ? '（注：六合落空亡，主有虚妄、拖延或异地阻隔之象）' : ''}`,
+      lead: `${matchText}${isLiuHeVoid ? '六合落空亡。' : ''}`,
       points: [
         {
           name: '乙奇（女方/妻子）',
-          gong: yiPalace ? `${yiPalace.name}（${yiPalace.gong}宫）` : '中宫',
+          gong: yiPalace ? `${yiPalace.name}（${yiPalace.gong}宫）` : '未记录',
           status: yiPalace ? `${yiPalace.renPan.door} · 乘${yiPalace.shenPan.god}` : '—',
-          advice: '看女方落宫星门状态，临吉门吉神温婉持重，临凶门防情绪波动。',
+          advice: '结合乙奇同宫星门神查看其状态。',
         },
         {
           name: '庚仪（男方/丈夫）',
-          gong: gengPalace ? `${gongName(gengPalace.gong)}（${gengPalace.gong}宫）` : '中宫',
+          gong: gengPalace ? `${gongName(gengPalace.gong)}（${gengPalace.gong}宫）` : '未记录',
           status: gengPalace ? `${gengPalace.renPan.door} · 乘${gengPalace.shenPan.god}` : '—',
-          advice: '男方落宫刚健，临值符/开门主有担当；逢击刑需防脾气急躁。',
+          advice: '结合庚仪同宫星门神查看其状态。',
         },
         {
           name: '六合（婚姻媒妁/结合）',
-          gong: liuHePalace ? `${liuHePalace.name}（${liuHePalace.gong}宫）` : '中宫',
-          status: isLiuHeVoid ? '落入旬空' : '吉相平稳',
-          advice: isLiuHeVoid
-            ? '六合逢空，情感沟通宜开诚布公，勿生猜忌。'
-            : '六合稳健，利于缔结良缘或感情升温。',
+          gong: liuHePalace ? `${liuHePalace.name}（${liuHePalace.gong}宫）` : '未记录',
+          status: isLiuHeVoid === undefined ? '未记录' : isLiuHeVoid ? '落入旬空' : '未落旬空',
+          advice: '结合六合落宫与同宫星门查看婚恋相关盘面。',
         },
       ],
     };
@@ -1815,18 +1822,15 @@ function getQimenYongShenSummary(
     const kaiPalace = data.jiuGongGe.find((p) => p.renPan.door === '开门');
     const zhiFuPalace = data.jiuGongGe.find((p) => p.shenPan.god === '值符');
 
-    const kaiGong = kaiPalace ? kaiPalace.gong : 6;
-    const kaiEl = QIMEN_PALACE_ELEMENTS[kaiGong] || '';
+    const kaiEl = kaiPalace ? QIMEN_PALACE_ELEMENTS[kaiPalace.gong] || '' : '';
     const dayEl = dayPalace ? QIMEN_PALACE_ELEMENTS[dayPalace.gong] || '' : '';
     const isKaiMenPo = kaiPalace
       ? Boolean(checkQimenKe(QIMEN_DOOR_ELEMENTS['开门'] || '', kaiEl))
       : false;
 
-    let leadText = '开门职守得地，得值符大局护持，利于建功立业。';
-    if (isKaiMenPo)
-      leadText = '开门落宫门迫（落震三/巽四宫），事业环境或职位面临摩擦调整，宜稳扎稳打。';
-    else if (kaiEl && dayEl && checkQimenKe(kaiEl, dayEl))
-      leadText = '开门落宫克日干落宫，工作压力较大或要求严苛，宜以柔克刚。';
+    const leadText = kaiPalace
+      ? `开门落${kaiPalace.name}（${kaiPalace.gong}宫）${isKaiMenPo ? '，门迫' : ''}。${dayPalace ? `${describeQimenPalaceRelation('开门', kaiEl, '日干', dayEl)}。` : ''}`
+      : '开门落宫资料未记录。';
 
     return {
       title: '事业官运合参',
@@ -1834,17 +1838,17 @@ function getQimenYongShenSummary(
       points: [
         {
           name: '开门（工作/官位/单位）',
-          gong: kaiPalace ? `${kaiPalace.name}（${kaiPalace.gong}宫）` : '乾6宫',
+          gong: kaiPalace ? `${kaiPalace.name}（${kaiPalace.gong}宫）` : '未记录',
           status: kaiPalace
-            ? `${kaiPalace.tianPan.stem}+${kaiPalace.diPan.stem} · ${isKaiMenPo ? '门迫' : '得位'}`
-            : '—',
-          advice: '开门逢吉格利晋升拓展；逢凶格门迫宜稳守本职，防言多必失。',
+            ? `${kaiPalace.tianPan.stem}+${kaiPalace.diPan.stem} · ${isKaiMenPo ? '门迫' : '未见门迫'}`
+            : '未记录',
+          advice: '结合开门同宫星神与格局查看事业相关盘面。',
         },
         {
           name: '值符（领导/贵人/核心）',
           gong: zhiFuPalace ? `${zhiFuPalace.name}（${zhiFuPalace.gong}宫）` : '—',
           status: zhiFuPalace ? `${zhiFuPalace.tianPan.star} · ${zhiFuPalace.renPan.door}` : '—',
-          advice: '值符加临之方为贵人方，求见领导或争取支持宜往此方。',
+          advice: '结合值符落宫查看其同宫星门。',
         },
       ],
     };
@@ -1861,18 +1865,15 @@ function getQimenYongShenSummary(
       (p) => p.tianPan.star === '天心' || p.tianPan.companionStar === '天心',
     );
 
-    const ruiGong = ruiPalace ? ruiPalace.gong : 2;
-    const ruiEl = QIMEN_PALACE_ELEMENTS[ruiGong] || '';
+    const ruiEl = ruiPalace ? QIMEN_PALACE_ELEMENTS[ruiPalace.gong] || '' : '';
     const yiEl = yiPalace ? QIMEN_PALACE_ELEMENTS[yiPalace.gong] || '' : '';
     const xinEl = xinPalace ? QIMEN_PALACE_ELEMENTS[xinPalace.gong] || '' : '';
 
-    const isYiKeRui = yiEl && ruiEl && checkQimenKe(yiEl, ruiEl);
-    const isXinKeRui = xinEl && ruiEl && checkQimenKe(xinEl, ruiEl);
-
-    let leadText: string;
-    if (isYiKeRui || isXinKeRui)
-      leadText = '医药（乙奇/天心）落宫克制病星天芮落宫，药到病除，遵医嘱调养大吉。';
-    else leadText = '病星天芮旺相，需重视身心调理，及早就医检查，防病灶反复。';
+    const isYiKeRui = Boolean(yiEl && ruiEl && checkQimenKe(yiEl, ruiEl));
+    const isXinKeRui = Boolean(xinEl && ruiEl && checkQimenKe(xinEl, ruiEl));
+    const leadText = ruiPalace
+      ? `天芮落${ruiPalace.name}（${ruiPalace.gong}宫）。${[yiPalace ? `${describeQimenPalaceRelation('乙奇', yiEl, '天芮', ruiEl)}。` : '', xinPalace ? `${describeQimenPalaceRelation('天心', xinEl, '天芮', ruiEl)}。` : ''].join('')}`
+      : '天芮落宫资料未记录。';
 
     return {
       title: '疾病健康合参',
@@ -1880,15 +1881,23 @@ function getQimenYongShenSummary(
       points: [
         {
           name: '天芮星（病灶/病情）',
-          gong: ruiPalace ? `${ruiPalace.name}（${ruiPalace.gong}宫）` : '坤2宫',
+          gong: ruiPalace ? `${ruiPalace.name}（${ruiPalace.gong}宫）` : '未记录',
           status: ruiPalace ? `乘${ruiPalace.shenPan.god} · ${ruiPalace.renPan.door}` : '—',
-          advice: '芮星落宫对应身体脏腑部位（离心脑、坎泌尿、震巽肝胆、乾兑肺骨、艮坤脾胃）。',
+          advice: '结合天芮同宫门神查看盘面。',
         },
         {
           name: '乙奇与天心（中医/名医）',
-          gong: yiPalace ? `乙在${yiPalace.name}，心在${xinPalace ? xinPalace.name : '—'}` : '—',
-          status: isYiKeRui || isXinKeRui ? '克制病星（药效显著）' : '常态调和',
-          advice: '往医药吉方寻名医求方，积极调养身心。',
+          gong:
+            [yiPalace ? `乙在${yiPalace.name}` : '', xinPalace ? `心在${xinPalace.name}` : '']
+              .filter(Boolean)
+              .join('，') || '未记录',
+          status:
+            !ruiPalace || (!yiPalace && !xinPalace)
+              ? '未记录'
+              : isYiKeRui || isXinKeRui
+                ? '医药象落宫克天芮落宫'
+                : '未见医药象落宫克天芮落宫',
+          advice: '乙奇与天心的落宫关系仅供查看盘面。',
         },
       ],
     };
@@ -1906,15 +1915,15 @@ function getQimenYongShenSummary(
         name: '驿马（动身/交通工具）',
         gong: horseGong
           ? `落${horseGong}宫（${QIMEN_PALACE_META[horseGong]?.name || ''}）`
-          : '无马星',
-        status: data.horseStar ? `${data.horseStar.branch}·${data.horseStar.name}` : '平稳',
-        advice: '马星所临主动身迅速，利于启程出差或迁徙。',
+          : '未记录',
+        status: data.horseStar ? `${data.horseStar.branch}·${data.horseStar.name}` : '未记录',
+        advice: '查看驿马所临宫位及同宫星门。',
       },
       {
         name: '九天（高远/通达）',
         gong: jiuTianPalace ? `${jiuTianPalace.name}（${jiuTianPalace.gong}宫）` : '—',
         status: jiuTianPalace ? `${jiuTianPalace.renPan.door}` : '—',
-        advice: '《奇门秘笈》：九天之上好扬兵。九天之方利于远行腾达、空中交通。',
+        advice: '结合九天所临宫位及同宫星门查看出行相关盘面。',
       },
     ],
   };

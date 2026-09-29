@@ -308,7 +308,15 @@ function resolveMingGua(input: BaZhaiInput): {
 function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMeasurement): string {
   const lines: string[] = [];
   const houseUnstable = measurement?.stability === '宅卦不稳定';
-  lines.push('【八宅风水排盘】');
+  lines.push('【任务】');
+  lines.push(
+    r.houseGua
+      ? measurement && measurement.candidateDirections.length > 1
+        ? '请依据以下命卦、宅卦与大游年八方资料解读住宅的人宅配合，并结合实际测向条件说明候选坐向的差异。'
+        : '请依据以下命卦、宅卦与大游年八方资料解读住宅的人宅配合。'
+      : '请依据以下命卦与大游年八方资料解读居住人的方位适配。',
+  );
+  lines.push('【盘面资料】');
   if (measurement?.northReference === 'unspecified') {
     lines.push('北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。');
   }
@@ -351,9 +359,26 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
       lines.push(`  ${palace.direction}${palace.label}（${palace.luck}，约${palace.degree}°）`);
     }
   }
+  if (measurement?.stability === '宅卦不稳定') {
+    const alternateHouseGuas = new Set<string>();
+    for (const candidate of measurement.candidateDirections) {
+      if (candidate.houseGua === r.houseGua || alternateHouseGuas.has(candidate.houseGua)) continue;
+      alternateHouseGuas.add(candidate.houseGua);
+      lines.push(`候选${candidate.houseGua}宅八方：`);
+      for (const palace of candidate.housePalace) {
+        lines.push(`  ${palace.direction}${palace.label}（${palace.luck}，约${palace.degree}°）`);
+      }
+    }
+  }
   if (r.gasRegulation?.promptSummary) {
     lines.push(r.gasRegulation.promptSummary);
   }
+  lines.push('【传统依据】');
+  lines.push(
+    r.houseGua
+      ? '八宅以命卦与坐山宅卦分别排大游年八方，再按东四与西四归属对照人宅配合。'
+      : '八宅以命卦排大游年八方，并按东四与西四归属查看方位适配。',
+  );
   return lines.join('\n');
 }
 

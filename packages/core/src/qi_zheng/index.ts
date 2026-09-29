@@ -1988,7 +1988,7 @@ function getQizhengFlowRangeInvariant(input: QizhengInput): string {
   return JSON.stringify({
     latitude: input.latitude ?? 39.9,
     longitude: input.longitude ?? 116.4,
-    timezone: input.timezone ?? 8,
+    timezone: input.timezone ?? null,
     timeZoneId: input.timeZoneId ?? null,
     useTrueSolarTime: input.useTrueSolarTime ?? false,
     gender: input.gender ?? null,

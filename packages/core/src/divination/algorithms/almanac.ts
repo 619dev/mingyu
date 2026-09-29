@@ -1507,7 +1507,7 @@ function buildDayCandidate(
       month: noonEightChar.getMonth().getName(),
       day: noonEightChar.getDay().getName(),
     },
-    zodiac: dayBranch.getZodiac().getName(),
+    zodiac: noonEightChar.getYear().getEarthBranch().getZodiac().getName(),
     dayOfficer: noonCycleDay.getDuty().getName(),
     twelveStar: noonCycleDay.getTwelveStar().getName(),
     twentyEightStar,

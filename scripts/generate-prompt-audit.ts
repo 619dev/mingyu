@@ -242,7 +242,15 @@ const REQUIRED_SAMPLE_FIELDS: RequiredSampleFields[] = [
   },
   {
     sampleName: '八宅风水',
-    requiredFields: ['【当前时间】', '【问题】', '【任务】', '【传统依据】', '命卦八方'],
+    requiredFields: [
+      '【当前时间】',
+      '【问题】',
+      '【任务】',
+      '【盘面资料】',
+      '【传统依据】',
+      '命卦八方',
+      '宅卦八方',
+    ],
   },
   {
     sampleName: '住宅风水',
@@ -250,8 +258,8 @@ const REQUIRED_SAMPLE_FIELDS: RequiredSampleFields[] = [
       '【当前时间】',
       '【问题】',
       '【任务】',
+      '【盘面资料】',
       '【传统依据】',
-      '住宅风水排盘',
       '玄空',
       '八宅',
       '玄空完整盘面',
@@ -259,6 +267,8 @@ const REQUIRED_SAMPLE_FIELDS: RequiredSampleFields[] = [
       '八宅完整盘面',
       '命卦八方',
       '宅卦八方',
+      '候选山向',
+      '候选震宅八方',
     ],
   },
   {
@@ -547,6 +557,13 @@ function assertRequiredSampleFields(
         missingMessages.push(`${sampleName} 缺少字段：${field}`);
       }
     });
+    if (sampleName === '八宅风水' || sampleName === '住宅风水') {
+      for (const heading of ['任务', '盘面资料', '传统依据']) {
+        if (sample.prompt.match(new RegExp(`^【${heading}】$`, 'gm'))?.length !== 1) {
+          missingMessages.push(`${sampleName} 的【${heading}】应且只应出现一次`);
+        }
+      }
+    }
   });
 
   if (missingMessages.length > 0) {
@@ -1333,7 +1350,10 @@ export async function buildSamples(): Promise<PromptSample[]> {
       birthDay: 15,
       gender: 'male',
       year: 2024,
-      doorToInteriorDegree: 0,
+      doorToInteriorDegree: 64,
+      northReference: 'magnetic',
+      magneticDeclinationDegrees: 1,
+      measurementUncertaintyDegrees: 3,
     });
     const residentialPrompt = buildMetaphysicsPrompt(
       residentialData.prompt,
@@ -1528,7 +1548,8 @@ export async function buildSamples(): Promise<PromptSample[]> {
       {
         name: '住宅风水',
         source: '项目住宅风水统一入口真实生成；八宅与玄空分层并列，不合成总分。',
-        inputSummary: '男，1990年6月15日生；建造/起运年 2024；门向 0°；问题为宅运与人宅关系。',
+        inputSummary:
+          '男，1990年6月15日生；建造/起运年 2024；入户读数 64°，磁偏角东偏 1°、误差±3°；问题为宅运与人宅关系。',
         prompt: residentialPrompt,
         facts: extractDivinationPromptFacts('residential', residentialData),
         notes: ['统一入口样本展示八宅与玄空分层合参，不代表装修吉凶保证。'],

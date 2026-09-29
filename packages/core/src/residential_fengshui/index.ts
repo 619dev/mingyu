@@ -404,7 +404,7 @@ function buildPrompt(result: {
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'];
   northReferenceUnspecified: boolean;
 }) {
-  const stripHeading = (prompt: string, omitBazhaiNorthNote = false, omitTask = false) => {
+  const readSection = (prompt: string, title: '盘面资料' | '传统依据') => {
     let section = '';
     return prompt
       .split('\n')
@@ -414,17 +414,21 @@ function buildPrompt(result: {
           section = heading[1];
           return false;
         }
-        return (
-          !(omitTask && section === '任务') &&
-          (!omitBazhaiNorthNote ||
-            line !== '北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。')
-        );
+        return section === title;
       })
       .join('\n')
       .trim();
   };
   const lines = [
-    '【住宅风水排盘】',
+    '【任务】',
+    result.xuankong && result.bazhai
+      ? '请依据以下玄空宅运盘与八宅人宅盘解读住宅方位，分别说明宅运结构与命宅配合，并结合实际山水和房屋布局核对。'
+      : result.xuankong
+        ? '请依据以下玄空宅运盘解读住宅方位，并结合实际山水和房屋布局核对。'
+        : result.bazhai?.houseGua
+          ? '请依据以下八宅命卦与宅卦资料解读居住人的方位适配及人宅配合。'
+          : '请依据以下八宅命卦资料解读居住人的方位适配。',
+    '【盘面资料】',
     result.northReferenceUnspecified && result.xuankong
       ? '坐向北向基准未声明；玄空角度盘按原始读数暂排，补充磁北或真北基准后复核。'
       : '',
@@ -435,10 +439,21 @@ function buildPrompt(result: {
         ? '玄空：未排盘（缺少建造年或起运年）'
         : '玄空：未排盘'
       : '',
-    result.xuankong ? `玄空完整盘面：\n${stripHeading(result.xuankong.prompt, false, true)}` : '',
+    result.xuankong ? `玄空完整盘面：\n${readSection(result.xuankong.prompt, '盘面资料')}` : '',
     result.bazhai
-      ? `八宅完整盘面：\n${stripHeading(result.bazhai.prompt, result.northReferenceUnspecified && Boolean(result.xuankong))}`
+      ? `八宅完整盘面：\n${readSection(result.bazhai.prompt, '盘面资料')
+          .split('\n')
+          .filter(
+            (line) =>
+              !result.northReferenceUnspecified ||
+              !result.xuankong ||
+              line !== '北向基准未声明；以下坐向按原始读数暂算，补充磁北或真北基准后复核。',
+          )
+          .join('\n')}`
       : '',
+    '【传统依据】',
+    result.xuankong ? readSection(result.xuankong.prompt, '传统依据') : '',
+    result.bazhai ? readSection(result.bazhai.prompt, '传统依据') : '',
   ];
   return lines.filter(Boolean).join('\n');
 }

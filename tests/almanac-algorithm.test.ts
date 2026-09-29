@@ -192,6 +192,22 @@ test('黄历择日：交节当天年柱月柱按正午精确干支历显示', ()
   assert.equal(jingzhe.ganzhi.month, '庚寅');
 });
 
+test('黄历择日：生肖对应正午年支，冲煞仍对应日支', () => {
+  for (const [date, yearPillar, dayPillar, zodiac, clash] of [
+    ['2024-02-04', '癸卯', '戊戌', '兔', '冲辰'],
+    ['2024-02-05', '甲辰', '己亥', '龙', '冲巳'],
+    ['2026-03-05', '丙午', '戊寅', '马', '冲申'],
+  ] as const) {
+    const result = generateAlmanacSelection({ topic: 'custom', startDate: date, endDate: date });
+    const day = result.days[0];
+    assert.equal(day.ganzhi.year, yearPillar);
+    assert.equal(day.ganzhi.day, dayPillar);
+    assert.equal(day.zodiac, zodiac);
+    assert.match(day.clash, new RegExp(`^${clash}`));
+    assert.match(result.evidenceAnalysis?.promptText ?? '', new RegExp(`年生肖${zodiac}`));
+  }
+});
+
 test('黄历择日：交节日月建相关事实采用正午月令并说明精确交节时刻', () => {
   // 香港天文台年历：2024 立春 2 月 4 日 16:27；2026 惊蛰 3 月 5 日 21:59。
   // https://www.hko.gov.hk/tc/gts/astron2024/files/HKO_almanac_2024.pdf

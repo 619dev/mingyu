@@ -48,13 +48,43 @@ export function buildMetaphysicsPromptDocument(
           scope: options.scope,
         })
       : undefined;
-  const baseSection = normalizedBase.startsWith('【')
-    ? normalizedBase
-    : buildPromptSection('排盘资料', normalizedBase);
   const hasCompleteXuanKongBase =
     options.method === 'xuankong' &&
     /^【任务】$/m.test(normalizedBase) &&
     /^【传统依据】$/m.test(normalizedBase);
+  const fengshuiTask = /^【任务】\n([\s\S]*?)\n【盘面资料】\n/.exec(normalizedBase)?.[1];
+  const fengshuiTradition = /\n【传统依据】\n([\s\S]*)$/.exec(normalizedBase)?.[1];
+  const hasCompleteFengshuiBase =
+    (options.method === 'bazhai' || options.method === 'residential') &&
+    fengshuiTask !== undefined &&
+    fengshuiTradition !== undefined;
+  const hasCompleteBase = hasCompleteXuanKongBase || hasCompleteFengshuiBase;
+  const taskAddition = [
+    selection ? '请围绕【解读选择】所列主题和范围解释本次盘面。' : '',
+    question?.trim() ? '请直接回答【问题】。' : '',
+  ]
+    .filter(Boolean)
+    .join('');
+  const baseSection = hasCompleteFengshuiBase
+    ? normalizedBase
+        .replace(
+          /^【任务】\n[\s\S]*?\n【盘面资料】\n/,
+          `【任务】\n${buildPromptTask([fengshuiTask, taskAddition].filter(Boolean).join('\n'), options.method)}\n【盘面资料】\n`,
+        )
+        .replace(/\n【传统依据】\n[\s\S]*$/, '')
+    : normalizedBase.startsWith('【')
+      ? normalizedBase
+      : buildPromptSection('排盘资料', normalizedBase);
+  const traditionSection = hasCompleteFengshuiBase
+    ? buildPromptSection(
+        '传统依据',
+        [buildPromptGuidance(options.method).replace(/^【传统依据】\n/, ''), fengshuiTradition]
+          .filter((item, index, items) => item && items.indexOf(item) === index)
+          .join('\n'),
+      )
+    : hasCompleteXuanKongBase
+      ? ''
+      : buildPromptGuidance(options.method);
   const currentTimeSection = buildPromptSection(
     '当前时间',
     [
@@ -68,7 +98,7 @@ export function buildMetaphysicsPromptDocument(
   );
 
   const sections = [
-    hasCompleteXuanKongBase ? '' : buildPromptGuidance(options.method),
+    traditionSection,
     hasCompleteXuanKongBase ? baseSection : currentTimeSection,
     hasCompleteXuanKongBase ? currentTimeSection : baseSection,
     options.measurement ? buildPromptSection('测量换算', options.measurement) : '',
@@ -84,7 +114,7 @@ export function buildMetaphysicsPromptDocument(
             .join('\n'),
         )
       : '',
-    hasCompleteXuanKongBase || (options.method === 'zodiac' && /^【任务】$/m.test(normalizedBase))
+    hasCompleteBase || (options.method === 'zodiac' && /^【任务】$/m.test(normalizedBase))
       ? ''
       : buildPromptSection(
           '任务',

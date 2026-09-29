@@ -88,7 +88,7 @@ test('bazhai: 命宅配合', () => {
   assert.equal(r.mingGua, '坎');
   assert.equal(r.houseGua, '坎');
   assert.equal(r.match, '相合');
-  assert.ok(r.prompt.includes('八宅风水'));
+  assert.match(r.prompt, /^【任务】[\s\S]*【盘面资料】[\s\S]*【传统依据】/);
   assert.ok(r.prompt.includes('命卦八方'));
   assert.ok(r.prompt.includes('宅卦八方'));
   for (const palace of [...r.luckyDirections, ...r.unluckyDirections]) {

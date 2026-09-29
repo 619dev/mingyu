@@ -6037,7 +6037,7 @@ test('公开 API 新增术数提示词应包含用户问题和统一章节', asy
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
   assertPromptHasSingleRole(body.data.prompt, PROMPT_ROLE_TEXT.bazhai);
-  assert.match(body.data.prompt, /【八宅风水排盘】/);
+  assert.match(body.data.prompt, /【盘面资料】/);
   assert.match(body.data.prompt, /【测量换算】/);
   assert.match(body.data.prompt, /站在大门处面向屋内/);
   assert.match(body.data.prompt, /真北口径入户方向为 65°/);
@@ -6170,7 +6170,7 @@ test('公开 API 新增术数提示词应包含用户问题和统一章节', asy
     /命语|本项目|项目统一|调用方|当前调用|工程|接口|API|MCP/,
   );
   assertPromptIsPortableTaskText(body.data.result.evidenceAnalysis.promptText);
-  assert.match(body.data.prompt, /【八宅风水排盘】/);
+  assert.match(body.data.prompt, /【盘面资料】/);
   assert.match(body.data.prompt, /【测量换算】/);
   assert.match(body.data.prompt, /误差候选：/);
   assert.match(body.data.prompt, /【当前时间】/);
@@ -6937,7 +6937,7 @@ test('公开 API 住宅风水合参接口返回八宅与玄空分层结果', asy
     }
   }
   assert.doesNotMatch(body.data.prompt, /方位合参：/);
-  assert.match(body.data.prompt, /【住宅风水排盘】/);
+  assert.match(body.data.prompt, /【盘面资料】/);
   assert.match(body.data.prompt, /【传统依据】/);
   assert.match(body.data.prompt, /流年飞星/);
   assert.match(body.data.prompt, /流月飞星/);

@@ -1142,6 +1142,23 @@ function extractBaZhaiFacts(data: unknown): DivinationPromptFact[] {
   if (!d) return [];
   const mingPalace = records(d.mingPalace);
   const housePalace = records(d.housePalace);
+  const measurement = record(d.directionMeasurement);
+  const houseHeading =
+    measurement?.stability === '宅卦不稳定' ? '宅卦八方（中心读数）：' : '宅卦八方：';
+  const alternateHouseGuas = new Set<string>();
+  const alternateHouseFacts = records(measurement?.candidateDirections).flatMap((candidate) => {
+    const houseGua = text(candidate.houseGua);
+    if (!houseGua || houseGua === text(d.houseGua) || alternateHouseGuas.has(houseGua)) return [];
+    alternateHouseGuas.add(houseGua);
+    return records(candidate.housePalace).map((item, index) =>
+      fact(
+        `bazhai.candidate-house-palace.${houseGua}.${index}`,
+        `${item.direction}${item.label}`,
+        [item.luck, `约${item.degree}°`],
+        { scope: { start: `候选${houseGua}宅八方：` } },
+      ),
+    );
+  });
   return collect([
     fact('bazhai.ming', '命卦：', [d.mingGua, d.mingGroup]),
     fact('bazhai.house', '宅卦：', [d.houseGua, d.houseGroup]),
@@ -1151,7 +1168,7 @@ function extractBaZhaiFacts(data: unknown): DivinationPromptFact[] {
         `bazhai.ming-palace.${index}`,
         `${item.direction}${item.label}`,
         [item.luck, `约${item.degree}°`],
-        { scope: { start: '命卦八方：', ...(housePalace.length ? { end: '宅卦八方：' } : {}) } },
+        { scope: { start: '命卦八方：', ...(housePalace.length ? { end: houseHeading } : {}) } },
       ),
     ),
     ...housePalace.map((item, index) =>
@@ -1159,9 +1176,10 @@ function extractBaZhaiFacts(data: unknown): DivinationPromptFact[] {
         `bazhai.house-palace.${index}`,
         `${item.direction}${item.label}`,
         [item.luck, `约${item.degree}°`],
-        { scope: { start: '宅卦八方：' } },
+        { scope: { start: houseHeading } },
       ),
     ),
+    ...alternateHouseFacts,
   ]);
 }
 
@@ -1204,11 +1222,18 @@ function extractResidentialFacts(data: unknown): DivinationPromptFact[] {
   const bazhai = record(d.bazhai);
   const xuankong = record(d.xuankong);
   const input = record(d.inputSummary);
+  const orientationScope = xuankong ? { start: '玄空完整盘面：', end: '卦型：' } : undefined;
   return collect([
-    fact('residential.orientation', '山向：', [input?.orientationText]),
+    fact('residential.orientation', '山向：', [input?.orientationText], {
+      scope: orientationScope,
+    }),
     fact('residential.house-year', '宅运年份：', [input?.houseYear]),
     ...(xuankong
-      ? extractXuanKongFacts(xuankong).map((item) => ({ ...item, id: `residential.${item.id}` }))
+      ? extractXuanKongFacts(xuankong).map((item) => ({
+          ...item,
+          id: `residential.${item.id}`,
+          ...(item.id === 'xuankong.orientation' ? { scope: orientationScope } : {}),
+        }))
       : []),
     ...(bazhai
       ? extractBaZhaiFacts(bazhai).map((item) => ({ ...item, id: `residential.${item.id}` }))

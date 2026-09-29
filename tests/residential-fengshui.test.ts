@@ -1,6 +1,52 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { analyzeBaZhaiByDoorDegree } from '../packages/core/src/ba_zhai/index.ts';
+import { PROMPT_GUIDANCE_TEXT } from '../packages/core/src/prompt/guidance.ts';
+import { buildMetaphysicsPrompt } from '../packages/core/src/prompt/metaphysics.ts';
 import { generateResidentialFengshui } from '../packages/core/src/residential_fengshui/index.ts';
+import { assertPromptHasSingleRole, assertPromptIsPortableTaskText } from './prompt-assertions.ts';
+
+test('八宅与住宅核心盘及在线包装各保留一份完整任务', () => {
+  const measurement = {
+    doorToInteriorDegree: 64,
+    northReference: 'magnetic' as const,
+    magneticDeclinationDegrees: 1,
+    measurementUncertaintyDegrees: 3,
+  };
+  const cases = [
+    {
+      method: 'bazhai' as const,
+      core: analyzeBaZhaiByDoorDegree({ mingGua: '坎', ...measurement }),
+    },
+    {
+      method: 'residential' as const,
+      core: generateResidentialFengshui({ mingGua: '坎', year: 2024, ...measurement }),
+    },
+  ];
+  for (const { method, core } of cases) {
+    assert.equal(core.prompt.match(/^【任务】$/gm)?.length, 1);
+    assert.equal(core.prompt.match(/^【盘面资料】$/gm)?.length, 1);
+    assert.equal(core.prompt.match(/^【传统依据】$/gm)?.length, 1);
+    const prompt = buildMetaphysicsPrompt(core.prompt, '办公方位怎样安排？', {
+      method,
+      measurement: '入户读数：64°，磁偏角东偏1°，误差±3°',
+      topicId: 'family',
+      subtopicId: 'home',
+      scope: 'natal',
+    });
+    assert.equal(prompt.match(/^【任务】$/gm)?.length, 1);
+    assert.equal(prompt.match(/^【传统依据】$/gm)?.length, 1);
+    assertPromptHasSingleRole(prompt, PROMPT_GUIDANCE_TEXT[method]);
+    assert.match(prompt, /【当前时间】/);
+    assert.match(prompt, /【测量换算】\n入户读数：64°/);
+    assert.match(prompt, /【解读选择】[\s\S]*主题细项：家宅与居住/);
+    assert.match(prompt, /请围绕【解读选择】所列主题和范围解释本次盘面。请直接回答【问题】。/);
+    assert.match(prompt, /【问题】\n办公方位怎样安排？/);
+    assert.match(prompt, /候选坐向：寅山申向/);
+    assert.match(prompt, /候选震宅八方：/);
+    assertPromptIsPortableTaskText(prompt);
+  }
+});
 
 test('住宅门向与额外坐向必须描述同一住宅，不能分别用于八宅和玄空', () => {
   for (const mingGua of [undefined, '坎']) {
@@ -156,8 +202,7 @@ test('住宅合参保留各方向完整盘面并只呈现一次', () => {
       assert.ok(result.prompt.includes(`${palace.direction}${palace.label}（${palace.luck}`));
     }
     for (const chart of [result.xuankong!, result.bazhai!]) {
-      const chartPrompt =
-        chart === result.xuankong ? chart.prompt.split('【盘面资料】\n')[1] : chart.prompt;
+      const chartPrompt = chart.prompt.split('【盘面资料】\n')[1];
       const facts = chartPrompt.split('\n').filter((line) => !/^【.+】$/.test(line.trim()));
       for (const fact of facts) assert.ok(result.prompt.includes(fact));
     }
@@ -226,6 +271,7 @@ test('住宅风水仅有出生信息时可出八宅，不出玄空', () => {
   assert.ok(result.bazhai);
   assert.equal(result.xuankong, null);
   assert.match(result.prompt, /八宅/);
+  assert.match(result.prompt, /^【任务】\n请依据以下八宅命卦资料/);
   assert.match(result.prompt, /玄空：未排盘/);
   assert.equal(result.inputSummary.xuankongStatus, '缺少山向');
 });
@@ -266,6 +312,7 @@ test('住宅风水仅有山向时可出玄空，不出八宅', () => {
   assert.equal(result.xuankong?.sitMountain, '子');
   assert.equal(result.inputSummary.xuankongStatus, '已排盘');
   assert.match(result.prompt, /玄空/);
+  assert.match(result.prompt, /^【任务】\n请依据以下玄空宅运盘/);
 });
 
 test('住宅风水门向度数会同步八宅与玄空山向', () => {
@@ -289,6 +336,8 @@ test('住宅风水门向度数会同步八宅与玄空山向', () => {
   assert.match(result.prompt, /八宅完整盘面：/);
   assert.match(result.prompt, /命卦八方：/);
   assert.match(result.prompt, /宅卦八方：/);
+  assert.match(result.prompt, /^【任务】\n请依据以下玄空宅运盘与八宅人宅盘/);
+  assert.equal(result.prompt.match(/【任务】/g)?.length, 1);
   assert.doesNotMatch(result.prompt, /合参要点|命宅相合可提高关注优先级/);
 });
 
