@@ -34,6 +34,30 @@ test('月干正官若非月支所藏，不能仅凭其透干认作正官月令',
   assert.equal(result.status, '平常');
 });
 
+test('同一印星两透时，月干受财本气克不抹去时干已闭合的格神', () => {
+  const result = evaluatePatternFulfillment(
+    pillars(['壬申', '癸丑', '甲午', '癸酉']),
+    '甲',
+    '正印格',
+    getTenGod,
+  );
+
+  assert.equal(
+    result.conditionFacts?.find((item) => item.key === 'pattern.month-gate')?.status,
+    '满足',
+  );
+  assert.equal(
+    result.conditionFacts?.find((item) => item.key === 'pattern.target')?.status,
+    '满足',
+  );
+  assert.equal(
+    result.conditionFacts?.find((item) => item.key === 'pattern.month-principal-control')?.status,
+    '资料不足',
+  );
+  assert.equal(result.status, '成格');
+  assert.match(result.decisionDetail ?? '', /格神已透干且有可用根气/);
+});
+
 test('正官见伤印财保留柱位与相碍条件，透印本身不判破而复成', () => {
   const chart = pillars(['壬申', '己酉', '甲子', '丁卯']);
   const result = evaluatePatternFulfillment(chart, '甲', '正官格', getTenGod);

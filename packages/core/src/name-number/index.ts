@@ -664,7 +664,7 @@ function searchChars(filter: CharacterSearchFilter = {}) {
 
 function shuliEntry(number: number) {
   const reduced = number > 81 ? ((number - 1) % 80) + 1 : number;
-  return SHULI_DATA[reduced - 1];
+  return { ...SHULI_DATA[reduced - 1] };
 }
 
 function shuliWuxing(number: number): Wuxing {
@@ -756,7 +756,10 @@ function analyzeNameStructure(
   if (nameCharacters.some((char) => !/\p{Script=Han}/u.test(char))) {
     throw new Error('姓名只能包含汉字');
   }
-  const nameDetails = nameCharacters.map(charDetail);
+  const nameDetails = nameCharacters.map((char) => {
+    const detail = charDetail(char);
+    return detail ? { ...detail, char } : null;
+  });
   const missingCharacters = nameCharacters.filter((_, index) => !nameDetails[index]);
   if (missingCharacters.length) {
     throw new Error(`姓名用字暂未收录在字典中：${[...new Set(missingCharacters)].join('、')}`);

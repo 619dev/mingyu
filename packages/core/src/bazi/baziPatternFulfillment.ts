@@ -604,13 +604,7 @@ function buildGroupCondition(
         detail: usability.detail,
       };
     }
-    if (usability.uncertain) {
-      return {
-        key,
-        status: '资料不足',
-        detail: `${usability.detail} 格神尚有未闭合的根气条件，不能直接定成格。`,
-      };
-    }
+    // 同类格神有一处已经可用时，另一处透干待核不抹去已闭合的格神事实。
   }
   return {
     key,

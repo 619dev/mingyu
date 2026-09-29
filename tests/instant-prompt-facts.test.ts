@@ -63,7 +63,8 @@ test('即时八字按日旬核对落空，并区分藏干与明透柱位', () =>
       const isEmpty = empty.includes(pillar.zhi);
       if (isEmpty) hits++;
       const line = prompt.split('\n').find((item) => item.startsWith(`${labels[index]}：`))!;
-      assert.ok(line.includes(`按日旬核对本柱${pillar.zhi}支：${isEmpty ? '落空' : '不落空'}`));
+      assert.equal(line.includes(`按日旬核对本柱${pillar.zhi}支：落空`), isEmpty);
+      assert.doesNotMatch(line, /不落空/);
       const ownEmpty = emptyByDecade[Math.floor(cycle.indexOf(pillar.ganZhi) / 10)];
       assert.ok(line.includes(`该柱所属旬空：${[...ownEmpty].join('、')}`));
       for (const [stemIndex, stem] of chart.hiddenStems[key].entries()) {

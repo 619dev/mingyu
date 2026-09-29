@@ -117,7 +117,7 @@ test('网页八字即时盘提示词只描述当前时刻事件盘', () => {
 
   assert.match(prompt, /^【传统依据】\n/m);
   assert.ok(prompt.indexOf('【传统依据】') < prompt.indexOf('【时间口径】'));
-  assert.match(prompt, /当前时刻的事件盘/);
+  assert.match(prompt, /盘面年月日时均为本次事件的起盘时间/);
   assert.match(prompt, /现在适合推进这件事吗/);
   assert.match(
     prompt,

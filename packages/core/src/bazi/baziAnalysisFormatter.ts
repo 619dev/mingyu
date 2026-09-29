@@ -198,8 +198,10 @@ export function hasConfirmedPatternTarget(pattern: PatternAnalysis): boolean {
 }
 
 export function formatAlternativePatternCandidates(pattern: PatternAnalysis): string {
-  const alternatives = pattern.patternCandidates?.filter((candidate) => !candidate.selected);
-  return alternatives?.some((candidate) => candidate.pattern !== pattern.pattern)
+  const alternatives = pattern.patternCandidates?.filter(
+    (candidate) => !candidate.selected && candidate.pattern !== pattern.pattern,
+  );
+  return alternatives?.length
     ? `其他取格候选：${alternatives.map((candidate) => `${candidate.pattern}（${candidate.source}；${formatPatternBasisForPrompt(candidate.basis)}）`).join('；')}`
     : '';
 }

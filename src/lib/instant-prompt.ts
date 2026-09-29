@@ -17,7 +17,7 @@ function buildInstantTaskBook(options: {
   timeBasisLabel: string;
   chartText: string;
   question: string;
-  task: string;
+  task?: string;
 }) {
   const question = options.question.trim() || `请整体解读这张${options.chartLabel}。`;
   return [
@@ -25,7 +25,7 @@ function buildInstantTaskBook(options: {
     `【传统依据】\n${options.traditionalBasis}`,
     `【时间口径】\n${options.timeBasisLabel}`,
     `【盘面资料】\n${options.chartText}`,
-    `【任务】\n${options.task}请围绕所问事项的当前条件、相互作用与发展可能展开，将每项判断对应到起盘时刻的具体盘面依据；涉及时间变化时，区分起盘已有状态与满足条件后的变化。`,
+    `【任务】\n请围绕所问事项的当前条件、相互作用与发展可能直接回答问题，将每项判断对应到起盘时刻的具体盘面依据；涉及时间变化时，区分起盘已有状态与满足条件后的变化。${options.task ? ` ${options.task}` : ''}`,
     `【问题】\n${question}`,
   ].join('\n\n');
 }
@@ -54,9 +54,12 @@ function formatInstantBaziData(result: BaziChartResult) {
       })
       .join('、');
     const kongWang = result.kongWang[key]?.join('、') || '无';
+    const dayEmptyMark = dayEmptyBranches.includes(result.pillars[key].zhi)
+      ? `；按日旬核对本柱${result.pillars[key].zhi}支：落空`
+      : '';
     return `${PILLAR_LABELS[index]}：${result.pillars[key].ganZhi}；天干十神：${
       key === 'day' ? '日元' : result.tenGods[key]
-    }；地支十神：${getTenGodForBranch(result.pillars[key].zhi, result.dayMaster.gan)}；藏干：${hidden || '无'}；纳音：${result.nayin[key]}；该柱所属旬空：${kongWang}；按日旬核对本柱${result.pillars[key].zhi}支：${dayEmptyBranches.includes(result.pillars[key].zhi) ? '落空' : '不落空'}`;
+    }；地支十神：${getTenGodForBranch(result.pillars[key].zhi, result.dayMaster.gan)}；藏干：${hidden || '无'}；纳音：${result.nayin[key]}；该柱所属旬空：${kongWang}${dayEmptyMark}`;
   });
 
   return [
@@ -172,11 +175,10 @@ export function buildInstantBaziPrompt(
 ) {
   return buildInstantTaskBook({
     chartLabel: '八字即时盘',
-    traditionalBasis: '以当前时刻四柱为事件盘，结合日元、月令、十神、藏干、空亡与五行结构判断。',
+    traditionalBasis: '四柱结合日元、月令、十神、藏干、空亡与五行结构判断。',
     timeBasisLabel,
     chartText: formatInstantBaziData(result),
     question,
-    task: '请把盘面作为当前时刻的事件盘，依据四柱、十神、藏干、纳音、空亡与五行结构直接回答问题，并说明主要判断依据。',
   });
 }
 
@@ -187,11 +189,10 @@ export function buildInstantZiweiPrompt(
 ) {
   return buildInstantTaskBook({
     chartLabel: '紫微即时盘',
-    traditionalBasis: '以当前时刻命身十二宫为事件盘，结合星曜、三方四正与四化判断。',
+    traditionalBasis: '命身十二宫结合星曜、三方四正与四化判断。',
     timeBasisLabel,
     chartText: formatInstantZiweiData(payload),
     question,
-    task: '请把盘面作为当前时刻的事件盘，依据十二宫、星曜、四化与三方四正直接回答问题，并说明主要判断依据。',
   });
 }
 
@@ -204,11 +205,11 @@ export function buildInstantBaziZiweiPrompt(
   return buildInstantTaskBook({
     chartLabel: '八字紫微即时盘',
     traditionalBasis:
-      '八字以当前时刻四柱、十神与五行结构判断，紫微以当前时刻命身十二宫、星曜、三方四正与四化判断，再交叉印证。',
+      '八字结合四柱、十神与五行结构判断，紫微结合命身十二宫、星曜、三方四正与四化判断。',
     timeBasisLabel,
     chartText: `【八字盘】\n${formatInstantBaziData(bazi)}\n\n【紫微盘】\n${formatInstantZiweiData(ziwei)}`,
     question,
-    task: '请把两张盘作为同一当前时刻的事件盘，分别依据八字与紫微的盘面结构判断，再综合两者共同指向直接回答问题，并说明主要依据与分歧。',
+    task: '请分别分析两张盘，再交叉印证共同指向与分歧。',
   });
 }
 
@@ -219,11 +220,10 @@ export function buildInstantAstrolabePrompt(
 ) {
   return buildInstantTaskBook({
     chartLabel: '星盘即时盘',
-    traditionalBasis: '以当前时刻星盘为事件盘，结合四轴、行星落座落宫与主要相位判断。',
+    traditionalBasis: '星盘结合四轴、行星落座落宫与主要相位判断。',
     timeBasisLabel,
     chartText: formatInstantAstrolabeData(data),
     question,
-    task: '请把星盘作为当前时刻的事件盘，依据四轴、行星落座落宫与主要相位直接回答问题，并说明主要判断依据。',
   });
 }
 
@@ -234,11 +234,9 @@ export function buildInstantQizhengPrompt(
 ) {
   return buildInstantTaskBook({
     chartLabel: '七政四余即时盘',
-    traditionalBasis:
-      '以当前时刻七政四余盘为事件盘，结合星体位置、二十八宿、十二宫与吊照关系判断。',
+    traditionalBasis: '七政四余结合星体位置、二十八宿、十二宫与吊照关系判断。',
     timeBasisLabel,
     chartText: formatInstantQizhengData(result),
     question,
-    task: '请把盘面作为当前时刻的事件盘，依据七政四余星体位置、二十八宿、十二宫与吊照关系直接回答问题，并说明主要判断依据。',
   });
 }

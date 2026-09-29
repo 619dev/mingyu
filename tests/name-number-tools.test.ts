@@ -56,6 +56,29 @@ test('“發”和“髮”按不同繁体字义与康熙笔画解析', async ()
   assert.equal(analyzeChineseName({ fullName: '李髮' }).chars[1].kangxiStrokes, 15);
 });
 
+test('姓名逐字资料保留实际输入的繁体字形', () => {
+  const analysis = analyzeChineseName({ fullName: '李樂' });
+  assert.equal(analysis.chars[1].char, '樂');
+  assert.match(buildChineseNameAnalysisPrompt({ analysis }), /逐字：李（康熙/);
+  assert.match(buildChineseNameAnalysisPrompt({ analysis }), /樂（康熙/);
+
+  const candidate = generateChineseNames({
+    surname: '李',
+    generationCharacter: '樂',
+    limit: 1,
+  })[0];
+  assert.ok(candidate.fullName.startsWith('李樂'));
+  assert.equal(candidate.analysis.chars[1].char, '樂');
+});
+
+test('数字数理查表结果不会修改共享数据或同次结果的另一字段', () => {
+  const result = analyzeNumber('1');
+  const originalText = result.primaryNumerology.text;
+  result.primaryNumerology.text = '临时修改';
+  assert.equal(result.sumNumerology.text, originalText);
+  assert.equal(analyzeNumber('1').primaryNumerology.text, originalText);
+});
+
 test('汉字查询、候选字与姓名资料的返回值不会污染后续解读', () => {
   const original = analyzeChineseCharacters('万').characters[0].detail!;
   original.kangxiStrokes = 999;

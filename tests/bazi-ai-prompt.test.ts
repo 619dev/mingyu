@@ -222,6 +222,24 @@ test('多候选格局提示词只在格局行列选中依据，另列未选候�
   }
 });
 
+test('同名取格路径不作为其他格局重复列示', () => {
+  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const pattern = result.analysis.mingGe.pattern;
+  result.analysis.mingGe.patternCandidates = [
+    { pattern, source: '月令本气', basis: '月令本气取格', selected: true },
+    { pattern, source: '分日司令透干', basis: '司令透干同名取格', selected: false },
+    { pattern: '偏印格', source: '月令藏干透干', basis: '月令藏干取偏印格', selected: false },
+  ];
+
+  for (const prompt of [buildBaziPrompt({ result }), formatBaziSchoolPrompt(result, 'ziping')]) {
+    assert.match(prompt, /其他取格候选：偏印格/);
+    assert.doesNotMatch(prompt, /其他取格候选：[^\n]*司令透干同名取格/);
+  }
+
+  result.analysis.mingGe.patternCandidates.pop();
+  assert.doesNotMatch(buildBaziPrompt({ result }), /其他取格候选：/);
+});
+
 test('独立流派资料中的选中取格依据和其他候选各出现一次', () => {
   const result = createBaziResult({
     year: 1993,
