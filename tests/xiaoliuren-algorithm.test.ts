@@ -46,30 +46,39 @@ test('小六壬真太阳时跨民用零点时，农历日按实际东八区日�
   assert.equal(chart.termReferenceTimestamp, actual.getTime());
   assert.match(
     chart.evidenceAnalysis!.promptText,
-    /起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻/,
+    /起课农历月日、节气与年月柱参照实际占时，时辰与日时柱取校正钟表时刻/,
   );
   assert.match(
     chart.evidenceAnalysis!.limitationFacts.find((fact) => fact.type === '历法边界')!.promptText,
-    /起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻/,
+    /起课农历月日、节气与年月柱参照实际占时，时辰与日时柱取校正钟表时刻/,
   );
   const lunarLine = (data: typeof chart) =>
     buildTimeInfoText(data).split('\n')[1]?.split(' ').slice(0, -1).join(' ');
   assert.equal(lunarLine(chart), lunarLine(civil));
 });
 
-test('小六壬真太阳时跨节气时，四柱按校正时刻而农历月日按民用时刻', () => {
+test('小六壬真太阳时跨节气时，年月柱按实际交节、日时柱按校正钟表', () => {
   const actual = new Date('2025-06-05T18:00:00+08:00');
   const corrected = new Date('2025-06-05T17:30:00+08:00');
   const chart = generateXiaoliuren({ customDate: corrected, termReferenceDate: actual });
   const correctedClock = generateXiaoliuren({ customDate: corrected });
   const actualClock = generateXiaoliuren({ customDate: actual });
 
-  assert.deepEqual(chart.ganzhi, correctedClock.ganzhi);
   assert.equal(correctedClock.ganzhi.month, '辛巳');
   assert.equal(actualClock.ganzhi.month, '壬午');
+  assert.equal(chart.ganzhi.year, actualClock.ganzhi.year);
+  assert.equal(chart.ganzhi.month, '壬午');
+  assert.equal(chart.ganzhi.day, correctedClock.ganzhi.day);
+  assert.equal(chart.ganzhi.hour, correctedClock.ganzhi.hour);
   assert.equal(chart.lunarMonth, actualClock.lunarMonth);
   assert.equal(chart.lunarDay, actualClock.lunarDay);
   assert.equal(chart.hourIndex, correctedClock.hourIndex);
+  const chartTimeText = buildTimeInfoText(chart);
+  assert.equal(
+    chartTimeText.split('\n')[2],
+    `干支：${chart.ganzhi.year}年 ${chart.ganzhi.month}月 ${chart.ganzhi.day}日 ${chart.ganzhi.hour}时`,
+  );
+  assert.equal(chartTimeText.split('\n')[3], buildTimeInfoText(actualClock).split('\n')[3]);
 });
 
 test('小六壬：古法二月例、闰月与子时边界保持同一偏移，旧盘沿用通行法', () => {

@@ -13,6 +13,7 @@ import {
   DIZHI,
   describeRelation,
   getDayStemResidence,
+  getGanZhiWuxing,
   getNoblemanBranch,
   getPlateItemByBranch,
   getUpperByUnder,
@@ -521,7 +522,7 @@ function classifyRelationStatus(value: string): LiurenRelationEvidenceFact['stat
 function buildLessonEvidence(
   lesson: LiurenLesson,
   index: number,
-  initialBranch: string,
+  isInitialSource: boolean,
   xunKong: string[],
 ): LiurenLessonEvidence {
   const key = `liuren:lesson:${index + 1}:${lesson.name}`;
@@ -573,13 +574,43 @@ function buildLessonEvidence(
     ...lesson,
     key,
     index: index + 1,
-    isInitialSource: lesson.upper === initialBranch,
+    isInitialSource,
     constraints,
     relationFacts,
     promptText: `${lesson.name}${lesson.upper}临${lesson.lower}，乘${lesson.god}，关系${lesson.relation}；${lesson.note || '课注未列'}`,
     sources: ['日干寄宫、日支与天地盘逐课推导', '日柱旬空与上下神关系核验'],
     limitation: LESSON_FACT_LIMITATION,
   };
+}
+
+function getInitialSourceLessonPositions(data: LiurenData): Set<number> {
+  const adjudication = data.ordinaryTransmissionAdjudication;
+  if (adjudication?.status === 'selected' && adjudication.selectedCandidateKey) {
+    const selected = adjudication.candidates.find(
+      (candidate) => candidate.key === adjudication.selectedCandidateKey,
+    );
+    return new Set(selected?.sourceLessons.map((lesson) => lesson.position) ?? []);
+  }
+
+  const rule = data.transmissionRule ?? '';
+  if (rule === '伏吟法') {
+    return new Set([['甲', '丙', '戊', '庚', '壬'].includes(data.ganzhi.day.charAt(0)) ? 1 : 3]);
+  }
+  if (rule.startsWith('伏吟') || rule.startsWith('返吟')) {
+    const isLowerKeUpper = rule.includes('重审');
+    const isUpperKeLower = rule.includes('元首');
+    if (isLowerKeUpper || isUpperKeLower) {
+      return new Set(
+        data.fourLessons.flatMap((lesson, index) => {
+          const matches = isLowerKeUpper
+            ? isKe(getGanZhiWuxing(lesson.lower), getGanZhiWuxing(lesson.upper))
+            : isKe(getGanZhiWuxing(lesson.upper), getGanZhiWuxing(lesson.lower));
+          return lesson.upper === data.threeTransmissions[0].branch && matches ? [index + 1] : [];
+        }),
+      );
+    }
+  }
+  return new Set();
 }
 
 function buildTransmissionEvidence(
@@ -1391,8 +1422,9 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
     ),
   );
   const traditionalFacts = buildTraditionalFacts(data, patternEvidence);
+  const initialSourceLessonPositions = getInitialSourceLessonPositions(data);
   const lessons = data.fourLessons.map((lesson, index) =>
-    buildLessonEvidence(lesson, index, initial.branch, xunKong),
+    buildLessonEvidence(lesson, index, initialSourceLessonPositions.has(index + 1), xunKong),
   );
   const initialSourceLessons = lessons
     .filter((item) => item.isInitialSource)

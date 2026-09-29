@@ -8,6 +8,20 @@ const RAIN_WATER_INSTANT = new Date('2024-02-19T12:13:12+08:00');
 const BEFORE_SPRING_EQUINOX = new Date('2024-03-20T11:06:24+08:00');
 const SPRING_EQUINOX_INSTANT = new Date('2024-03-20T11:06:25+08:00');
 
+test('仅传 IANA 时区时，交节瞬时点与当地日时柱按同一时区计算', () => {
+  const instant = SPRING_EQUINOX_INSTANT;
+  const iana = generateQimen(instant, 'zhuanpan', 'hour', 'chaibu', undefined, 'America/New_York');
+  const explicit = generateQimen(instant, 'zhuanpan', 'hour', 'chaibu', -240);
+
+  assert.equal(iana.timeInfo.solarTerm, '春分');
+  assert.equal(iana.ganzhi.day, explicit.ganzhi.day);
+  assert.equal(iana.ganzhi.hour, explicit.ganzhi.hour);
+  assert.equal(iana.timeInfo.epoch, explicit.timeInfo.epoch);
+  assert.equal(iana.juShu, explicit.juShu);
+  assert.equal(iana.isYangDun, explicit.isYangDun);
+  assert.deepEqual(iana.seasonality?.jieQiPhase, explicit.seasonality?.jieQiPhase);
+});
+
 test('奇门沿用全局 UTC−5 时区时仍在春分真实瞬时点换节与换局', () => {
   TimeManager.setTimezoneOffsetMinutesOverride(-300);
   try {

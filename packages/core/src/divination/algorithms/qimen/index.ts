@@ -26,6 +26,7 @@ import type { QimenData, QimenJiuGongGe, QimenScope } from '../../../types/divin
 import type { ClassicPattern, PatternContext, StemRelation } from './helpers/classic-patterns';
 import type { QimenMethod } from './helpers/layout';
 import { getDivinationTime, TimeManager } from '../../../calendar/timeManager';
+import { getHistoricalTimezoneOffsetAt } from '../../../calendar/historical-timezone';
 import { getVoidBranches } from '../../../calendar/lunar';
 import { diPanPalaces, STEM_TOMB_MAP } from './helpers/_constants';
 import {
@@ -234,8 +235,9 @@ function mapStemRelations(
  * @param customDate 自定义时间（可选，默认当前时间）
  * @param method     排盘方法，默认 'zhuanpan'（转盘法）
  * @param scope      排盘级别，默认 'hour'（时家奇门）
- * @param timezoneOffsetMinutes 本次计算的显式 UTC 偏移（分钟），省略时沿用 TimeManager 默认值
- * @param timeZoneId 本次计算所用 IANA 时区；用于历史节气按真实瞬时点解析当地偏移
+ * @param timezoneOffsetMinutes 本次计算的显式 UTC 偏移（分钟），优先于 IANA 解析偏移
+ * @param timeZoneId 本次计算所用 IANA 时区；未传显式偏移时用于当地日时柱，并用于历史交节日换算
+ * @param referenceDate 真太阳时校正前的真实瞬时点，用于节气及 IANA 历史偏移
  * @returns 完整的奇门遁甲数据 QimenData
  *
  * @example
@@ -260,26 +262,37 @@ export function generateQimen(
   referenceDate?: Date,
 ): QimenData {
   assertQimenScope(scope);
+  const chartDate = customDate ?? new Date();
+  if (!(chartDate instanceof Date) || Number.isNaN(chartDate.getTime())) {
+    throw new Error('自定义时间不是有效日期。');
+  }
+  // 真太阳时校正后 chartDate 是排盘用伪瞬时；当地偏移应取原始真实瞬时点。
+  const effectiveOffsetMinutes =
+    timezoneOffsetMinutes ??
+    (timeZoneId
+      ? getHistoricalTimezoneOffsetAt(referenceDate ?? chartDate, timeZoneId) * 60
+      : undefined);
   // ──────────────────────────────────────────────────────────────────────────
   // 步骤 1：获取统一占卜时间信息
   // ──────────────────────────────────────────────────────────────────────────
   const { timeInfo, ganzhi, timestamp } = getDivinationTime(
-    customDate,
-    timezoneOffsetMinutes,
+    chartDate,
+    effectiveOffsetMinutes,
     referenceDate,
   );
   const solarSecond = TimeManager.getWallClockParts(
     new Date(timestamp),
-    timezoneOffsetMinutes,
+    effectiveOffsetMinutes,
   ).second;
   const { jieQi } = timeInfo;
-  // 未显式传偏移时，TimeManager 仍可能采用全局覆盖或运行环境时区。
+  // 未指定时区时，TimeManager 仍可能采用全局覆盖或运行环境时区。
   // 从已解析的民用钟表反推本次实际偏移，避免按当地时刻误取中国历表的节气。
   const wallMinute = new Date(0);
   wallMinute.setUTCFullYear(timeInfo.solar.year, timeInfo.solar.month - 1, timeInfo.solar.day);
   wallMinute.setUTCHours(timeInfo.solar.hour, timeInfo.solar.minute);
   const localOffsetMinutes =
-    timezoneOffsetMinutes ?? (wallMinute.getTime() - Math.floor(timestamp / 60000) * 60000) / 60000;
+    effectiveOffsetMinutes ??
+    (wallMinute.getTime() - Math.floor(timestamp / 60000) * 60000) / 60000;
   const termContext: QimenTermContext = {
     referenceDate: referenceDate ?? new Date(timestamp),
     localOffsetMinutes,
@@ -405,8 +418,8 @@ export function generateQimen(
     ganzhi,
     jushuResult.actualJieQi || jieQi,
     new Date(timestamp),
-    timezoneOffsetMinutes,
-    timezoneOffsetMinutes === undefined ? undefined : 480,
+    effectiveOffsetMinutes,
+    effectiveOffsetMinutes === undefined ? undefined : 480,
     referenceDate,
   );
 

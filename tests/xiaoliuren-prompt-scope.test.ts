@@ -104,7 +104,7 @@ test('小六壬早晚子时各按民用日期起课，闰月提示与实际农�
   assert.match(prompt, /闰月沿用同名月序/);
 });
 
-test('小六壬真太阳时跨民用日期时提示词说明农历日与四柱取时口径', () => {
+test('小六壬真太阳时跨民用日期时提示词说明农历日与干支取时口径', () => {
   const data = generateXiaoliuren({
     customDate: new Date('2025-06-29T21:15:00+08:00'),
     termReferenceDate: new Date('2025-06-30T00:20:00+08:00'),
@@ -113,7 +113,7 @@ test('小六壬真太阳时跨民用日期时提示词说明农历日与四柱�
     buildDivinationPrompt('xiaoliuren', '请分析当前课。', data),
     buildCoreDivinationPrompt({ method: 'xiaoliuren', data, question: '请分析当前课。' }),
   ]) {
-    assert.match(prompt, /起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻/);
+    assert.match(prompt, /起课农历月日、节气与年月柱参照实际占时，时辰与日时柱取校正钟表时刻/);
   }
   assert.match(
     buildDivinationPrompt('xiaoliuren', '请分析当前课。', data),

@@ -743,8 +743,8 @@ export class BaziCalculator {
     }).result;
     const pillarCache = new Map<string, Pillars>();
     const toClockKey = (item: (typeof candidates)[number]) => {
-      const { hour, minute, second } = item.point;
-      return `${hour}:${minute}:${second}`;
+      const { year, month, day, birthHour, birthMinute, birthSecond, timezone } = item.person;
+      return `${year}:${month}:${day}:${birthHour}:${birthMinute}:${birthSecond}:${timezone ?? ''}`;
     };
     pillarCache.set(toClockKey(candidate), candidateResult.pillars);
     const candidatePillars = [

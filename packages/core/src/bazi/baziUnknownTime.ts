@@ -7,8 +7,12 @@ import type {
 } from './baziTypes';
 import { analyzeBaziNatalEvidence } from './natalEvidence';
 import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
+import { getTimeIndexFromClock } from '../calendar/dateUtils';
 import { checkChinaDst } from '../calendar/china-dst';
-import { getHistoricalTimezoneOffsetAt } from '../calendar/historical-timezone';
+import {
+  getHistoricalTimezoneOffsetAt,
+  resolveHistoricalTimezone,
+} from '../calendar/historical-timezone';
 import { MONTH_COMMANDER, TIME_MAP } from './baziDefinitions';
 import { resolveShenShaVariantConfig } from './baziShenSha';
 import { SolarTerm } from 'tyme4ts';
@@ -58,6 +62,20 @@ function pad(value: number): string {
 
 function formatClock(point: Pick<UnknownTimeCandidatePoint, 'hour' | 'minute' | 'second'>): string {
   return `${pad(point.hour)}:${pad(point.minute)}:${pad(point.second)}`;
+}
+
+function getIanaCandidateOffsets(
+  clock: { year: number; month: number; day: number; hour: number; minute: number; second: number },
+  timeZoneId: string,
+): number[] {
+  try {
+    return resolveHistoricalTimezone({ ...clock, timeZoneId }).possibleOffsetsHours;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('不存在，通常由夏令时跳时造成')) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 function toBeijingTimestamp(time: {
@@ -318,13 +336,43 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
       source: 'day-start',
       timeName: '日初00:00:00候选',
     },
-    ...TIME_MAP.map((time) => ({
-      hour: time.hour,
-      minute: time.minute,
-      second: 0,
-      source: 'shichen-representative' as const,
-      timeName: `${time.name}候选`,
-    })),
+    ...TIME_MAP.flatMap((time) => {
+      const timeZoneId = person.timeZoneId;
+      const representative = { ...solarDate, hour: time.hour, minute: time.minute, second: 0 };
+      let hour: number = time.hour;
+      let minute: number = time.minute;
+      if (timeZoneId && !getIanaCandidateOffsets(representative, timeZoneId).length) {
+        // 跳时缺口中的时辰中点不存在；改取同一时辰内仍存在的钟表时刻。
+        const fallback = [
+          { hour: time.hour - 1, minute: 30 },
+          { hour: time.hour, minute: 30 },
+          { hour: time.hour - 1, minute: 0 },
+          { hour: time.hour, minute: 0 },
+        ].find(
+          (candidate) =>
+            candidate.hour >= 0 &&
+            candidate.hour < 24 &&
+            getTimeIndexFromClock(candidate.hour, candidate.minute) === time.index &&
+            getIanaCandidateOffsets({ ...solarDate, ...candidate, second: 0 }, timeZoneId).length >
+              0,
+        );
+        if (!fallback) return [];
+        hour = fallback.hour;
+        minute = fallback.minute;
+      }
+      return [
+        {
+          hour,
+          minute,
+          second: 0,
+          source: 'shichen-representative' as const,
+          timeName:
+            hour === time.hour && minute === time.minute
+              ? `${time.name}候选`
+              : `${time.name}${formatClock({ hour, minute, second: 0 })}候选`,
+        },
+      ];
+    }),
     {
       hour: 23,
       minute: 59,
@@ -336,8 +384,41 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
     ...collectDstBoundaryCandidatePoints(person, solarDate),
   ];
 
-  return points.flatMap((point) => {
+  return points.flatMap<UnknownTimeCandidate>((point) => {
     const clock = { ...solarDate, hour: point.hour, minute: point.minute, second: point.second };
+    if (person.timeZoneId) {
+      const offsets = getIanaCandidateOffsets(clock, person.timeZoneId).filter(
+        (offset) =>
+          (point.timezone === undefined || Math.abs(offset - point.timezone) <= 1e-6) &&
+          (person.timezone === undefined || Math.abs(offset - person.timezone) <= 1e-6),
+      );
+      return offsets.map((timezone) => {
+        const disambiguatedPoint =
+          offsets.length > 1
+            ? {
+                ...point,
+                timezone,
+                timeName: `${point.timeName}（UTC${timezone >= 0 ? '+' : ''}${timezone}）`,
+              }
+            : point;
+        return {
+          point: disambiguatedPoint,
+          scenarioKey: buildScenarioKey(disambiguatedPoint),
+          person: {
+            ...candidateInput,
+            isLunar: false,
+            isLeapMonth: false,
+            year: clock.year,
+            month: clock.month,
+            day: clock.day,
+            birthHour: clock.hour,
+            birthMinute: clock.minute,
+            birthSecond: clock.second,
+            timezone,
+          },
+        };
+      });
+    }
     const dst = person.applyChinaDst
       ? checkChinaDst(clock.year, clock.month, clock.day, clock.hour, clock.minute)
       : undefined;

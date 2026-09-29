@@ -167,7 +167,7 @@ export function formatXiaoliurenCalendarBoundary(data: XiaoliurenData): string {
   return [
     data.hourIndex === 12 ? '晚子时四柱日干支按子初换日，起课农历日到东八区零点才换日' : '',
     data.termReferenceTimestamp !== undefined
-      ? '起课农历月日取原民用时刻，时辰和四柱取校正钟表时刻'
+      ? '起课农历月日、节气与年月柱参照实际占时，时辰与日时柱取校正钟表时刻'
       : '',
   ]
     .filter(Boolean)

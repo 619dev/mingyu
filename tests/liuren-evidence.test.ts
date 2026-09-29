@@ -12,6 +12,25 @@ import { resolveLiurenClassicalRules } from '../packages/core/src/divination/alg
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 
+test('甲子日酉将酉时伏吟只标干上一课为发用来源', () => {
+  const data = generateLiuren(new Date('2026-04-20T18:00:00+08:00'));
+  assert.equal(data.ganzhi.day, '甲子');
+  assert.equal(data.monthLeader, '酉');
+  assert.equal(data.divinationBranch, '酉');
+  assert.equal(data.transmissionRule, '伏吟法');
+  assert.deepEqual(
+    data.fourLessons.map((lesson) => lesson.upper),
+    ['寅', '寅', '子', '子'],
+  );
+  assert.deepEqual(
+    data.evidenceAnalysis?.lessons
+      .filter((lesson) => lesson.isInitialSource)
+      .map((lesson) => lesson.name),
+    ['一课'],
+  );
+  assert.deepEqual(data.evidenceAnalysis?.initialSourceLessons, ['一课']);
+});
+
 test('大六壬遥克规则不应因“克法”字样追加贼克法', () => {
   const rules = resolveLiurenClassicalRules('遥克法');
   assert.deepEqual(

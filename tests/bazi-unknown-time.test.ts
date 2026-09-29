@@ -220,6 +220,34 @@ test('外地未知时辰按当地钟表时间列出立春临界候选', () => {
   );
 });
 
+test('IANA 跳时日未知时辰保留真实存在的丑时候选', () => {
+  const input = {
+    year: 2024,
+    month: 3,
+    day: 10,
+    gender: 'female' as const,
+    timeZoneId: 'America/New_York',
+  };
+  const result = baziCalculator.calculateBazi(input);
+  const scenarios = result.unknownTimeAnalysis?.scenarios ?? [];
+  const chou = scenarios.find((scenario) => scenario.timeName.includes('丑时'));
+  assert.ok(chou);
+  assert.equal(chou.inputClockTime, '01:30:00');
+  assert.ok(!scenarios.some((scenario) => scenario.inputClockTime.startsWith('02:')));
+  const explicit = baziCalculator.calculateBazi({
+    ...input,
+    birthHour: 1,
+    birthMinute: 30,
+    birthSecond: 0,
+  });
+  assert.deepEqual(chou.pillars, explicit.pillars);
+  assert.equal(chou.timeIndex, explicit.timeInfo.index);
+  const batch = baziCalculator.calculateBaziUnknownTimeBatch(input, {
+    startIndex: scenarios.indexOf(chou),
+  });
+  assert.deepEqual(batch.result.unknownTimeAnalysis?.scenarios[0]?.pillars, explicit.pillars);
+});
+
 test('农历未知时辰先沿用实际历法换算再检查同一公历日的交节边界', () => {
   const solar = baziCalculator.calculateBazi({
     year: 2024,
