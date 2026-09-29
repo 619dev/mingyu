@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   calculateQimenLifetime,
   generateQimenLifetimePrompt,
+  buildLifetimePrompt,
   normalizeQimenLifetimeTime,
   extractPersonalMarkers,
   buildTopicCandidates,
@@ -362,6 +363,31 @@ test('奇门终身局 P2：阶段划分引擎（四柱分限 vs 九宫巡行）'
   assert.equal(resultNominal.stages[0].ageEnd, 17);
 });
 
+test('奇门终身局阶段门神空马取象进入提示词时保留盘面与核对条件', () => {
+  const { data, prompt } = generateQimenLifetimePrompt({
+    birthDateTime: '1990-05-15T14:30:00+08:00',
+    stagePolicy: { model: 'palaceWalk' },
+  });
+  const stageText = prompt.split('【人生阶段资料】')[1]?.split('【任务】')[0] ?? '';
+  const doorAndGodFacts = data.stages.flatMap((stage) => [
+    ...stage.supportFacts,
+    ...stage.constraintFacts,
+  ]);
+
+  assert.ok(doorAndGodFacts.some((fact) => fact.includes('传统门象')));
+  assert.ok(doorAndGodFacts.some((fact) => fact.includes('传统神象')));
+  assert.ok(doorAndGodFacts.some((fact) => fact.includes('宫逢旬空')));
+  assert.ok(doorAndGodFacts.some((fact) => fact.includes('临驿马星')));
+  assert.match(stageText, /宫位支持类象：/);
+  assert.match(stageText, /宫位制约类象：/);
+  assert.match(prompt, /多种解释用可核实的现实信息区分/);
+  assert.doesNotMatch(stageText, /结合本宫配置与现实条件核对|结合本宫星神干与现实条件核对/);
+  assert.doesNotMatch(
+    stageText,
+    /人事实质通达顺畅|贵人引路|名气外显|吉凶能量暂未落地|中年鼎盛|晚景安泰/u,
+  );
+});
+
 test('奇门终身局动态扫描不得将阶段范围外日期归入首阶段', () => {
   const lifetime = calculateQimenLifetime({ birthDateTime: '1990-05-15T14:30:00+08:00' });
   const clusters = scanLifetimeDynamicEvents(
@@ -668,6 +694,60 @@ test('奇门终身局动态年盘应采用固定 UTC 偏移而非默认东八区
     annualPatternFacts(expectedChart, taiSuiPalace),
   );
   assertMonthClashLocalTime(result.eventClusters!, year, targetOffsetMinutes);
+});
+
+test('终身局流年景门六合与空马事实在在线提示词中保持条件取象', () => {
+  const birth = calculateQimenLifetime({ birthDateTime: '1990-05-15T14:30:00+08:00' });
+  const year = 2026;
+  const range = { startDate: '2026-06-15', endDate: '2026-06-15' };
+  const annualChart = generateQimen(new Date(Date.UTC(year, 5, 15, 12)), 'zhuanpan', 'year');
+  const branch = annualChart.ganzhi.year[1];
+  const palaceNumber = diPanPalaces[branch];
+  assert.ok(palaceNumber);
+  const baseChart = structuredClone(birth.baseChart);
+  const palace = baseChart.jiuGongGe.find((item) => item.gong === palaceNumber);
+  assert.ok(palace);
+  palace.renPan.door = '景门';
+  palace.shenPan.god = '六合';
+  baseChart.voidBranches = [branch];
+  baseChart.horseStar = {
+    branch,
+    palace: palaceNumber,
+    name: palace.name,
+    sourceBranch: branch,
+  };
+  const eventClusters = scanLifetimeDynamicEvents(baseChart, birth.stages, range);
+  const annual = eventClusters.find((cluster) => cluster.key.startsWith(`cluster:${year}:丙午:`));
+  assert.ok(annual);
+  const prompt = buildLifetimePrompt(
+    { ...birth, baseChart, eventClusters, input: { ...birth.input, periodRange: range } },
+    '本年有哪些可核对的事项？',
+    { includeCurrentTime: false },
+  );
+  const dynamicText = prompt.split('【周期触发与事件簇】')[1]?.split('【任务】')[0] ?? '';
+
+  assert.ok(
+    annual.supportEvidence.some((fact) => fact.includes('景门') && fact.includes('传统门象')),
+  );
+  assert.ok(
+    annual.supportEvidence.some((fact) => fact.includes('六合') && fact.includes('传统神象')),
+  );
+  assert.ok(annual.supportEvidence.some((fact) => fact.includes('传统填实条件')));
+  assert.ok(
+    annual.supportEvidence.some((fact) => fact.includes('驿马') && fact.includes('传统取象')),
+  );
+  assert.match(dynamicText, /太岁临本命景门，传统门象涉及文书、呈现与声誉议题/);
+  assert.ok(annual.supportEvidence.every((fact) => !/现实核对|现实安排核对/u.test(fact)));
+  assert.doesNotMatch(dynamicText, /名气外显|促成合作契约|虚转为实|主主动出行|事必速/u);
+
+  palace.renPan.door = '伤门';
+  const constrained = scanLifetimeDynamicEvents(baseChart, birth.stages, range).find((cluster) =>
+    cluster.key.startsWith(`cluster:${year}:丙午:`),
+  );
+  assert.ok(constrained);
+  assert.ok(
+    constrained.counterEvidence.some((fact) => fact.includes('伤门') && fact.includes('传统门象')),
+  );
 });
 
 test('奇门终身局动态年盘应按目标年度读取 IANA 夏令时偏移', () => {

@@ -271,6 +271,26 @@ test('现代比例模型支持固定时区与 IANA，并分别保留真实瞬时
   assert.ok(iana.calendar.yearLengthSeconds > 364 * 86400);
 });
 
+test('冬至所在 IANA 当地日午夜跳时时以该民用日首个实际时刻为锚点', () => {
+  const input = parseProportionalSixDay('1974-12-22T12:00:00', undefined, 'America/Montevideo');
+  const result = calculateHuangjiSixDayCycleFromDate(input);
+
+  assert.equal(result.anchor.winterSolsticeGregorianYear, 1974);
+  assert.equal(result.anchor.localDateTime, '1974-12-22T03:55:56-02:00');
+  assert.equal(result.anchor.dayBoundary, '当地日首个实际时刻');
+  assert.equal(result.anchor.dayStartDateTime, '1974-12-22T01:00:00-02:00');
+  assert.equal(result.anchor.dayStartUtcDateTime, '1974-12-22T03:00:00.000Z');
+
+  const reading = calculateHuangjiJingshi({ sixDayDate: input });
+  const prompt = reading.prompt;
+  assert.match(prompt, /当地日首个实际时刻锚点：1974-12-22T01:00:00-02:00/);
+  assert.doesNotMatch(prompt, /当地子半锚点：1974-12-22/);
+  assert.match(
+    formatHuangjiInfo(reading),
+    /六日逐爻历元：以1974-12-22T01:00:00-02:00当地日首个实际时刻为起点/u,
+  );
+});
+
 test('现代比例模型提示词将冬至锚点与比例口径列入排盘资料', () => {
   const result = calculateHuangjiJingshi({
     sixDayDate: parseProportionalSixDay('2025-12-22T05:03:05+08:00'),
@@ -290,13 +310,13 @@ test('现代比例模型提示词将冬至锚点与比例口径列入排盘资�
   assert.match(result.prompt, /【问题】\n此时的主要变化是什么？/);
 });
 
-test('下一冬至当地子半先于交节时提示词写明上一岁周逻辑日封顶', () => {
+test('下一冬至当地日首点先于交节时提示词写明上一岁周逻辑日封顶', () => {
   const beforeTerm = calculateHuangjiJingshi({
     sixDayDate: parseProportionalSixDay('2025-12-21T12:00:00+08:00'),
   });
   assert.equal(beforeTerm.sixDayCycle?.calendar.targetYear, 2025);
   assert.equal(beforeTerm.sixDayCycle?.calendar.endpointClamped, true);
-  assert.match(beforeTerm.prompt, /下一冬至当地日子半已到、冬至真实瞬时尚未到/);
+  assert.match(beforeTerm.prompt, /下一冬至当地日首点已到、冬至真实瞬时尚未到/);
   assert.match(beforeTerm.prompt, /当前仍属上一岁周，逻辑位置暂封顶于第360个逻辑日/);
 
   const atTerm = calculateHuangjiJingshi({

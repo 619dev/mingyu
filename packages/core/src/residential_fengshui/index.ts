@@ -433,7 +433,11 @@ function buildPrompt(result: {
       ? '坐向北向基准未声明；玄空角度盘按原始读数暂排，补充磁北或真北基准后复核。'
       : '',
     result.xuankong ? '' : `山向：${result.orientationText}`,
-    result.houseYear != null ? `宅运年份：${result.houseYear}` : '',
+    result.houseYear != null
+      ? result.xuankong
+        ? `宅运年份：${result.houseYear}`
+        : `提供的住宅建造年或起运年：${result.houseYear}`
+      : '',
     !result.xuankong && result.bazhai
       ? result.xuankongStatus === '缺少建造年或起运年'
         ? '玄空：未排盘（缺少建造年或起运年）'

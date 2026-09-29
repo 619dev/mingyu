@@ -200,9 +200,10 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
       }
     }
     if (specialAdjudication.status === '成立' && specialAdjudication.kind === '从儿格') {
+      const chartFacts = formatBaziForPrompt(result);
       const flowAlreadyShown =
         result.analysis.mingGe.basis?.includes('承接食伤所生') &&
-        formatBaziForPrompt(result).includes(
+        chartFacts.includes(
           `食伤${specialAdjudication.outputElement}生财星${specialAdjudication.wealthElement}`,
         );
       if (!flowAlreadyShown) {
@@ -212,7 +213,7 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
       }
       facts.push(
         ...specialAdjudication.functionalResolutions
-          .filter((item) => !result.analysis.mingGe.basis?.includes(item))
+          .filter((item) => !chartFacts.includes(item))
           .map((item) => `顺局作用：${item}`),
       );
     }

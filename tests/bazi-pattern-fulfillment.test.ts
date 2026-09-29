@@ -4,7 +4,10 @@ import { evaluatePatternFulfillment } from '../packages/core/src/bazi/baziPatter
 import { getTenGod } from '../packages/core/src/bazi/baziUtils';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
 import { determineUsefulGod } from '../packages/core/src/bazi/baziUsefulGodStrategy';
-import { formatBaziForPrompt } from '../packages/core/src/bazi/baziAnalysisFormatter';
+import {
+  formatBaziForPrompt,
+  formatUsefulGodFunctions,
+} from '../packages/core/src/bazi/baziAnalysisFormatter';
 import type { Pillars } from '../packages/core/src/bazi/baziTypes';
 
 function pillars(values: [string, string, string, string]): Pillars {
@@ -56,6 +59,37 @@ test('同一印星两透时，月干受财本气克不抹去时干已闭合的�
   );
   assert.equal(result.status, '成格');
   assert.match(result.decisionDetail ?? '', /格神已透干且有可用根气/);
+});
+
+test('同一印星两透时，仅将实际可作用的时干列为已参与成格', () => {
+  const chart = pillars(['壬申', '癸丑', '甲午', '癸酉']);
+  const fulfillment = evaluatePatternFulfillment(chart, '甲', '正印格', getTenGod);
+  const monthSeal = fulfillment.rootEvidence?.find(
+    (item) => item.pillar === 'month' && item.placement === '透干',
+  );
+  const hourSeal = fulfillment.rootEvidence?.find(
+    (item) => item.pillar === 'hour' && item.placement === '透干',
+  );
+
+  assert.equal(fulfillment.status, '成格');
+  assert.equal(monthSeal?.rooted, true);
+  assert.equal(monthSeal?.effective, false);
+  assert.equal(hourSeal?.effective, true);
+
+  const useful = determineUsefulGod(
+    '身弱',
+    { pattern: '正印格', isSpecial: false, fulfillment },
+    '木',
+  );
+  assert.deepEqual(
+    useful.decisionEvidence?.natalFunctions
+      ?.filter((item) => item.role === '格神')
+      .map((item) => [item.stem, item.pillar]),
+    [['癸', 'hour']],
+  );
+  const promptFacts = formatUsefulGodFunctions(useful).join('；');
+  assert.match(promptFacts, /原局格神作用：癸正印（时柱）已参与成格/);
+  assert.doesNotMatch(promptFacts, /癸正印（月柱）/);
 });
 
 test('正官见伤印财保留柱位与相碍条件，透印本身不判破而复成', () => {

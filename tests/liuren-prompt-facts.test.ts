@@ -129,6 +129,24 @@ test('大六壬完整提示词写入课体判据、取用定位和应期依据',
   assert.doesNotMatch(prompt, /sourceUrl|stableKey|notApplicable/);
 });
 
+test('大六壬详细课体判据已含名称时省略重复摘要，旧数据仍保留摘要', () => {
+  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const prompt = formatEnhancedDivinationInfo('liuren', data);
+
+  assert.ok(data.guaTiFacts?.length);
+  assert.match(prompt, /课体判据：/);
+  assert.doesNotMatch(prompt, /^课体：/m);
+  for (const fact of data.guaTiFacts ?? []) {
+    assert.match(prompt, new RegExp(`${fact.name}：`));
+  }
+
+  const legacyPrompt = formatEnhancedDivinationInfo('liuren', {
+    ...data,
+    guaTiFacts: undefined,
+  });
+  assert.match(legacyPrompt, /^课体：/m);
+});
+
 test('大六壬旧结果旬空变化后提示词应同步三传与应期状态', () => {
   const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
   const initial = data.threeTransmissions[0];

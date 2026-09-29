@@ -12,7 +12,7 @@ import {
   SIXTY_CYCLE,
   TWELVE_STAGES_MAP,
 } from './baziMappingsData';
-import { getTenGod } from './baziUtils';
+import { getGanYinYang, getTenGod, getWuxing } from './baziUtils';
 import { calculateKongWangBranches } from './kongWang';
 
 type PillarKey = 'year' | 'month' | 'day' | 'hour';
@@ -245,6 +245,16 @@ function hasValidPillarGanZhi(pillar: BaziChartResult['pillars'][PillarKey]) {
   );
 }
 
+function hasConsistentDayMaster(data: BaziChartResult): boolean {
+  const gan = data.dayMaster.gan;
+  return (
+    HEAVENLY_STEMS.some((stem) => stem === gan) &&
+    gan === data.pillars.day.gan &&
+    data.dayMaster.element === getWuxing(gan) &&
+    data.dayMaster.yinYang === getGanYinYang(gan)
+  );
+}
+
 function conditionPortableBasis(text: string) {
   return text
     .replace(/内部权重/g, '规则权重')
@@ -269,6 +279,7 @@ function filterPortableStrategyTrace(values: string[] | undefined) {
 }
 
 function buildPillarFacts(data: BaziChartResult): BaziNatalPillarFact[] {
+  const dayMasterValid = hasConsistentDayMaster(data);
   return PILLAR_KEYS.map((key) => {
     const pillar = data.pillars[key];
     const hiddenStems = data.hiddenStems[key] ?? [];
@@ -286,9 +297,6 @@ function buildPillarFacts(data: BaziChartResult): BaziNatalPillarFact[] {
         (stem, index) => getTenGod(stem, data.dayMaster.gan) !== hiddenTenGods[index],
       );
     const ganZhiValid = hasValidPillarGanZhi(pillar);
-    const dayMasterValid =
-      HEAVENLY_STEMS.some((gan) => gan === data.dayMaster.gan) &&
-      data.dayMaster.gan === data.pillars.day.gan;
     const expectedTenGod =
       ganZhiValid && dayMasterValid
         ? key === 'day'
@@ -531,6 +539,7 @@ function buildCalculationSteps(args: {
   const missingCorePillarCount = PILLAR_KEYS.filter(
     (key) => !hasValidPillarGanZhi(data.pillars[key]),
   ).length;
+  const dayMasterValid = hasConsistentDayMaster(data);
   const missingPillarFactCount = pillarFacts.filter((item) => item.status === '资料缺口').length;
   const missingAnalysisCount = analysisFacts.filter((item) => item.status === '资料缺口').length;
   const unresolvedBoundaryCount = data.warningFacts.filter(
@@ -568,18 +577,20 @@ function buildCalculationSteps(args: {
     {
       key: 'bazi:natal:calculation:pillars',
       stage: '四柱生成',
-      status: missingCorePillarCount ? '存在资料缺口' : '已计算',
+      status: missingCorePillarCount || !dayMasterValid ? '存在资料缺口' : '已计算',
       inputs: {
         resolvedBirthTime: correctedTime || `${data.timeInfo.name}（${data.timeInfo.range}）`,
         currentJieqi: data.seasonInfo.currentJieqi,
       },
       result: {
         pillars: PILLAR_KEYS.map((key) => data.pillars[key].ganZhi),
-        dayMaster: `${data.dayMaster.gan}${data.dayMaster.element}${data.dayMaster.yinYang}`,
+        dayMaster: dayMasterValid
+          ? `${data.dayMaster.gan}${data.dayMaster.element}${data.dayMaster.yinYang}`
+          : '待核',
         missingPillarCount: missingCorePillarCount,
       },
       dependsOnStepKeys: ['bazi:natal:calculation:birth-time'],
-      promptText: `按节气换年换月与当前换日口径生成四柱：${PILLAR_KEYS.map((key) => `${PILLAR_LABELS[key]}${data.pillars[key].ganZhi}`).join('、')}；日主为${data.dayMaster.gan}${data.dayMaster.element}${data.dayMaster.yinYang}`,
+      promptText: `按节气换年换月与当前换日口径生成四柱：${PILLAR_KEYS.map((key) => `${PILLAR_LABELS[key]}${data.pillars[key].ganZhi}`).join('、')}；${dayMasterValid ? `日主为${data.dayMaster.gan}${data.dayMaster.element}${data.dayMaster.yinYang}` : '日主资料与日柱不一致，待核'}`,
       sources: ['公历农历换算、节气换月、六十甲子与时柱推导'],
       limitation: CALCULATION_STEP_LIMITATION,
     },

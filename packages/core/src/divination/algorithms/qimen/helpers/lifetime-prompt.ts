@@ -275,10 +275,10 @@ export function buildLifetimePrompt(
       lines.push(`  精确区间：${st.startDateTime}起，至${st.endDateTimeExclusive}前。`);
     if (st.ganzhi) lines.push(`  干支定位：${st.associatedMarkers.join('；')}`);
     if (st.supportFacts.length > 0) {
-      lines.push(`  支持吉象：${formatStageFacts(st.supportFacts)}`);
+      lines.push(`  宫位支持类象：${formatStageFacts(st.supportFacts)}`);
     }
     if (st.constraintFacts.length > 0) {
-      lines.push(`  考验反证：${formatStageFacts(st.constraintFacts)}`);
+      lines.push(`  宫位制约类象：${formatStageFacts(st.constraintFacts)}`);
     }
   }
   lines.push('');

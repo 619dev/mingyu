@@ -231,6 +231,35 @@ test('八字本命证据应标出缺失或错位的派生资料，且不把可�
   assert.equal(evidence.summaryFact.status, '证据链有缺口');
 });
 
+test('固定四柱的日主五行或阴阳与日干不一致时不写为已计算事实', () => {
+  for (const staleField of ['element', 'yinYang'] as const) {
+    const chart = baziCalculator.calculateBazi({
+      year: 1990,
+      month: 9,
+      day: 5,
+      timeIndex: 6,
+      gender: 'male',
+    });
+    assert.deepEqual(
+      Object.values(chart.pillars).map((pillar) => pillar.ganZhi),
+      ['庚午', '甲申', '癸酉', '戊午'],
+    );
+    if (staleField === 'element') chart.dayMaster.element = '木';
+    else chart.dayMaster.yinYang = '阳';
+
+    const evidence = analyzeBaziNatalEvidence(chart);
+    const pillarStep = evidence.calculationSteps.find((item) => item.stage === '四柱生成');
+    const staleDayMaster = `${chart.dayMaster.gan}${chart.dayMaster.element}${chart.dayMaster.yinYang}`;
+
+    assert.equal(pillarStep?.status, '存在资料缺口');
+    assert.equal(pillarStep?.result.dayMaster, '待核');
+    assert.match(pillarStep?.promptText ?? '', /日主资料与日柱不一致，待核/);
+    assert.ok(evidence.pillarFacts.every((item) => item.status === '资料缺口'));
+    assert.equal(evidence.summaryFact.status, '证据链有缺口');
+    assert.doesNotMatch(evidence.promptText, new RegExp(staleDayMaster));
+  }
+});
+
 test('1994年6月15日午时壬日男命应贯通壬午月取用证据与公共提示词', () => {
   const result = baziCalculator.calculateBazi({
     year: 1994,

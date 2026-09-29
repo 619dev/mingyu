@@ -674,7 +674,7 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
           texts(stage.supportFacts).length
             ? fact(
                 `qimen-lifetime.stage.${index}.support`,
-                '支持吉象：',
+                '宫位支持类象：',
                 [formatStageFacts(stage.supportFacts)],
                 { scope, unit: 'line' },
               )
@@ -682,7 +682,7 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
           texts(stage.constraintFacts).length
             ? fact(
                 `qimen-lifetime.stage.${index}.constraint`,
-                '考验反证：',
+                '宫位制约类象：',
                 [formatStageFacts(stage.constraintFacts)],
                 { scope, unit: 'line' },
               )

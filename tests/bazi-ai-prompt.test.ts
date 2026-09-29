@@ -485,6 +485,29 @@ test('从儿格已列顺局作用时不在特殊格条件重复财星制印', ()
   }
 });
 
+test('从儿格顺局作用已列于取用配合时不另列格局条件', () => {
+  const result = createBaziResult({ year: 1994, month: 2, day: 15, timeIndex: 6 });
+  const action = result.analysis.mingGe.specialAdjudication?.functionalResolutions[0];
+  const evidence = result.analysis.usefulGod.decisionEvidence;
+  assert.ok(action);
+  assert.ok(evidence);
+  result.analysis.mingGe.basis = result.analysis.mingGe.basis?.replace(action, '');
+  evidence.balanceAdjustment = { reason: action, favorableOrder: [] };
+
+  assert.ok(!formatBaziPatternConditions(result).includes(`顺局作用：${action}`));
+  for (const [index, prompt] of [
+    buildBaziPrompt({ result }),
+    buildPromptFromConfig(
+      '分析原局格局。',
+      { id: 'ai-career', prompt: '分析事业。', scopeLabel: '事业' },
+      result,
+    ).user,
+  ].entries()) {
+    assert.ok(prompt.includes(`取用配合：${action}`));
+    assert.ok(!prompt.includes(`顺局作用：${action}`), `第${index + 1}个入口重复`);
+  }
+});
+
 test('从儿格提示词保留成格依据而省略分日司权旁注', () => {
   const result = createBaziResult({ year: 1980, month: 10, day: 3, timeIndex: 6 });
   assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');

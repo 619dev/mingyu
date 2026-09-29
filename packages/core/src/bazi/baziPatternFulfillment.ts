@@ -32,6 +32,8 @@ export interface PatternStemEvidence {
   placement: '透干' | '藏干';
   hiddenRole?: '本气' | '中气' | '余气';
   rooted: boolean;
+  /** 明透、有可用根气且未受合绊，才可作为本次有效作用干。 */
+  effective: boolean;
   rootType: '本根' | '同类根' | '无根';
   rootPositions: string[];
   clashedRootPositions: string[];
@@ -387,7 +389,11 @@ function getGodGroup(
   };
 }
 
-function toStemEvidence(item: ObservedStem, pillars: Pillars): PatternStemEvidence {
+function toStemEvidence(
+  item: ObservedStem,
+  pillars: Pillars,
+  harmonyProfiles: HarmonyTransformProfile[],
+): PatternStemEvidence {
   const root = getRootInfo(item, pillars);
   return {
     stem: item.stem,
@@ -398,6 +404,8 @@ function toStemEvidence(item: ObservedStem, pillars: Pillars): PatternStemEviden
     placement: item.placement,
     ...(item.hiddenRole ? { hiddenRole: item.hiddenRole } : {}),
     rooted: root.rooted,
+    effective:
+      item.placement === '透干' && root.actionable && !isStemBlocked(item, harmonyProfiles),
     rootType: root.rootType,
     rootPositions: root.rootPositions,
     clashedRootPositions: root.clashedRootPositions,
@@ -551,7 +559,11 @@ function formatGroup(group: GodGroup): string {
   return group.entries.length ? group.entries.map(formatObserved).join('、') : '未见';
 }
 
-function buildRootEvidence(groups: readonly GodGroup[], pillars: Pillars): PatternStemEvidence[] {
+function buildRootEvidence(
+  groups: readonly GodGroup[],
+  pillars: Pillars,
+  harmonyProfiles: HarmonyTransformProfile[],
+): PatternStemEvidence[] {
   const keys = new Set<string>();
   return groups
     .flatMap((group) => group.entries)
@@ -561,7 +573,7 @@ function buildRootEvidence(groups: readonly GodGroup[], pillars: Pillars): Patte
       keys.add(key);
       return true;
     })
-    .map((item) => toStemEvidence(item, pillars));
+    .map((item) => toStemEvidence(item, pillars, harmonyProfiles));
 }
 
 function buildGroupCondition(
@@ -1667,7 +1679,7 @@ export function evaluatePatternFulfillment(
     getGodGroup(['食神', '伤官'], observed, pillars),
     getGodGroup(['比肩', '劫财'], observed, pillars),
   ];
-  const rootEvidence = buildRootEvidence(allGroups, pillars);
+  const rootEvidence = buildRootEvidence(allGroups, pillars, harmonyProfiles);
   rootEvidence.push(
     toStemEvidence(
       {
@@ -1678,6 +1690,7 @@ export function evaluatePatternFulfillment(
         placement: '透干',
       },
       pillars,
+      harmonyProfiles,
     ),
   );
 

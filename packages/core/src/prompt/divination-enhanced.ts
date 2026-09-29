@@ -997,12 +997,12 @@ function formatLiurenInfo(data: LiurenData) {
       : '',
   ].filter(Boolean);
   const guaTiText = data.guaTi?.length ? data.guaTi.join('、') : '';
-  const guaTiSection = guaTiText ? `课体：${guaTiText}` : '';
   const guaTiFacts = data.guaTiFacts?.length
     ? data.guaTiFacts.map(
         (item) => `${item.name}：${item.matchedConditions.join('；')}（${item.sourceTitle}）`,
       )
     : [];
+  const guaTiSection = guaTiText && guaTiFacts.length === 0 ? `课体：${guaTiText}` : '';
   const shenShaAll = data.shenShaFacts?.length
     ? data.shenShaFacts.map((item) => `${item.name}在${item.target}`)
     : data.shenShaSummary || [];
@@ -1451,7 +1451,7 @@ export function formatHuangjiInfo(data: HuangjiJingshiResult) {
     sixDay
       ? sixDay.model === '书绪言六日逐爻·显式历元'
         ? `六日逐爻历元：以经校定的${sixDay.anchor.dateTime}当地子半为起点，至目标当地日期已过${sixDay.calendar.actualElapsedDays}个完整公历日。`
-        : `六日逐爻历元：以${sixDay.anchor.dayStartDateTime}当地子半为起点，按冬至岁周实际跨度映射三百六十逻辑日。`
+        : `六日逐爻历元：以${sixDay.anchor.dayStartDateTime}${sixDay.anchor.dayBoundary === '当地子半' ? '当地子半' : '当地日首个实际时刻'}为起点，按冬至岁周实际跨度映射三百六十逻辑日。`
       : '',
     sixDay ? `六日逐爻位置：三百六十日周期第${sixDay.dayOfCycle}日，${sixDay.hourRange}时段。` : '',
     `目标年份：${formatHuangjiCivilYear(annual.year)}（${annual.ganzhi}）`,

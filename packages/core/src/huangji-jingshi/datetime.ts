@@ -13,6 +13,7 @@ import {
   formatFixedTimezoneOffset,
   getCivilDateTimeAtFixedOffset,
   getHistoricalTimezoneOffsetAt,
+  resolveCivilDayStart,
   resolveCivilTime,
   type CivilDateTimeParts,
   type CivilTimeZoneInput,
@@ -174,13 +175,13 @@ export interface HuangjiSixDayProportionalDateResult extends HuangjiSixDayDateRe
     /** 同一节气瞬时在目标地点的当地钟表表示。 */
     localDateTime: string;
     localTimezone: number;
-    /** 冬至所在当地公历日的子半，用作比例岁周起点。 */
+    /** 冬至所在当地公历日首点，用作比例岁周起点；当地午夜缺失时为该日首个实际时刻。 */
     dayStartDateTime: string;
     dayStartUtcDateTime: string;
     dayStartTimezone: number;
     dayGanZhi: string;
     dayIndex: number;
-    dayBoundary: '当地子半';
+    dayBoundary: '当地子半' | '当地日首个实际时刻';
   };
   calendar: {
     model: typeof HUANGJI_SIX_DAY_PROPORTIONAL_CALENDAR_MODEL;
@@ -193,7 +194,7 @@ export interface HuangjiSixDayProportionalDateResult extends HuangjiSixDayDateRe
     logicalPosition: number;
     logicalElapsedDays: number;
     logicalDayFraction: number;
-    /** 节气前尾段落在下一冬至当地日子半之后时，逻辑位置是否封顶于上一岁周末端。 */
+    /** 节气前尾段落在下一冬至当地日首点之后时，逻辑位置是否封顶于上一岁周末端。 */
     endpointClamped: boolean;
     coordinateSpanDays: 360;
     yearLengthDays: number;
@@ -491,15 +492,22 @@ function resolveWinterSolsticeDayStart(
     new Date(term.utcTimestamp),
     dayStartTimezone,
   );
-  const dayStart = resolveCivilTime({
-    year: localTermTime.year,
-    month: localTermTime.month,
-    day: localTermTime.day,
-    hour: 0,
-    minute: 0,
-    second: 0,
-    ...(target.timeZoneId ? { timeZoneId: target.timeZoneId } : { timezone: dayStartTimezone }),
-  });
+  const dayStart = target.timeZoneId
+    ? resolveCivilDayStart({
+        year: localTermTime.year,
+        month: localTermTime.month,
+        day: localTermTime.day,
+        timeZoneId: target.timeZoneId,
+      })
+    : resolveCivilTime({
+        year: localTermTime.year,
+        month: localTermTime.month,
+        day: localTermTime.day,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        timezone: dayStartTimezone,
+      });
   const dayGanZhi = SolarTime.fromYmdHms(
     localTermTime.year,
     localTermTime.month,
@@ -512,6 +520,12 @@ function resolveWinterSolsticeDayStart(
     .getEightChar()
     .getDay()
     .getName();
+  const dayBoundary: HuangjiSixDayProportionalDateResult['anchor']['dayBoundary'] =
+    dayStart.localTime.hour === 0 &&
+    dayStart.localTime.minute === 0 &&
+    dayStart.localTime.second === 0
+      ? '当地子半'
+      : '当地日首个实际时刻';
   return {
     ...term,
     localTermTime,
@@ -522,6 +536,7 @@ function resolveWinterSolsticeDayStart(
     dayStartTimezone: dayStart.timezone,
     dayGanZhi,
     dayIndex: getSixtyCycleIndex(dayGanZhi),
+    dayBoundary,
   };
 }
 
@@ -706,8 +721,8 @@ function calculateHuangjiSixDayCycleFromExplicitDate(
 /**
  * 以实际冬至岁周承载“六日七分”的现代公历比例换算。
  *
- * 节气瞬时用于决定所属冬至岁周；该冬至所在地点的当地公历日子半作为
- * 现代换算起点，至下一冬至当地公历日子半的真实 UTC 间隔等分为360个逻辑日。
+ * 节气瞬时用于决定所属冬至岁周；该冬至所在地点的当地公历日首点作为
+ * 现代换算起点，至下一冬至当地公历日首点的真实 UTC 间隔等分为360个逻辑日。
  */
 function calculateHuangjiSixDayCycleFromProportionalDate(
   input: HuangjiSixDayProportionalDateInput,
@@ -798,22 +813,22 @@ function calculateHuangjiSixDayCycleFromProportionalDate(
       dayStartTimezone: anchor.dayStartTimezone,
       dayGanZhi: anchor.dayGanZhi,
       dayIndex: anchor.dayIndex,
-      dayBoundary: '当地子半',
+      dayBoundary: anchor.dayBoundary,
     },
     calendar,
     calculationChain: [
       `${targetDateTime}解析为 UTC${target.timezone >= 0 ? '+' : ''}${target.timezone} 的当地公历时刻，保留真实 UTC 瞬时点。`,
       `以${anchorDateTime}的冬至天文时刻确定所属${anchor.termYear}冬至岁周；该瞬时在目标地点为${anchorLocalDateTime}。`,
-      `以冬至所在当地公历日${anchorDayStartDateTime}子半为起点，至下一冬至当地公历日子半的实际跨度为${(yearLengthMilliseconds / MILLISECONDS_PER_DAY).toFixed(6)}日（${yearLengthMilliseconds}毫秒），按三百六十逻辑日比例映射。`,
-      `目标距当地子半起点实际经过${actualElapsedSeconds}秒（${actualElapsedDays}个完整UTC日），逻辑位置为${mapped.logicalPosition.toFixed(9)}日，即第${mapped.logicalElapsedDays + 1}个逻辑日的${mapped.logicalDayFraction.toFixed(9)}。`,
-      `以冬至日子半的${anchor.dayGanZhi}（六十甲子序号${anchor.dayIndex}）接续六日逐爻周期，得到周期第${cycleElapsedDays + 1}日；每四小时取一爻，当前为${cycle.hourRange}。`,
+      `以冬至所在当地公历日${anchorDayStartDateTime}${anchor.dayBoundary === '当地子半' ? '子半' : '首个实际时刻'}为起点，至下一冬至当地公历日首点的实际跨度为${(yearLengthMilliseconds / MILLISECONDS_PER_DAY).toFixed(6)}日（${yearLengthMilliseconds}毫秒），按三百六十逻辑日比例映射。`,
+      `目标距当地日首点实际经过${actualElapsedSeconds}秒（${actualElapsedDays}个完整UTC日），逻辑位置为${mapped.logicalPosition.toFixed(9)}日，即第${mapped.logicalElapsedDays + 1}个逻辑日的${mapped.logicalDayFraction.toFixed(9)}。`,
+      `以冬至所在当地公历日首点对应的${anchor.dayGanZhi}（六十甲子序号${anchor.dayIndex}）接续六日逐爻周期，得到周期第${cycleElapsedDays + 1}日；每四小时取一爻，当前为${cycle.hourRange}。`,
     ],
     sources: HUANGJI_SIX_DAY_SOURCES.map((source) => ({ ...source })),
     limitations: [
       '原典给出冬至甲子日子半、六日逐爻和六日七分的传统条件，没有给出现代公历唯一对应的甲子历元；本结果是明确标注的现代比例换算，不宣称是古籍唯一算法。',
-      '本模型以实际冬至瞬时确定所属冬至岁周，以该冬至所在当地公历日子半至下一冬至当地公历日子半的实测 UTC 间隔等分三百六十逻辑日；不同地点的民用日界和历史时区规则会改变子半锚点。',
+      '本模型以实际冬至瞬时确定所属冬至岁周，以该冬至所在当地公历日首点至下一冬至当地公历日首点的实测 UTC 间隔等分三百六十逻辑日；当地午夜存在时日首点即子半，午夜因时区调整缺失时采用该日首个实际时刻。',
       '六日七分的传统余分有不同传承；本模型不把六个余分硬插为六个公历整日，也不以该比例换算替代既有年月日时十五日节气链。',
-      '若下一冬至发生在其当地公历日子半之后，该日期子半至真实节气前仍属上一岁周；因下一岁周的子半端点已先到，逻辑位置封顶在上一岁周最后一个逻辑日，并保留实际跨度字段。',
+      '若下一冬至发生在其当地公历日首点之后，该日期日首点至真实节气前仍属上一岁周；因下一岁周的日首端点已先到，逻辑位置封顶在上一岁周最后一个逻辑日，并保留实际跨度字段。',
       '小时爻沿用目标地点当地钟表从子半开始的四小时段；分钟、秒和毫秒保留在真实时刻资料中，不改变已取的四小时段。',
       '节气时刻采用 tyme4ts 历表的 UTC+8 表达，实际精度受所用历表与 IANA 时区数据库版本边界影响。',
     ],

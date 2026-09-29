@@ -529,35 +529,35 @@ export function scanLifetimeDynamicEvents(
 
     if (baseDoor === '生门') {
       topics.push('wealth');
-      supportEvidence.push(`太岁落临生门财帛宫，生机旺相，利于资产沉淀与收益变现`);
+      supportEvidence.push('太岁临本命生门，传统门象关联生发与经营');
       verificationQuestions.push('当年是否有重点投资落地、资产买卖或经营收益周转？');
     } else if (baseDoor === '开门') {
       topics.push('career');
-      supportEvidence.push(`太岁引动开门事业之宫，主新局开展、职权扩张或平台转换`);
+      supportEvidence.push('太岁临本命开门，传统门象关联对外事务与启动');
       verificationQuestions.push('当年是否有晋升变动、独立领衔项目或事业新起点？');
     } else if (baseDoor === '休门') {
       topics.push('family', 'marriage');
-      supportEvidence.push(`太岁引动休门贵人家庭之宫，利于安顿调养、婚恋交好`);
+      supportEvidence.push('太岁临本命休门，传统门象关联休养、交流与家庭议题');
       verificationQuestions.push('当年家庭人际、长辈关系或感情婚姻是否处于和缓推进阶段？');
     } else if (baseDoor === '死门') {
       topics.push('health');
-      counterEvidence.push(`太岁引动死门滞塞之宫，防气机滞缓或精力透支`);
+      counterEvidence.push('太岁临本命死门，传统门象涉及收束与停滞');
       verificationQuestions.push('当年是否出现长期劳累、慢性不适或重大阻滞需调整？');
     } else if (baseDoor === '伤门') {
       topics.push('relocation');
-      counterEvidence.push(`太岁临伤门，主车马奔波与变动磨耗`);
+      counterEvidence.push('太岁临本命伤门，传统门象涉及冲突、损耗与迁动议题');
       verificationQuestions.push('当年是否出差频繁、奔波操劳或遭遇琐碎争议？');
     } else if (baseDoor === '景门') {
       topics.push('academic', 'career');
-      supportEvidence.push(`太岁引动景门文书声誉之宫，利于学术考察、资质认证与名气外显`);
+      supportEvidence.push('太岁临本命景门，传统门象涉及文书、呈现与声誉议题');
       verificationQuestions.push('当年是否有进修考试、资质评审、文书签约或公开展示？');
     } else if (baseDoor === '杜门') {
       topics.push('career');
-      counterEvidence.push(`太岁临杜门，主隐秘积蓄与潜沉防守，多有技术钻研或暂时等待`);
+      counterEvidence.push('太岁临本命杜门，传统门象涉及闭藏与专注');
       verificationQuestions.push('当年是否处于闭关深耕、技术打磨或遇有事务暂缓？');
     } else if (baseDoor === '惊门') {
       topics.push('career');
-      counterEvidence.push(`太岁临惊门，防口舌是非、法律咨询或突发谈判`);
+      counterEvidence.push('太岁临本命惊门，传统门象涉及突发变化与言语争议');
       verificationQuestions.push('当年是否有关键商务谈判、合同交涉、是非申辩或法律咨询？');
     }
 
@@ -570,13 +570,13 @@ export function scanLifetimeDynamicEvents(
     if (baseGod === '六合') {
       if (!topics.includes('marriage')) topics.push('marriage');
       if (!topics.includes('partnership')) topics.push('partnership');
-      supportEvidence.push('太岁同值六合，促成合作契约或婚盟机缘');
+      supportEvidence.push('太岁宫同见六合，传统神象关联合作与协调');
     }
 
     // 2. 虚实填实检查
     if (baseChart.voidBranches && baseChart.voidBranches.includes(flowYearBranch)) {
       triggerDescription += `本命空亡地支【${flowYearBranch}】逢流年填实。`;
-      supportEvidence.push(`原局逢空之${basePalace.name}得太岁填实，虚转为实`);
+      supportEvidence.push(`本命旬空支${flowYearBranch}逢太岁同支，构成传统填实条件`);
       verificationQuestions.push('此前悬而未决、等待推进的事宜是否在当年取得实质进展？');
     }
 
@@ -586,13 +586,13 @@ export function scanLifetimeDynamicEvents(
         triggerDescription += `流年并临本命驿马【${flowYearBranch}】。`;
         rhythm = '快';
         if (!topics.includes('relocation')) topics.push('relocation');
-        supportEvidence.push(`流年同值驿马，主主动出行、跨区域拓展或生活节奏加速`);
+        supportEvidence.push('流年支同本命驿马，传统取象涉及出行与迁动');
         verificationQuestions.push('当年是否发生长途出行、居所搬迁或异地发展？');
       } else if (OPPOSITE_BRANCHES[baseChart.horseStar.branch] === flowYearBranch) {
         triggerDescription += `流年地支【${flowYearBranch}】对冲本命驿马【${baseChart.horseStar.branch}】。`;
         rhythm = '快';
         if (!topics.includes('relocation')) topics.push('relocation');
-        supportEvidence.push(`驿马星逢岁支相冲（马星逢冲事必速），多突发性变动与快速推进`);
+        supportEvidence.push('流年支冲本命驿马，传统取象涉及变动与节奏变化');
         verificationQuestions.push('当年是否有预期之外的快速差旅、职位调动或环境变迁？');
       }
     }
@@ -602,9 +602,9 @@ export function scanLifetimeDynamicEvents(
       for (const yp of yearQimen.classicPatterns) {
         if (yp.palaces.includes(taiSuiPalaceNum)) {
           if (yp.type === 'good') {
-            supportEvidence.push(`岁盘吉格「${yp.name}」叠合临宫：${yp.summary}`);
+            supportEvidence.push(`岁盘吉格「${yp.name}」命中太岁所在宫`);
           } else if (yp.type === 'bad') {
-            counterEvidence.push(`岁盘凶格「${yp.name}」叠合临宫：${yp.summary}`);
+            counterEvidence.push(`岁盘凶格「${yp.name}」命中太岁所在宫`);
           }
         }
       }

@@ -276,6 +276,16 @@ test('住宅风水仅有出生信息时可出八宅，不出玄空', () => {
   assert.equal(result.inputSummary.xuankongStatus, '缺少山向');
 });
 
+test('仅有命卦和住宅年份时提示词将年份标为输入资料而非已排宅运', () => {
+  const result = generateResidentialFengshui({ mingGua: '坎', year: 2024 });
+
+  assert.equal(result.xuankong, null);
+  assert.equal(result.inputSummary.houseYear, 2024);
+  assert.match(result.prompt, /提供的住宅建造年或起运年：2024/);
+  assert.doesNotMatch(result.prompt, /宅运年份：2024/);
+  assert.match(result.prompt, /玄空：未排盘/);
+});
+
 test('住宅风水有居住人与山向但缺少建造或起运年时不得静默套用当前年', () => {
   const result = generateResidentialFengshui({
     birthYear: 1990,

@@ -280,7 +280,7 @@ function collectNatalPatternFunctions(
 
   if (monthGate?.status === '满足' && target?.status === '满足' && targetGod) {
     for (const evidence of rootEvidence) {
-      if (evidence.tenGod !== targetGod || evidence.placement !== '透干' || !evidence.rooted) {
+      if (evidence.tenGod !== targetGod || evidence.placement !== '透干' || !evidence.effective) {
         continue;
       }
       functions.push({
