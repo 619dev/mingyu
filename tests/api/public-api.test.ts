@@ -2342,7 +2342,8 @@ test('八字提示词按流派输出不同任务、依据与盘面证据', () =>
     school: 'ziping',
   });
   assert.match(ziping, /八字流派：子平派（传统）/);
-  assert.match(ziping, /月令与节候：/);
+  assert.match(ziping, /月令司权:/);
+  assert.doesNotMatch(ziping, /^月令与节候：|五行季节状态/m);
   assert.match(ziping, /《子平真诠》/);
   assert.match(ziping, /流派任务：依据已给出的月令、旺衰、格局成败及制化条件/);
 
@@ -2352,7 +2353,8 @@ test('八字提示词按流派输出不同任务、依据与盘面证据', () =>
     school: 'mangpai',
   });
   assert.match(mangpai, /八字流派：盲派/);
-  assert.match(mangpai, /四柱宫位与十神/);
+  assert.match(mangpai, /四柱宫位参照：/);
+  assert.match(mangpai, /【四柱】/);
   assert.match(mangpai, /四柱组合与做功线索：/);
   assert.match(mangpai, /主宾定位：/);
   assert.match(mangpai, /主位为日柱.+与时柱/);
