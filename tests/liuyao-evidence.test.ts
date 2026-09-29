@@ -73,6 +73,19 @@ test('六爻证据与提示词拒绝可复算的纳甲世应、动变和月日�
   );
 });
 
+test('六爻旧盘缺少变卦别名时仍核验变爻六亲', () => {
+  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  data.changedName = undefined;
+  const changingYao = data.yaosDetail.find((yao) => yao.isChanging)!;
+  changingYao.changedYao!.liuqin = changingYao.changedYao!.liuqin === '父母' ? '兄弟' : '父母';
+
+  assert.throws(() => analyzeLiuyaoEvidence(data), /纳甲、世应、动变或月日空破与盘面不一致/u);
+  assert.throws(
+    () => formatEnhancedDivinationInfo('liuyao', data),
+    /纳甲、世应、动变或月日空破与盘面不一致/u,
+  );
+});
+
 test('六爻三钱来源须同时吻合铜钱合计与原始爻值', () => {
   const coinThrows = Array.from({ length: 6 }, () => ({
     coins: [2, 2, 3] as const,

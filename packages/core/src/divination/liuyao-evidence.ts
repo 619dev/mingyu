@@ -15,7 +15,13 @@ import {
   isSheng,
 } from '../ganzhi';
 import { getVoidBranches } from '../calendar/lunar';
-import { hexagramNaJia, hexagramPalaceMap, palaceHexagrams } from './divination-data';
+import {
+  hexagramNaJia,
+  hexagramPalaceMap,
+  liuqinRelations,
+  palaceHexagrams,
+  palaces,
+} from './divination-data';
 import { hexagramsData } from './hexagram-data';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import { MingyuCoreError } from '../shared/result';
@@ -502,8 +508,9 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
   }
 
   const mainNaJia = hexagramNaJia[data.originalName];
-  const changedNaJia = data.changedName ? hexagramNaJia[data.changedName] : undefined;
+  const changedNaJia = expectedChanged ? hexagramNaJia[expectedChanged.name] : undefined;
   const palaceName = hexagramPalaceMap[data.originalName as keyof typeof hexagramPalaceMap];
+  const palace = palaces[palaceName as keyof typeof palaces];
   const palaceIndex = palaceHexagrams[palaceName as keyof typeof palaceHexagrams]?.indexOf(
     data.originalName,
   );
@@ -567,6 +574,12 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
         changedNaJia &&
         (yao.changedYao?.dizhi !== changedNaJia[index] ||
           yao.changedYao.wuxing !== getBranchWuxing(changedNaJia[index]) ||
+          yao.changedYao.liuqin !==
+            liuqinRelations[palace.wuxing as keyof typeof liuqinRelations][
+              getBranchWuxing(
+                changedNaJia[index],
+              ) as keyof (typeof liuqinRelations)[keyof typeof liuqinRelations]
+            ] ||
           yao.changedYao.isVoid !== expectedVoids.includes(changedNaJia[index])))
     ) {
       throw new Error(`六爻第${yao.position}爻纳甲、世应、动变或月日空破与盘面不一致。`);

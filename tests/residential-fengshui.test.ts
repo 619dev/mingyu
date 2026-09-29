@@ -29,7 +29,6 @@ test('八宅与住宅核心盘及在线包装各保留一份完整任务', () =>
     assert.equal(core.prompt.match(/^【传统依据】$/gm)?.length, 1);
     const prompt = buildMetaphysicsPrompt(core.prompt, '办公方位怎样安排？', {
       method,
-      measurement: '入户读数：64°，磁偏角东偏1°，误差±3°',
       topicId: 'family',
       subtopicId: 'home',
       scope: 'natal',
@@ -38,7 +37,9 @@ test('八宅与住宅核心盘及在线包装各保留一份完整任务', () =>
     assert.equal(prompt.match(/^【传统依据】$/gm)?.length, 1);
     assertPromptHasSingleRole(prompt, PROMPT_GUIDANCE_TEXT[method]);
     assert.match(prompt, /【当前时间】/);
-    assert.match(prompt, /【测量换算】\n入户读数：64°/);
+    assert.doesNotMatch(prompt, /【测量换算】/);
+    assert.equal(prompt.match(/读数64°/g)?.length, 1);
+    assert.equal(prompt.match(/磁偏角1°/g)?.length, 1);
     assert.match(prompt, /【解读选择】[\s\S]*主题细项：家宅与居住/);
     assert.match(prompt, /请围绕【解读选择】所列主题和范围解释本次盘面。请直接回答【问题】。/);
     assert.match(prompt, /【问题】\n办公方位怎样安排？/);

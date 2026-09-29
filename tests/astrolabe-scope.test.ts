@@ -179,6 +179,32 @@ test('星盘本命分析对象只写入本命资料', () => {
   assert.doesNotMatch(context.promptText, /行运落宫：/);
 });
 
+test('本命宫头重复或宫序缺口时不投影行运落宫', () => {
+  const valid = buildAstrolabeScopeContext(astrolabeData, 'daily', '2028-06-01', {
+    includePeriodEvents: false,
+  });
+  assert.equal(valid.transitHouseFacts?.status, '有效');
+  assert.ok(valid.transitHouseFacts?.facts.some((fact) => fact.natalHouse !== null));
+
+  const duplicateCusp = structuredClone(astrolabeData) as AstrolabeData;
+  duplicateCusp.houses[1].longitude = duplicateCusp.houses[0].longitude;
+  const duplicateResult = buildAstrolabeScopeContext(duplicateCusp, 'daily', '2028-06-01', {
+    includePeriodEvents: false,
+  });
+  assert.equal(duplicateResult.transitHouseFacts?.status, '资料不足');
+  assert.ok(
+    duplicateResult.transitFacts?.facts.every((fact) => fact.transiting.natalHouse === null),
+  );
+  assert.match(duplicateResult.promptText, /行运落宫：本命宫头资料不足/);
+
+  const missingHouse = structuredClone(astrolabeData) as AstrolabeData;
+  missingHouse.houses[0].house = 2;
+  const missingResult = buildAstrolabeScopeContext(missingHouse, 'daily', '2028-06-01', {
+    includePeriodEvents: false,
+  });
+  assert.equal(missingResult.transitHouseFacts?.status, '资料不足');
+});
+
 test('星盘范围可显式跳过周期事件计算而保留基础与高级事实', () => {
   const context = buildAstrolabeScopeContext(astrolabeData, 'yearly', '2028', {
     includePeriodEvents: false,

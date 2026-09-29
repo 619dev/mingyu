@@ -135,7 +135,6 @@ import {
   buildResidentialChartInput,
   resolveResidentialBirthDate,
   calculateResidentialChart,
-  type ResidentialMeasurement,
 } from '@/lib/residential-fengshui-chart';
 import { BIRTH_TIME_OPTIONS } from '@/lib/birth-time';
 import { getBirthDateValidationMessage } from '@/lib/date-validation';
@@ -438,8 +437,6 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
   const [residentialResult, setResidentialResult] = useState<ResidentialFengshuiResult | null>(
     null,
   );
-  const [residentialMeasurement, setResidentialMeasurement] =
-    useState<ResidentialMeasurement | null>(null);
   const [qimenLifetimeCalculationRevision, setQimenLifetimeCalculationRevision] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const instantChartType = searchParams.get('instant');
@@ -911,7 +908,6 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
   useEffect(() => {
     if (!canUseResidentialFengshui) {
       setResidentialResult(null);
-      setResidentialMeasurement(null);
       return;
     }
     try {
@@ -941,10 +937,8 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
         }),
       );
       setResidentialResult(next.result);
-      setResidentialMeasurement(next.measurement);
     } catch {
       setResidentialResult(null);
-      setResidentialMeasurement(null);
       // URL 中的旧值或人工修改值无法生成时，住宅风水页仍允许用户重新测量。
     }
   }, [
@@ -958,16 +952,9 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
     residentialBirthData,
   ]);
 
-  const handleBazhaiResultChange = useCallback(
-    (
-      nextResult: ResidentialFengshuiResult | null,
-      nextMeasurement: ResidentialMeasurement | null,
-    ) => {
-      setResidentialResult(nextResult);
-      setResidentialMeasurement(nextMeasurement);
-    },
-    [],
-  );
+  const handleBazhaiResultChange = useCallback((nextResult: ResidentialFengshuiResult | null) => {
+    setResidentialResult(nextResult);
+  }, []);
   const handleBazhaiDirectionDegreeChange = useCallback(
     (value: string) => {
       if (value !== promptState.bazhaiFacingDegree) {
@@ -2450,14 +2437,12 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
     }
     return buildMetaphysicsPrompt(residentialResult.prompt, metaphysicsQuestionDraft, {
       method: 'residential',
-      measurement: residentialMeasurement?.promptText,
     });
   }, [
     canUseResidentialFengshui,
     metaphysicsQuestionDraft,
     promptState.promptSource,
     showAssistantPane,
-    residentialMeasurement,
     residentialResult,
   ]);
   const qimenLifetimePromptText = useMemo(() => {

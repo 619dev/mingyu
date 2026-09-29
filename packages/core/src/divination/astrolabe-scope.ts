@@ -768,12 +768,21 @@ function formatTransitHouseFactLine(fact: AstrolabeTransitHouseFact) {
 }
 
 function getNatalHouseCusps(data: AstrolabeData) {
-  const cusps = data.houses
-    .slice()
-    .sort((first, second) => first.house - second.house)
-    .map((item) => item.longitude);
-
-  return cusps.length === 12 && cusps.every((item) => Number.isFinite(item)) ? cusps : null;
+  const houses = data.houses.slice().sort((first, second) => first.house - second.house);
+  if (
+    houses.length !== 12 ||
+    houses.some((house, index) => house.house !== index + 1 || !Number.isFinite(house.longitude))
+  ) {
+    return null;
+  }
+  const cusps = houses.map((house) => normalizeLongitude(house.longitude));
+  let totalArc = 0;
+  for (let index = 0; index < cusps.length; index += 1) {
+    const arc = normalizeLongitude(cusps[(index + 1) % 12] - cusps[index]);
+    if (arc === 0) return null;
+    totalArc += arc;
+  }
+  return Math.abs(totalArc - 360) < 0.000001 ? cusps : null;
 }
 
 function normalizeLongitude(longitude: number) {
