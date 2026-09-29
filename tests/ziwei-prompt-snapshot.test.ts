@@ -672,6 +672,42 @@ test('紫微大限提示词只呈现本命与所选大限的落宫和判断线�
   }
 });
 
+test('紫微单层盘面任务书只收录本命与所选运限层的证据和落宫', () => {
+  const payload = createPayload();
+  payload.active_scope = {
+    ...payload.active_scope,
+    scope: 'decadal',
+    label: '大限',
+    palace_index: 4,
+  };
+  payload.palaces[4] = {
+    ...payload.palaces[4],
+    scope_hits: ['大限落宫', '流年落宫', '流日落宫'],
+    summary_tags: ['大限落宫', '流年落宫', '流日落宫'],
+  };
+  const scopeLabels = { origin: '本命', decadal: '大限', yearly: '流年', daily: '流日' };
+  payload.evidence_pool = [
+    ...(['origin', 'decadal', 'yearly', 'daily'] as const).map((scope, index) => ({
+      id: `E${index}`,
+      stable_key: `scope-${scope}`,
+      type: 'scope_mutagen_destination' as const,
+      title: `${scopeLabels[scope]}独立证据`,
+      scope,
+      palace_indexes: [4],
+      palace_names: ['财帛'],
+      star_names: [],
+      mutagens: [],
+      description: '宫位资料',
+    })),
+  ];
+
+  const prompt = formatZiweiPayloadForPrompt(payload);
+  assert.match(prompt, /本命独立证据/);
+  assert.match(prompt, /大限独立证据/);
+  assert.match(prompt, /运限命中：大限落宫/);
+  assert.doesNotMatch(prompt, /流年独立证据|流日独立证据|流年落宫|流日落宫/);
+});
+
 test('紫微本命完整提示词应输出本命分析对象且不输出空运限重点', () => {
   const prompt = buildCombinedZiweiPrompt(createPayload(), 'destiny', '请分析命局主线。', {
     isCustomQuestion: false,

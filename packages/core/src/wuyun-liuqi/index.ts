@@ -735,8 +735,7 @@ export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
     `司天：${result.sitian.name}`,
     `在泉：${result.zaiquan.name}`,
     `司天化令：${result.annualClassification.sitianTransformation}；南北政：${result.annualClassification.governance}`,
-    `司天与中运：${result.annualRelation.kind}`,
-    `年度五行作用：${formatElementDirection('中运', result.annualMovement.element, `司天${result.sitian.name}`, result.sitian.element)}；${formatElementDirection('中运', result.annualMovement.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}；${formatElementDirection(`司天${result.sitian.name}`, result.sitian.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}`,
+    `年度五行作用：${formatElementDirection('中运', result.annualMovement.element, `司天${result.sitian.name}`, result.sitian.element)}（${result.annualRelation.kind}）；${formatElementDirection('中运', result.annualMovement.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}；${formatElementDirection(`司天${result.sitian.name}`, result.sitian.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}`,
     ...(result.annualConformities.names.length
       ? [`年度符会：${result.annualConformities.names.join('、')}`]
       : []),
@@ -754,14 +753,14 @@ export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
         step.gregorianStart && step.gregorianEnd
           ? `；公历${step.gregorianStart}至${step.gregorianEnd}`
           : '';
-      return `${step.order}. ${step.label}（${step.periodRule}${dates}）：主运${step.hostMovement.toneName}（${step.hostMovement.element}）；客运${step.guestMovement.toneName}（${step.guestMovement.element}）${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}；${formatElementDirection(`主运${step.hostMovement.toneName}`, step.hostMovement.element, `客运${step.guestMovement.toneName}`, step.guestMovement.element)}`;
+      return `${step.order}. ${step.label}（${step.periodRule}${dates}）：主运${step.hostMovement.toneName}（${step.hostMovement.element}）；客运${step.guestMovement.toneName}（${step.guestMovement.element}）${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}（${formatElementDirection(`主运${step.hostMovement.toneName}`, step.hostMovement.element, `客运${step.guestMovement.toneName}`, step.guestMovement.element)}）`;
     }),
     '六步主客气：',
     ...result.qiSteps.map((step) => {
       const dates = step.boundaryTime
         ? `；现代节气交节参考（北京时间）${step.boundaryTime.startBeijing}至${step.boundaryTime.endBeijingExclusive}前`
         : '';
-      return `${step.order}. ${step.label}（${step.solarTerms.join('、')}${dates}）：主气${step.hostQi.name}；客气${step.guestQi.name}${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}；${formatElementDirection(`主气${step.hostQi.name}`, step.hostQi.element, `客气${step.guestQi.name}`, step.guestQi.element)}${step.hostGuestRelation.fireOrder ? `；二火加临：${step.hostGuestRelation.fireOrder}` : ''}`;
+      return `${step.order}. ${step.label}（${step.solarTerms.join('、')}${dates}）：主气${step.hostQi.name}；客气${step.guestQi.name}${step.guestRole ? `（${step.guestRole}）` : ''}；主客关系${step.hostGuestRelation.kind}（${formatElementDirection(`主气${step.hostQi.name}`, step.hostQi.element, `客气${step.guestQi.name}`, step.guestQi.element)}）${step.hostGuestRelation.fireOrder ? `；二火加临：${step.hostGuestRelation.fireOrder}` : ''}`;
     }),
   ].join('\n');
 }

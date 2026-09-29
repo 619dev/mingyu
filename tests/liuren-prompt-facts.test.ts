@@ -14,6 +14,7 @@ import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divina
 import { buildDivinationPrompt as buildAppDivinationPrompt } from '../src/lib/divination/engine';
 import { formatLiurenOrdinaryTransmissionAdjudication } from '../packages/core/src/prompt/liuren-facts';
 import { formatLiurenJudgmentFacts } from '../packages/core/src/prompt/liuren-judgment';
+import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules';
 
 test('大六壬四课和三传分别绑定实际上下位与前传，十二宫绑定天地盘及天将', () => {
   const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
@@ -79,6 +80,32 @@ test('大六壬遥克提示词应说明直接克未命中且不得夹带贼克�
     assert.match(text, /最终按遥克法取.+发用/);
     assert.doesNotMatch(text, /贼克法：|四课先察上下相克/);
   }
+});
+
+test('大六壬复合取传规则只列当前有克或无克条件，重复课对按不同上神计数', () => {
+  const fuyinNoKe = resolveLiurenClassicalRules('伏吟法');
+  const fuyinKe = resolveLiurenClassicalRules('伏吟重审法');
+  const fanyinNoKe = resolveLiurenClassicalRules('返吟法');
+  const fanyinKe = resolveLiurenClassicalRules('返吟元首法');
+  assert.match(fuyinNoKe[0].summary, /四课无克/);
+  assert.doesNotMatch(fuyinNoKe[0].summary, /四课有克/);
+  assert.match(fuyinKe[0].summary, /四课有克/);
+  assert.doesNotMatch(fuyinKe[0].summary, /四课无克/);
+  assert.match(fanyinNoKe[0].summary, /四课无克/);
+  assert.doesNotMatch(fanyinNoKe[0].summary, /四课有克/);
+  assert.match(fanyinKe[0].summary, /四课有克/);
+  assert.doesNotMatch(fanyinKe[0].summary, /四课无克/);
+
+  const data = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
+  assert.equal(data.transmissionRule, '返吟重审法');
+  assert.deepEqual(
+    data.fourLessons.map((item) => item.upper),
+    ['申', '寅', '申', '寅'],
+  );
+  const prompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
+  assert.match(prompt, /返吟课兼四课下贼上：天盘与地盘相冲；四课见下贼上/);
+  assert.match(prompt, /四课下贼上候选只有一个不同上神/);
+  assert.doesNotMatch(prompt, /四课只有一处下贼上|无克另按井栏射取传/);
 });
 
 test('大六壬完整提示词写入课体判据、取用定位和应期依据', () => {

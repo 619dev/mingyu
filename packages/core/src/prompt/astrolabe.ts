@@ -76,7 +76,7 @@ const TOPIC_LABELS: Record<AstrolabePromptTopic, string> = {
 
 function formatPoint(point: AstrolabeData['planets'][number]) {
   const dignity = point.dignityLabel ? `，${point.dignityLabel}` : '';
-  return `${point.label}${point.formatted}，第${point.house}宫${point.retrograde ? '，逆行' : ''}${dignity}`;
+  return `${point.label}${point.formatted}${point.house > 0 ? `，第${point.house}宫` : ''}${point.retrograde ? '，逆行' : ''}${dignity}`;
 }
 
 function formatCoordinateAccuracy(accuracy: string | undefined) {
@@ -109,8 +109,8 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
       : '',
     data.dayChart === undefined ? '' : `昼夜盘：${data.dayChart ? '昼盘' : '夜盘'}`,
     ...(data.ephemerisWarnings ?? []).map((warning) => `星历精度：${warning}`),
-    data.birth.isTrueSolarTime
-      ? `出生时间校正：当地钟表时间${data.birth.standardDateTime || '未记录'}；真太阳时${data.birth.trueSolarDateTime || data.birth.dateTime}`
+    data.birth.isTrueSolarTime && data.birth.trueSolarDateTime
+      ? `出生时间校正：当地钟表时间${data.birth.standardDateTime || data.birth.dateTime}；真太阳时${data.birth.trueSolarDateTime}（传统时间参考）；星盘依据当地钟表时间对应的出生瞬间计算`
       : '',
     `核心位置：太阳${sun?.formatted || '未列'}；月亮${moon?.formatted || '未列'}；上升${ascendant?.formatted || '未列'}`,
     `元素分布：${

@@ -602,7 +602,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
       name: '三门',
       status: '已复算',
       input: data.accumulatedValue,
-      operation: `240周期余数${data.conditions.threeGates.directGateRemainder}按每30换直使${data.conditions.threeGates.directGate}`,
+      operation: `floor((${data.conditions.threeGates.directGateRemainder} - 1) / 30) + 1 定位直使${data.conditions.threeGates.directGate}`,
       result: data.conditions.threeGates.status,
       dependsOnStepKeys: ['taiyi:calculation:bureau'],
       basis: data.conditions.threeGates.basis,
@@ -669,7 +669,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     `积数按七十二局循环定位${data.yinYang}第${data.bureau}局`,
     '按对应阴阳遁七十二局立成表读取太乙、文昌、始击及主客定算',
     '由主客定算余数定位主客定大将与参将，计神及十六神作为辅助定位资料',
-    `按二百四十周期每三十换直使并将直门加临太乙，按${data.conditions.threeGates.gateScope}逐项复算，${data.conditions.threeGates.status}；始击门位单列，客方专用门具不并入本栏`,
+    `按余数定位直使并将直门加临太乙，按${data.conditions.threeGates.gateScope}逐项复算，${data.conditions.threeGates.status}；始击门位单列，客方专用门具不并入本栏`,
     `按卷四三项发将条件复算五将${data.conditions.fiveGenerals.launched ? '发' : '不发'}；主客四将同宫关、客目/客将格、文昌对及二目五行关系分别记录`,
     `按太乙、两目宫辰与主客算奇偶复算阴阳${data.conditions.yinYangHarmony.matched ? '和' : '不和'}`,
   ];

@@ -6615,7 +6615,10 @@ test('公开 API 五运六气应返回年度主客气结构与轻量提示词结
   );
   assert.equal(prompted.body.data.resultSummary.movementSteps.length, 5);
   assert.equal(prompted.body.data.resultSummary.qiSteps.length, 6);
-  assert.match(prompted.body.data.prompt, /【盘面资料】[\s\S]*司天与中运：不和/);
+  assert.match(
+    prompted.body.data.prompt,
+    /【盘面资料】[\s\S]*年度五行作用：中运（水）克司天少阴君火（火）（不和）/,
+  );
   assert.match(prompted.body.data.prompt, /五步主客运：[\s\S]*初运/);
   assert.match(prompted.body.data.prompt, /大寒、立春、雨水、惊蛰/);
   assert.match(prompted.body.data.prompt, /【问题】\n请解释本年的气候节律。/);

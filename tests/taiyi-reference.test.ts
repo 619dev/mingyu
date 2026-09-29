@@ -523,18 +523,65 @@ test('太乙三门直使按二百四十周期每三十换门，并保留可复�
     ...base,
     accumulatedValue: 1,
   });
-  const directRest = evaluateTaiyiConditions({
+  const directOpenEnd = evaluateTaiyiConditions({
     ...base,
     accumulatedValue: 30,
   });
+  const directRest = evaluateTaiyiConditions({
+    ...base,
+    accumulatedValue: 31,
+  });
   assert.equal(directOpen.threeGates.directGate, '开门');
+  assert.equal(directOpenEnd.threeGates.directGate, '开门');
   assert.equal(directRest.threeGates.directGate, '休门');
   assert.equal(directOpen.threeGates.directGateRemainder, 1);
-  assert.equal(directRest.threeGates.directGateRemainder, 30);
+  assert.equal(directOpenEnd.threeGates.directGateRemainder, 30);
+  assert.equal(directRest.threeGates.directGateRemainder, 31);
   assert.equal(directOpen.threeGates.gateByPalace[1], '开门');
+  assert.equal(directOpenEnd.threeGates.gateByPalace[1], '开门');
   assert.equal(directRest.threeGates.gateByPalace[1], '休门');
   assert.equal(directOpen.threeGates.gateByPalace[8], '休门');
   assert.equal(directRest.threeGates.gateByPalace[8], '生门');
+
+  for (const [accumulatedValue, expectedGate] of [
+    [1, '开门'],
+    [30, '开门'],
+    [31, '休门'],
+    [60, '休门'],
+    [61, '生门'],
+    [90, '生门'],
+    [91, '伤门'],
+    [120, '伤门'],
+    [121, '杜门'],
+    [150, '杜门'],
+    [151, '景门'],
+    [180, '景门'],
+    [181, '死门'],
+    [210, '死门'],
+    [211, '惊门'],
+    [240, '惊门'],
+    [241, '开门'],
+  ] as const) {
+    const result = evaluateTaiyiConditions({ ...base, accumulatedValue });
+    assert.equal(result.threeGates.directGate, expectedGate, `积数${accumulatedValue}`);
+    assert.equal(
+      result.threeGates.directGateRemainder,
+      accumulatedValue <= 240 ? accumulatedValue : 1,
+      `积数${accumulatedValue}的二百四十周余数`,
+    );
+  }
+});
+
+test('太乙直使甲子开门，三十年后的甲午转为休门', () => {
+  // 《太乙金镜式经》以开元十二年甲子起开门，甲午所在的第三十一年转为休门。
+  const jiazi = generateTaiyi({ year: 724 });
+  const jiawu = generateTaiyi({ year: 754 });
+  assert.equal(jiazi.ganZhi, '甲子');
+  assert.equal(jiazi.conditions.threeGates.directGateRemainder, 1);
+  assert.equal(jiazi.conditions.threeGates.directGate, '开门');
+  assert.equal(jiawu.ganZhi, '甲午');
+  assert.equal(jiawu.conditions.threeGates.directGateRemainder, 31);
+  assert.equal(jiawu.conditions.threeGates.directGate, '休门');
 });
 
 test('太乙三门具只按太乙与文昌主目判定，始击门位单列', () => {

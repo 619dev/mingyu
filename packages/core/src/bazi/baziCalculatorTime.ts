@@ -461,7 +461,7 @@ export function getCategorizedYearShenSha(
     [baziResult.pillars.hour.gan, baziResult.pillars.hour.zhi],
   ];
   const shenShaResult = calculateAllShenSha(baziArray, baziResult.gender);
-  const yearShenSha = [...(shenShaResult.global || []), ...(shenShaResult.year || [])];
+  const yearShenSha = shenShaResult.year || [];
 
   return {
     lucky: yearShenSha.filter((shensha) => getShenShaType(shensha) === '吉'),

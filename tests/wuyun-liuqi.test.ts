@@ -315,7 +315,8 @@ test('五运六气提示词应是可独立使用的完整任务书', () => {
   assert.match(prompt, /五步主客运/);
   assert.match(prompt, /初运（大寒日起，至春分后第12日）/);
   assert.match(prompt, /少阴君火/);
-  assert.match(prompt, /司天与中运：不和/);
+  assert.match(prompt, /年度五行作用：中运（水）克司天少阴君火（火）（不和）/);
+  assert.doesNotMatch(prompt, /司天与中运：不和/);
   assert.match(prompt, /大寒、立春、雨水、惊蛰/);
   assert.match(prompt, /以年干定岁运太过不及/);
   assert.match(prompt, /以年支定司天在泉/);

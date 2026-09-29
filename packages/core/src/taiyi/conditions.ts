@@ -209,8 +209,8 @@ function relationBetweenEyeAndTaiyi(
 
 function buildGateCondition(data: TaiyiConditionInput): TaiyiThreeGateCondition {
   const directGateRemainder = positiveOneBased(data.accumulatedValue, 240);
-  // 上元甲子起开门，每满三十转下一门；余 0 为完整一周后的开门。
-  const directGateIndex = Math.floor((directGateRemainder % 240) / 30);
+  // 周内第 1 至 30 数为开门，第 31 数起换休门；第 240 数仍属惊门。
+  const directGateIndex = Math.floor((directGateRemainder - 1) / 30);
   const directGate = TAIYI_GATE_ORDER[directGateIndex]!;
   const directGateNumber = directGateIndex + 1;
   const anchorIndex = TAIYI_GATE_PALACE_ORDER.indexOf(
@@ -275,7 +275,7 @@ function buildGateCondition(data: TaiyiConditionInput): TaiyiThreeGateCondition 
     missingGateCount,
     blockedRoles,
     basis:
-      '依《太乙金镜式经·推三门具不具》按积数入二百四十周、每三十换一门，并以直门加临太乙；八宫左行次序为乾一、坎八、艮三、震四、巽九、离二、坤七、兑六，时计八门另见卷一。《太乙统宗宝鉴》卷五“明三门具不具”载：太乙天目在开、生门下为两门不具，在休门下为三门不具，不在开、休、生三门下名为门具。本栏依主目传本取太乙与文昌（主目）判定，并列各自所临之门；始击（客目）门位单列，客方专用门具另取客大将宫。',
+      '依《太乙金镜式经·推三门具不具》按积数入二百四十周、每三十数更一直使，并以直门加临太乙。八宫左行次序为乾一、坎八、艮三、震四、巽九、离二、坤七、兑六，时计八门另见卷一。《太乙统宗宝鉴》卷五“明三门具不具”载：太乙天目在开、生门下为两门不具，在休门下为三门不具，不在开、休、生三门下名为门具。本栏依主目传本取太乙与文昌（主目）判定，并列各自所临之门；始击（客目）门位单列，客方专用门具另取客大将宫。',
   };
 }
 

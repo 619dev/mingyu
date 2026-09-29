@@ -388,7 +388,10 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
   let result = '【命盘】\n';
   const isMale = baziResult.gender === 'male';
   result += `基本信息: ${isMale ? '乾造' : '坤造'} | ${solarDate.year}年${solarDate.month}月${solarDate.day}日 ${timeInfo.name}\n`;
-  result += `出生历法: 阳历${solarDate.year}年${solarDate.month}月${solarDate.day}日 | 农历${formatLunarDate(baziResult)} | 生肖:${baziResult.zodiac}\n`;
+  if (baziResult.timing?.enabled) {
+    result += `出生钟表时间: ${formatSolarDateTime(baziResult.timing.standardTime)}\n`;
+  }
+  result += `${baziResult.timing?.enabled ? '排盘历法' : '出生历法'}: 阳历${solarDate.year}年${solarDate.month}月${solarDate.day}日 | 农历${formatLunarDate(baziResult)} | 生肖:${baziResult.zodiac}\n`;
   if (baziResult.timing?.enabled && baziResult.timing.correctedTime) {
     result += `真太阳时: ${formatSolarDateTime(baziResult.timing.correctedTime)}`;
     if (baziResult.timing.birthPlace) {

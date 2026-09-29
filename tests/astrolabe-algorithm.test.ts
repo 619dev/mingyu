@@ -362,6 +362,17 @@ test('旧星盘缺少相位几何量时不得反推伪精确字段', () => {
   assert.equal(incompleteTimeEvidence.calculationFact.steps[1].status, '缺少记录');
 });
 
+test('旧星盘缺少入相出相字段时保持未判定', () => {
+  const legacy = structuredClone(generateAstrolabe(validInput)) as AstrolabeData;
+  delete legacy.evidenceAnalysis;
+  delete (legacy.aspects[0] as Partial<AstrolabeData['aspects'][number]>).applying;
+
+  const evidence = analyzeAstrolabeEvidence(legacy);
+  assert.equal(evidence.aspectFacts[0].phase, '未判定');
+  assert.match(evidence.aspectFacts[0].promptText, /未判定/);
+  assert.doesNotMatch(evidence.aspectFacts[0].promptText, /出相/);
+});
+
 test('星盘核心位置缺失时应给出覆盖事实且不得补造位置', () => {
   const result = generateAstrolabe(validInput);
   const partial = structuredClone(result) as AstrolabeData;

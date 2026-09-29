@@ -86,8 +86,12 @@ export async function buildZiweiFortuneOptions(
 ): Promise<ZiweiFortuneOptions> {
   assertDecadal(selectedDecadal);
   const astrolabe = await buildAstrolabeFromInput(input);
-  const birthSolarDate = options.birthSolarDate?.trim() || astrolabe.solarDate;
-  parseDateParts(birthSolarDate);
+  const birthSolarDate = formatSolarDay(
+    toSolarDay(options.birthSolarDate?.trim() || astrolabe.solarDate),
+  );
+  if (birthSolarDate !== formatSolarDay(toSolarDay(astrolabe.solarDate))) {
+    throw new Error('紫微运限出生公历日期与当前命盘不一致。');
+  }
   const hourIndex = options.hourIndex ?? input.birthTimeIndex;
   if (!Number.isInteger(hourIndex) || hourIndex < 0 || hourIndex > 12) {
     throw new Error('紫微运限时辰索引需在 0-12 之间。');

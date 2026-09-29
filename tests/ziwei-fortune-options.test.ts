@@ -42,6 +42,27 @@ test('紫微春节前出生的流年选项按实际虚岁分界，不漏同公�
   );
 });
 
+test('紫微流年选项拒绝与当前命盘不一致的出生公历日期', async () => {
+  const input = normalizeChartInput({
+    name: '出生日期一致性',
+    gender: '女',
+    dateType: 'solar',
+    birthDate: '1992-02-03',
+    birthTimeIndex: 4,
+  });
+
+  await assert.rejects(
+    buildZiweiFortuneOptions(
+      input,
+      { startAge: 1, endAge: 2 },
+      {
+        birthSolarDate: '1992-02-04',
+      },
+    ),
+    /紫微运限出生公历日期与当前命盘不一致/,
+  );
+});
+
 test('紫微闰月流月选项覆盖引擎连续月段，流日可跨公历月', async () => {
   const input = normalizeChartInput({
     name: '闰月跨月',

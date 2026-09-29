@@ -16,6 +16,7 @@ import type {
 } from '../../packages/core/src/types/divination';
 import type { AnalysisPayloadV1 } from '../../packages/core/src/types/analysis';
 import type { ZiweiRuntime } from '../../packages/core/src/ziwei/runtime';
+import { mapZiweiScopeLabel } from '../../packages/core/src/ziwei/prompt/labels';
 import type { AstrolabeScopeContext } from '../../packages/core/src/divination/astrolabe-scope';
 import type { QizhengFlowingStarsResult, QizhengResult } from '../../packages/core/src/qi_zheng';
 import type { PromptFactExpectation } from './facts';
@@ -402,6 +403,10 @@ export function extractZiweiFacts(
     const scope = options.scope ?? rangeScope(`分析范围：${ziweiScopeLabel(payload)}`);
     const scopeId = active.scope;
     const publicStyle = options.palaceValueStyle === 'public';
+    const selectedScopeHit =
+      active.scope === 'origin'
+        ? ''
+        : `${active.scope === 'decadal' ? active.label || '大限' : mapZiweiScopeLabel(active.scope)}落宫`;
     const starValue = (prefix: string, name: string) =>
       options.starValuePrefix === false || publicStyle ? name : `${prefix}${name}`;
     for (const palace of payload.palaces) {
@@ -432,7 +437,9 @@ export function extractZiweiFacts(
             owner,
             active.scope === 'origin'
               ? []
-              : palace.scope_hits.map((hit) => hit.replace(/^运限命中：/u, '')),
+              : palace.scope_hits
+                  .filter((hit) => !publicStyle || hit === selectedScopeHit)
+                  .map((hit) => hit.replace(/^运限命中：/u, '')),
             {
               scope,
               unit: 'line',

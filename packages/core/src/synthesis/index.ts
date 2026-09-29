@@ -1,6 +1,6 @@
 import type { BaziChartResult } from '../bazi/baziTypes';
 import { getBaziMonthIndexByCivilDate } from '../bazi/calendarTool';
-import { createCivilDate, getLuckCycleForCivilDate } from '../bazi/luckTiming';
+import { createCivilDate, getLuckCycleForCivilDate, toChinaCivilDate } from '../bazi/luckTiming';
 import {
   calculateBirthChartBundle,
   type BirthChartPointBundle,
@@ -11,6 +11,7 @@ import { getShichenByIndex } from '../calendar/dateUtils';
 import type { BirthProfile } from '../profile';
 import type { EvidenceFact, PalaceFact, ScopeType } from '../types/analysis';
 import type { ZiweiRuntime, ZiweiRuntimeOptions } from '../ziwei/runtime';
+import { getDefaultHoroscopeContext } from '../ziwei/iztro/runtime-helpers';
 import { buildPromptTask } from '../prompt/guidance';
 import {
   evaluateBaziZiweiCorroboration,
@@ -82,6 +83,8 @@ export interface BaziZiweiSynthesis {
     ziwei: number;
   };
   timingReference: BaziZiweiTimingReference;
+  /** 仅有时辰精度且交节或交运落在该时辰内时，两端可复核的盘面事实。 */
+  timingBoundaryFacts: string[];
   corroboration?: BaziZiweiCorroborationResult;
   missingFacts: string[];
 
@@ -93,6 +96,8 @@ export interface BaziZiweiTimingReference {
   year: number;
   hourIndex: number;
   shichen: string;
+  /** 显式给出确定瞬时点时的北京时间。 */
+  beijingDateTime?: string;
 }
 
 interface ThemeDefinition {
@@ -184,9 +189,14 @@ function normalizePalaceName(value: string) {
   return value.trim().replace(/宫$/, '');
 }
 
-function resolveTimingReference(runtime: ZiweiRuntime): {
+function resolveTimingReference(
+  runtime: ZiweiRuntime,
+  referenceInstant?: Date,
+): {
   fact: BaziZiweiTimingReference;
-  date: Date;
+  start: Date;
+  endInclusive: Date;
+  range: string;
 } {
   const context = runtime.horoscopeContext;
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(context.dateStr);
@@ -205,21 +215,41 @@ function resolveTimingReference(runtime: ZiweiRuntime): {
   ) {
     throw new Error('紫微运限上下文日期无效。');
   }
-  return {
-    fact: {
-      dateStr: context.dateStr,
-      year,
-      hourIndex: context.hourIndex,
-      shichen: shichen.name,
-    },
-    date,
+  const fact: BaziZiweiTimingReference = {
+    dateStr: context.dateStr,
+    year,
+    hourIndex: context.hourIndex,
+    shichen: shichen.name,
   };
+  if (referenceInstant !== undefined) {
+    const actualContext = getDefaultHoroscopeContext(referenceInstant);
+    if (
+      actualContext.dateStr !== context.dateStr ||
+      actualContext.hourIndex !== context.hourIndex
+    ) {
+      throw new Error('精确运限时刻与紫微运限上下文不一致。');
+    }
+    const exact = toChinaCivilDate(referenceInstant);
+    fact.beijingDateTime = `${exact.getUTCFullYear()}-${String(exact.getUTCMonth() + 1).padStart(2, '0')}-${String(exact.getUTCDate()).padStart(2, '0')} ${String(exact.getUTCHours()).padStart(2, '0')}:${String(exact.getUTCMinutes()).padStart(2, '0')}:${String(exact.getUTCSeconds()).padStart(2, '0')}`;
+    return { fact, start: exact, endInclusive: exact, range: shichen.range };
+  }
+  const startHour = Number(shichen.range.slice(0, 2));
+  const endHour = Number(shichen.range.slice(-5, -3));
+  const start = createCivilDate(year, month, day, startHour);
+  const endInclusive = new Date(start.getTime() + (endHour - startHour) * 3_600_000 - 1);
+  return { fact, start, endInclusive, range: shichen.range };
 }
 
 function createBaziFacts(
   chart: BaziChartResult,
   timingReference: ReturnType<typeof resolveTimingReference>,
-): Record<string, SynthesisEvidenceFact[]> {
+): {
+  facts: Record<string, SynthesisEvidenceFact[]>;
+  timingBoundaryFacts: string[];
+  luckAmbiguous: boolean;
+  annualAmbiguous: boolean;
+  termYearAmbiguous: boolean;
+} {
   const evidence = chart.evidenceAnalysis;
   const analysisKey = (type: string) =>
     evidence?.analysisFacts.find((item) => item.type === type)?.key ?? `bazi:${type}`;
@@ -243,18 +273,43 @@ function createBaziFacts(
     })
     .join('；');
   const useful = chart.analysis.usefulGod;
-  const currentCycle = getLuckCycleForCivilDate(chart.luckInfo.cycles, timingReference.date);
-  let termYear = timingReference.fact.year;
-  if (getBaziMonthIndexByCivilDate(termYear, timingReference.date) === undefined) {
-    termYear -= 1;
-  }
-  const annual =
-    currentCycle?.years
-      .filter((item) => item.year === termYear)
+  const cycleAtStart = getLuckCycleForCivilDate(chart.luckInfo.cycles, timingReference.start);
+  const cycleAtEnd = getLuckCycleForCivilDate(chart.luckInfo.cycles, timingReference.endInclusive);
+  const luckAmbiguous = cycleAtStart !== cycleAtEnd;
+  const currentCycle = luckAmbiguous ? null : cycleAtStart;
+  const termYearAt = (date: Date) => {
+    const year = date.getUTCFullYear();
+    return getBaziMonthIndexByCivilDate(year, date) === undefined ? year - 1 : year;
+  };
+  const termYearAtStart = termYearAt(timingReference.start);
+  const termYearAtEnd = termYearAt(timingReference.endInclusive);
+  const termYearAmbiguous = termYearAtStart !== termYearAtEnd;
+  const annualAt = (cycle: typeof cycleAtStart, year: number) =>
+    cycle?.years
+      .filter((item) => item.year === year)
       .map((item) => `${item.year}年${item.ganZhi}，干支十神${item.tenGod}/${item.tenGodZhi}`) ??
     [];
+  const annualAtStart = annualAt(cycleAtStart, termYearAtStart);
+  const annualAtEnd = annualAt(cycleAtEnd, termYearAtEnd);
+  const annualAmbiguous =
+    termYearAmbiguous || JSON.stringify(annualAtStart) !== JSON.stringify(annualAtEnd);
+  const cycleLabel = (cycle: typeof cycleAtStart) =>
+    cycle ? (cycle.isXiaoyun ? `童限（${cycle.year}年起）` : `${cycle.ganZhi}大运`) : '未列运限';
+  const timingBoundaryFacts = [
+    ...(luckAmbiguous
+      ? [
+          `${timingReference.fact.dateStr}${timingReference.fact.shichen}（${timingReference.range}）两端对应的八字运限分别为${cycleLabel(cycleAtStart)}、${cycleLabel(cycleAtEnd)}。`,
+        ]
+      : []),
+    ...(termYearAmbiguous
+      ? [
+          `${timingReference.fact.dateStr}${timingReference.fact.shichen}（${timingReference.range}）两端分属${termYearAtStart}年、${termYearAtEnd}年八字节令年。`,
+        ]
+      : []),
+  ];
+  const annual = annualAmbiguous ? [] : annualAtStart;
 
-  return {
+  const facts: Record<string, SynthesisEvidenceFact[]> = {
     pillars: [
       {
         key: 'bazi:synthesis:pillars',
@@ -329,7 +384,7 @@ function createBaziFacts(
             system: 'bazi',
             scope: 'decadal',
             title: currentCycle.isXiaoyun ? '运限基准所在童限' : '运限基准所在大运',
-            detail: `${timingReference.fact.dateStr}${timingReference.fact.shichen}${
+            detail: `${timingReference.fact.beijingDateTime ?? `${timingReference.fact.dateStr}${timingReference.fact.shichen}`}${
               currentCycle.isXiaoyun
                 ? `处于起运前童限（${currentCycle.year}年起）`
                 : `在${currentCycle.ganZhi}大运，约${currentCycle.age}岁起运（${currentCycle.year}年交运）`
@@ -351,6 +406,7 @@ function createBaziFacts(
         ]
       : [],
   };
+  return { facts, timingBoundaryFacts, luckAmbiguous, annualAmbiguous, termYearAmbiguous };
 }
 
 function palaceEvidenceKeys(payloadEvidence: EvidenceFact[], palace: PalaceFact) {
@@ -458,9 +514,17 @@ export function buildBaziZiweiSynthesis(params: {
   bazi: BaziChartResult;
   ziwei: ZiweiRuntime;
   subjectName?: string;
+  /** 已明确到秒的运限时刻；仅有 horoscopeContext 时按整个时辰核对。 */
+  referenceInstant?: Date;
 }): BaziZiweiSynthesis {
-  const timingReference = resolveTimingReference(params.ziwei);
-  const baziFacts = createBaziFacts(params.bazi, timingReference);
+  const timingReference = resolveTimingReference(params.ziwei, params.referenceInstant);
+  const {
+    facts: baziFacts,
+    timingBoundaryFacts,
+    luckAmbiguous,
+    annualAmbiguous,
+    termYearAmbiguous,
+  } = createBaziFacts(params.bazi, timingReference);
   const themes = THEMES.map((definition) => ({
     id: definition.id,
     label: definition.label,
@@ -496,8 +560,20 @@ export function buildBaziZiweiSynthesis(params: {
   if (!hasCompleteZiweiOrigin(params.ziwei)) {
     missingFacts.push('紫微本命十二宫资料缺失或不完整');
   }
-  if (!baziFacts.luck.length) missingFacts.push('运限基准日期缺少对应八字大运或童限');
-  if (!baziFacts.annual.length) missingFacts.push('运限基准年份缺少对应八字流年');
+  if (!baziFacts.luck.length)
+    missingFacts.push(
+      luckAmbiguous
+        ? '运限基准时辰跨八字交运，不能唯一定位大运或童限'
+        : '运限基准日期缺少对应八字大运或童限',
+    );
+  if (!baziFacts.annual.length)
+    missingFacts.push(
+      termYearAmbiguous
+        ? '运限基准时辰跨八字节令年，不能唯一定位流年'
+        : annualAmbiguous
+          ? '运限基准时辰跨八字交运，不能唯一定位对应流年'
+          : '运限基准年份缺少对应八字流年',
+    );
   const ziweiTimingScopes = new Set(
     themes.find((theme) => theme.id === 'timing')?.ziweiEvidence.map((fact) => fact.scope),
   );
@@ -516,6 +592,7 @@ export function buildBaziZiweiSynthesis(params: {
       ziwei: new Set(themes.flatMap((theme) => theme.ziweiEvidence.map((item) => item.key))).size,
     },
     timingReference: timingReference.fact,
+    timingBoundaryFacts,
     corroboration,
     missingFacts,
     methodology: [
@@ -629,12 +706,16 @@ export function formatBaziZiweiSynthesisForPrompt(
   return [
     '【任务】',
     buildPromptTask(
-      `请为${synthesis.subjectName || '命主'}完成八字与紫微斗数合参。逐主题先分别说明两套体系的判断依据，再归纳相互印证、彼此补充与口径差异，形成有条件、有层次的整体解读。${detailLabel}。解读覆盖命局总纲、性情与能力、事业、财帛、感情、家庭、身心、迁移、内在状态与岁运，最后归纳当前阶段最值得关注的三条主线。`,
+      `请为${synthesis.subjectName || '命主'}完成八字与紫微斗数合参。逐主题先分别说明两套体系的判断依据，再归纳相互印证、彼此补充与口径差异，形成有条件、有层次的整体解读。${detailLabel}。解读覆盖命局总纲、性情与能力、事业、财帛、感情、家庭、身心、迁移、内在状态与岁运${synthesis.timingBoundaryFacts.length ? '；对【时辰边界】列出的两端条件分别讨论' : ''}，最后归纳当前阶段最值得关注的三条主线。`,
     ),
     options.question ? `重点回应：${options.question}` : '',
     '',
     '【运限基准】',
-    `${synthesis.timingReference.dateStr} ${synthesis.timingReference.shichen}`,
+    synthesis.timingReference.beijingDateTime
+      ? `${synthesis.timingReference.beijingDateTime}（北京时间；紫微按${synthesis.timingReference.dateStr} ${synthesis.timingReference.shichen}排运限）`
+      : `${synthesis.timingReference.dateStr} ${synthesis.timingReference.shichen}`,
+    synthesis.timingBoundaryFacts.length ? '【时辰边界】' : '',
+    ...synthesis.timingBoundaryFacts,
     '',
     corroborationFacts.length ? '【双盘位置事实】' : '',
     ...corroborationFacts,
@@ -685,6 +766,7 @@ function synthesizePoint(bundle: BirthChartPointBundle, options: BaziZiweiCombin
     bazi: bundle.bazi,
     ziwei: bundle.ziwei,
     subjectName: bundle.profile.name,
+    referenceInstant: options.ziwei?.horoscopeContext ? undefined : options.ziwei?.now,
   });
   return { synthesis, promptText: formatBaziZiweiSynthesisForPrompt(synthesis, options.prompt) };
 }
@@ -703,7 +785,10 @@ export async function calculateBaziZiweiCombinedReading(
   options: BaziZiweiCombinedReadingOptions = {},
 ): Promise<BaziZiweiCombinedReading> {
   assertExplicitZiweiTiming(options);
-  const promptOptions = { prompt: options.prompt ? { ...options.prompt } : undefined };
+  const promptOptions = {
+    prompt: options.prompt ? { ...options.prompt } : undefined,
+    ziwei: options.ziwei,
+  };
   const bundle = await calculateBirthChartBundle(profile, {
     systems: ['bazi', 'ziwei'],
     baziRules: options.baziRules,

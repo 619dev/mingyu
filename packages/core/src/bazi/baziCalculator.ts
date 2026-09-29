@@ -95,6 +95,7 @@ type CoreBaziCalculationMode = 'complete' | 'pillars';
 
 interface CoreBaziCalculationResult {
   result: InternalBaziChartResult;
+  termSolarTime: SolarTimeInstance;
   batch?: BaziFortuneBatchMetadata;
 }
 
@@ -690,7 +691,7 @@ export class BaziCalculator {
       },
       shenShaAnalysis: { year: [], month: [], day: [], hour: [], global: [] },
     };
-    return { result, ...(batch ? { batch } : {}) };
+    return { result, termSolarTime, ...(batch ? { batch } : {}) };
   }
 
   /**
@@ -785,7 +786,11 @@ export class BaziCalculator {
   ): BaziBatchCalculationResult {
     const coreCalculation = this.calculateCoreBaziInternal(person, batchRequest);
     const coreResult = coreCalculation.result;
-    const extendedResult = this.calculateExtendedBazi(person, coreResult);
+    const extendedResult = this.calculateExtendedBazi(
+      person,
+      coreResult,
+      coreCalculation.termSolarTime,
+    );
 
     const finalResult: InternalBaziChartResult = {
       ...coreResult,
@@ -832,6 +837,7 @@ export class BaziCalculator {
   private calculateExtendedBazi(
     person: Person,
     coreResult: InternalBaziChartResult,
+    termSolarTime: SolarTimeInstance,
   ): Pick<
     BaziChartResult,
     | 'analysis'
@@ -856,7 +862,7 @@ export class BaziCalculator {
     | 'climate'
   > {
     const { gender } = person;
-    const { pillars, dayMaster, solarTime, timing, eightChar } = coreResult;
+    const { pillars, dayMaster, solarTime, eightChar } = coreResult;
 
     if (!solarTime || !eightChar) {
       throw new Error(
@@ -865,8 +871,6 @@ export class BaziCalculator {
     }
 
     const dayMasterGan = dayMaster.gan;
-    const termSolarTime = getTermSolarTime(solarTime, timing, person);
-
     const baziArray: [string, string][] = [
       [pillars.year.gan, pillars.year.zhi],
       [pillars.month.gan, pillars.month.zhi],

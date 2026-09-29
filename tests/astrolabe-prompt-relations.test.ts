@@ -181,3 +181,30 @@ test('旧相位缺少角距和上限时只输出已有偏差，不补造角度�
   assert.match(line, /偏差3\.32°/);
   assert.doesNotMatch(line, /目标角|实际角距|上限|第\d+宫|同星座|跨星座/);
 });
+
+test('本命提示词将真太阳时列为传统参考，并省略未计算的宫位', () => {
+  const chart = generateAstrolabe({
+    name: '样本',
+    gender: '女',
+    year: '1993',
+    month: '4',
+    day: '8',
+    hour: '23',
+    minute: '34',
+    latitude: '1.3521',
+    longitude: '103.8198',
+    timezone: '8',
+    useTrueSolarTime: true,
+  });
+  chart.planets[0].house = 0;
+
+  const prompt = formatAstrolabeForPrompt(chart);
+  assert.match(
+    prompt,
+    /出生时间校正：当地钟表时间.*真太阳时.*传统时间参考.*星盘依据当地钟表时间对应的出生瞬间计算/,
+  );
+  assert.doesNotMatch(prompt, /第0宫/);
+
+  delete chart.birth.trueSolarDateTime;
+  assert.doesNotMatch(formatAstrolabeForPrompt(chart), /出生时间校正|真太阳时/);
+});

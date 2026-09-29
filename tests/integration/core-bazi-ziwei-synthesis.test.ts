@@ -82,6 +82,77 @@ test('八字紫微合参应按主题保留两套结构化资料', async () => {
   assert.doesNotMatch(reading.promptText, /匹配率|吉凶概率|项目|API|内部字段/);
 });
 
+test('只有时辰精度且立春落在时辰内时不选定唯一八字流年', async () => {
+  const reading = await calculateBaziZiweiCombinedReading(
+    { ...profile, year: 2000, month: 5, day: 12 },
+    { ziwei: { horoscopeContext: { dateStr: '2024-02-04', hourIndex: 8 } } },
+  );
+  assert.ok(!reading.range);
+  if (reading.range) return;
+  assert.equal(reading.synthesis.status, '资料有缺口');
+  assert.ok(reading.synthesis.missingFacts.some((fact) => fact.includes('跨八字节令年')));
+  assert.match(reading.synthesis.timingBoundaryFacts.join('\n'), /2023年、2024年八字节令年/);
+  const timing = reading.synthesis.themes.find((theme) => theme.id === 'timing');
+  assert.equal(
+    timing?.baziEvidence.some((fact) => fact.title === '流年序列'),
+    false,
+  );
+  assert.match(reading.promptText, /【时辰边界】/);
+  assert.doesNotMatch(reading.promptText, /流年序列：2023年|流年序列：2024年/);
+
+  assert.ok(reading.bundle.bazi);
+  assert.ok(reading.bundle.ziwei);
+  const exact = buildBaziZiweiSynthesis({
+    bazi: reading.bundle.bazi,
+    ziwei: reading.bundle.ziwei,
+    referenceInstant: new Date('2024-02-04T16:28:00+08:00'),
+  });
+  assert.deepEqual(exact.timingBoundaryFacts, []);
+  assert.equal(exact.timingReference.beijingDateTime, '2024-02-04 16:28:00');
+  const exactTiming = exact.themes.find((theme) => theme.id === 'timing');
+  assert.match(
+    exactTiming?.baziEvidence.find((fact) => fact.title === '流年序列')?.detail ?? '',
+    /2024年甲辰/,
+  );
+  assert.match(formatBaziZiweiSynthesisForPrompt(exact), /2024-02-04 16:28:00（北京时间/);
+
+  const clock = (hour: number) => ({ year: 2024, month: 2, day: 4, hour, minute: 0, second: 0 });
+  const [firstCycle, secondCycle] = reading.bundle.bazi.luckInfo.cycles;
+  assert.ok(firstCycle);
+  assert.ok(secondCycle);
+  const handover = buildBaziZiweiSynthesis({
+    bazi: {
+      ...reading.bundle.bazi,
+      luckInfo: {
+        ...reading.bundle.bazi.luckInfo,
+        cycles: [
+          { ...firstCycle, ganZhi: '甲子', startSolarTime: clock(15), endSolarTime: clock(16) },
+          { ...secondCycle, ganZhi: '乙丑', startSolarTime: clock(16), endSolarTime: clock(17) },
+        ],
+      },
+    },
+    ziwei: reading.bundle.ziwei,
+  });
+  assert.match(handover.timingBoundaryFacts.join('\n'), /童限（2000年起）、乙丑大运/);
+  assert.ok(handover.missingFacts.some((fact) => fact.includes('跨八字交运')));
+  assert.equal(
+    handover.themes
+      .find((theme) => theme.id === 'timing')
+      ?.baziEvidence.some((fact) => fact.scope === 'decadal'),
+    false,
+  );
+
+  const preciseReading = await calculateBaziZiweiCombinedReading(
+    { ...profile, year: 2000, month: 5, day: 12 },
+    { ziwei: { now: new Date('2024-02-04T16:28:00+08:00') } },
+  );
+  assert.ok(!preciseReading.range);
+  if (preciseReading.range) return;
+  assert.equal(preciseReading.synthesis.timingReference.beijingDateTime, '2024-02-04 16:28:00');
+  assert.deepEqual(preciseReading.synthesis.timingBoundaryFacts, []);
+  assert.match(preciseReading.promptText, /2024-02-04 16:28:00（北京时间/);
+});
+
 test('合参提示词应支持不同解读层级并保持完整任务结构', async () => {
   const reading = await getCombinedReading();
   const prompt = formatBaziZiweiSynthesisForPrompt(reading.synthesis, {

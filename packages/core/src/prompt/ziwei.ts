@@ -17,6 +17,7 @@ import { getThematicTopicConfig } from './thematic';
 import { getPromptMutagenItems } from '../ziwei/prompt/mutagen';
 import { formatPalaceRelations } from '../ziwei/prompt/builders';
 import { formatObjectList } from '../ziwei/prompt/formatters';
+import { getSelectedScopeHits } from '../ziwei/prompt/scope-selection';
 import { buildZiweiMatchedPatternSummary } from '../ziwei/prompt/snapshot';
 import {
   buildPromptDocument,
@@ -186,7 +187,11 @@ function natalTags(tags: string[]) {
   return tags.filter((tag) => !/大限|小限|流年|流月|流日|流时|运限/.test(tag));
 }
 
-function formatPalace(palace: PalaceFact, isOriginScope: boolean) {
+function formatPalace(
+  palace: PalaceFact,
+  isOriginScope: boolean,
+  selectedScopeHits = palace.scope_hits,
+) {
   const majorStars = palace.major_stars.map((star) => formatStar(star, isOriginScope));
   const minorStars = palace.minor_stars.map((star) => formatStar(star, isOriginScope));
   const otherStars = palace.other_stars.map((star) => formatStar(star, isOriginScope));
@@ -219,7 +224,9 @@ function formatPalace(palace: PalaceFact, isOriginScope: boolean) {
     !isOriginScope && palace.decadal_range?.length === 2
       ? `大限${palace.decadal_range[0]}-${palace.decadal_range[1]}岁`
       : '';
-  const tags = isOriginScope ? natalTags(palace.summary_tags) : palace.summary_tags;
+  const tags = isOriginScope
+    ? natalTags(palace.summary_tags)
+    : palace.summary_tags.filter((tag) => !tag.endsWith('落宫') || selectedScopeHits.includes(tag));
   return [
     `${palace.name}${palace.name.endsWith('宫') ? '' : '宫'}${palace.is_body_palace ? '（身宫）' : ''}${palace.is_original_palace ? '（来因宫）' : ''}`,
     `宫干支${palace.heavenly_stem}${palace.earthly_branch}`,
@@ -230,7 +237,7 @@ function formatPalace(palace: PalaceFact, isOriginScope: boolean) {
     palace.boshi12 ? `博士：${palace.boshi12}` : '',
     selfText,
     flyText,
-    !isOriginScope && palace.scope_hits.length ? `运限命中：${palace.scope_hits.join('、')}` : '',
+    !isOriginScope && selectedScopeHits.length ? `运限命中：${selectedScopeHits.join('、')}` : '',
     !isOriginScope && palace.dynamic_scope_name ? `动态宫名：${palace.dynamic_scope_name}` : '',
     tags.length ? `标签：${tags.join('、')}` : '',
   ]
@@ -377,6 +384,7 @@ export function formatZiweiPayloadForPrompt(
   const selectedPalaces = palaces.length ? palaces : payload.palaces;
   const isOriginScope = active.scope === 'origin';
   const evidenceItems = payload.evidence_pool
+    .filter((item) => item.scope === 'origin' || item.scope === active.scope)
     .filter((item) => !isShownInZiweiPalaces(item, selectedPalaces, isOriginScope))
     .map((item) => {
       const level = item.level ? `【${item.level}】` : '';
@@ -421,7 +429,7 @@ export function formatZiweiPayloadForPrompt(
     '十二宫资料：',
     ...selectedPalaces.map(
       (palace) =>
-        `  ${formatPalace(palace, isOriginScope)}\n  宫位关系：${formatPalaceRelations(payload, palace)}`,
+        `  ${formatPalace(palace, isOriginScope, getSelectedScopeHits(payload, palace))}\n  宫位关系：${formatPalaceRelations(payload, palace)}`,
     ),
     matchedPatterns ? `命盘格局：\n${matchedPatterns}` : '',
     evidencePrimary.length ? '证据资料：' : '',

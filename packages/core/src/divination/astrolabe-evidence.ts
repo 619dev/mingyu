@@ -299,7 +299,7 @@ function buildAspectFact(
     item.normalizedOrbRatio ??
     (item.allowedOrb && item.allowedOrb > 0 ? Number((item.orb / item.allowedOrb).toFixed(4)) : 1);
   const closeness = item.closeness ?? classifyCloseness(normalizedOrbRatio);
-  const phase = item.applying === null ? '未判定' : item.applying ? '入相' : '出相';
+  const phase = item.applying === true ? '入相' : item.applying === false ? '出相' : '未判定';
   const body1Lookup = ASPECT_BODY_ALIASES[item.body1] ?? item.body1;
   const body2Lookup = ASPECT_BODY_ALIASES[item.body2] ?? item.body2;
   const body1PositionFacts = positionFacts.filter(
