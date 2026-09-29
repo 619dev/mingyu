@@ -156,8 +156,9 @@ test('生肖流年描述只列传统关系类别，提示词要求结合资料�
     method: 'zodiac',
     schools: ['ganzhi', 'sanhe'],
   });
-  assert.match(prompt, /实际命中的.*关系，列明参与地支和五行条件/);
-  assert.match(prompt, /结合.*已提供的资料.*核对对应条件/);
+  assert.match(prompt, /实际命中的.*五行关系和参与条件/);
+  assert.match(prompt, /结合问题与已提供资料核对适用条件/);
+  assert.equal(prompt.split('资料不足则说明待核对项').length - 1, 1);
   assert.doesNotMatch(prompt, /形成年度判断|观察助力、牵制与环境变化/);
   assert.doesNotMatch(
     prompt,

@@ -372,10 +372,7 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
   );
   const prompt = [
     '【任务】',
-    buildPromptTask(
-      '围绕所问事项解读以下生肖与流年资料，列明实际命中的传统关系类别、参与地支及五行条件。讨论个人情况时，按问题和已提供资料核对对应条件；资料不足时，说明关系类别与尚需核对的资料。',
-      'zodiac',
-    ),
+    buildPromptTask('围绕所问事项解读以下生肖与流年资料。', 'zodiac'),
     `【生肖与流年关系简析】`,
     `${zodiac}（${zodiacBranch}）遇${yearGanZhi}年（${taiSui.star}太岁）。`,
     zodiacBranch === yearBranch
