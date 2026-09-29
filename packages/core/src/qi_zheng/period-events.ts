@@ -106,15 +106,15 @@ function isWithinHalfOpenWindow(utcMs: number, startUtcMs: number, endUtcMs: num
 }
 
 function formatUtc(utcMs: number, timezone: number, timeZoneId?: string) {
-  // 求根时间保留毫秒精度，分钟标签先四舍五入到秒，避免精确整分落到上一分钟。
-  const instant = new Date(Math.round(utcMs / 1000) * 1000);
-  const actualTimezone = timeZoneId ? getHistoricalTimezoneOffsetAt(instant, timeZoneId) : timezone;
-  const local = getCivilDateTimeAtFixedOffset(instant, actualTimezone);
-  const offsetSeconds = Math.round(Math.abs(actualTimezone) * 3600);
+  // 不按秒四舍五入，避免把周期末前或夏令时切换前的事件标到下一日/下一偏移。
+  const instant = new Date(utcMs);
+  const actualOffset = timeZoneId ? getHistoricalTimezoneOffsetAt(instant, timeZoneId) : timezone;
+  const local = getCivilDateTimeAtFixedOffset(instant, actualOffset);
+  const offsetSeconds = Math.round(Math.abs(actualOffset) * 3600);
   const offsetHours = Math.floor(offsetSeconds / 3600);
   const offsetMinutes = Math.floor((offsetSeconds % 3600) / 60);
   const remainingSeconds = offsetSeconds % 60;
-  const offset = `UTC${actualTimezone >= 0 ? '+' : '-'}${pad(offsetHours)}:${pad(offsetMinutes)}${remainingSeconds ? `:${pad(remainingSeconds)}` : ''}`;
+  const offset = `UTC${actualOffset >= 0 ? '+' : '-'}${pad(offsetHours)}:${pad(offsetMinutes)}${remainingSeconds ? `:${pad(remainingSeconds)}` : ''}`;
   return `${local.year}-${pad(local.month)}-${pad(local.day)} ${pad(local.hour)}:${pad(local.minute)} ${offset}`;
 }
 
@@ -140,7 +140,7 @@ function refineCrossing(
   let left = startUtc;
   let right = endUtc;
   let leftValue = evaluate(left);
-  for (let index = 0; index < 24; index += 1) {
+  for (let index = 0; index < 32; index += 1) {
     const mid = (left + right) / 2;
     const midValue = evaluate(mid);
     if (leftValue === 0) return left;
@@ -151,7 +151,8 @@ function refineCrossing(
       right = mid;
     }
   }
-  return (left + right) / 2;
+  // 取交点后的边界侧；整分换宫不会因区间中点略早于交点而标到上一分钟。
+  return right;
 }
 
 function mapByName(samples: QizhengLongitudeSample[]) {

@@ -192,9 +192,9 @@ export interface ZodiacYearFortune {
   /** 年干与生肖五行关系 */
   relation: string;
   elementRelation: ZodiacElementRelation;
-  /** 三合/六合贵人 */
+  /** 六合关系或三合组成员关系；三合仅表示当前两支同组，不表示完整成局。 */
   noble: string | null;
-  /** 两支同属固定三会组；只记录关系，不表示完整三会成局 */
+  /** 两支同属固定三会组的成员关系；不表示完整三会成局。 */
   meeting: string | null;
   conflicts: TaiSuiConflict[];
   evidenceGrade: '轻量';
@@ -310,7 +310,7 @@ function getSanhuiRelation(zodiacBranch: string, yearBranch: string): string | n
   const group = Object.entries(SANHUI_GROUPS).find(
     ([, members]) => members.includes(zodiacBranch) && members.includes(yearBranch),
   );
-  return group ? `三会关系（${group[0]}）` : null;
+  return group ? `三会组成员关系（${group[0]}）` : null;
 }
 
 /** 生肖流年运程 */
@@ -329,11 +329,12 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
   if (isLiuhe(zodiacBranch, yearBranch)) noble = '六合贵人';
   else {
     const sanhe = BRANCH_SANHE[zodiacBranch];
-    if (sanhe?.partners.includes(yearBranch)) noble = `三合贵人（${sanhe.group}）`;
+    if (sanhe?.partners.includes(yearBranch)) noble = `三合组成员关系（${sanhe.group}）`;
   }
+  const hasSanheMemberRelation = noble?.startsWith('三合组成员关系') ?? false;
   const meeting = getSanhuiRelation(zodiacBranch, yearBranch);
   const favorableRelations = [
-    noble ? noble : '',
+    noble && !hasSanheMemberRelation ? noble : '',
     elementRelation.classification === '有利关系' ? relation : '',
   ].filter(Boolean);
   const riskRelations = [
@@ -346,7 +347,7 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
     conflicts.some((item) => item.type === '刑太岁')
       ? '涉及合同、规则或沟通时明确约定并留存记录'
       : '',
-    noble ? '出现合作或求助机会时核对具体条件与对方可靠性' : '',
+    noble && !hasSanheMemberRelation ? '出现合作或求助机会时核对具体条件与对方可靠性' : '',
   ].filter(Boolean);
   const resultBase = {
     zodiacBranch,
@@ -380,13 +381,12 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
       : '',
     `五行关系：流年年干${yearGanZhi[0]}属${yearStemWuxing}，生肖地支${zodiacBranch}属${zodiacWuxing}，${relation}。`,
     '传统依据：五行生克看作用方向；十神以个人出生日干和流年年干的阴阳五行为参照。',
-    noble ? `相合关系：按十二地支关系表命中${noble}。` : '',
-    noble?.startsWith('三合')
-      ? `三合成员：本次具有生肖年支${zodiacBranch}、流年年支${yearBranch}两支，同组另一支为${sanhePartners.filter((branch) => !presentBranches.has(branch)).join('、')}；三支齐备及成化条件分别结合完整命盘核验。`
+    noble && !hasSanheMemberRelation ? `相合关系：按十二地支关系表命中${noble}。` : '',
+    hasSanheMemberRelation
+      ? `三合组成员：生肖年支${zodiacBranch}与流年年支${yearBranch}同属${BRANCH_SANHE[zodiacBranch].group}，当前两支已知；另一成员为${sanhePartners.filter((branch) => !presentBranches.has(branch)).join('、')}，三支齐备及成化条件结合完整命盘核验。`
       : '',
-    meeting ? `三会关系：${meeting}` : '',
     meeting && sanhuiGroup
-      ? `三会成员：${sanhuiGroup.join('、')}为一组，本次具有${[...presentBranches].join('、')}两支，同组另一支为${sanhuiGroup.filter((branch) => !presentBranches.has(branch)).join('、')}；三支齐备及成化条件分别结合完整命盘核验。`
+      ? `三会组成员：${sanhuiGroup.join('、')}为一组，本次可见${[...presentBranches].join('、')}两支；另一成员${sanhuiGroup.filter((branch) => !presentBranches.has(branch)).join('、')}，三支齐备及成化条件结合完整命盘核验。`
       : '',
     conflicts.length
       ? `太岁关系：${conflicts

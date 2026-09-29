@@ -130,6 +130,53 @@ test('七政周期扫描遵守半开端点且保留内部采样点事件', () =>
   assert.equal(reverseAspect[0]!.utcMs, boundaryStart + boundaryHour);
 });
 
+test('周期末前的换宫保持实际民用日期与夏令时前偏移', () => {
+  for (const [endUtcMs, timeZoneId, expected] of [
+    [Date.UTC(2024, 0, 2), undefined, '2024-01-01 23:59 UTC+00:00'],
+    [Date.UTC(2024, 2, 10, 7), 'America/New_York', '2024-03-10 01:59 UTC-05:00'],
+  ] as const) {
+    const startUtcMs = endUtcMs - hour;
+    const result = scanQizhengPeriodEvents({
+      natalStars: [],
+      twelvePalaces: [],
+      startUtcMs,
+      endUtcMs,
+      timezone: 0,
+      ...(timeZoneId ? { timeZoneId } : {}),
+      mode: 'daily',
+      sampleLongitudes: (utcMs) => [
+        { name: '太阳', longitude: 29 + (utcMs - startUtcMs) / (hour - 300) },
+      ],
+    });
+    const ingress = result.events.find((event) => event.kind === '换宫');
+    assert.ok(ingress);
+    assert.ok(endUtcMs - ingress.utcMs > 250 && endUtcMs - ingress.utcMs < 350);
+    assert.equal(ingress.dateTime, expected);
+    assert.ok(ingress.promptText.includes(expected));
+  }
+});
+
+test('周期终点前不足半毫秒的交点仍属于当前半开窗口', () => {
+  const endUtcMs = Date.UTC(2024, 0, 2);
+  const startUtcMs = endUtcMs - hour;
+  const crossingUtcMs = endUtcMs - 0.4;
+  const result = scanQizhengPeriodEvents({
+    natalStars: [],
+    twelvePalaces: [],
+    startUtcMs,
+    endUtcMs,
+    timezone: 0,
+    mode: 'daily',
+    sampleLongitudes: (utcMs) => [
+      { name: '太阳', longitude: 29 + (utcMs - startUtcMs) / (crossingUtcMs - startUtcMs) },
+    ],
+  });
+  const ingress = result.events.find((event) => event.kind === '换宫');
+  assert.ok(ingress);
+  assert.ok(ingress.utcMs < endUtcMs);
+  assert.equal(ingress.dateTime, '2024-01-01 23:59 UTC+00:00');
+});
+
 test('七政周期扫描包含起点换宫与正向夹角，不把方向写成顺逆行', () => {
   const result = scanBoundaryTrack(1, (hours) => 30 - hours, 210);
   const ingress = result.events.find((event) => event.kind === '换宫');

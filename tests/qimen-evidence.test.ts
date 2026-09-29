@@ -448,6 +448,13 @@ test('奇门提示词按问题展示专项复合格局，结构化盘面仍保�
   const militaryCombos = military.split('复合格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
   assert.match(militaryCombos, /飞鸟跌穴利客（兑七宫）：该格局，合/);
   assert.doesNotMatch(militaryCombos, /兑七宫飞鸟跌穴，合/);
+  const flyingBirdShengMen = militaryCombos
+    .split('\n')
+    .find((line) => line.startsWith('飞鸟会生门（兑七宫）：'));
+  assert.match(flyingBirdShengMen ?? '', /^飞鸟会生门（兑七宫）：合“会合生门相助/u);
+  assert.doesNotMatch(flyingBirdShengMen ?? '', /同宫生门/u);
+  assert.match(military, /兑七宫（正西，金）：门生门/u);
+  assert.match(military, /飞鸟跌穴（吉格）：天盘丙加地盘戊于兑七宫/u);
   assert.doesNotMatch(military, /射覆物象克应|不作通用吉凶评分|不替代通用吉格评分/);
 
   const object = formatEnhancedDivinationInfo('qimen', data, '寻找丢失的手表');

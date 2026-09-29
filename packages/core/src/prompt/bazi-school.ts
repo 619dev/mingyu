@@ -354,7 +354,9 @@ function formatZipingFacts(
   const strength = result.analysis.dayMasterStrength;
   const details = strength.details;
   return [
-    `月令与节候：月柱${result.pillars.month.ganZhi}，月支本气${result.hiddenStems.month?.[0] || '未记录'}，月令司权${result.monthCommander || '未记录'}，${result.seasonInfo.currentSeason || '当前'}令，节气${result.seasonInfo.currentJieqi || '未记录'}`,
+    embedded
+      ? ''
+      : `月令与节候：月柱${result.pillars.month.ganZhi}，月支本气${result.hiddenStems.month?.[0] || '未记录'}，月令司权${result.monthCommander || '未记录'}，${result.seasonInfo.currentSeason || '当前'}令，节气${result.seasonInfo.currentJieqi || '未记录'}`,
     `日主旺衰：${result.dayMaster.gan}${result.dayMaster.element}${result.dayMaster.yinYang}，${strength.status}；得令${details.timely ? '是' : '否'}，通根${details.hasRoot ? '有' : '无'}，强根${details.hasStrongRoot ? '有' : '无'}，帮扶${details.hasSupport ? '可见' : '不显'}，克泄耗${details.hasConstraint ? '可见' : '不显'}`,
     `透干通根：${formatRoots(result)}`,
     embedded
@@ -368,10 +370,14 @@ function formatZipingFacts(
         )
       : []),
     ...(patternEvidence ? formatTransformationFacts(result, embedded) : []),
-    `调候与取用：${formatUsefulGod(result, embedded)}；五行季节状态${
-      Object.entries(result.wuxingSeasonStatus)
-        .map(([element, status]) => `${element}${status}`)
-        .join('、') || '未记录'
+    `调候与取用：${formatUsefulGod(result, embedded)}${
+      embedded
+        ? ''
+        : `；五行季节状态${
+            Object.entries(result.wuxingSeasonStatus)
+              .map(([element, status]) => `${element}${status}`)
+              .join('、') || '未记录'
+          }`
     }`,
     `岁运：${formatFortune(result)}`,
   ]
@@ -386,8 +392,13 @@ function formatMangpaiFacts(
   chartShowsPatternBasis = false,
 ) {
   return [
-    '四柱宫位与十神落位：',
-    formatPillars(result, { includePalace: true, includeLifeStage: true }),
+    embedded ? '四柱宫位参照：' : '四柱宫位与十神落位：',
+    embedded
+      ? PILLAR_KEYS.map(
+          (key) =>
+            `${PILLAR_LABELS[key]}${result.pillars[key].ganZhi}：${MANGPAI_PALACE_REFERENCES[key]}`,
+        ).join('\n')
+      : formatPillars(result, { includePalace: true, includeLifeStage: true }),
     `主宾定位：主位为日柱${result.pillars.day.ganZhi}与时柱${result.pillars.hour.ganZhi}，其中日干${result.dayMaster.gan}代表命主，日支${result.pillars.day.zhi}为夫妻宫；宾位为年柱${result.pillars.year.ganZhi}与月柱${result.pillars.month.ganZhi}，再围绕所问事项从相应宫位和十神确定体用。`,
     `十神显隐：${formatTenGodStructure(result)}`,
     `透干通根：${formatRoots(result)}`,
@@ -414,11 +425,13 @@ function formatXinpaiFacts(
   return [
     `旺衰判定：日主${result.dayMaster.gan}${result.dayMaster.element}${result.dayMaster.yinYang}，结论${strength.status}；得令${details.timely ? '是' : '否'}，通根${details.hasRoot ? '有' : '无'}，强根${details.hasStrongRoot ? '有' : '无'}，帮扶${details.hasSupport ? '可见' : '不显'}，克泄耗${details.hasConstraint ? '可见' : '不显'}；月令作用${details.seasonalEffect}，司令作用${details.commanderEffect}，成局作用${details.formationEffect}`,
     `透干通根：${formatRoots(result)}`,
-    `五行结构：已见${result.wuxingStrength.present.join('、') || '未记录'}；结构偏重${result.wuxingStrength.dominantByRule.join('、') || '未记录'}；原局缺项${result.wuxingStrength.missing.join('、') || '无'}；月令状态${
-      Object.entries(result.wuxingSeasonStatus)
-        .map(([element, status]) => `${element}${status}`)
-        .join('、') || '未记录'
-    }`,
+    embedded
+      ? ''
+      : `五行结构：已见${result.wuxingStrength.present.join('、') || '未记录'}；结构偏重${result.wuxingStrength.dominantByRule.join('、') || '未记录'}；原局缺项${result.wuxingStrength.missing.join('、') || '无'}；月令状态${
+          Object.entries(result.wuxingSeasonStatus)
+            .map(([element, status]) => `${element}${status}`)
+            .join('、') || '未记录'
+        }`,
     `十神结构：${formatTenGodStructure(result)}`,
     embedded ? '' : `格局与取用：格局${result.analysis.mingGe.pattern}；${formatUsefulGod(result)}`,
     ...(patternEvidence ? formatSchoolPatternFacts(result, embedded, chartShowsPatternBasis) : []),
@@ -535,6 +548,7 @@ export function formatBaziSchoolsPrompt(
   const sharedPatternEvidence =
     selected.length > 1 && !result.isThreePillars
       ? [
+          ...(embedded ? [`透干通根：${formatRoots(result)}`] : []),
           ...formatSchoolPatternFacts(
             result,
             embedded,
@@ -550,7 +564,10 @@ export function formatBaziSchoolsPrompt(
       `流派任务：${profile.task}`,
       `流派依据：${profile.basis}`,
       '本派盘面资料：',
-      formatBaziSchoolFacts(result, school, embedded, selected.length === 1),
+      formatBaziSchoolFacts(result, school, embedded, selected.length === 1)
+        .split('\n')
+        .filter((line) => !(embedded && selected.length > 1 && line.startsWith('透干通根：')))
+        .join('\n'),
     ].join('\n');
   });
   if (selected.length > 1) {

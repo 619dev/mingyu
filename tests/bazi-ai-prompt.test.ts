@@ -301,7 +301,7 @@ test('成化状态在合盘与多派提示词只呈现一次', () => {
   for (const build of [buildBaziPrompt, buildBaziPromptForResult]) {
     const prompt = build({ result: formed, schools: ['ziping', 'mangpai'] });
     assert.equal(prompt.match(/化气判定：成化/g)?.length, 1);
-    assert.match(prompt, /共同格局事实：\n化神木；依据《子平真诠/);
+    assert.match(prompt, /共同格局事实：\n透干通根：[^\n]+\n化神木；依据《子平真诠/);
   }
 });
 
@@ -757,6 +757,20 @@ test('流派提示词只补充格局的盘面证据，不复述共同判定和�
       assert.equal(conditionLines.length, new Set(conditionLines).size);
     }
   }
+});
+
+test('内嵌多派提示词共用通根事实，并省略排盘信息已有的月令、四柱和五行明细', () => {
+  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const prompt = buildBaziPrompt({ result, schools: ['ziping', 'mangpai', 'xinpai'] });
+
+  assert.equal(prompt.match(/^透干通根：/gm)?.length, 1);
+  assert.doesNotMatch(prompt, /^月令与节候：|^五行结构：|^天干十神/u);
+  assert.doesNotMatch(prompt, /五行季节状态/u);
+  assert.match(prompt, /月令司权:/);
+  assert.match(prompt, /【四柱】/);
+  assert.match(prompt, /【五行】/);
+  assert.match(prompt, /四柱宫位参照：/);
+  assert.match(prompt, /当前成败判定：成格/);
 });
 
 test('时辰未知的多派提示词保留候选资料', () => {

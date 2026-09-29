@@ -152,7 +152,7 @@ MCP 客户端能够启动本地进程时，优先使用本地 CLI stdio（默认
 | 奇门终身格局、阶段运限、指定年份     | `qimen_lifetime_prompt`        | `birthDateTime`、`timeZoneId`，可选 `timeStandard`、`location`、`periodRange`、`topics`、`question`                                                    |
 | 临时小事快速判断                     | `xiaoliuren_prompt`            | `question`、可选 `customDate`                                                                                                                          |
 | 金口诀四位课                         | `jinkoujue_prompt`             | `question`、可选 `jinkoujueMethod`、`jinkoujueBranch`、`customDate`                                                                                    |
-| 生肖犯太岁、流年贵人                 | `zodiac_prompt`                | `zodiac`、`year` 或 `yearGanZhi`                                                                                                                       |
+| 生肖太岁与合会关系                   | `zodiac_prompt`                | `zodiac`、`year` 或 `yearGanZhi`                                                                                                                       |
 | 时间、数字、声音、字数或方位象意判断 | `meihua_prompt`                | `question`、可选 `method`、`number`、`soundCount`、`characterText`、`characterStrokeCounts`、`characterTones`、`direction`、`objectType`、`customDate` |
 | 传统复杂事项推演                     | `liuren_prompt`                | `question`、可选 `liurenTemplate`、`customDate`                                                                                                        |
 | 结婚、搬家、开业、签约、安葬择日     | `almanac_prompt`               | `topic`、`startDate`、`endDate`、可选 `participants`、`page`、`pageSize`                                                                               |

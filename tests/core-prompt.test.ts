@@ -96,7 +96,7 @@ test('npm 八字提示词入口应输出完整且有差异的盲派与新派资�
     question: '事业和家庭的主线如何？',
   });
 
-  assert.match(mangpai, /四柱宫位与十神落位/);
+  assert.match(mangpai, /四柱宫位参照/);
   assert.match(mangpai, /主宾定位/);
   assert.match(mangpai, /四柱组合与做功线索/);
   assert.match(mangpai, /透干通根/);

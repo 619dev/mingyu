@@ -79,15 +79,16 @@ test('生肖六十流年七百二十组合保留全部刑冲害破与合会关�
         result.prompt,
         /五行生克看作用方向；十神以个人出生日干和流年年干的阴阳五行为参照/,
       );
-      if (result.noble?.startsWith('三合')) {
+      if (result.noble?.startsWith('三合组成员关系')) {
         const group = sanhe.find(
           (members) => members.includes(branch) && members.includes(yearBranch),
         )!;
         const missing = [...group].find((member) => member !== branch && member !== yearBranch);
         assert.ok(
-          result.prompt.includes(
-            `三合成员：本次具有生肖年支${branch}、流年年支${yearBranch}两支，同组另一支为${missing}`,
-          ),
+          result.prompt.includes(`三合组成员：生肖年支${branch}与流年年支${yearBranch}同属`),
+        );
+        assert.ok(
+          result.prompt.includes(`另一成员为${missing}，三支齐备及成化条件结合完整命盘核验`),
         );
       }
       if (result.meeting) {
@@ -97,7 +98,7 @@ test('生肖六十流年七百二十组合保留全部刑冲害破与合会关�
         const missing = [...group].find((member) => member !== branch && member !== yearBranch);
         assert.ok(
           result.prompt.includes(
-            `三会成员：${[...group].join('、')}为一组，本次具有${branch}、${yearBranch}两支，同组另一支为${missing}`,
+            `三会组成员：${[...group].join('、')}为一组，本次可见${branch}、${yearBranch}两支；另一成员${missing}`,
           ),
         );
       }

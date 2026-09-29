@@ -196,7 +196,7 @@ function createRangeChartOptions(
   };
 }
 
-function lockRangeInputs(
+function lockInputs(
   primary: BirthProfile,
   partner: BirthProfile,
   options: CompatibilityBundleOptions,
@@ -212,6 +212,12 @@ function lockRangeInputs(
     const chartWithoutSignal = { ...options.chart };
     delete chartWithoutSignal.signal;
     optionsWithoutSignal.chart = chartWithoutSignal;
+  }
+  if (options.ziwei) {
+    const ziweiOptions = { ...options.ziwei };
+    delete ziweiOptions.astrolabe1;
+    delete ziweiOptions.astrolabe2;
+    optionsWithoutSignal.ziwei = ziweiOptions;
   }
   const lockedOptions = structuredClone(optionsWithoutSignal);
   lockedOptions.signal = effectiveSignal;
@@ -419,9 +425,15 @@ export async function calculateCompatibilityBundle(
   options: CompatibilityBundleOptions = {},
 ): Promise<CompatibilityBundle> {
   const systems = normalizeSystems(options.systems);
-  if (primary.birthTimeRange === undefined && partner.birthTimeRange === undefined) {
-    return calculatePointCompatibilityBundle(primary, partner, systems, options);
+  checkAborted(options.signal ?? options.chart?.signal);
+  const locked = lockInputs(primary, partner, options);
+  if (locked.primary.birthTimeRange === undefined && locked.partner.birthTimeRange === undefined) {
+    return calculatePointCompatibilityBundle(
+      locked.primary,
+      locked.partner,
+      systems,
+      locked.options,
+    );
   }
-  const locked = lockRangeInputs(primary, partner, options);
   return calculateRangeCompatibilityBundle(locked.primary, locked.partner, systems, locked.options);
 }

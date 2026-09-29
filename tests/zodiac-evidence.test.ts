@@ -106,8 +106,8 @@ test('生肖证据复验应核对生肖名称、流年干支拆分与五行关�
   });
   assert.equal(wrongNoble.summaryFact.status, '证据链有缺口');
   assert.equal(
-    wrongNoble.relations.find((relation) => relation.category === '地支助缘')?.relation,
-    '三合贵人（火局）',
+    wrongNoble.relations.find((relation) => relation.category === '地支成员')?.relation,
+    '三合组成员关系（火局）',
   );
   assert.doesNotMatch(wrongNoble.promptText, /六合贵人/);
 
@@ -124,6 +124,49 @@ test('生肖证据复验应核对生肖名称、流年干支拆分与五行关�
     ),
   );
   assert.doesNotMatch(wrongYearBranch.promptText, /冲太岁/);
+});
+
+test('生肖寅遇丙午只列两支同属火局，不把未核验的三合贵人或合作机会列为既成事实', () => {
+  const result = getZodiacYearFortune('寅', '丙午');
+  const relation = result.evidenceAnalysis.relations.find((item) => item.category === '地支成员');
+
+  assert.equal(result.noble, '三合组成员关系（火局）');
+  assert.equal(relation?.status, '两支同组');
+  assert.equal(relation?.relation, '三合组成员关系（火局）');
+  assert.match(result.prompt, /三合组成员：生肖年支寅与流年年支午同属火局，当前两支已知/);
+  assert.match(result.prompt, /另一成员为戌，三支齐备及成化条件结合完整命盘核验/);
+  assert.doesNotMatch(result.prompt, /三合贵人|合作或求助机会/);
+  assert.match(result.evidenceAnalysis.promptText, /三合组成员关系（火局）/);
+  assert.match(result.evidenceAnalysis.promptText, /当前可见两支；另一成员戌需结合完整四柱核验/);
+  assert.doesNotMatch(result.evidenceAnalysis.promptText, /三合贵人/);
+  assert.doesNotMatch(result.favorableRelations.join('、'), /三合/);
+  assert.doesNotMatch(result.actionSignals.join('、'), /合作或求助机会/);
+  assert.match(
+    relation?.promptText ?? '',
+    /当前可见两支；另一成员戌需结合完整四柱核验三支齐备及成化条件/,
+  );
+});
+
+test('生肖巳遇丁未只列两支同属南方火三会组，不标为已会局', () => {
+  const result = getZodiacYearFortune('巳', '丁未');
+  const relation = result.evidenceAnalysis.relations.find(
+    (item) => item.relation === '三会组成员关系（南方火）',
+  );
+
+  assert.equal(result.meeting, '三会组成员关系（南方火）');
+  assert.equal(relation?.category, '地支成员');
+  assert.equal(relation?.status, '两支同组');
+  assert.match(result.prompt, /三会组成员：巳、午、未为一组，本次可见巳、未两支；另一成员午/);
+  assert.doesNotMatch(result.prompt, /三会关系：|完整三会成局|三会贵人/);
+  assert.match(result.evidenceAnalysis.promptText, /三会组成员关系（南方火）/);
+  assert.match(result.evidenceAnalysis.promptText, /当前可见两支；另一成员午需结合完整四柱核验/);
+  assert.doesNotMatch(result.evidenceAnalysis.promptText, /已命中.*三会/);
+  assert.doesNotMatch(result.favorableRelations.join('、'), /三会/);
+  assert.doesNotMatch(result.actionSignals.join('、'), /合作或求助机会/);
+  assert.match(
+    relation?.promptText ?? '',
+    /同属南方火三会组，当前可见两支；另一成员午需结合完整四柱核验三支齐备及成化条件/,
+  );
 });
 
 test('生肖五行五类关系的证据复验保持完整', () => {

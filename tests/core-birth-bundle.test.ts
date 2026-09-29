@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { calculateBirthChartBundle, type BirthProfile } from 'mingyu-core/birth';
+import {
+  calculateBirthChartBundle,
+  type BirthChartBundleOptions,
+  type BirthProfile,
+} from 'mingyu-core/birth';
 import { generateQizheng } from 'mingyu-core/qizheng';
 import {
   BirthProfileError,
@@ -41,6 +45,35 @@ test('统一出生档案 Bundle 应共享同一套真太阳时输入并生成多
   assert.equal(bundle.qizheng?.stars.length, 11);
   assert.equal(bundle.inputs.qizheng?.useTrueSolarTime, true);
   assert.deepEqual(bundle.normalized, normalizeBirthProfile(profile));
+});
+
+test('单点多系统排盘锁定出生资料和规则，异步计算期间不混入后续改动', async () => {
+  const mutableProfile: BirthProfile = {
+    ...profile,
+    location: { ...profile.location },
+  };
+  const options: BirthChartBundleOptions = {
+    systems: ['ziwei', 'astrolabe'],
+    ziwei: {
+      scopes: ['origin'],
+      skipAnalysis: true,
+      horoscopeContext: { dateStr: '2025-01-01', hourIndex: 6 },
+    },
+  };
+  const pending = calculateBirthChartBundle(mutableProfile, options);
+  mutableProfile.name = '事后改名';
+  mutableProfile.year = 1991;
+  mutableProfile.location!.longitude = 120;
+  options.ziwei!.scopes![0] = 'yearly';
+
+  const bundle = await pending;
+  if ('range' in bundle) assert.fail('应返回单点排盘');
+  assert.equal(bundle.profile.name, '统一档案样例');
+  assert.equal(bundle.normalized.profile.year, 1990);
+  assert.equal(bundle.inputs.ziwei?.birthDate, '1990-05-15');
+  assert.equal(bundle.inputs.astrolabe?.year, '1990');
+  assert.equal(bundle.normalized.resolvedLocation?.longitude, 116.4);
+  assert.ok(bundle.ziwei?.payloadByScope.origin);
 });
 
 test('七政四余适配器应把原始民用时间交给引擎，避免真太阳时重复校正', () => {

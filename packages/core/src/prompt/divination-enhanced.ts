@@ -895,8 +895,11 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
         palaceName && summaryWithoutRepeatedPattern.startsWith(palaceName)
           ? summaryWithoutRepeatedPattern.slice(palaceName.length)
           : summaryWithoutRepeatedPattern;
+      const compactedSummary = item.key.startsWith('combo:flyingBirdShengMen:')
+        ? summary.replace(/^(?:该格局|飞鸟跌穴)同宫生门[，；]/u, '')
+        : summary;
       // 基础格局已逐条解释，复合格局只保留组合结论，避免再次罗列来源条件。
-      return `${name}：${summary}`;
+      return `${name}：${compactedSummary}`;
     });
   const palaceLines = data.jiuGongGe.map((palace) => {
     const voidMark = data.voidPalaces?.some((item) => item.palace === palace.gong) ? '，逢空' : '';

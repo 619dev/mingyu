@@ -64,6 +64,38 @@ test('双人档案姓名与方向覆盖下层分析选项中的旧姓名', async
   assert.deepEqual(bundle.ziwei?.people, { person1: primary.name, person2: partner.name });
 });
 
+test('单点合盘锁定双方档案和规则，异步计算后关系仍对应原始盘面', async () => {
+  const mutablePrimary = { ...primary };
+  const mutablePartner = { ...partner };
+  const options = {
+    systems: ['bazi', 'ziwei'] as Array<'bazi' | 'ziwei'>,
+    chart: {
+      ziwei: {
+        scopes: ['origin'] as Array<'origin' | 'yearly'>,
+        skipAnalysis: true,
+        horoscopeContext: { dateStr: '2025-01-01', hourIndex: 6 },
+      },
+    },
+  };
+  const pending = calculateCompatibilityBundle(mutablePrimary, mutablePartner, options);
+  mutablePrimary.name = '事后改名一';
+  mutablePrimary.year = 1991;
+  mutablePartner.name = '事后改名二';
+  mutablePartner.year = 1993;
+  options.chart.ziwei.scopes[0] = 'yearly';
+
+  const bundle = await pending;
+  if ('range' in bundle) assert.fail('应返回单点合盘');
+  assert.equal(bundle.primary.profile.name, '第一人');
+  assert.equal(bundle.partner.profile.name, '第二人');
+  assert.equal(bundle.primary.profile.year, 1990);
+  assert.equal(bundle.partner.profile.year, 1992);
+  assert.deepEqual(bundle.bazi?.people, { person1: '第一人', person2: '第二人' });
+  assert.deepEqual(bundle.ziwei?.people, { person1: '第一人', person2: '第二人' });
+  assert.ok(bundle.primary.ziwei?.payloadByScope.origin);
+  assert.ok(bundle.partner.ziwei?.payloadByScope.origin);
+});
+
 test('单点紫微合盘在时辰边界只读取一次默认运限上下文', async () => {
   const nativeDate = Date;
   const beforeBoundary = nativeDate.parse('2026-09-29T14:59:59.000Z');
