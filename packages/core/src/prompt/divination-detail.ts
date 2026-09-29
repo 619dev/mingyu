@@ -23,6 +23,7 @@ import { formatDivinationInfo } from './divination';
 import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
 import { formatAlmanacGods } from '../divination/almanac-evidence';
+import { analyzeLenormandEvidence } from '../divination/lenormand-evidence';
 
 type SupportedMethod = Exclude<DivinationMethodId, 'random'>;
 
@@ -227,10 +228,16 @@ function formatAlmanacDetail(data: AlmanacData) {
 }
 
 function formatLenormandDetail(data: LenormandData) {
+  const evidence = analyzeLenormandEvidence(data);
+  const combinations =
+    evidence.spreadCoverageFact.status === '完整' &&
+    evidence.cards.every((card) => card.status === '已映射')
+      ? data.combinations
+      : [];
   return [
-    `牌位：${data.cards.map((card) => `${card.position}${card.name}（${card.keywords.join('、')}）`).join('；')}`,
-    data.combinations?.length
-      ? `组合：${data.combinations.map((item) => `${item.card1}+${item.card2}：${item.meaning}`).join('；')}`
+    `牌位：${evidence.cards.map((card) => `${card.position}${card.name}（${card.keywords.join('、')}）`).join('；')}`,
+    combinations?.length
+      ? `组合：${combinations.map((item) => `${item.card1}+${item.card2}：${item.meaning}`).join('；')}`
       : '',
   ];
 }

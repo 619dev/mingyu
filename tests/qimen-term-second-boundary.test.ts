@@ -16,10 +16,13 @@ test('奇门沿用全局 UTC−5 时区时仍在春分真实瞬时点换节与�
     const explicit = generateQimen(SPRING_EQUINOX_INSTANT, 'zhuanpan', 'hour', 'chaibu', -300);
 
     assert.equal(before.timeInfo.solarTerm, '惊蛰');
+    assert.equal(before.seasonality?.currentJieQi, '惊蛰');
     assert.equal(before.juShu, 1);
     assert.equal(at.timeInfo.solarTerm, '春分');
+    assert.equal(at.seasonality?.currentJieQi, '春分');
     assert.equal(at.juShu, 3);
     assert.equal(at.timeInfo.chaoShenOrJieQi, '超神');
+    assert.deepEqual(at.seasonality?.jieQiPhase, explicit.seasonality?.jieQiPhase);
     assert.deepEqual(
       { timeInfo: at.timeInfo, juShu: at.juShu, ganzhi: at.ganzhi },
       { timeInfo: explicit.timeInfo, juShu: explicit.juShu, ganzhi: explicit.ganzhi },

@@ -149,6 +149,21 @@ function createChartOptions(
   };
 }
 
+function createPointChartOptions(
+  systems: CompatibilitySystem[],
+  options: CompatibilityBundleOptions,
+): BirthChartBundleOptions {
+  const chartOptions = createChartOptions(systems, options);
+  if (!systems.includes('ziwei')) return chartOptions;
+  const ziwei = chartOptions.ziwei ?? {};
+  const horoscopeContext = ziwei.horoscopeContext
+    ? { ...ziwei.horoscopeContext }
+    : getDefaultHoroscopeContext(ziwei.now);
+  const ziweiWithoutNow = { ...ziwei };
+  delete ziweiWithoutNow.now;
+  return { ...chartOptions, ziwei: { ...ziweiWithoutNow, horoscopeContext } };
+}
+
 function createRangeChartOptions(
   systems: CompatibilitySystem[],
   options: CompatibilityBundleOptions,
@@ -214,7 +229,7 @@ async function calculatePointCompatibilityBundle(
   options: CompatibilityBundleOptions,
 ): Promise<CompatibilityPointBundle> {
   checkAborted(options.signal);
-  const chartOptions = createChartOptions(systems, options);
+  const chartOptions = createPointChartOptions(systems, options);
   const [primaryChartValue, partnerChartValue] = await Promise.all([
     calculateBirthChartBundle(primary, chartOptions),
     calculateBirthChartBundle(partner, chartOptions),

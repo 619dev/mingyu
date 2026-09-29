@@ -53,6 +53,23 @@ test('罗盘二十四山分界线应明确标记，不得静默当成普通度�
   assert.match(evidence.promptText, /不应静默采用单一山位/);
 });
 
+test('跨卦分界线应保留两侧八卦候选，同卦分界线仍可确定八卦', () => {
+  const crossBagua = analyzeCompassDirection(67.5);
+  const crossFact = crossBagua.directionFacts.find((fact) => fact.type === '八卦归属');
+  assert.equal(crossBagua.facing.mountain, '甲');
+  assert.deepEqual(crossBagua.facing.boundaryMountains, ['寅', '甲']);
+  assert.equal(crossFact?.status, '位于分界线');
+  assert.match(crossFact?.promptText ?? '', /向卦候选为艮、震/);
+  assert.match(crossFact?.promptText ?? '', /坐卦候选为坤、兑/);
+  assert.match(crossBagua.promptText, /向卦候选为艮、震/);
+
+  const sameBagua = analyzeCompassDirection(7.5);
+  const sameFact = sameBagua.directionFacts.find((fact) => fact.type === '八卦归属');
+  assert.deepEqual(sameBagua.facing.boundaryMountains, ['子', '癸']);
+  assert.equal(sameFact?.status, '已确定');
+  assert.match(sameFact?.promptText ?? '', /癸向属坎卦/);
+});
+
 test('罗盘度数应拒绝越界和非有限数字', () => {
   assert.throws(() => getMountainFromDegree(-0.1), /罗盘度数需在 0 到 360 之间/);
   assert.throws(() => getMountainFromDegree(360.1), /罗盘度数需在 0 到 360 之间/);

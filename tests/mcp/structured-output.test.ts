@@ -3424,6 +3424,27 @@ test('MCP 塔罗与雷诺曼提示词拒绝空白问题，与公开 API 的必�
   });
 });
 
+test('MCP 雷诺曼排盘与提示词透传随机重放样本不足错误', async () => {
+  await withMcpClient(async (client) => {
+    for (const name of ['divine_lenormand', 'lenormand_prompt']) {
+      const result = await client.callTool({
+        name,
+        arguments: {
+          spreadType: 'three',
+          replay: [0.1],
+          ...(name.endsWith('_prompt') ? { question: '请解读本次牌阵。' } : {}),
+        },
+      });
+      assert.equal(result.isError, true, name);
+      assert.match(
+        String((result.structuredContent as { error?: string } | undefined)?.error),
+        /随机重放样本已用尽/,
+        name,
+      );
+    }
+  });
+});
+
 test('MCP 灵签应返回签号、签题与签诗', async () => {
   await withMcpClient(async (client) => {
     const drawn = await client.callTool({

@@ -10,6 +10,9 @@ import {
   resolveInteractiveLenormandCards,
 } from '../packages/core/src/divination/algorithms/lenormand.ts';
 import type { LenormandData, LenormandSpreadType } from '../packages/core/src/types/divination.ts';
+import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination.ts';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const spreadTypes: LenormandSpreadType[] = [
@@ -234,6 +237,80 @@ test('雷诺曼证据分析按牌号重建被篡改的牌面资料并报告缺�
   assert.equal(evidence.traditionalFacts[0].status, '存在缺口');
   assert.equal(evidence.summaryFact.status, '证据链有缺口');
   assert.doesNotMatch(evidence.promptText, /伪造牌名|伪造关键词|伪造牌义/);
+});
+
+test('雷诺曼抽牌组合被改写时拒绝把虚构组合当作牌面证据', () => {
+  const original = drawLenormandSpread('three', { manualCardIds: [1, 24, 25] });
+  assert.match(original.evidenceAnalysis!.promptText, /固定组合骑士\+心/);
+
+  const changedMeaning = structuredClone(original);
+  changedMeaning.combinations![0]!.meaning = '已经确定婚约';
+  assert.throws(
+    () => analyzeLenormandEvidence(changedMeaning),
+    /雷诺曼组合记录与牌号、牌位或相邻关系不一致/,
+  );
+
+  const changedPair = structuredClone(original);
+  changedPair.combinations![0]!.card2 = '孩子';
+  assert.throws(
+    () => analyzeLenormandEvidence(changedPair),
+    /雷诺曼组合记录与牌号、牌位或相邻关系不一致/,
+  );
+
+  const changedCardAndCombination = structuredClone(original);
+  changedCardAndCombination.cards[0]!.name = '伪造牌名';
+  changedCardAndCombination.combinations![0]!.meaning = '已经确定婚约';
+  assert.throws(
+    () => analyzeLenormandEvidence(changedCardAndCombination),
+    /雷诺曼组合记录与牌号、牌位或相邻关系不一致/,
+  );
+
+  const missingCombination = structuredClone(original);
+  missingCombination.combinations = [];
+  assert.throws(
+    () => analyzeLenormandEvidence(missingCombination),
+    /雷诺曼组合记录与牌号、牌位或相邻关系不一致/,
+  );
+
+  const noDraw = structuredClone(original);
+  noDraw.draw = undefined;
+  noDraw.meta = undefined;
+  noDraw.combinations![0]!.meaning = '已经确定婚约';
+  assert.throws(
+    () => analyzeLenormandEvidence(noDraw),
+    /雷诺曼组合记录与牌号、牌位或相邻关系不一致/,
+  );
+
+  const legacyWithoutCombinations = structuredClone(original);
+  legacyWithoutCombinations.draw = undefined;
+  legacyWithoutCombinations.meta = undefined;
+  legacyWithoutCombinations.combinations = undefined;
+  assert.equal(analyzeLenormandEvidence(legacyWithoutCombinations).fixedCombinations.length, 0);
+});
+
+test('雷诺曼在线提示词重新核对牌面和组合，不采信过期证据对象', () => {
+  const original = drawLenormandSpread('three', { manualCardIds: [1, 24, 25] });
+  const changed = structuredClone(original);
+  changed.combinations![0]!.meaning = '已经确定婚约';
+  for (const render of [
+    () => getDivinationSummaryBlocks('lenormand', changed),
+    () => formatEnhancedDivinationInfo('lenormand', changed),
+    () => formatDetailedDivinationInfo('lenormand', changed),
+  ]) {
+    assert.throws(render, /雷诺曼组合记录与牌号、牌位或相邻关系不一致/);
+  }
+
+  const changedCard = structuredClone(original);
+  changedCard.cards[0]!.name = '伪造牌名';
+  changedCard.cards[0]!.keywords = ['伪造关键词'];
+  changedCard.cards[0]!.meaning = '伪造牌义';
+  const text = [
+    ...getDivinationSummaryBlocks('lenormand', changedCard).lines,
+    formatEnhancedDivinationInfo('lenormand', changedCard),
+    formatDetailedDivinationInfo('lenormand', changedCard),
+  ].join('\n');
+  assert.match(text, /骑士/);
+  assert.doesNotMatch(text, /伪造牌名|伪造关键词|伪造牌义/);
 });
 
 test('雷诺曼含先后语义的固定组合只在原牌序命中', () => {
@@ -714,24 +791,9 @@ test('雷诺曼固定组合事实应引用两张所属牌并进入反证汇总',
   const heart = LENORMAND_CARDS.find((card) => card.name === '心');
   const ring = LENORMAND_CARDS.find((card) => card.name === '戒指');
   assert.ok(heart && ring);
-  const evidence = analyzeLenormandEvidence({
-    spreadType: 'three',
-    spreadName: '固定组合引用',
-    cards: [
-      { ...heart, position: '起因' },
-      { ...ring, position: '现状' },
-      { ...LENORMAND_CARDS[0], position: '走向' },
-    ],
-    combinations: [
-      {
-        card1: heart.name,
-        card2: ring.name,
-        meaning: LENORMAND_FIXED_COMBINATIONS['心+戒指'],
-        source: '固定组合',
-      },
-    ],
-    timestamp: 0,
-  });
+  const evidence = analyzeLenormandEvidence(
+    drawLenormandSpread('three', { manualCardIds: [heart.id, ring.id, 1] }),
+  );
   const fixed = evidence.traditionalFacts.find((fact) => fact.kind === '固定组合');
 
   assert.ok(fixed);

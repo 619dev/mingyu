@@ -205,6 +205,18 @@ export function analyzeCompassDirection(facingDegree: number): CompassDirectionA
   const position = getSitFacingFromFacingDegree(facingDegree);
   const facingBagua = getHouseTrigram(position.facing.mountain);
   const sitBagua = getHouseTrigram(position.sit.mountain);
+  const facingBaguaCandidates = [
+    ...new Set(
+      (position.facing.boundaryMountains ?? [position.facing.mountain]).map(getHouseTrigram),
+    ),
+  ];
+  const sitBaguaCandidates = [
+    ...new Set((position.sit.boundaryMountains ?? [position.sit.mountain]).map(getHouseTrigram)),
+  ];
+  const baguaOnBoundary = facingBaguaCandidates.length > 1 || sitBaguaCandidates.length > 1;
+  const baguaPromptText = baguaOnBoundary
+    ? `当前按${position.label}归位为${facingBagua}向、${sitBagua}山；分界线两侧向卦候选为${facingBaguaCandidates.join('、')}，坐卦候选为${sitBaguaCandidates.join('、')}`
+    : `${position.facing.mountain}向属${facingBagua}卦，${position.sit.mountain}山属${sitBagua}卦，形成${position.label}`;
   const normalizeStepKey = 'foundation:direction:calculation:normalize';
   const facingStepKey = 'foundation:direction:calculation:facing';
   const sitStepKey = 'foundation:direction:calculation:sit';
@@ -242,7 +254,7 @@ export function analyzeCompassDirection(facingDegree: number): CompassDirectionA
       stage: '八卦归属',
       status: '已映射',
       dependsOnStepKeys: [facingStepKey, sitStepKey],
-      promptText: `${position.facing.mountain}向属${facingBagua}卦，${position.sit.mountain}山属${sitBagua}卦，形成${position.label}`,
+      promptText: baguaPromptText,
       sources: ['公共二十四山所属后天八卦表'],
       limitation: COMPASS_STEP_LIMITATION,
     },
@@ -281,9 +293,9 @@ export function analyzeCompassDirection(facingDegree: number): CompassDirectionA
     {
       key: 'foundation:direction:fact:bagua',
       type: '八卦归属',
-      status: '已确定',
+      status: baguaOnBoundary ? '位于分界线' : '已确定',
       ownerStepKeys: [baguaStepKey],
-      promptText: `${position.facing.mountain}向属${facingBagua}卦，${position.sit.mountain}山属${sitBagua}卦`,
+      promptText: baguaPromptText,
       sources: ['二十四山所属后天八卦表'],
       limitation: COMPASS_FACT_LIMITATION,
     },

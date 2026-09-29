@@ -492,28 +492,30 @@ export function getDivinationSummaryBlocks(
     }
     case 'lenormand': {
       const item = data as LenormandData;
+      const evidence = analyzeLenormandEvidence(item);
+      const combinations =
+        evidence.spreadCoverageFact.status === '完整' &&
+        evidence.cards.every((card) => card.status === '已映射')
+          ? (item.combinations ?? [])
+          : [];
       return {
         title: '雷诺曼抽牌结果',
         tags: [`牌阵：${item.spreadName}`, `张数：${item.cards.length}张`],
         lines: [
           wrapMainEvidence(
-            item.cards
+            evidence.cards
               .slice(0, 3)
               .map((card) => `${card.position}${card.name}`)
               .join('；'),
           ),
-          ...item.cards.map((card) => {
-            const evidence =
-              item.evidenceAnalysis?.traditionalFacts && item.evidenceAnalysis.structuredLayoutFacts
-                ? item.evidenceAnalysis
-                : analyzeLenormandEvidence(item);
+          ...evidence.cards.map((card) => {
             const fact = evidence.traditionalFacts.find(
               (candidate) =>
                 candidate.kind === '单牌牌义' && candidate.positions.includes(card.position),
             );
             return `${card.position}：${card.name}；${fact?.promptText ?? conditionLenormandTraditionalText(card.meaning, { cardNames: [card.name], keywords: card.keywords })}`;
           }),
-          ...(item.combinations ?? []).map(
+          ...combinations.map(
             (combination) => `${combination.card1}+${combination.card2}：${combination.meaning}`,
           ),
         ].filter(Boolean),

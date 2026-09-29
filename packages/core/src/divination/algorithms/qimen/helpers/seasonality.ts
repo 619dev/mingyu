@@ -147,12 +147,10 @@ export interface JieQiPhaseResult {
  */
 export function getJieQiPhaseByDate(
   date: Date,
-  explicitOffsetMinutes?: number,
+  _explicitOffsetMinutes?: number,
   termOffsetMinutes?: number,
 ): JieQiPhaseResult {
-  const resolvedTermOffsetMinutes =
-    termOffsetMinutes ??
-    (explicitOffsetMinutes === undefined ? undefined : DEFAULT_CHINA_TIMEZONE_HOURS * 60);
+  const resolvedTermOffsetMinutes = termOffsetMinutes ?? DEFAULT_CHINA_TIMEZONE_HOURS * 60;
   const termTimeParts = TimeManager.getWallClockParts(date, resolvedTermOffsetMinutes);
   const solarTime = SolarTime.fromYmdHms(
     termTimeParts.year,

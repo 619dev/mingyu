@@ -63,3 +63,64 @@ test('双人档案姓名与方向覆盖下层分析选项中的旧姓名', async
   assert.deepEqual(bundle.bazi?.people, { person1: primary.name, person2: partner.name });
   assert.deepEqual(bundle.ziwei?.people, { person1: primary.name, person2: partner.name });
 });
+
+test('单点紫微合盘在时辰边界只读取一次默认运限上下文', async () => {
+  const nativeDate = Date;
+  const beforeBoundary = nativeDate.parse('2026-09-29T14:59:59.000Z');
+  const afterBoundary = nativeDate.parse('2026-09-29T15:00:00.000Z');
+  let contextReads = 0;
+  globalThis.Date = new Proxy(nativeDate, {
+    construct(target, args, newTarget) {
+      if (args.length === 0 && new Error().stack?.includes('getDefaultHoroscopeContext')) {
+        return Reflect.construct(
+          target,
+          [contextReads++ === 0 ? beforeBoundary : afterBoundary],
+          newTarget,
+        );
+      }
+      return Reflect.construct(target, args, newTarget);
+    },
+  });
+
+  try {
+    const bundle = await calculateCompatibilityBundle(primary, partner, {
+      systems: ['ziwei'],
+      chart: { ziwei: { scopes: ['origin'], skipAnalysis: true } },
+    });
+    assert.equal(contextReads, 1);
+    assert.deepEqual(bundle.primary.ziwei?.horoscopeContext, {
+      dateStr: '2026-09-29',
+      hourIndex: 11,
+    });
+    assert.deepEqual(
+      bundle.partner.ziwei?.horoscopeContext,
+      bundle.primary.ziwei?.horoscopeContext,
+    );
+  } finally {
+    globalThis.Date = nativeDate;
+  }
+});
+
+test('单点紫微合盘保留显式 now 与 horoscopeContext 的优先级', async () => {
+  const now = new Date('2025-01-01T04:00:00.000Z');
+  const fromNow = await calculateCompatibilityBundle(primary, partner, {
+    systems: ['ziwei'],
+    chart: { ziwei: { scopes: ['origin'], skipAnalysis: true, now } },
+  });
+  assert.deepEqual(fromNow.primary.ziwei?.horoscopeContext, {
+    dateStr: '2025-01-01',
+    hourIndex: 6,
+  });
+  assert.deepEqual(
+    fromNow.partner.ziwei?.horoscopeContext,
+    fromNow.primary.ziwei?.horoscopeContext,
+  );
+
+  const horoscopeContext = { dateStr: '2025-03-01', hourIndex: 3 };
+  const explicit = await calculateCompatibilityBundle(primary, partner, {
+    systems: ['ziwei'],
+    chart: { ziwei: { scopes: ['origin'], skipAnalysis: true, now, horoscopeContext } },
+  });
+  assert.deepEqual(explicit.primary.ziwei?.horoscopeContext, horoscopeContext);
+  assert.deepEqual(explicit.partner.ziwei?.horoscopeContext, horoscopeContext);
+});

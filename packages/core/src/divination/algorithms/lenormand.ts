@@ -368,7 +368,7 @@ function getGridCombinationCandidates(cards: LenormandCardPlacement[]) {
   );
 }
 
-function buildLenormandCombinations(
+export function buildLenormandCombinations(
   spreadType: LenormandSpreadType,
   cards: LenormandCardPlacement[],
 ): NonNullable<LenormandData['combinations']> {

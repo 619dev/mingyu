@@ -88,16 +88,45 @@ function matchesKeyPalace(name: string, keys: Set<string>): boolean {
   return keys.has(name) || keys.has(stripPalaceSuffix(name));
 }
 
+const STANDARD_PALACE_NAMES = new Set([
+  '命',
+  '兄弟',
+  '夫妻',
+  '子女',
+  '财帛',
+  '疾厄',
+  '迁移',
+  '交友',
+  '官禄',
+  '田宅',
+  '福德',
+  '父母',
+]);
+
+function normalizeOriginPalaceName(name: string): string {
+  const bareName = name.endsWith('宫') ? name.slice(0, -1) : name;
+  return bareName === '仆役' ? '交友' : bareName;
+}
+
 /** 十二宫索引和名称均完整，才可把未列星曜解释为未命中。 */
 export function hasCompleteZiweiOrigin(ziwei: ZiweiRuntime): boolean {
   const palaces = ziwei.payloadByScope.origin?.palaces;
+  const names = palaces?.map((palace) => normalizeOriginPalaceName(palace.name));
   return (
     palaces?.length === 12 &&
     new Set(palaces.map((palace) => palace.index)).size === 12 &&
     palaces.every(
-      (palace) => Number.isInteger(palace.index) && palace.index >= 0 && palace.index < 12,
+      (palace) =>
+        Number.isInteger(palace.index) &&
+        palace.index >= 0 &&
+        palace.index < 12 &&
+        Array.isArray(palace.major_stars) &&
+        Array.isArray(palace.minor_stars) &&
+        Array.isArray(palace.other_stars),
     ) &&
-    new Set(palaces.map((palace) => stripPalaceSuffix(palace.name))).size === 12
+    names?.length === 12 &&
+    new Set(names).size === 12 &&
+    names.every((name) => STANDARD_PALACE_NAMES.has(name))
   );
 }
 

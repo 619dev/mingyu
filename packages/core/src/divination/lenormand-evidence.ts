@@ -11,6 +11,7 @@ import { MingyuCoreError } from '../shared/result';
 import {
   LENORMAND_CARDS,
   LENORMAND_SPREADS,
+  buildLenormandCombinations,
   resolveInteractiveLenormandCards,
   shuffleLenormandCards,
 } from './algorithms/lenormand';
@@ -1281,6 +1282,46 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
         category: 'validation',
         message: '雷诺曼随机轨迹与牌面或顺序不一致，或包含多余样本。',
         field: 'meta.random.samples',
+      });
+    }
+  }
+  if (
+    spreadCoverageFact.status === '完整' &&
+    (data.combinations !== undefined || data.draw !== undefined)
+  ) {
+    if (cards.some((card) => !LENORMAND_CARDS.some((reference) => reference.id === card.cardId))) {
+      throw new MingyuCoreError({
+        code: 'LENORMAND_COMBINATION_MISMATCH',
+        category: 'validation',
+        message: '雷诺曼组合记录与牌号、牌位或相邻关系不一致。',
+        field: 'combinations',
+      });
+    }
+    const expected = buildLenormandCombinations(data.spreadType, data.cards);
+    const recorded = data.combinations ?? [];
+    const matching =
+      recorded.length === expected.length &&
+      recorded.every((actual, index) => {
+        const calculated = expected[index];
+        return (
+          calculated &&
+          actual.card1 === calculated.card1 &&
+          actual.card2 === calculated.card2 &&
+          actual.position1 === calculated.position1 &&
+          actual.position2 === calculated.position2 &&
+          actual.relation === calculated.relation &&
+          actual.rowDistance === calculated.rowDistance &&
+          actual.columnDistance === calculated.columnDistance &&
+          actual.meaning === calculated.meaning &&
+          actual.source === calculated.source
+        );
+      });
+    if (!matching) {
+      throw new MingyuCoreError({
+        code: 'LENORMAND_COMBINATION_MISMATCH',
+        category: 'validation',
+        message: '雷诺曼组合记录与牌号、牌位或相邻关系不一致。',
+        field: 'combinations',
       });
     }
   }

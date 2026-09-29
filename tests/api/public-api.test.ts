@@ -4138,6 +4138,24 @@ test('公开 API 可选请求体接口收到非法 JSON 时应返回参数错误
   assert.match(body.error.message, /合法 JSON/);
 });
 
+test('雷诺曼排盘与提示词的随机重放样本不足应返回参数错误', async () => {
+  for (const path of ['divination/lenormand', 'divination/lenormand/prompt']) {
+    const { response, body } = await callApi(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        spreadType: 'three',
+        replay: [0.1],
+        ...(path.endsWith('/prompt') ? { question: '请解读本次牌阵。' } : {}),
+      }),
+    });
+
+    assert.equal(response.status, 400, path);
+    assert.equal(body.error.code, 'BAD_REQUEST', path);
+    assert.match(body.error.message, /随机重放样本已用尽/, path);
+  }
+});
+
 test('公开 API customDate 不应接受非 ISO 或会被 JS 自动进位的无效日期', async () => {
   const paths = ['divination/liuyao', 'divination/meihua', 'divination/qimen', 'divination/liuren'];
   const invalidValues = [

@@ -735,7 +735,7 @@ export function formatWuyunLiuqiFacts(result: WuyunLiuqiCalculation): string {
     `司天：${result.sitian.name}`,
     `在泉：${result.zaiquan.name}`,
     `司天化令：${result.annualClassification.sitianTransformation}；南北政：${result.annualClassification.governance}`,
-    `司天与中运：${result.annualRelation.kind}；${result.annualRelation.basis}`,
+    `司天与中运：${result.annualRelation.kind}`,
     `年度五行作用：${formatElementDirection('中运', result.annualMovement.element, `司天${result.sitian.name}`, result.sitian.element)}；${formatElementDirection('中运', result.annualMovement.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}；${formatElementDirection(`司天${result.sitian.name}`, result.sitian.element, `在泉${result.zaiquan.name}`, result.zaiquan.element)}`,
     ...(result.annualConformities.names.length
       ? [`年度符会：${result.annualConformities.names.join('、')}`]

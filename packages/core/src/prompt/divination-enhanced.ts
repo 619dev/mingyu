@@ -1299,7 +1299,8 @@ function formatAlmanacInfo(data: AlmanacData) {
 }
 
 function formatLenormandInfo(data: LenormandData) {
-  const cardLines = data.cards.map((card) => {
+  const evidenceAnalysis = analyzeLenormandEvidence(data);
+  const cardLines = evidenceAnalysis.cards.map((card) => {
     const placement = [
       card.house ? `落${card.house}宫` : '',
       card.row && card.column ? `第${card.row}排第${card.column}列` : '',
@@ -1308,12 +1309,12 @@ function formatLenormandInfo(data: LenormandData) {
       .join('，');
     return `  ${card.position}：${card.name}；关键词：${card.keywords.join('、')}${card.meaning ? `；基础牌义：${card.meaning}` : ''}${placement ? `；${placement}` : ''}`;
   });
-  const combinationLines = (data.combinations ?? [])
-    .filter((item) => item.source === '固定组合')
-    .map((item) => `  ${item.card1}+${item.card2}：${item.meaning}`);
-  const evidenceAnalysis = data.evidenceAnalysis?.structuredLayoutFacts
-    ? data.evidenceAnalysis
-    : analyzeLenormandEvidence(data);
+  const combinationLines = (
+    evidenceAnalysis.spreadCoverageFact.status === '完整' &&
+    evidenceAnalysis.cards.every((card) => card.status === '已映射')
+      ? evidenceAnalysis.fixedCombinations
+      : []
+  ).map((item) => `  ${item.card1}+${item.card2}：${item.meaning}`);
   const layoutLines = evidenceAnalysis.structuredLayoutFacts
     .filter((item) => item.kind !== '大桌宫位')
     .map((item) => `  ${item.factText}`);

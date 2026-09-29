@@ -15,6 +15,8 @@ import {
 import { baziCalculator } from '../bazi/baziCalculator';
 import { formatUsefulGodFunctions } from '../bazi/baziAnalysisFormatter';
 import { getCivilDateTimeAtFixedOffset } from '../calendar/civil-time';
+import { checkChinaDst } from '../calendar/china-dst';
+import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
 import { resolveBirthPlace } from '../location';
 import type { BirthProfileTimeRange } from '../profile/time-range';
 import { CHARACTER_STROKE_NOTES, CHARACTER_READING_NOTES } from './character-annotations';
@@ -76,6 +78,33 @@ function formatNamingClock(input: NamingBirthInput, includeSeconds: boolean) {
   return `${hour}:${minute}:${String(second).padStart(2, '0')}`;
 }
 
+function correctedChinaDstClock(input: NamingBirthInput): string | null {
+  if (
+    input.applyChinaDst !== true ||
+    input.useTrueSolarTime === true ||
+    input.birthSecond === undefined ||
+    input.birthSecond === ''
+  ) {
+    return null;
+  }
+  const clock = resolveBirthCalendarClockTime({
+    dateType: input.dateType === 'lunar' ? 'lunar' : 'solar',
+    year: Number(input.year),
+    month: Number(input.month),
+    day: Number(input.day),
+    hour: Number(input.birthHour),
+    minute: Number(input.birthMinute),
+    second: Number(input.birthSecond),
+    isLeapMonth: input.isLeapMonth,
+  });
+  const dst = checkChinaDst(clock.year, clock.month, clock.day, clock.hour, clock.minute);
+  if (!dst.inDst) return null;
+  const corrected = new Date(
+    Date.UTC(clock.year, clock.month - 1, clock.day, clock.hour, clock.minute + dst.offsetMinutes),
+  );
+  return `${String(corrected.getUTCHours()).padStart(2, '0')}:${String(corrected.getUTCMinutes()).padStart(2, '0')}:${String(clock.second).padStart(2, '0')}`;
+}
+
 function calculateNamingBazi(input: NamingBirthInput) {
   if (input.isThreePillars !== undefined && typeof input.isThreePillars !== 'boolean') {
     throw new Error('时辰未知标志必须是布尔值。');
@@ -104,6 +133,7 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
     input.useTrueSolarTime !== true && input.birthSecond !== undefined && input.birthSecond !== '';
   const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
   const inputClock = formatNamingClock(input, hasInputSecond);
+  const chinaDstClock = hasPreciseStandardTime ? correctedChinaDstClock(input) : null;
   const calculatedClock = chart.timing
     ? `${String(chart.timing.correctedTime.hour).padStart(2, '0')}:${String(chart.timing.correctedTime.minute).padStart(2, '0')}${input.birthSecond !== undefined && input.birthSecond !== '' ? `:${String(chart.timing.correctedTime.second).padStart(2, '0')}` : ''}`
     : null;
@@ -139,7 +169,9 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
         : input.useTrueSolarTime
           ? '真太阳时'
           : hasPreciseStandardTime
-            ? '标准北京时间（精确到秒）'
+            ? chinaDstClock
+              ? '中国历史夏令时钟表时间（已回拨为标准北京时间）'
+              : '标准北京时间（精确到秒）'
             : '时辰',
       place,
       longitude,
@@ -150,7 +182,7 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
       calculatedTime: chart.timing
         ? calculatedClock!
         : hasPreciseStandardTime && inputClock
-          ? inputClock
+          ? (chinaDstClock ?? inputClock)
           : `${chart.timeInfo.name}（${chart.timeInfo.range}）`,
     },
     lunarDate: `${chart.lunarDate.year}年${chart.lunarDate.monthName}${chart.lunarDate.dayName}`,
@@ -1003,9 +1035,14 @@ export function generateChineseNames(input: {
       .map(namingCharacterKey)
       .filter((char) => !forbidden.has(char)),
   );
-  const generationCharacters = namingCharacters(input.generationCharacter);
-  if (generationCharacters.length > 1) throw new Error('辈分字只能填写一个汉字');
-  const generationCharacter = generationCharacters[0];
+  const generationText = input.generationCharacter?.trim() ?? '';
+  if (
+    generationText &&
+    ([...generationText].length !== 1 || !/\p{Script=Han}/u.test(generationText))
+  ) {
+    throw new Error('辈分字只能填写一个汉字');
+  }
+  const generationCharacter = generationText || undefined;
   if (generationCharacter && forbidden.has(namingCharacterKey(generationCharacter)))
     throw new Error('辈分字不能同时设为忌用字');
   if (generationCharacter && !charDetail(generationCharacter))
@@ -1642,6 +1679,9 @@ function analyzeNumberEnergySequence(alphanumeric: string) {
 }
 
 export function analyzeNumber(input: string, purpose: NumberPurpose = 'general') {
+  if (purpose !== 'phone' && purpose !== 'plate' && purpose !== 'general') {
+    throw new Error('号码类型必须为手机号、车牌号或一般编号');
+  }
   const normalized = input
     .replace(/[！-～]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
     .trim()

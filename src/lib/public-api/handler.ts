@@ -7128,15 +7128,22 @@ function calculateAlmanacApi(input: JsonRecord) {
 }
 
 function calculateLenormand(input: JsonRecord) {
-  return drawLenormandSpread(
-    readEnum(
-      input,
-      'spreadType',
-      ['single', 'three', 'five', 'relationship', 'decision', 'nine', 'element', 'grandTableau'],
-      'single',
-    ) as LenormandSpreadType,
-    readRandomOptions(input),
-  );
+  try {
+    return drawLenormandSpread(
+      readEnum(
+        input,
+        'spreadType',
+        ['single', 'three', 'five', 'relationship', 'decision', 'nine', 'element', 'grandTableau'],
+        'single',
+      ) as LenormandSpreadType,
+      readRandomOptions(input),
+    );
+  } catch (error) {
+    if (error instanceof MingyuCoreError && error.category === 'validation') {
+      throw new ApiError(400, 'BAD_REQUEST', error.message);
+    }
+    throw error;
+  }
 }
 
 function calculateAstrolabe(input: JsonRecord) {

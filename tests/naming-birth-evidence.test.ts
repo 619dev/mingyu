@@ -6,6 +6,7 @@ import {
   buildChineseNamingPrompt,
   calculateNamingBirthContext,
   generateChineseNames,
+  analyzeNumber,
 } from '../packages/core/src/name-number/index.ts';
 import { calculateBaziChartFromInput } from '../packages/core/src/bazi/input.ts';
 
@@ -86,6 +87,62 @@ test('起名与姓名解析只在摘要未包含格局依据时单列依据', ()
   }
   analysis.birthContext!.pattern.fulfillment!.summary = '格局成立';
   assert.match(buildChineseNameAnalysisPrompt({ analysis }), /格局判定依据：身杀两停，制化相济/);
+});
+
+test('历史夏令时跨日出生的起名事实和提示词采用回拨后的北京时间', () => {
+  const birth = {
+    gender: 'male' as const,
+    year: 1990,
+    month: 5,
+    day: 15,
+    dateType: 'solar' as const,
+    timeIndex: '',
+    useTrueSolarTime: false,
+    birthHour: '0',
+    birthMinute: '20',
+    birthSecond: '17',
+    applyChinaDst: true,
+  };
+  const context = calculateNamingBirthContext(birth);
+  assert.equal(context.timeBasis.inputDate, '公历1990年5月15日');
+  assert.equal(context.timeBasis.inputTime, '00:20:17');
+  assert.equal(context.timeBasis.calculatedTime, '23:20:17');
+  assert.equal(context.solarDate, '1990-05-14');
+  assert.match(context.timeBasis.mode, /已回拨为标准北京时间/);
+  for (const prompt of [
+    buildChineseNameAnalysisPrompt({ analysis: analyzeChineseName({ fullName: '李清和', birth }) }),
+    buildChineseNamingPrompt({
+      surname: '李',
+      candidates: generateChineseNames({ surname: '李', birth, limit: 1 }),
+    }),
+  ]) {
+    assert.match(prompt, /出生记录：公历1990年5月15日 00:20:17/);
+    assert.match(prompt, /排盘公历：1990-05-14 23:20:17/);
+    assert.match(prompt, /中国历史夏令时钟表时间（已回拨为标准北京时间）/);
+  }
+
+  const standard = calculateNamingBirthContext({ ...birth, applyChinaDst: false });
+  assert.equal(standard.timeBasis.calculatedTime, '00:20:17');
+  assert.equal(standard.solarDate, '1990-05-15');
+
+  const lunar = calculateNamingBirthContext({ ...birth, dateType: 'lunar', isLeapMonth: false });
+  assert.equal(lunar.timeBasis.inputDate, '农历1990年5月15日');
+  assert.equal(lunar.solarDate, '1990-06-06');
+  assert.equal(lunar.timeBasis.calculatedTime, '23:20:17');
+});
+
+test('辈分字和号码类型在核心入口拒绝无效值', () => {
+  for (const generationCharacter of ['A', '承A', '承明']) {
+    assert.throws(
+      () => generateChineseNames({ surname: '李', generationCharacter }),
+      /辈分字只能填写一个汉字/,
+    );
+  }
+  assert.equal(
+    generateChineseNames({ surname: '李', generationCharacter: ' 承 ', limit: 1 })[0]?.givenName[0],
+    '承',
+  );
+  assert.throws(() => analyzeNumber('1234', 'unknown' as never), /号码类型必须为/);
 });
 
 test('命名提示词只展开格局结论与关键反证，完整格局事实仍留在分析结果', () => {

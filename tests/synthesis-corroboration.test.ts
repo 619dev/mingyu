@@ -6,6 +6,7 @@ import { baziCalculator } from '@core/bazi/baziCalculator';
 import {
   evaluateGuiRenCorroboration,
   evaluateShaYaoCorroboration,
+  hasCompleteZiweiOrigin,
 } from '@core/synthesis/corroboration';
 import type { ZiweiRuntime } from '@core/ziwei/runtime';
 
@@ -52,6 +53,7 @@ function completePalaces(first: Record<string, unknown>): Record<string, unknown
     is_body_palace: false,
     major_stars: [],
     minor_stars: [],
+    other_stars: [],
     ...(index === 0 ? first : {}),
   }));
 }
@@ -197,6 +199,32 @@ test('十二宫缺位时保留已见星曜，但不宣称双盘条件已满足',
     gui.effectConditions.find((item) => item.key === 'ziwei.origin')?.status,
     '资料不足',
   );
+});
+
+test('十二个不同宫名或缺失星曜列表不构成完整紫微原盘', () => {
+  const ziwei = buildZiwei(false);
+  assert.equal(hasCompleteZiweiOrigin(ziwei), true);
+
+  ziwei.payloadByScope.origin.palaces[1].name = '未知宫';
+  assert.equal(hasCompleteZiweiOrigin(ziwei), false);
+  const sha = evaluateShaYaoCorroboration(buildBazi('身强'), ziwei);
+  assert.equal(sha.ziweiCheckStatus, 'origin-missing');
+  assert.equal(
+    sha.effectConditions.find((item) => item.key === 'ziwei.sha-star-position')?.status,
+    '资料不足',
+  );
+
+  ziwei.payloadByScope.origin.palaces[1].name = '兄弟宫';
+  delete (ziwei.payloadByScope.origin.palaces[1] as { minor_stars?: unknown }).minor_stars;
+  assert.equal(hasCompleteZiweiOrigin(ziwei), false);
+});
+
+test('真实紫微仆役宫与交友宫为同一宫位，别名重复仍属十二宫缺口', () => {
+  const ziwei = buildZiwei(false);
+  ziwei.payloadByScope.origin.palaces[7].name = '仆役';
+  assert.equal(hasCompleteZiweiOrigin(ziwei), true);
+  ziwei.payloadByScope.origin.palaces[6].name = '交友宫';
+  assert.equal(hasCompleteZiweiOrigin(ziwei), false);
 });
 
 test('贵人合参保留八字柱位、紫微宫位与星曜状态，不把共现写成终身断语', () => {
