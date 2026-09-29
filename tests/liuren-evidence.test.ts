@@ -242,6 +242,100 @@ test('大六壬旧结果缺少取传名、应期与焦点时应明确标记来�
   assert.doesNotMatch(evidence.promptText, /由盘面补齐|原结果提供/);
 });
 
+test('大六壬旧盘篡改取传派生资料不得进入证据提示词', () => {
+  const alterations: Array<[string, (data: ReturnType<typeof generateLiuren>) => void]> = [
+    [
+      '三传模式',
+      (data) => {
+        data.transmissionPattern = data.transmissionPattern === '伏吟' ? '递传' : '伏吟';
+      },
+    ],
+    [
+      '取传说明',
+      (data) => {
+        data.transmissionDetail = '明日必成';
+      },
+    ],
+    [
+      '经典依据',
+      (data) => {
+        data.classicalRules = [
+          { source: '伪书', rule: '伪则', category: '伪类', summary: '明日必成' },
+        ];
+      },
+    ],
+    [
+      '盘面焦点',
+      (data) => {
+        data.focusEvidence![0].evidence.push('明日必成');
+      },
+    ],
+    [
+      '应期条件',
+      (data) => {
+        data.timingEvidence!.push('明日必成');
+      },
+    ],
+    [
+      '传统标签',
+      (data) => {
+        data.patternTags!.push('必成格');
+      },
+    ],
+    [
+      '课体名称',
+      (data) => {
+        data.guaTiFacts = undefined;
+        data.guaTi!.push('必成格');
+      },
+    ],
+    [
+      '神煞起法',
+      (data) => {
+        data.shenShaFacts![0].target = '错误地支';
+      },
+    ],
+    [
+      '神煞摘要',
+      (data) => {
+        data.shenShaFacts = undefined;
+        data.shenShaSummary!.push('必成星在寅');
+      },
+    ],
+    [
+      '天将属性',
+      (data) => {
+        data.tianJiangProps![data.threeTransmissions[0].god].description = '明日必成';
+      },
+    ],
+  ];
+  for (const [field, alter] of alterations) {
+    const data = generateLiuren(fixedDate);
+    alter(data);
+    assert.throws(() => analyzeLiurenEvidence(data), /不一致，无法生成证据/, field);
+  }
+});
+
+test('大六壬旧版应期文案与空数组可补齐为当前盘面条件', () => {
+  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  assert.equal(data.threeTransmissions[0].isVoid, false);
+  const oldInitial = `一级发用：先看初传${data.threeTransmissions[0].branch}不空，可直接作为起始信号`;
+  const oldDeadline = '未给出目标期限时，只判断先后、快慢和触发条件，不硬换成唯一日期';
+  data.timingEvidence = [oldInitial, data.timingEvidence![1], data.timingEvidence![2], oldDeadline];
+
+  const evidence = analyzeLiurenEvidence(data);
+  assert.equal(evidence.timingFacts[0].rawText, oldInitial);
+  assert.equal(evidence.timingFacts[3].rawText, oldDeadline);
+  assert.match(evidence.timingFacts[0].promptText, /按月令旺衰、日支关系和事项类神核对发端条件/);
+  assert.equal(evidence.timingFacts[3].promptText, '以问题期限、三传先后和现实触发条件核对应期');
+  assert.doesNotMatch(evidence.promptText, /可直接作为起始信号|未给出目标期限时/);
+
+  data.timingEvidence = [];
+  assert.ok(analyzeLiurenEvidence(data).timingFacts.every((fact) => fact.rawText === undefined));
+  data.timingEvidence = [oldInitial.replace('可直接作为起始信号', '必定成功')];
+  assert.throws(() => analyzeLiurenEvidence(data), /取传派生资料与四课、三传不一致/);
+});
+
 test('大六壬旧结果只有最终取传名时不得冒充普通宗门竞争可重建', () => {
   const data = generateLiuren(fixedDate);
   data.ordinaryTransmissionAdjudication = undefined;
@@ -355,6 +449,23 @@ test('大六壬旧结果缺少天地盘时应明确标为证据缺口，不反�
       (item) => item.level === '反证' && item.title === '天地盘定位待复核',
     ),
   );
+});
+
+test('大六壬天地盘缺口时不直出无法核验的取传派生资料', () => {
+  const data = generateLiuren(fixedDate);
+  data.heavenlyPlate = data.heavenlyPlate.slice(0, 11);
+  data.transmissionDetail = '明日必成';
+  data.patternTags!.push('明日必成');
+  data.timingEvidence!.push('明日必成');
+  data.focusEvidence![0].evidence.push('明日必成');
+
+  const evidence = analyzeLiurenEvidence(data);
+  assert.equal(evidence.plateFact.status, '缺少');
+  assert.equal(evidence.transmissionRuleFact.status, '缺少规则名');
+  assert.deepEqual(evidence.patternEvidence, []);
+  assert.equal(evidence.focusSummaryFact.status, '缺少焦点');
+  assert.deepEqual(evidence.timingEvidence, []);
+  assert.doesNotMatch(evidence.promptText, /明日必成/);
 });
 
 test('大六壬天地盘十二条记录含重复位置时不得标为完整', () => {

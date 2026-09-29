@@ -144,7 +144,9 @@ export function buildZiweiCalculationConfig(input: ChartInput): ZiweiCalculation
     year_divide_rule: normalized.yearDivide === 'exact' ? '以立春分年' : '以农历正月初一分年',
     horoscope_divide: normalized.horoscopeDivide!,
     horoscope_divide_rule:
-      normalized.horoscopeDivide === 'exact' ? '运限月份以节气分界' : '运限月份以农历月份分界',
+      normalized.horoscopeDivide === 'exact'
+        ? '运限流年以立春、流月以节气分界'
+        : '运限流年以农历年、流月以农历月分界',
     age_divide: normalized.ageDivide!,
     age_divide_rule:
       normalized.ageDivide === 'birthday' ? '小限年龄以生日分界' : '小限年龄只按年份计算',

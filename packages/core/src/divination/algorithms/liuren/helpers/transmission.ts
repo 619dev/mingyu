@@ -5,7 +5,7 @@ import type {
   LiurenLesson,
   LiurenTransmission,
 } from '../../../../types/divination';
-import { isBranchKe } from './plate';
+import { describeRelation, isBranchKe } from './plate';
 import { getXunHead } from '../../../../ganzhi';
 
 export function buildTransmissionNote(stage: LiurenTransmission['stage'], relation: string) {
@@ -356,4 +356,63 @@ export function buildTransmissionDetail(
         .join('；')}`
     : '';
   return `取传采用${rule}，以${initialTransmission.stage}${initialTransmission.branch}为初传发用${sourceText}。`;
+}
+
+/** 按已确定的课传生成焦点与应期资料，供排盘和旧盘核验共用。 */
+export function buildLiurenFocusEvidence(input: {
+  rule: string;
+  transmissions: LiurenTransmission[];
+  dayStem: string;
+  dayStemResidence: string;
+  dayBranch: string;
+  fourLessons: LiurenLesson[];
+}): NonNullable<LiurenData['focusEvidence']> {
+  const first = input.transmissions[0];
+  return [
+    {
+      target: `初传${first.branch}乘${first.god}`,
+      role: '发用主轴',
+      level: '主证',
+      evidence: [
+        `${input.rule}取为初传`,
+        `月令${first.seasonState}`,
+        first.dayRelation ?? describeRelation(first.branch, input.dayBranch),
+      ],
+      limitations: first.isVoid ? ['初传空亡，主证需待填实'] : [],
+    },
+    {
+      target: `日干${input.dayStem}寄${input.dayStemResidence}`,
+      role: '我方与求测者',
+      level: '辅证',
+      evidence: [
+        '日干寄宫为我方定位',
+        `一课${input.fourLessons[0].upper}临${input.fourLessons[0].lower}`,
+      ],
+      limitations: [],
+    },
+    {
+      target: `日支${input.dayBranch}`,
+      role: '所占之事与对方环境',
+      level: '辅证',
+      evidence: [
+        `三课${input.fourLessons[2].upper}临${input.fourLessons[2].lower}`,
+        '需与发用和三传同看',
+      ],
+      limitations: ['具体类神仍须按问题主题从明列盘面中选取'],
+    },
+  ];
+}
+
+export function buildLiurenTimingEvidence(input: {
+  transmissions: LiurenTransmission[];
+  dayBranch: string;
+  monthBranch: string;
+}): NonNullable<LiurenData['timingEvidence']> {
+  const first = input.transmissions[0];
+  return [
+    `一级发用：先看初传${first.branch}${first.isVoid ? '空亡，待出空或冲实' : '不空，按月令旺衰、日支关系和事项类神核对发端条件'}`,
+    `二级三传：${input.transmissions.map((item) => `${item.stage}${item.branch}（月令${item.seasonState}${item.isVoid ? '、空' : ''}）`).join('→')}`,
+    `三级日月：以日支${input.dayBranch}、月支${input.monthBranch}对初传和类神的同支、冲合与旺衰作为触发条件`,
+    '以问题期限、三传先后和现实触发条件核对应期',
+  ];
 }

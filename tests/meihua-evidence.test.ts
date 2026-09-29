@@ -170,6 +170,39 @@ test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () =>
   }
 });
 
+test('梅花旧盘派生应期或互卦关系被改写时不得作为已核验事实进入解读资料', () => {
+  const data = structuredClone(generateMeihua(fixedDate, { method: 'number', number: 123 }));
+  data.analysis.yingQi = ['明日必然成功'];
+  data.analysis.inter1Relation = '体互生原体';
+  data.evidenceAnalysis = undefined;
+
+  const rebuilt = analyzeMeihuaEvidence(data);
+  assert.equal(rebuilt.calculationFact.status, '计算不一致');
+  assert.equal(rebuilt.summaryFact.status, '部分资料缺失');
+  assert.match(rebuilt.calculationFact.promptText, /原应期条件与动爻、体用和月令重算结果不一致/);
+  assert.match(rebuilt.calculationFact.promptText, /体互对原体关系记录与互卦不一致/);
+  assert.equal(
+    rebuilt.timingFacts.some((item) => item.type === '原应期条件'),
+    false,
+  );
+  assert.equal(
+    rebuilt.evidence.items.some((item) => item.title === '体互对原体关系'),
+    false,
+  );
+  assert.doesNotMatch(rebuilt.promptText, /明日必然成功|体互生原体/);
+
+  const oldData = structuredClone(generateMeihua(fixedDate, { method: 'number', number: 123 }));
+  delete oldData.analysis.yingQi;
+  oldData.evidenceAnalysis = undefined;
+  const oldEvidence = analyzeMeihuaEvidence(oldData);
+  assert.equal(oldEvidence.calculationFact.status, '完整');
+  assert.equal(oldEvidence.summaryFact.status, '证据链完整');
+  assert.equal(
+    oldEvidence.timingFacts.some((item) => item.type === '原应期条件'),
+    false,
+  );
+});
+
 test('梅花体互用互应沿用原体所在方位，不得上下颠倒', () => {
   const lowerMoving = generateMeihua(fixedDate, { method: 'number', number: 123 });
   const lowerProcess = analyzeMeihuaEvidence(lowerMoving).stages.find(
@@ -292,6 +325,14 @@ test('梅花旧结果缺少逐爻或互卦阶段时应明确标记缺口且不�
   assert.deepEqual(rebuilt.yaoCoverageFact.missingPositions, [6]);
   assert.equal(rebuilt.stageCoverageFact.status, '阶段缺失');
   assert.deepEqual(rebuilt.stageCoverageFact.missingStages, ['process']);
+  assert.equal(
+    rebuilt.evidence.items.some((item) => item.title === '体互对原体关系'),
+    false,
+  );
+  assert.equal(
+    rebuilt.evidence.items.some((item) => item.title === '用互对原体关系'),
+    false,
+  );
   assert.equal(rebuilt.transitionFacts.length, 1);
   assert.equal(rebuilt.transitionFacts[0].status, '跨阶段缺口');
   assert.equal(rebuilt.summaryFact.status, '部分资料缺失');

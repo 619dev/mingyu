@@ -24,6 +24,7 @@ import { serializeCoreResult } from '../shared/result';
 import {
   buildDivinationPromptDocument,
   formatDivinationInfo,
+  formatDivinationOriginTime,
   formatSupplementaryInfo,
   getDivinationSummaryBlocks,
   type DivinationPromptOptions,
@@ -167,7 +168,7 @@ export function serializeDivinationResult(data: DivinationData) {
 function buildDivinationAiPrompt(options: {
   method: DivinationSessionMethod;
   question: string;
-  currentTime?: Date;
+  currentTime: Date;
   supplementaryInfo?: SupplementaryInfo;
   chartText: string;
   data: DivinationData;
@@ -181,9 +182,11 @@ function buildDivinationAiPrompt(options: {
     });
   }
   const supplementary = formatSupplementaryInfo(options.supplementaryInfo, options.method);
+  const originTime = formatDivinationOriginTime(options.method, options.data, options.currentTime);
   return buildPromptDocument(
     joinPromptSections([
       buildPromptSection('当前时间', formatPromptCurrentTime(options.currentTime)),
+      originTime ? buildPromptSection('起课时间', originTime) : '',
       supplementary ? buildPromptSection('补充信息', supplementary) : '',
       buildPromptSection('占卜资料', options.chartText),
       buildPromptSection(

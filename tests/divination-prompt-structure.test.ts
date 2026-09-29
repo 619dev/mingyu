@@ -9,6 +9,7 @@ import { generateMeihua } from '../packages/core/src/divination/algorithms/meihu
 import { drawTarotSpread, tarotSpreads } from '../packages/core/src/divination/tarot.ts';
 import { drawLenormandSpread } from '../packages/core/src/divination/algorithms/lenormand.ts';
 import { generateXiaoliuren } from '../packages/core/src/divination/algorithms/xiaoliuren.ts';
+import { generateLiuren } from '../packages/core/src/divination/algorithms/liuren/index.ts';
 import {
   assertNoPromptPlaceholders,
   assertPromptHasSingleRole,
@@ -1160,34 +1161,11 @@ test('大六壬提示词使用简短任务', () => {
 });
 
 test('大六壬提示词保留课体与精简神煞摘要', () => {
-  const data = {
-    ...createData('liuren'),
-    guaTi: ['龙德卦', '连珠卦'],
-    shenShaFacts: [
-      {
-        name: '旬奇',
-        target: '初传',
-        targetType: '地支',
-        category: '逐月神煞',
-        basis: '月建',
-        input: '寅',
-        rule: '旬奇起例',
-        sources: ['《大六壬大全》'],
-        limitations: [],
-      },
-      {
-        name: '天马',
-        target: '末传',
-        targetType: '地支',
-        category: '十二地支神煞',
-        basis: '月建',
-        input: '申',
-        rule: '天马起例',
-        sources: ['《大六壬大全》'],
-        limitations: [],
-      },
-    ],
-  } satisfies LiurenData;
+  const data = generateLiuren(new Date('2025-06-18T10:30:00+08:00'));
+  assert.ok(data.guaTi?.length);
+  assert.ok(data.shenShaSummary?.length);
+  data.guaTiFacts = undefined;
+  data.evidenceAnalysis = undefined;
 
   const prompt = buildDivinationPrompt(
     'liuren',
@@ -1196,11 +1174,12 @@ test('大六壬提示词保留课体与精简神煞摘要', () => {
     createSupplementaryInfo(),
   );
 
-  assert.match(prompt, /课体：龙德卦、连珠卦/);
-  assert.match(prompt, /神煞：旬奇在初传、天马在末传/);
-  assert.doesNotMatch(prompt, /旬奇起例|天马起例/);
+  assert.ok(prompt.includes(`课体：${data.guaTi.join('、')}`));
+  assert.ok(prompt.includes(`神煞：${data.shenShaSummary.slice(0, 6).join('、')}`));
+  assert.ok(prompt.includes(`神煞附录：${data.shenShaSummary.slice(6).join('、')}`));
+  for (const fact of data.shenShaFacts ?? []) assert.doesNotMatch(prompt, new RegExp(fact.rule));
   assert.doesNotMatch(prompt, /辅证：/);
-  assert.doesNotMatch(prompt, /课体补充：龙德卦、连珠卦/);
+  assert.doesNotMatch(prompt, /课体补充：/);
   assert.doesNotMatch(prompt, /神煞补充：/);
 });
 

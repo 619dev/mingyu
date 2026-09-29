@@ -370,9 +370,9 @@ function calculateCrossMutagensWithIztro(
         sourcePalaceKey: palaceFactKey(sourcePerson, sourcePalace),
         targetPalaceKey: palaceFactKey(targetPerson, targetPalace),
         calculationStepKey: 'ziwei:compatibility:calculation:cross-mutagens',
-        sources: ['iztro 来源方本命星曜原生四化属性', 'iztro 目标方 star().palace() 原生定位'],
-        calculation: `读取 iztro 原生星曜对象确认${people[sourcePerson]}${sourcePalaceName}的${sourceStar.name}生年化${mutagen}，再以目标盘 star().palace() 定位同名${sourceStar.name}到${people[targetPerson]}${targetPalaceName}（${targetPalace.earthly_branch}）`,
-        promptText: `${people[sourcePerson]}${sourcePalaceName}的${sourceStar.name}生年化${mutagen}，同名${sourceStar.name}由 iztro 定位于${people[targetPerson]}盘${targetPalaceName}（${targetPalace.earthly_branch}）`,
+        sources: ['来源方本命星曜生年四化属性', '目标方同名星曜落宫资料'],
+        calculation: `确认${people[sourcePerson]}${sourcePalaceName}的${sourceStar.name}生年化${mutagen}，再按同名星曜定位到${people[targetPerson]}${targetPalaceName}（${targetPalace.earthly_branch}）`,
+        promptText: `${people[sourcePerson]}${sourcePalaceName}的${sourceStar.name}生年化${mutagen}，同名${sourceStar.name}在${people[targetPerson]}盘位于${targetPalaceName}（${targetPalace.earthly_branch}）`,
         limitation: CROSS_MUTAGEN_LIMITATION,
       });
     });
@@ -900,7 +900,7 @@ export function analyzeZiweiCompatibility(
       notes: [
         '宫位叠盘按十二宫地支位置一一映射，重点保留命宫、身宫、夫妻、官禄、财帛、福德与迁移轴。',
         options.astrolabe1 && options.astrolabe2
-          ? '跨盘四化直接读取 iztro 原生星曜四化属性，并以目标盘 star().palace() 定位同名星曜所在宫位。'
+          ? '跨盘四化读取本命星曜的四化属性，并按目标盘同名星曜定位所在宫位。'
           : '兼容模式下，跨盘四化由结构化本命盘已标注的生年四化星曜出发，定位同名星曜在另一方命盘的宫位。',
         '静态本命双盘只描述长期结构，不生成具体年份应期；应期需要双方大限、流年等同层级资料。',
         '化星与宫位关系不压缩为匹配总分，也不把单一化禄或化忌解释为必然结果。',

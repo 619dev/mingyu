@@ -259,9 +259,17 @@ test('紫微双盘真实星盘应以 iztro 原生星曜对象定位跨盘四化'
 
   assert.ok(targetStarLookupCount > 0);
   assert.ok(placement);
-  assert.ok(placement.sources.some((source) => source.includes('star().palace()')));
-  assert.match(placement.calculation, /iztro 原生星曜对象/);
-  assert.match(result.methodology.notes.join('\n'), /star\(\)\.palace\(\)/);
+  assert.ok(placement.sources.some((source) => source.includes('目标方同名星曜落宫')));
+  assert.match(placement.calculation, /按同名星曜定位/);
+  assert.doesNotMatch(result.promptText, /iztro|star\(\)\.palace\(\)/i);
+  assert.doesNotMatch(
+    buildZiweiCompatibilityPromptDocument({
+      payload1,
+      payload2,
+      compatibility: result,
+    }).text,
+    /iztro|star\(\)\.palace\(\)/i,
+  );
   assert.deepEqual(
     { name: placement.targetPalace, branch: placement.targetEarthlyBranch },
     {

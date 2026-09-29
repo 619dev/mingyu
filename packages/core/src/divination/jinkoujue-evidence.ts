@@ -12,13 +12,20 @@ import { MingyuCoreError } from '../shared/result';
 import { getVoidBranches } from '../calendar/lunar';
 import {
   EARTHLY_BRANCHES,
+  getBranchWuxing,
   getSeasonState,
   getStemWuxing,
   getStemYinYang,
   isKe,
   isSheng,
 } from '../ganzhi';
-import { formatJinkoujuePositionPromptText, getYuanStemOnBranch } from './jinkoujue-utils';
+import {
+  JINKOU_POSITION_ROLES,
+  formatJinkoujuePositionPromptText,
+  getGuiShenOnDiFen,
+  getJinkouNoblemanBranch,
+  getYuanStemOnBranch,
+} from './jinkoujue-utils';
 
 export interface JinkoujuePositionFact {
   key: string;
@@ -210,7 +217,57 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
     );
   }
   const allPositions = [diFen, jiangShen, guiShen, renYuan];
-  const expectedHumanStem = getYuanStemOnBranch(data.ganzhi.day.charAt(0), diFen.branch);
+  const expectedNames = ['地分', '将神', '贵神', '人元'] as const;
+  if (
+    allPositions.some(
+      (position, index) =>
+        position.name !== expectedNames[index] ||
+        position.role !== JINKOU_POSITION_ROLES[expectedNames[index]],
+    )
+  ) {
+    throw new Error('金口诀四位名称或所属与课位不一致，无法生成证据。');
+  }
+  const dayStem = data.ganzhi.day.charAt(0);
+  const hourBranch = data.ganzhi.hour.charAt(1);
+  const expectedDayNight = ['卯', '辰', '巳', '午', '未', '申'].includes(hourBranch)
+    ? '昼占'
+    : '夜占';
+  const expectedNoblemanBranch = getJinkouNoblemanBranch(dayStem, expectedDayNight);
+  const expectedGuiShen = getGuiShenOnDiFen(expectedNoblemanBranch, diFen.branch);
+  if (
+    data.dayNight !== expectedDayNight ||
+    data.noblemanBranch !== expectedNoblemanBranch ||
+    guiShen.god !== expectedGuiShen.god ||
+    guiShen.branch !== expectedGuiShen.branch ||
+    guiShen.element !== expectedGuiShen.element ||
+    guiShen.yinYang !== expectedGuiShen.yinYang ||
+    guiShen.elementBasis !== '贵神本属' ||
+    guiShen.stem !== getYuanStemOnBranch(dayStem, expectedGuiShen.branch)
+  ) {
+    throw new Error('金口诀贵人贵神与日干、昼夜和地分不一致，无法生成证据。');
+  }
+  if (
+    diFen.elementBasis !== '地分支' ||
+    diFen.element !== getBranchWuxing(diFen.branch) ||
+    diFen.yinYang !==
+      (EARTHLY_BRANCHES.indexOf(diFen.branch as (typeof EARTHLY_BRANCHES)[number]) % 2 === 0
+        ? '阳'
+        : '阴') ||
+    diFen.stem !== undefined ||
+    diFen.god !== undefined ||
+    jiangShen.elementBasis !== '月将支' ||
+    jiangShen.element !== getBranchWuxing(jiangShen.branch) ||
+    jiangShen.yinYang !==
+      (EARTHLY_BRANCHES.indexOf(jiangShen.branch as (typeof EARTHLY_BRANCHES)[number]) % 2 === 0
+        ? '阳'
+        : '阴') ||
+    jiangShen.stem !== getYuanStemOnBranch(dayStem, jiangShen.branch) ||
+    jiangShen.god !== undefined ||
+    renYuan.god !== undefined
+  ) {
+    throw new Error('金口诀四位本属与地支、遁干不一致，无法生成证据。');
+  }
+  const expectedHumanStem = getYuanStemOnBranch(dayStem, diFen.branch);
   const expectedHumanElement = getStemWuxing(expectedHumanStem);
   if (
     renYuan.elementBasis !== '人元干' ||
@@ -274,6 +331,21 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
     )
   ) {
     throw new Error('金口诀旬空或月令旺衰与日月柱及四位不一致，无法生成证据。');
+  }
+  for (const position of allPositions) {
+    const expectedSupport = ['旺', '相'].includes(position.seasonState)
+      ? [`月令${position.seasonState}`]
+      : [];
+    const expectedConstraints = ['休', '囚', '死'].includes(position.seasonState)
+      ? [`月令${position.seasonState}`]
+      : [];
+    if (position.isVoid) expectedConstraints.push('落日旬空');
+    if (
+      JSON.stringify(position.support) !== JSON.stringify(expectedSupport) ||
+      JSON.stringify(position.constraints) !== JSON.stringify(expectedConstraints)
+    ) {
+      throw new Error('金口诀四位助力或限制与月令旬空不一致，无法生成证据。');
+    }
   }
   const yinPositions = allPositions.filter((position) => position.yinYang === '阴');
   const yangPositions = allPositions.filter((position) => position.yinYang === '阳');
@@ -386,6 +458,111 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
     })
   ) {
     throw new Error('金口诀动爻与四位五行不一致，无法生成证据。');
+  }
+  const methodLabels = {
+    time: '时间起课',
+    branch: '指定地分',
+    number: '数字起课',
+    random: '随机起课',
+  } as const;
+  const methodLabel = methodLabels[data.method];
+  const diFenOrdinal =
+    EARTHLY_BRANCHES.indexOf(diFen.branch as (typeof EARTHLY_BRANCHES)[number]) + 1;
+  const inputBase = data.calculation.inputBase;
+  const expectedInput =
+    data.method === 'number'
+      ? {
+          source: '用户数字',
+          valid:
+            Number.isSafeInteger(inputBase) &&
+            inputBase > 0 &&
+            ((inputBase - 1) % 12) + 1 === diFenOrdinal,
+          note: `数字起课以${inputBase}归一为${diFenOrdinal}，对应地分${diFen.branch}`,
+        }
+      : data.method === 'random'
+        ? {
+            source: '随机数',
+            valid: inputBase === diFenOrdinal,
+            note: `随机起课抽得${inputBase}，对应地分${diFen.branch}`,
+          }
+        : data.method === 'branch'
+          ? {
+              source: '指定地分',
+              valid: inputBase === diFenOrdinal,
+              note: `按所测方位或来意指定地分${diFen.branch}`,
+            }
+          : {
+              source: '占时地支序数',
+              valid: inputBase === diFenOrdinal && diFen.branch === hourBranch,
+              note: `时间起课以占时${hourBranch}为地分`,
+            };
+  if (
+    !methodLabel ||
+    data.methodLabel !== methodLabel ||
+    data.calculation.method !== data.method ||
+    data.calculation.methodLabel !== methodLabel ||
+    !expectedInput.valid ||
+    data.calculation.inputBaseSource !== expectedInput.source ||
+    data.calculation.diFenNote !== expectedInput.note ||
+    data.calculation.monthLeaderRule !== '按已交中气定月将' ||
+    data.calculation.yuanDunRule !== '五子元遁分别求人元、神干与将干' ||
+    data.calculation.dayNightRule !==
+      '本次按卯至申昼占、酉至寅夜占的固定时支约定起贵人；《六壬神课金口诀·贵神治旦暮》以星没为旦、星出为暮。' ||
+    data.calculation.noblemanRule !==
+      `${expectedDayNight}贵人起${expectedNoblemanBranch}，从贵人起十二贵神排至地分${diFen.branch}` ||
+    data.calculation.noblemanDirection !== expectedGuiShen.direction ||
+    data.calculation.guiShenRule !==
+      `${expectedGuiShen.direction}至地分得${expectedGuiShen.god}，贵神本属${expectedGuiShen.stem}${expectedGuiShen.branch}${expectedGuiShen.element}`
+  ) {
+    throw new Error('金口诀起课计算说明与四位课值不一致，无法生成证据。');
+  }
+  const expectedUsePosition = allPositions.find(
+    (position) => position.name === data.yinYangUse.usePosition,
+  )!;
+  const movementSummary = data.movements.length
+    ? data.movements.map((item) => `${item.name}（${item.trigger}）`).join('、')
+    : '未触发五动或三动';
+  const expectedMainLine = [
+    `阴阳发用：${data.yinYangUse.rule}，取${expectedUsePosition.promptText}为用`,
+    `四位：人元${renYuan.stem}${renYuan.branch}、贵神${guiShen.stem}${guiShen.branch}乘${guiShen.god}、将神${jiangShen.stem}${jiangShen.branch}、地分${diFen.branch}`,
+    `动爻：${movementSummary}`,
+  ].join('；');
+  const expectedFocus = allPositions.map((position) => ({
+    target: position.promptText,
+    role: position.name === data.yinYangUse.usePosition ? '阴阳次第发用位' : position.role,
+    level: position.name === data.yinYangUse.usePosition ? '主证' : '辅证',
+    evidence:
+      position.name === '贵神'
+        ? [
+            `${expectedDayNight}贵人起${expectedNoblemanBranch}${expectedGuiShen.direction}`,
+            `排至地分${diFen.branch}得${expectedGuiShen.god}`,
+            `贵神按本属${expectedGuiShen.branch}${expectedGuiShen.element}`,
+          ]
+        : position.name === '将神'
+          ? [
+              `月将${data.monthLeader}加占时${hourBranch}`,
+              `地分${diFen.branch}上临${jiangShen.branch}`,
+            ]
+          : position.name === '人元'
+            ? [`日干${dayStem}五子元遁`, `地分${diFen.branch}遁得${renYuan.stem}`]
+            : [expectedInput.note, `地分支五行${diFen.element}`],
+    limitations: position.isVoid ? [`${position.name}支${position.branch}旬空`] : [],
+  }));
+  if (
+    data.mainLine !== expectedMainLine ||
+    data.focusEvidence?.length !== expectedFocus.length ||
+    data.focusEvidence.some((item, index) => {
+      const expected = expectedFocus[index];
+      return (
+        item.target !== expected.target ||
+        item.role !== expected.role ||
+        item.level !== expected.level ||
+        JSON.stringify(item.evidence) !== JSON.stringify(expected.evidence) ||
+        JSON.stringify(item.limitations) !== JSON.stringify(expected.limitations)
+      );
+    })
+  ) {
+    throw new Error('金口诀主线或焦点依据与四位课值不一致，无法生成证据。');
   }
   if (
     allPositions.some(

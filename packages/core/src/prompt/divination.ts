@@ -20,6 +20,7 @@ import {
   formatXiaoliurenCalendarBoundary,
 } from '../divination/xiaoliuren-evidence';
 import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
+import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -70,6 +71,39 @@ export interface DivinationSummaryBlocks {
 }
 
 type SupportedDivinationMethod = Exclude<DivinationMethodId, 'random'>;
+
+const HISTORICAL_CAST_METHODS = new Set<SupportedDivinationMethod>([
+  'liuyao',
+  'meihua',
+  'jinkoujue',
+  'qimen',
+  'liuren',
+]);
+
+/** 起课时间与当前时间不同才单列；真太阳时同时保留实际民用占时。 */
+export function formatDivinationOriginTime(
+  method: SupportedDivinationMethod,
+  data: DivinationData,
+  currentTime: Date,
+): string {
+  if (!HISTORICAL_CAST_METHODS.has(method) || !('timestamp' in data)) return '';
+  const civilTimestamp =
+    'termReferenceTimestamp' in data && data.termReferenceTimestamp !== undefined
+      ? data.termReferenceTimestamp
+      : data.timestamp;
+  const repeatsCurrentTime =
+    Math.floor(civilTimestamp / 60_000) === Math.floor(currentTime.getTime() / 60_000);
+  const civilTime = formatPromptCurrentTime(new Date(civilTimestamp)).split('\n')[0];
+  const trueSolarTime =
+    'termReferenceTimestamp' in data &&
+    data.termReferenceTimestamp !== undefined &&
+    Math.floor(data.timestamp / 60_000) !== Math.floor(civilTimestamp / 60_000)
+      ? `真太阳时校正时刻：${formatPromptCurrentTime(new Date(data.timestamp))
+          .split('\n')[0]
+          .replace(/^公历：/, '')}（用于排盘）`
+      : '';
+  return [repeatsCurrentTime ? '' : civilTime, trueSolarTime].filter(Boolean).join('\n');
+}
 
 function formatQimenPatternComboSummary(data: QimenData) {
   const toneLabels = {
@@ -234,12 +268,13 @@ function formatMeihuaFocusSummary(data: MeihuaData) {
   return `体卦${data.tiGua.name}（${data.tiGua.element}）；用卦${data.yongGua.name}（${data.yongGua.element}）；动爻第${data.movingYao.position}爻`;
 }
 
-function formatMeihuaSeasonSummary(data: MeihuaData) {
-  const basis =
-    data.analysis.monthBranch && data.analysis.monthElement
-      ? `${data.analysis.monthBranch}月（${data.analysis.monthElement}令）`
-      : `${data.analysis.season}季`;
-  return `月令：${basis}，体卦${data.analysis.tiSeasonState}，用卦${data.analysis.yongSeasonState}`;
+function formatMeihuaSeasonSummary(
+  data: MeihuaData,
+  evidence: ReturnType<typeof analyzeMeihuaEvidence>,
+) {
+  const origin = evidence.stages.find((stage) => stage.stage === 'origin');
+  if (!origin || !evidence.monthBranch || !data.analysis.monthElement) return '';
+  return `月令：${evidence.monthBranch}月（${data.analysis.monthElement}令），体卦${origin.ti.seasonState}，用卦${origin.yong.seasonState}`;
 }
 
 function formatLiurenFocusSummary(data: LiurenData) {
@@ -298,6 +333,10 @@ export function getDivinationSummaryBlocks(
     }
     case 'meihua': {
       const item = data as MeihuaData;
+      const evidence = analyzeMeihuaEvidence(item);
+      if (evidence.calculationFact.status === '计算不一致') {
+        throw new Error(`梅花盘面与起卦资料不一致：${evidence.calculationFact.promptText}`);
+      }
       return {
         title: '梅花起卦结果',
         tags: [
@@ -312,7 +351,7 @@ export function getDivinationSummaryBlocks(
           `用卦：${item.yongGua.name}（${item.yongGua.element}）`,
           `动爻：第${item.movingYao.position}爻`,
           `体用关系：${item.analysis.tiYongRelation}；${item.analysis.changedRelation}`,
-          formatMeihuaSeasonSummary(item),
+          formatMeihuaSeasonSummary(item, evidence),
           `过程：${item.analysis.inter1Relation}、${item.analysis.inter2Relation}`,
           item.changedTiGua && item.changedYongGua
             ? `变后：体卦${item.changedTiGua.name}（${item.changedTiGua.element}）；用卦${item.changedYongGua.name}（${item.changedYongGua.element}）；关系${item.analysis.changedTiYongRelation}`
@@ -832,6 +871,7 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
     xiaoliurenData.termReferenceTimestamp === undefined &&
     Math.floor(xiaoliurenData.timestamp / 60_000) === Math.floor(currentTime.getTime() / 60_000),
   );
+  const originTime = formatDivinationOriginTime(options.method, options.data, currentTime);
   const promptSchoolMethod =
     options.method === 'huangji'
       ? 'huangji-jingshi'
@@ -850,6 +890,7 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
         ? buildPromptSection('传统依据', formatTaiyiTradition(options.data as TaiyiResult))
         : buildPromptGuidance(options.method)),
     isSignPrompt ? '' : buildPromptSection('当前时间', formatPromptCurrentTime(currentTime)),
+    originTime ? buildPromptSection('起课时间', originTime) : '',
     supplementaryText ? buildPromptSection('补充信息', supplementaryText) : '',
     options.astrolabeScopeText ? buildPromptSection('分析对象', options.astrolabeScopeText) : '',
     buildPromptSection(

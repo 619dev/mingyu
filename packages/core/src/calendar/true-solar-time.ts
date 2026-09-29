@@ -634,13 +634,8 @@ export function calculateTrueSolarTime(
   assertNumberInRange(longitude, '经度', -180, 180);
   assertNumberInRange(standardMeridian, '标准经线', -180, 210);
 
-  // 经度是环绕角：UTC+14 的 210° 标准经线与西经 150° 是同一条经线。
-  const rawLongitudeDifference = longitude - standardMeridian;
-  const longitudeDifference =
-    rawLongitudeDifference > 180 || rawLongitudeDifference < -180
-      ? ((rawLongitudeDifference + 540) % 360) - 180
-      : rawLongitudeDifference;
-  const longitudeCorrectionMinutes = longitudeDifference * 4;
+  // 保留日期线两侧的整日差：太阳时钟表可按 24 小时取模，但排盘日期需要完整校正量。
+  const longitudeCorrectionMinutes = (longitude - standardMeridian) * 4;
   // 同一瞬时点可能以夏令钟表或标准时表示；先落到当地平太阳日，
   // 再取日粒度均时差，避免跨午夜时两种时区口径选到相邻两日。
   const meanSolarDate = new Date(

@@ -7,6 +7,7 @@ import type {
 import {
   getBranchWuxing,
   getSeasonState,
+  getSanxingType,
   isKe,
   isLiuchong,
   isLiuhai,
@@ -38,6 +39,7 @@ import {
   getSpecialPattern,
 } from './algorithms/liuyao';
 import { getLiuyaoSanheWithTrigger } from './liuyao-sanhe';
+import { getShiErGong } from './liuyao-life-stage';
 import type { YarrowResult, YarrowLine } from './algorithms/yarrow';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import {
@@ -618,6 +620,29 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
     const dayClash = isLiuchong(yao.najiaDizhi, dayBranch);
     const hiddenMove =
       !changing && dayClash && (expectedSeason === '旺' || expectedSeason === '相');
+    const expectedMovingLifeStages = movingPositions
+      .filter((position) => position !== yao.position)
+      .map((position) => ({
+        position,
+        branch: mainNaJia[position - 1],
+        stage: getShiErGong(getBranchWuxing(mainNaJia[index]), mainNaJia[position - 1]),
+      }));
+    const expectedDayLifeStage = getShiErGong(getBranchWuxing(mainNaJia[index]), dayBranch);
+    const expectedChangedLifeStage = expectedChangedBranch
+      ? getShiErGong(getBranchWuxing(mainNaJia[index]), expectedChangedBranch)
+      : undefined;
+    const expectedDongMu = expectedMovingLifeStages.some((item) => item.stage === '墓');
+    const expectedHuaMu = expectedChangedLifeStage === '墓';
+    const expectedRiMu = expectedDayLifeStage === '墓';
+    const expectedSanxing =
+      isSanxing(mainNaJia[index], dayBranch) || isSanxing(mainNaJia[index], monthBranch);
+    const expectedLiuhe =
+      isLiuhe(mainNaJia[index], dayBranch) || isLiuhe(mainNaJia[index], monthBranch);
+    const expectedLiuhePartner = isLiuhe(mainNaJia[index], dayBranch)
+      ? dayBranch
+      : isLiuhe(mainNaJia[index], monthBranch)
+        ? monthBranch
+        : undefined;
     if (
       yao.rawValue !== raw ||
       yao.yaoType !== (raw === 7 || raw === 9 ? '阳' : '阴') ||
@@ -636,6 +661,25 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
       (yao.isDayClash !== undefined && yao.isDayClash !== dayClash) ||
       (yao.isHiddenMove !== undefined && yao.isHiddenMove !== hiddenMove) ||
       (yao.isDayBreak !== undefined && yao.isDayBreak !== (!changing && dayClash && !hiddenMove)) ||
+      (yao.isSanxing !== undefined && yao.isSanxing !== expectedSanxing) ||
+      (yao.sanxingType !== undefined && yao.sanxingType !== getSanxingType(mainNaJia[index])) ||
+      (yao.isLiuhe !== undefined && yao.isLiuhe !== expectedLiuhe) ||
+      (yao.liuhePartner !== undefined && yao.liuhePartner !== expectedLiuhePartner) ||
+      (yao.isLiuhai !== undefined &&
+        yao.isLiuhai !==
+          (isLiuhai(mainNaJia[index], dayBranch) || isLiuhai(mainNaJia[index], monthBranch))) ||
+      (yao.shiErGong !== undefined &&
+        yao.shiErGong !== getShiErGong(getBranchWuxing(mainNaJia[index]), mainNaJia[index])) ||
+      (yao.dayLifeStage !== undefined && yao.dayLifeStage !== expectedDayLifeStage) ||
+      (yao.movingLifeStages !== undefined &&
+        stableStringify(yao.movingLifeStages) !== stableStringify(expectedMovingLifeStages)) ||
+      (yao.changedLifeStage !== undefined && yao.changedLifeStage !== expectedChangedLifeStage) ||
+      (yao.isDongMu !== undefined && yao.isDongMu !== expectedDongMu) ||
+      (yao.isHuaMu !== undefined && yao.isHuaMu !== expectedHuaMu) ||
+      (yao.isRiMu !== undefined && yao.isRiMu !== expectedRiMu) ||
+      (yao.isYueMu !== undefined && yao.isYueMu !== false) ||
+      (yao.isRuMu !== undefined &&
+        yao.isRuMu !== (expectedRiMu || expectedDongMu || expectedHuaMu)) ||
       (changing &&
         changedNaJia &&
         (yao.changedYao?.dizhi !== changedNaJia[index] ||
@@ -1199,7 +1243,7 @@ function buildHexagramStructureFacts(data: LiuyaoData): LiuyaoHexagramStructureF
       ['六爻动静数量、乾坤用爻与特殊卦象核验'],
     );
   }
-  if (data.isChaotic || data.chaoticReason) {
+  if (!data.specialPattern && (data.isChaotic || data.chaoticReason)) {
     add('liuyao:structure:chaotic', '特殊卦象', data.chaoticReason || '当前卦象标记为乱动结构', [
       '动爻数量与乱动条件核验',
     ]);

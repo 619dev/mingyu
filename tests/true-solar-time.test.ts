@@ -128,25 +128,37 @@ test('真太阳时便捷入口应识别跨日并支持全球时区', () => {
   assert.equal(utcPlus14.standardMeridian, 210);
 });
 
-test('日期线两侧的真太阳时按等价经线校正，不凭经度符号跨整日', () => {
+test('日期线两侧的真太阳时保留完整日期，并与同一瞬时的相邻时区结果一致', () => {
   const kiritimati = convertTrueSolarTime({
     localDateTime: '2026-07-10T12:00:00',
     longitude: -157.4,
     timeZoneId: 'Pacific/Kiritimati',
   });
   assert.equal(kiritimati.timezone, 14);
-  assert.ok(Math.abs(kiritimati.longitudeCorrectionMinutes + 29.6) < 1e-9);
-  assert.equal(kiritimati.correctedTime.day, 10);
-  assert.equal(kiritimati.crossesDate, false);
+  assert.ok(Math.abs(kiritimati.longitudeCorrectionMinutes + 1469.6) < 1e-9);
+  assert.equal(kiritimati.correctedTime.day, 9);
+  assert.equal(kiritimati.crossesDate, true);
+  const sameKiritimatiInstant = convertTrueSolarTime({
+    localDateTime: '2026-07-09T12:00:00',
+    longitude: -157.4,
+    timezone: -10,
+  });
+  assert.deepEqual(kiritimati.correctedTime, sameKiritimatiInstant.correctedTime);
 
   const westernDateLine = convertTrueSolarTime({
     localDateTime: '2026-07-10T12:00:00',
     longitude: 179,
     timezone: -12,
   });
-  assert.equal(westernDateLine.longitudeCorrectionMinutes, -4);
-  assert.equal(westernDateLine.correctedTime.day, 10);
-  assert.equal(westernDateLine.crossesDate, false);
+  assert.equal(westernDateLine.longitudeCorrectionMinutes, 1436);
+  assert.equal(westernDateLine.correctedTime.day, 11);
+  assert.equal(westernDateLine.crossesDate, true);
+  const sameWesternInstant = convertTrueSolarTime({
+    localDateTime: '2026-07-11T12:00:00',
+    longitude: 179,
+    timezone: 12,
+  });
+  assert.deepEqual(westernDateLine.correctedTime, sameWesternInstant.correctedTime);
 });
 
 test('真太阳时应按 IANA 历史时区解析偏移并保留证据', () => {

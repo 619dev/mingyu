@@ -151,6 +151,36 @@ test('未启用真太阳时时，日期线东侧也按同一立春瞬时切换�
   assert.equal(before.pillars.hour.ganZhi, after.pillars.hour.ganZhi);
 });
 
+test('日期线东侧真太阳时应保留完整跨日校正，同一瞬时排盘日柱一致', () => {
+  const civilDay = baziCalculator.calculateBazi(
+    makeInput({
+      year: 2026,
+      month: 7,
+      day: 10,
+      birthHour: 12,
+      birthMinute: 0,
+      birthLongitude: -157.4,
+      timezone: undefined,
+      timeZoneId: 'Pacific/Kiritimati',
+    }),
+  );
+  const neighboringClock = baziCalculator.calculateBazi(
+    makeInput({
+      year: 2026,
+      month: 7,
+      day: 9,
+      birthHour: 12,
+      birthMinute: 0,
+      birthLongitude: -157.4,
+      timezone: -10,
+    }),
+  );
+
+  assert.equal(civilDay.timing?.correctedTime.day, 9);
+  assert.deepEqual(civilDay.timing?.correctedTime, neighboringClock.timing?.correctedTime);
+  assert.deepEqual(getPillarNames(civilDay), getPillarNames(neighboringClock));
+});
+
 test('纽约固定偏移与 IANA 夏令时应得到同一年月、司令和起运轴', () => {
   const fixed = baziCalculator.calculateBazi(
     makeInput({

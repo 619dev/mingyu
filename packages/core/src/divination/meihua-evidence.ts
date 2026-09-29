@@ -11,6 +11,7 @@ import {
   resolveRandomMethod,
 } from './algorithms/meihua/helpers/methods';
 import { findHexagramByTrigrams } from './algorithms/meihua/helpers/hexagram';
+import { estimateYingQi } from './algorithms/meihua/helpers/timing';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import {
   buildRandomTraceFact,
@@ -1030,13 +1031,32 @@ function validateMeihuaCalculation(data: MeihuaData): {
       if (dizhi.includes(monthBranch)) {
         const ti = movingInLower ? upper : lower;
         const yong = movingInLower ? lower : upper;
+        const tiSeasonState = getSeasonState(ti.element, monthBranch);
         if (
           data.analysis.monthBranch !== monthBranch ||
           data.analysis.monthElement !== getBranchWuxing(monthBranch) ||
-          data.analysis.tiSeasonState !== getSeasonState(ti.element, monthBranch) ||
+          data.analysis.tiSeasonState !== tiSeasonState ||
           data.analysis.yongSeasonState !== getSeasonState(yong.element, monthBranch)
         ) {
           mismatches.push('体用月令旺衰记录与月建及主卦不一致');
+        }
+        if (
+          data.analysis.yingQi !== undefined &&
+          (!Array.isArray(data.analysis.yingQi) || data.analysis.yingQi.length > 0)
+        ) {
+          const expected = estimateYingQi({
+            movingYaoIndex: moving,
+            tiElement: ti.element,
+            yongElement: yong.element,
+            seasonState: tiSeasonState,
+          });
+          if (
+            !Array.isArray(data.analysis.yingQi) ||
+            data.analysis.yingQi.length !== expected.length ||
+            data.analysis.yingQi.some((item, index) => item !== expected[index])
+          ) {
+            mismatches.push('原应期条件与动爻、体用和月令重算结果不一致');
+          }
         }
       }
     }
@@ -1891,7 +1911,11 @@ function buildTimingFacts(
     if (facts.some((item) => item.promptText === fact.promptText)) return;
     facts.push({ ...fact, order: facts.length + 1 });
   };
-  (data.analysis.yingQi ?? []).forEach((promptText, index) =>
+  const verifiedOriginalTiming =
+    calculationFact.status === '完整' && Array.isArray(data.analysis.yingQi)
+      ? data.analysis.yingQi
+      : [];
+  verifiedOriginalTiming.forEach((promptText, index) =>
     add({
       key: `meihua:timing:input:${index + 1}`,
       type: '原应期条件',
@@ -2506,7 +2530,10 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
       source: fact.sources.join('、'),
       tags: ['阶段推进', fact.status, fact.toStage],
     })),
-    ...(data.analysis.inter1Relation && data.analysis.inter1Relation !== '无'
+    ...(calculationFact.status === '完整' &&
+    stageCoverageFact.status === '完整' &&
+    data.analysis.inter1Relation &&
+    data.analysis.inter1Relation !== '无'
       ? [
           {
             level: '辅证' as const,
@@ -2517,7 +2544,10 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
           },
         ]
       : []),
-    ...(data.analysis.inter2Relation && data.analysis.inter2Relation !== '无'
+    ...(calculationFact.status === '完整' &&
+    stageCoverageFact.status === '完整' &&
+    data.analysis.inter2Relation &&
+    data.analysis.inter2Relation !== '无'
       ? [
           {
             level: '辅证' as const,

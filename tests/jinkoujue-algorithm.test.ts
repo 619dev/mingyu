@@ -63,7 +63,43 @@ test('金口诀证据按五子元遁复核人元，并拒绝四位结构字段�
 
   const stalePromptText = structuredClone(source);
   stalePromptText.positions.diFen.promptText += '；错误地分信息';
-  assert.throws(() => analyzeJinkoujueEvidence(stalePromptText), /四位结构化字段与提示文本不一致/);
+  assert.throws(
+    () => analyzeJinkoujueEvidence(stalePromptText),
+    /四位结构化字段与提示文本不一致|主线或焦点依据与四位课值不一致/,
+  );
+});
+
+test('金口诀证据从日干、昼夜、地分复核贵神本属并拒绝改写后的焦点依据', () => {
+  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  assert.ok(analyzeJinkoujueEvidence(source).focusFacts.length === 4);
+
+  const wrongGod = structuredClone(source);
+  wrongGod.positions.guiShen.god = wrongGod.positions.guiShen.god === '青龙' ? '白虎' : '青龙';
+  wrongGod.positions.guiShen.promptText = formatJinkoujuePositionPromptText(
+    wrongGod.positions.guiShen,
+  );
+  assert.throws(() => analyzeJinkoujueEvidence(wrongGod), /贵人贵神与日干、昼夜和地分不一致/);
+  assert.throws(() => formatJinkoujueJudgmentFacts(wrongGod), /贵人贵神与日干、昼夜和地分不一致/);
+  assert.throws(
+    () => buildDivinationPrompt({ method: 'jinkoujue', data: wrongGod, question: '进展如何' }),
+    /贵人贵神与日干、昼夜和地分不一致/,
+  );
+
+  const wrongDayNight = structuredClone(source);
+  wrongDayNight.dayNight = source.dayNight === '昼占' ? '夜占' : '昼占';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongDayNight), /贵人贵神与日干、昼夜和地分不一致/);
+
+  const wrongMainLine = structuredClone(source);
+  wrongMainLine.mainLine = '伪造主线';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongMainLine), /主线或焦点依据与四位课值不一致/);
+
+  const wrongFocus = structuredClone(source);
+  wrongFocus.focusEvidence![0].evidence = ['伪造的贵神依据'];
+  assert.throws(() => analyzeJinkoujueEvidence(wrongFocus), /主线或焦点依据与四位课值不一致/);
+
+  const wrongCalculation = structuredClone(source);
+  wrongCalculation.calculation.guiShenRule = '伪造贵神起例';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongCalculation), /起课计算说明与四位课值不一致/);
 });
 
 test('金口诀真太阳时跨雨水仍以实际占时定月将与月建', () => {
@@ -126,7 +162,10 @@ test('金口诀证据拒绝地分与人元、月将加时及五动条件错位',
 
   const wrongJiang = structuredClone(source);
   wrongJiang.positions.jiangShen.branch = '子';
-  assert.throws(() => analyzeJinkoujueEvidence(wrongJiang), /将神与月将加时不一致/);
+  assert.throws(
+    () => analyzeJinkoujueEvidence(wrongJiang),
+    /将神与月将加时不一致|四位本属与地支、遁干不一致/,
+  );
 
   const wrongMovement = structuredClone(source);
   wrongMovement.movements.push({

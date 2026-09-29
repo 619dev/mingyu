@@ -147,35 +147,35 @@ test('大六壬详细课体判据已含名称时省略重复摘要，旧数据�
   assert.match(legacyPrompt, /^课体：/m);
 });
 
-test('大六壬旧结果旬空变化后提示词应同步三传与应期状态', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
-  const initial = data.threeTransmissions[0];
-  const wasVoid = data.xunKong?.includes(initial.branch) ?? false;
-  data.xunKong = wasVoid
-    ? data.xunKong?.filter((branch) => branch !== initial.branch)
-    : [...(data.xunKong ?? []), initial.branch];
-
-  const evidence = analyzeLiurenEvidence(data);
-  const expectedVoid = !wasVoid;
-  for (const format of [
-    formatDivinationInfo,
-    formatDetailedDivinationInfo,
-    formatEnhancedDivinationInfo,
-  ]) {
-    const prompt = format('liuren', data);
-    assert.equal(
-      prompt.includes(`初传${initial.branch}乘${initial.god}，${initial.relation}（空）`),
-      expectedVoid,
-    );
+test('大六壬真实旬空状态在三传与应期提示词中一致', () => {
+  for (const [date, expectedVoid] of [
+    ['2026-05-19T10:30:00+08:00', false],
+    ['2026-05-02T10:30:00+08:00', true],
+  ] as const) {
+    const data = generateLiuren(new Date(date));
+    const initial = data.threeTransmissions[0];
+    const evidence = analyzeLiurenEvidence(data);
+    assert.equal(initial.isVoid, expectedVoid);
+    for (const format of [
+      formatDivinationInfo,
+      formatDetailedDivinationInfo,
+      formatEnhancedDivinationInfo,
+    ]) {
+      const prompt = format('liuren', data);
+      assert.equal(
+        prompt.includes(`初传${initial.branch}乘${initial.god}，${initial.relation}（空）`),
+        expectedVoid,
+      );
+    }
+    for (const prompt of [
+      formatEnhancedDivinationInfo('liuren', data),
+      buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
+    ]) {
+      assert.ok(prompt.includes(evidence.timingFacts[0].promptText));
+      assert.ok(prompt.includes(evidence.timingFacts[1].promptText));
+      assert.ok(prompt.includes(`初传${initial.branch}${expectedVoid ? '空亡' : '不空'}`));
+    }
   }
-  const prompt = formatEnhancedDivinationInfo('liuren', data);
-  assert.ok(prompt.includes(evidence.timingFacts[0].promptText));
-  assert.ok(prompt.includes(evidence.timingFacts[1].promptText));
-  assert.equal(prompt.includes(`初传${initial.branch}${wasVoid ? '空亡' : '不空'}`), false);
-  const fullPrompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
-  assert.ok(fullPrompt.includes(evidence.timingFacts[0].promptText));
-  assert.ok(fullPrompt.includes(evidence.timingFacts[1].promptText));
-  assert.equal(fullPrompt.includes(`初传${initial.branch}${wasVoid ? '空亡' : '不空'}`), false);
 });
 
 test('大六壬完整提示词只补充尚未在盘面显示的判断事实', () => {
@@ -255,6 +255,8 @@ test('初传不空及空亡古诀只列发端条件，不直接断定现实进�
 
   const legacy = structuredClone(nonVoid);
   legacy.timingEvidence![0] = '一级发用：先看初传酉不空，可直接作为起始信号';
+  const legacyAnalysis = analyzeLiurenEvidence(legacy);
+  assert.equal(legacyAnalysis.timingFacts[0].rawText, legacy.timingEvidence![0]);
   const legacyPrompt = buildDivinationPrompt({
     method: 'liuren',
     data: legacy,
@@ -275,8 +277,9 @@ test('初传不空及空亡古诀只列发端条件，不直接断定现实进�
 });
 
 test('大六壬未在四课行标明的空亡反证仍保留', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
-  data.xunKong = [...new Set([...(data.xunKong ?? []), data.fourLessons[0].upper])];
+  const data = generateLiuren(new Date('2026-05-01T10:30:00+08:00'));
+  assert.equal(data.fourLessons[0].upper, '申');
+  assert.ok(data.xunKong?.includes('申'));
   const prompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
-  assert.match(prompt, /课传反证：[^\n]*一课上神巳落日柱旬空/);
+  assert.match(prompt, /课传反证：[^\n]*一课上神申落日柱旬空/);
 });

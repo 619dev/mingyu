@@ -362,7 +362,12 @@ test('紫微结果应披露实际传给 iztro 的基础排盘口径', () => {
   assert.equal(config.fix_leap, true);
   assert.match(config.leap_month_rule, /十五日及以前按同名月，十六日起按下月/);
   assert.equal(config.year_divide_rule, '以农历正月初一分年');
-  assert.equal(config.horoscope_divide_rule, '运限月份以农历月份分界');
+  assert.equal(config.horoscope_divide_rule, '运限流年以农历年、流月以农历月分界');
+  assert.equal(
+    buildZiweiCalculationConfig({ ...DEFAULT_CHART_INPUT, horoscopeDivide: 'exact' })
+      .horoscope_divide_rule,
+    '运限流年以立春、流月以节气分界',
+  );
   assert.equal(config.age_divide_rule, '小限年龄只按年份计算');
   assert.equal(config.late_zi_rule, '晚子时按次日干支及次日安星日数排盘');
   assert.match(config.limitation, /解读侧重点，不改变这里的安星算法/);

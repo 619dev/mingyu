@@ -11,6 +11,10 @@ import {
 import { formatMeihuaFacts } from './meihua-facts';
 import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
 import {
+  evaluateMeihuaTimelineTrend,
+  getMeihuaTiYongSeasonEvaluation,
+} from '../divination/algorithms/meihua';
+import {
   formatQimenActiveStem,
   formatQimenHourStem,
   formatQimenRelationFacts,
@@ -575,9 +579,6 @@ function formatMeihuaInfo(data: MeihuaData) {
   const facts = formatMeihuaFacts(data);
   const hasCalculationFact = facts.some((fact) => fact.startsWith('起卦取数：'));
   const stages = evidence.stages;
-  const hasOriginStage = stages.some(
-    (stage) => stage.stage === 'origin' && stage.status === '已计算',
-  );
   const hasResultStage = stages.some(
     (stage) => stage.stage === 'result' && stage.status === '已计算',
   );
@@ -598,28 +599,30 @@ function formatMeihuaInfo(data: MeihuaData) {
       ? `；变后体卦${data.changedTiGua.name}（${data.changedTiGua.element}）；变后用卦${data.changedYongGua.name}（${data.changedYongGua.element}）；变后体用${data.analysis.changedTiYongRelation}`
       : '';
   const classicalLines = formatMeihuaClassicalText(data);
-  const yingQiConditions = (data.analysis.yingQi ?? [])
-    .filter((condition) => condition.trim())
-    .map((condition) => condition.replace('，只作取数来源旁证，不换算绝对日期', '；取数来源旁证'));
+  const yingQiConditions = evidence.timingFacts
+    .filter((fact) => fact.type === '原应期条件')
+    .map((fact) => fact.promptText.replace('，只作取数来源旁证，不换算绝对日期', '；取数来源旁证'));
   const yingQiText = yingQiConditions.length ? `应期条件：${yingQiConditions.join('；')}` : '';
-  const seasonBasis =
-    data.analysis.monthBranch && data.analysis.monthElement
-      ? `${data.analysis.monthBranch}月（${data.analysis.monthElement}令）`
-      : `${data.analysis.season}季`;
+  const originStage = stages.find((stage) => stage.stage === 'origin');
+  const processStage = stages.find((stage) => stage.stage === 'process');
+  const resultStage = stages.find((stage) => stage.stage === 'result');
   const generationText =
     calculation && methodLabel !== '未给出'
       ? `起卦法：${methodLabel}${!hasCalculationFact && typeof calculation.number === 'number' ? `；起卦数字${calculation.number}` : ''}`
       : '';
-  const seasonText = hasOriginStage
-    ? ''
-    : `月令：${seasonBasis}，体卦${data.analysis.tiSeasonState}，用卦${data.analysis.yongSeasonState}`;
-  const timeline = data.analysis.timelineTrend;
-  const timelineParts = [
-    !hasCompleteStages && timeline?.summary?.trim() ? timeline.summary.trim() : '',
-    timeline?.trend ? `盘内关系走势${timeline.trend}` : '',
-  ].filter(Boolean);
-  const timelineText = timelineParts.length
-    ? `阶段关系：${timelineParts.join('；')}；体用强弱与应期合参主互变、所问事项及现实进展`
+  const timeline =
+    hasCompleteStages && originStage && processStage && resultStage
+      ? evaluateMeihuaTimelineTrend({
+          tiElement: originStage.ti.element,
+          originalYongElement: originStage.yong.element,
+          interTiElement: processStage.ti.element,
+          interYongElement: processStage.yong.element,
+          changedTiElement: resultStage.ti.element,
+          changedYongElement: resultStage.yong.element,
+        })
+      : undefined;
+  const timelineText = timeline
+    ? `阶段关系：盘内关系走势${timeline.trend}；体用强弱与应期合参主互变、所问事项及现实进展`
     : '';
 
   return [
@@ -637,9 +640,9 @@ function formatMeihuaInfo(data: MeihuaData) {
       ? `变卦：${resultHexagram}${changedTiYongText}${data.analysis.changedRelation ? `；结果关系${data.analysis.changedRelation}` : ''}`
       : '',
     stages.length ? `体用阶段：\n${stages.map((stage) => stage.promptText).join('\n')}` : '',
-    [seasonText, generationText].filter(Boolean).join('；'),
-    data.analysis.tiYongSeasonEvaluation
-      ? `主卦体用月令条件：${data.analysis.tiYongSeasonEvaluation}`
+    generationText,
+    originStage?.status === '已计算'
+      ? `主卦体用月令条件：${getMeihuaTiYongSeasonEvaluation(originStage.relation, originStage.ti.seasonState, originStage.yong.seasonState)}`
       : '',
     timelineText,
     yingQiText,

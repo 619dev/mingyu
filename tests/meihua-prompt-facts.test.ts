@@ -4,6 +4,7 @@ import { generateMeihua } from '@core/divination/algorithms/meihua';
 import { generateDivinationSession as generateCoreSession } from '@core/divination/session';
 import {
   buildDivinationPrompt as buildCoreDivinationPrompt,
+  formatDivinationInfo,
   getDivinationSummaryBlocks,
 } from '@core/prompt/divination';
 import { formatMeihuaFacts } from '@core/prompt/meihua-facts';
@@ -123,6 +124,48 @@ test('梅花提示词重新核验逐爻、关系和卦爻辞，不采信旧证�
   legacy.mainHexagram.description += '伪造卦辞';
   assert.throws(
     () => buildDivinationPrompt('meihua', '请做整体解读。', legacy),
+    /梅花盘面与起卦资料不一致/u,
+  );
+});
+
+test('梅花旧盘派生月令和走势文字不直接进入两种提示词', () => {
+  const data = generateMeihua(new Date('2025-06-18T10:30:00+08:00'), {
+    method: 'number',
+    number: 1,
+  });
+  delete data.calculation;
+  const verifiedSeasonEvaluation = data.analysis.tiYongSeasonEvaluation;
+  data.analysis.tiYongSeasonEvaluation = '伪造的月令断语';
+  data.analysis.timelineTrend = { trend: '始终受制', summary: '伪造的走势' };
+  const prompt = buildCoreDivinationPrompt({
+    method: 'meihua',
+    data,
+    question: '请分析后续进展。',
+  });
+  assert.doesNotMatch(prompt, /伪造的月令断语|伪造的走势|盘内关系走势始终受制/u);
+  assert.ok(prompt.includes(`主卦体用月令条件：${verifiedSeasonEvaluation}`));
+  assert.match(prompt, /盘内关系走势先顺后阻/u);
+
+  data.analysis.inter1Relation = '伪造的体互关系';
+  assert.throws(() => getDivinationSummaryBlocks('meihua', data), /梅花盘面与起卦资料不一致/u);
+
+  const forgedTiming = generateMeihua(new Date('2025-06-18T10:30:00+08:00'), {
+    method: 'number',
+    number: 1,
+  });
+  forgedTiming.analysis.yingQi = ['明日必然成功'];
+  assert.throws(
+    () =>
+      buildCoreDivinationPrompt({
+        method: 'meihua',
+        data: forgedTiming,
+        question: '请分析后续进展。',
+      }),
+    /梅花盘面与起卦资料不一致/u,
+  );
+  assert.throws(() => formatDivinationInfo('meihua', forgedTiming), /梅花盘面与起卦资料不一致/u);
+  assert.throws(
+    () => getDivinationSummaryBlocks('meihua', forgedTiming),
     /梅花盘面与起卦资料不一致/u,
   );
 });
@@ -333,6 +376,21 @@ test('梅花旧盘缺少互变与应期时不输出空内容行', () => {
   });
   assert.match(nameOnly, /核心结构：主卦天山遁；互卦天风姤；变卦天火同人/u);
   assert.doesNotMatch(nameOnly, /^互卦：|^变卦：/mu);
+});
+
+test('梅花旧盘应期为空数组时视作缺失而不生成应期条件', () => {
+  const data = generateMeihua(new Date('2025-06-18T10:30:00+08:00'), {
+    method: 'number',
+    number: 1,
+  });
+  data.analysis.yingQi = [];
+  const prompt = buildCoreDivinationPrompt({
+    method: 'meihua',
+    data,
+    question: '请分析当前情境。',
+  });
+  assert.doesNotMatch(prompt, /应期条件：/u);
+  assert.doesNotThrow(() => getDivinationSummaryBlocks('meihua', data));
 });
 
 test('梅花物象锚点只由完整方位起卦资料形成', () => {

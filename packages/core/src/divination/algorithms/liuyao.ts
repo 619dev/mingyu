@@ -33,6 +33,7 @@ import { createRandomContext, hasRandomOptions, randomInt } from '../../shared/r
 import { attachResultMeta, MingyuCoreError } from '../../shared/result';
 import { analyzeLiuyaoEvidence } from '../liuyao-evidence';
 import { getLiuyaoSanheWithTrigger } from '../liuyao-sanhe';
+import { getShiErGong } from '../liuyao-life-stage';
 import {
   getLiuyaoChangeDirection,
   getLiuyaoChangeRelation,
@@ -48,55 +49,9 @@ import {
   getSanxingType,
   getSeasonState,
   isLiuchong,
-  BRANCH_ORDER,
-  CHANGSHENG_ORDER,
 } from '../../ganzhi';
 
 export { getLiuyaoChangeDirection, getLiuyaoChangeRelation, getLiuyaoChangeRelations };
-
-/**
- * 五行入墓支（《卜筮正宗》卷三《墓库章》、《增删卜易·入墓》定例）：
- * 金墓在丑、木墓在未、火墓在戌、水土墓在辰。
- * 《增删卜易》所列三墓为入日墓、入动墓、动而化墓；月建仅用于旺衰，
- * 不因月支恰为某五行墓库就直接判为“入月墓”。
- */
-/**
- * 五行十二宫（《三命通会》卷三论五行旺相、《卜筮正宗》卷四十二宫）：
- * 长生（气之始）、沐浴（败地）、冠带（渐成）、临官（禄地）、帝旺（极盛）、
- * 衰（始衰）、病（渐损）、死（气尽）、墓（入墓）、绝（无气）、胎（结胎）、养（孕养）。
- *
- * 各局长生位：
- * - 金长生在巳（巳酉丑）
- * - 木长生在亥（亥卯未）
- * - 火长生在寅（寅午戌）
- * - 水长生在申（申子辰）
- * - 土长生在申（水土共长生，《三命通会》卷三）
- */
-function getShiErGong(wuxing: string, branch: string): string {
-  // 五行各局的长生位：
-  const ZHANG_SHENG_START: Record<string, string> = {
-    金: '巳', // 金长生在巳
-    木: '亥', // 木长生在亥
-    火: '寅', // 火长生在寅
-    水: '申', // 水长生在申
-    土: '申', // 土长生在申（与火不同，按《三命通会》水土共长生）
-  };
-  const startBranch = ZHANG_SHENG_START[wuxing];
-  if (!startBranch) {
-    throw new Error(`六爻十二长生无法识别五行 "${wuxing}"。`);
-  }
-  const startIndex = BRANCH_ORDER.indexOf(startBranch);
-  const branchIndex = BRANCH_ORDER.indexOf(branch);
-  if (startIndex === -1 || branchIndex === -1) {
-    throw new Error(`六爻十二长生无法识别地支 "${branch}"。`);
-  }
-  const offset = (((branchIndex - startIndex) % 12) + 12) % 12;
-  const stage = CHANGSHENG_ORDER[offset];
-  if (!stage) {
-    throw new Error(`六爻十二长生无法定位 ${wuxing} 在 ${branch} 支的状态。`);
-  }
-  return stage;
-}
 
 // 六合月日暗助检测（已在 yaosDetail 中通过月令旺衰、日冲与动静状态实现暗动判定）
 

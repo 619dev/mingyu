@@ -46,6 +46,64 @@ test('统一占法会话应覆盖时间课、摘要、提示词和稳定序列�
   assert.doesNotMatch(session.displaySummary.lines.join('\n'), /证据链|计算链|古籍依据/);
 });
 
+test('五种时间课的两种提示词应区分历史起课时刻与当前时间', () => {
+  const divinationTime = '2020-01-01T10:30:00+08:00';
+  const currentTime = '2026-09-30T10:30:00+08:00';
+  for (const method of ['liuyao', 'meihua', 'jinkoujue', 'qimen', 'liuren'] as const) {
+    const historical = generateDivinationSession({
+      method,
+      question: '历史起课时间核对',
+      divinationTime,
+      currentTime,
+    });
+    for (const text of [historical.prompt, historical.aiPrompt]) {
+      assert.match(text, /【当前时间】\n公历：2026年9月30日 10时30分（UTC\+08:00）/);
+      assert.match(text, /【起课时间】\n公历：2020年1月1日 10时30分（UTC\+08:00）/);
+      assert.equal((text.match(/【起课时间】/g) ?? []).length, 1);
+      assert.doesNotMatch(text, /termReferenceTimestamp|timestamp|API|MCP/);
+    }
+
+    const sameTime = generateDivinationSession({
+      method,
+      question: '同一时点核对',
+      divinationTime,
+      currentTime: divinationTime,
+    });
+    assert.doesNotMatch(sameTime.prompt, /【起课时间】/);
+    assert.doesNotMatch(sameTime.aiPrompt, /【起课时间】/);
+  }
+});
+
+test('真太阳时起课同时标明原民用占时与校正时刻', () => {
+  const session = generateDivinationSession({
+    method: 'liuyao',
+    question: '真太阳时起课时间核对',
+    divinationTime: '2020-01-01T09:30:00+08:00',
+    currentTime: '2026-09-30T10:30:00+08:00',
+    liuyao: { termReferenceDate: new Date('2020-01-01T10:30:00+08:00') },
+  });
+  for (const text of [session.prompt, session.aiPrompt]) {
+    assert.match(text, /【起课时间】\n公历：2020年1月1日 10时30分（UTC\+08:00）/);
+    assert.match(text, /真太阳时校正时刻：2020年1月1日 9时30分（UTC\+08:00）（用于排盘）/);
+    assert.doesNotMatch(text, /termReferenceTimestamp|timestamp/);
+  }
+
+  const sameCivilTime = generateDivinationSession({
+    method: 'liuyao',
+    question: '同分钟真太阳时核对',
+    divinationTime: '2020-01-01T09:30:00+08:00',
+    currentTime: '2020-01-01T10:30:00+08:00',
+    liuyao: { termReferenceDate: new Date('2020-01-01T10:30:00+08:00') },
+  });
+  for (const text of [sameCivilTime.prompt, sameCivilTime.aiPrompt]) {
+    assert.match(
+      text,
+      /【起课时间】\n真太阳时校正时刻：2020年1月1日 9时30分（UTC\+08:00）（用于排盘）/,
+    );
+    assert.equal((text.match(/公历：2020年1月1日 10时30分（UTC\+08:00）/g) ?? []).length, 1);
+  }
+});
+
 test('任意核心结果应可投影为统一消费视图并保留原始结果', () => {
   const raw = {
     summary: { label: '简要结果' },

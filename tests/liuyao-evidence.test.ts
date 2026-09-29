@@ -145,16 +145,20 @@ test('六爻三钱来源须同时吻合铜钱合计与原始爻值', () => {
 });
 
 test('六爻动墓和化墓不归入日辰关系', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
-  data.yaosDetail[0] = {
-    ...data.yaosDetail[0],
-    isDongMu: true,
-    isHuaMu: true,
-    isRiMu: false,
-  };
-  const firstLine = analyzeLiuyaoEvidence(data).lineFacts[0];
-  assert.doesNotMatch(firstLine.dayState.relations.join('、'), /入动墓|动而化墓/u);
-  assert.match(firstLine.promptText, /入动墓、动而化墓/u);
+  const date = new Date('2025-01-01T00:00:00+08:00');
+  const cases = [
+    { yaos: [7, 6, 7, 7, 7, 6], relation: '入动墓' },
+    { yaos: [7, 7, 6, 6, 6, 6], relation: '动而化墓' },
+  ];
+  for (const { yaos, relation } of cases) {
+    const data = generateLiuyao(date, { method: 'manual', yaos });
+    const line = analyzeLiuyaoEvidence(data).lineFacts.find((item) =>
+      item.promptText.includes(relation),
+    );
+    assert.ok(line);
+    assert.doesNotMatch(line.dayState.relations.join('、'), /入动墓|动而化墓/u);
+    assert.match(line.promptText, new RegExp(relation, 'u'));
+  }
 });
 
 test('六爻旧盘缺少伏神资料时保留用神缺口与已命中辅证', () => {
@@ -457,6 +461,47 @@ test('六爻整卦关系、反吟伏吟与三合应形成独立结构事实', ()
       ),
   );
   assert.ok(evidence[1].timingFacts.some((item) => item.type === '反吟伏吟节奏'));
+});
+
+test('六爻全动只形成一条特殊卦象结构事实', () => {
+  const data = generateLiuyao(new Date('2025-01-01T00:00:00+08:00'), {
+    method: 'manual',
+    yaos: [6, 9, 6, 9, 6, 9],
+  });
+  assert.equal(data.specialPattern, '全动卦');
+  assert.equal(data.isChaotic, true);
+
+  const evidence = analyzeLiuyaoEvidence(data);
+  const specialFacts = evidence.structureFacts.filter((fact) => fact.kind === '特殊卦象');
+  assert.equal(specialFacts.length, 1);
+  assert.match(specialFacts[0].promptText, /全动卦/);
+  assert.equal(evidence.summaryFact.structureFactCount, evidence.structureFacts.length);
+});
+
+test('六爻证据拒绝被改写的三刑合害和生旺墓绝字段', () => {
+  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const mutations: Array<(data: typeof source) => void> = [
+    (data) => {
+      data.yaosDetail[0].isSanxing = !data.yaosDetail[0].isSanxing;
+    },
+    (data) => {
+      data.yaosDetail[0].liuhePartner = '子';
+    },
+    (data) => {
+      data.yaosDetail[0].dayLifeStage = '墓';
+    },
+    (data) => {
+      data.yaosDetail[0].movingLifeStages = [];
+    },
+    (data) => {
+      data.yaosDetail[2].isHuaMu = !data.yaosDetail[2].isHuaMu;
+    },
+  ];
+  for (const mutate of mutations) {
+    const changed = structuredClone(source);
+    mutate(changed);
+    assert.throws(() => analyzeLiuyaoEvidence(changed), /纳甲、世应、动变或月日空破与盘面不一致/u);
+  }
 });
 
 test('六爻整卦、反伏与特殊卦式须复算后才进入摘要和详细任务书', () => {
