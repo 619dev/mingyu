@@ -1169,10 +1169,8 @@ test('八字经典格局提示词应保留福德秀气的成格边界，不输�
 
   const section = generateEnhancedAnalysisSection(chartResult as any, 'general');
 
-  assert.match(
-    section,
-    /【经典结构候选】福德秀气格（结构命中；传统等级参考：中等，以成败条件裁定）/,
-  );
+  assert.match(section, /【经典结构候选】福德秀气格（待核验；传统等级参考：中等，以成败条件裁定）/);
+  assert.match(section, /巳酉丑三合金局仅三支齐全，未形成得令且无局外冲破的成势条件/);
   assert.match(section, /专取乙、丁、己、辛、癸五阴干/);
   assert.match(section, /各日干的成败与喜忌，仍按对应原局与岁运核定/);
   assert.doesNotMatch(section, /主一生福禄厚重|主人聪明智慧/);

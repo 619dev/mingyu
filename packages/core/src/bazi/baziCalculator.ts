@@ -55,6 +55,7 @@ import {
 } from './baziTypes';
 import { getTimeIndexFromClock } from '../calendar/dateUtils';
 import { getBirthDateValidationMessage } from '../calendar/date-validation';
+import { resolveCivilTime } from '../calendar/civil-time';
 import { getTermSolarTime } from './globalTimeBasis';
 import {
   applyUnknownBirthTime,
@@ -341,6 +342,7 @@ export class BaziCalculator {
 
     const applyChinaDst = person.applyChinaDst === true;
     const warnings: string[] = [];
+    let ianaTermSolarTime: SolarTimeInstance | undefined;
 
     if (useTrueSolarTimeEnabled) {
       const standardTime = {
@@ -444,6 +446,36 @@ export class BaziCalculator {
           second: solarTime.getSecond(),
         }),
       );
+    } else if (person.timeZoneId && hasPreciseStandardTime) {
+      if (applyChinaDst) {
+        throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
+      }
+      const civilTime = resolveCivilTime({
+        year: solarTime.getYear(),
+        month: solarTime.getMonth(),
+        day: solarTime.getDay(),
+        hour: solarTime.getHour(),
+        minute: solarTime.getMinute(),
+        second: solarTime.getSecond(),
+        timezone: person.timezone,
+        timeZoneId: person.timeZoneId,
+      });
+      ianaTermSolarTime = getTermSolarTime(solarTime, undefined, person);
+      if (
+        person.timeZoneId === 'Asia/Shanghai' &&
+        civilTime.timezone === 9 &&
+        checkChinaDst(
+          solarTime.getYear(),
+          solarTime.getMonth(),
+          solarTime.getDay(),
+          solarTime.getHour(),
+          solarTime.getMinute(),
+        ).inDst
+      ) {
+        solarTime = solarTime.next(-3600);
+        lunarHour = solarTime.getLunarHour();
+        warnings.push('出生钟表时间处于中国历史夏令时期间，已回拨 60 分钟为北京时间后排盘。');
+      }
     } else if (applyChinaDst && hasPreciseStandardTime) {
       if (person.timeZoneId) {
         throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
@@ -479,7 +511,7 @@ export class BaziCalculator {
 
     if (!useTrueSolarTimeEnabled) {
       // 日时保留当地钟表口径；年月节令沿真实瞬时投影到东八区历表。
-      termSolarTime = getTermSolarTime(solarTime, undefined, person);
+      termSolarTime = ianaTermSolarTime ?? getTermSolarTime(solarTime, undefined, person);
     }
 
     const pillarEightChar = lunarHour.getEightChar();

@@ -385,6 +385,7 @@ test('合参区分亮度已列与落陷制约，运限按宫位及四化星曜�
   )!;
   assert.equal(transformed.status, '满足');
   assert.match(transformed.detail, /左辅化科入命宫/);
+  assert.match(transformed.detail, /落宫未定位/);
   ziwei.payloadByScope.yearly.active_scope.palace_index = 1;
   ziwei.payloadByScope.yearly.active_scope.mutagen_map[0].palace_index = 1;
   assert.equal(

@@ -349,6 +349,61 @@ test('精确标准时间按中国历史夏令时回拨后统一四柱、时辰�
   }
 });
 
+test('IANA 中国夏令时与固定偏移校正应得到同一日时柱和节气瞬时', () => {
+  const clock = makeInput({
+    year: 1988,
+    month: 7,
+    day: 1,
+    birthHour: 0,
+    birthMinute: 30,
+    birthSecond: 0,
+    useTrueSolarTime: false,
+  });
+  const iana = baziCalculator.calculateBazi({
+    ...clock,
+    timezone: undefined,
+    timeZoneId: 'Asia/Shanghai',
+  });
+  const fixed = baziCalculator.calculateBazi({
+    ...clock,
+    timezone: 8,
+    applyChinaDst: true,
+  });
+
+  assert.deepEqual(iana.pillars, fixed.pillars);
+  assert.deepEqual(iana.solarDate, fixed.solarDate);
+  assert.deepEqual(iana.timeInfo, fixed.timeInfo);
+  assert.deepEqual(
+    iana.luckInfo.cycles[0]?.startSolarTime,
+    fixed.luckInfo.cycles[0]?.startSolarTime,
+  );
+});
+
+test('普通八字 IANA 输入拒绝夏令时跳时缺口和未消歧回拨时刻', () => {
+  for (const [year, month, day, hour] of [
+    [1988, 4, 17, 2],
+    [1988, 9, 11, 1],
+  ] as const) {
+    assert.throws(
+      () =>
+        baziCalculator.calculateBazi({
+          ...makeInput({
+            year,
+            month,
+            day,
+            birthHour: hour,
+            birthMinute: 30,
+            birthSecond: 0,
+            useTrueSolarTime: false,
+          }),
+          timezone: undefined,
+          timeZoneId: 'Asia/Shanghai',
+        }),
+      /不存在|歧义/,
+    );
+  }
+});
+
 test('精确标准时间拒绝夏令时不存在与重复钟表时刻', () => {
   for (const [year, month, day, hour, pattern] of [
     [1986, 5, 4, 2, /跳时缺口/],

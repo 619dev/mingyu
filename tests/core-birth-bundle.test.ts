@@ -5,7 +5,10 @@ import { calculateBirthChartBundle, type BirthProfile } from 'mingyu-core/birth'
 import { generateQizheng } from 'mingyu-core/qizheng';
 import {
   BirthProfileError,
+  birthProfileToAstrolabeInput,
+  birthProfileToBaziPerson,
   birthProfileToQizhengInput,
+  birthProfileToZiweiChartInput,
   normalizeBirthProfile,
 } from 'mingyu-core/profile';
 
@@ -56,6 +59,43 @@ test('七政四余适配器应把原始民用时间交给引擎，避免真太�
     ],
   );
   assert.deepEqual(direct.stars, generateQizheng(input).stars);
+});
+
+test('中国夏令时普通模式应为传统盘回拨并给天文盘保留原始钟表时间', () => {
+  const summerProfile: BirthProfile = {
+    ...profile,
+    year: 1988,
+    month: 7,
+    day: 1,
+    hour: 0,
+    minute: 30,
+    useTrueSolarTime: false,
+    location: { ...profile.location, timezone: undefined, timeZoneId: 'Asia/Shanghai' },
+  };
+  const normalized = normalizeBirthProfile(summerProfile);
+  const bazi = birthProfileToBaziPerson(summerProfile);
+  const ziwei = birthProfileToZiweiChartInput(summerProfile);
+  const astrolabe = birthProfileToAstrolabeInput(summerProfile);
+  const qizheng = birthProfileToQizhengInput(summerProfile);
+
+  assert.deepEqual(normalized.effectiveTime, {
+    year: 1988,
+    month: 6,
+    day: 30,
+    hour: 23,
+    minute: 30,
+    second: 0,
+  });
+  assert.equal(normalized.usedChinaDstCorrection, true);
+  assert.match(normalized.timeEvidence.calculationChain.join('；'), /1988-06-30T15:30:00\.000Z/);
+  assert.equal(bazi.birthHour, 0);
+  assert.equal(ziwei.birthDate, '1988-06-30');
+  assert.deepEqual(ziwei.birthTime, { hour: 23, minute: 30, second: 0 });
+  assert.deepEqual(
+    [astrolabe.year, astrolabe.month, astrolabe.day, astrolabe.hour],
+    ['1988', '7', '1', '0'],
+  );
+  assert.deepEqual([qizheng.year, qizheng.month, qizheng.day, qizheng.hour], [1988, 7, 1, 0]);
 });
 
 test('出生 Bundle 不以传统时辰代表时刻生成七政四余精确星体位置', async () => {

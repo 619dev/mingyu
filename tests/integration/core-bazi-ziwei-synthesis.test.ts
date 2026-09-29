@@ -144,13 +144,57 @@ test('运限证据超过展示范围时合参任务书明确标出未列条数',
   assert.doesNotMatch(prompt, /第13项反证/);
 });
 
-test('八字紫微跨体系合参互证应准确分析羊刃煞曜与天乙贵人吉曜同参', async () => {
+test('合参保留结构化互证，在线任务书只列命中的双盘位置事实', async () => {
   const reading = await getCombinedReading();
-  assert.ok(reading.synthesis.corroboration);
-  assert.ok(reading.synthesis.corroboration.shaYao);
-  assert.ok(reading.synthesis.corroboration.guiRen);
-  assert.match(reading.synthesis.corroboration.summary, /八字紫微互证：/);
-  assert.match(reading.promptText, /八字紫微互证：/);
+  const corroboration = reading.synthesis.corroboration;
+  assert.ok(corroboration);
+  assert.ok(corroboration.shaYao);
+  assert.ok(corroboration.guiRen);
+  assert.match(corroboration.summary, /八字紫微互证：/);
+
+  const prompt = formatBaziZiweiSynthesisForPrompt({
+    ...reading.synthesis,
+    corroboration: {
+      ...corroboration,
+      shaYao: {
+        ...corroboration.shaYao,
+        baziYangRenPositions: [{ rule: '羊刃', pillar: 'day', pillarName: '日柱', branch: '卯' }],
+        ziweiShaEvidence: [
+          {
+            name: '擎羊',
+            palaceIndex: 0,
+            palaceName: '命宫',
+            palaceRole: '命宫',
+            kind: '煞星',
+            state: { brightness: '陷' },
+          },
+        ],
+        ziweiCheckStatus: 'checked',
+      },
+      guiRen: {
+        ...corroboration.guiRen,
+        baziTianYiPositions: [
+          { rule: '天乙贵人', pillar: 'year', pillarName: '年柱', branch: '丑' },
+        ],
+        ziweiGuiEvidence: [
+          {
+            name: '天魁',
+            palaceIndex: 4,
+            palaceName: '财帛宫',
+            palaceRole: '关键宫',
+            kind: '辅星',
+            state: {},
+          },
+        ],
+        ziweiCheckStatus: 'checked',
+      },
+    },
+  });
+  assert.match(prompt, /八字羊刃：日柱卯/);
+  assert.match(prompt, /紫微煞曜：擎羊在命宫（陷）/);
+  assert.match(prompt, /八字天乙贵人：年柱丑/);
+  assert.match(prompt, /紫微辅弼魁钺：天魁在财帛宫/);
+  assert.doesNotMatch(prompt, /八字紫微互证：|同向结论为主干断点|【合参导引】/);
 });
 
 test('紫微原盘十二宫不完整时合参不能报告资料完整', async () => {
@@ -172,6 +216,32 @@ test('紫微原盘十二宫不完整时合参不能报告资料完整', async ()
   assert.equal(synthesis.status, '资料有缺口');
   assert.ok(synthesis.missingFacts.includes('紫微本命十二宫资料缺失或不完整'));
   assert.equal(synthesis.corroboration?.shaYao.ziweiCheckStatus, 'origin-missing');
+});
+
+test('紫微宫位缺少星曜列表时合参记录资料缺口而不输出残缺宫位', async () => {
+  const reading = await getCombinedReading();
+  assert.ok(reading.bundle.bazi);
+  assert.ok(reading.bundle.ziwei);
+  const origin = reading.bundle.ziwei.payloadByScope.origin;
+  assert.ok(origin);
+  const damagedPalaces = origin.palaces.map((palace, index) =>
+    index === 0 ? { ...palace, minor_stars: undefined } : palace,
+  );
+  const synthesis = buildBaziZiweiSynthesis({
+    bazi: reading.bundle.bazi,
+    ziwei: {
+      ...reading.bundle.ziwei,
+      payloadByScope: {
+        ...reading.bundle.ziwei.payloadByScope,
+        origin: { ...origin, palaces: damagedPalaces as typeof origin.palaces },
+      },
+    },
+  });
+  assert.equal(synthesis.status, '资料有缺口');
+  assert.ok(synthesis.missingFacts.includes('紫微本命十二宫资料缺失或不完整'));
+  assert.ok(
+    synthesis.themes.every((theme) => theme.id === 'timing' || !theme.ziweiEvidence.length),
+  );
 });
 
 test('八字旺衰或格局未知时合参应登记资料缺口', async () => {

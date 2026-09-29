@@ -113,6 +113,29 @@ test('专旺候选把势旺盛保留为结构条件，不冒充主链旺衰结�
 
   assert.match(matched, /结构出现条件“水势旺盛”\（旺衰仍需结合整盘核对\）/);
   assert.doesNotMatch(matched, /结构命中：水势旺盛/);
+  assert.equal(runXia?.status, '待核验');
+});
+
+test('巳酉丑三支齐全但失令或受冲时不把福德秀气候选写成金局已成立', () => {
+  const candidate = getCandidates(['乙巳', '丁亥', '己酉', '辛丑']).find(
+    (item) => item.pattern.id === 'fu-de',
+  );
+
+  assert.ok(candidate);
+  assert.equal(candidate.status, '待核验');
+  assert.match(candidate.matchedConditions.join('；'), /地支巳酉丑齐全，具备三合金局结构/);
+  assert.match(
+    candidate.pendingConditions.join('；'),
+    /巳酉丑三合金局仅三支齐全，未形成.*成势条件/,
+  );
+  assert.doesNotMatch(candidate.verificationFacts.join('；'), /金局已成势/);
+
+  const formed = getCandidates(['乙巳', '己酉', '己丑', '丙寅']).find(
+    (item) => item.pattern.id === 'fu-de',
+  );
+  assert.ok(formed);
+  assert.equal(formed.status, '结构命中');
+  assert.match(formed.verificationFacts.join('；'), /巳酉丑三合金局已成势/);
 });
 
 test('增强提示词显示结构候选与反证，不把静态等级当本盘等级', () => {

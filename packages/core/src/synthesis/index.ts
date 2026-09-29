@@ -370,7 +370,7 @@ function formatStars(palace: PalaceFact) {
     const mutagens = unique([
       star.birth_mutagen ? `生年化${star.birth_mutagen}` : '',
       star.active_scope_mutagen ? `运限化${star.active_scope_mutagen}` : '',
-      star.horoscope_mutagen ? `流耀化${star.horoscope_mutagen}` : '',
+      star.horoscope_mutagen ? `流曜化${star.horoscope_mutagen}` : '',
     ]);
     return `${star.name}${star.brightness ? `(${star.brightness})` : ''}${mutagens.length ? `[${mutagens.join('/')}]` : ''}`;
   });
@@ -443,7 +443,7 @@ function createZiweiThemeFacts(
   }
 
   const origin = runtime.payloadByScope.origin;
-  if (!origin) return [];
+  if (!origin || !hasCompleteZiweiOrigin(runtime)) return [];
   const names = new Set(definition.palaceNames.map(normalizePalaceName));
   const selected = origin.palaces.filter(
     (palace) => names.has(normalizePalaceName(palace.name)) || palace.is_body_palace,
@@ -603,6 +603,28 @@ export function formatBaziZiweiSynthesisForPrompt(
         .join('\n');
     })
     .join('\n\n');
+  const formatBaziPosition = (item: BaziBranchEvidence) => `${item.pillarName}${item.branch}`;
+  const formatZiweiPosition = (item: ZiweiStarEvidence) =>
+    `${item.name}在${item.palaceName}${item.state.brightness ? `（${item.state.brightness}）` : ''}`;
+  const corroboration = synthesis.corroboration;
+  const corroborationFacts = corroboration
+    ? [
+        corroboration.shaYao.baziYangRenPositions.length
+          ? `八字羊刃：${corroboration.shaYao.baziYangRenPositions.map(formatBaziPosition).join('、')}`
+          : '',
+        corroboration.shaYao.ziweiCheckStatus === 'checked' &&
+        corroboration.shaYao.ziweiShaEvidence.length
+          ? `紫微煞曜：${corroboration.shaYao.ziweiShaEvidence.map(formatZiweiPosition).join('、')}`
+          : '',
+        corroboration.guiRen.baziTianYiPositions.length
+          ? `八字天乙贵人：${corroboration.guiRen.baziTianYiPositions.map(formatBaziPosition).join('、')}`
+          : '',
+        corroboration.guiRen.ziweiCheckStatus === 'checked' &&
+        corroboration.guiRen.ziweiGuiEvidence.length
+          ? `紫微辅弼魁钺：${corroboration.guiRen.ziweiGuiEvidence.map(formatZiweiPosition).join('、')}`
+          : '',
+      ].filter(Boolean)
+    : [];
 
   return [
     '【任务】',
@@ -614,9 +636,8 @@ export function formatBaziZiweiSynthesisForPrompt(
     '【运限基准】',
     `${synthesis.timingReference.dateStr} ${synthesis.timingReference.shichen}`,
     '',
-    '【合参导引】',
-    '两盘印证：八字重原局五行气数与岁运引动，紫微重星曜气象与四化落宫；同向结论为主干断点，口径差异为内外张力。',
-    synthesis.corroboration ? synthesis.corroboration.summary : '',
+    corroborationFacts.length ? '【双盘位置事实】' : '',
+    ...corroborationFacts,
     '',
     '【合参资料】',
     sharedText,

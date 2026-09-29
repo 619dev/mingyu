@@ -13,7 +13,7 @@ import {
 } from '../calendar/true-solar-time';
 import { getShichenByIndex, getTimeIndexFromClock } from '../calendar/dateUtils';
 import { checkChinaDst } from '../calendar/china-dst';
-import { resolveCivilTime } from '../calendar/civil-time';
+import { getCivilDateTimeAtFixedOffset, resolveCivilTime } from '../calendar/civil-time';
 import { baziCalculator } from '../bazi/baziCalculator';
 import type { BaziChartResult, Person } from '../bazi/baziTypes';
 import type { AlmanacParticipantInput, AstrolabeBirthInput } from '../types/divination';
@@ -458,13 +458,14 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
   });
   // 普通钟表模式也会把该时间交给八字、紫微等入口；先确认 IANA 当地时刻
   // 确实存在且已消歧，避免它们接受星盘和七政会拒绝的虚构或重复出生时刻。
-  if (resolvedLocation?.timeZoneId && timeInput.inputMode === 'precise-clock-time') {
-    resolveCivilTime({
-      ...solarClockTime,
-      timezone: resolvedLocation.timezone,
-      timeZoneId: resolvedLocation.timeZoneId,
-    });
-  }
+  const civilTime =
+    resolvedLocation?.timeZoneId && timeInput.inputMode === 'precise-clock-time'
+      ? resolveCivilTime({
+          ...solarClockTime,
+          timezone: resolvedLocation.timezone,
+          timeZoneId: resolvedLocation.timeZoneId,
+        })
+      : undefined;
   // 仅精准钟表时间可还原历史夏令时的唯一瞬时；传统时辰没有可校正的分钟。
   const applyChinaDst =
     profile.applyChinaDst === true && timeInput.inputMode === 'precise-clock-time';
@@ -493,30 +494,42 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
   if (dst?.ambiguous) {
     throw new Error('该中国历史钟表时间处于夏令时回拨重复时段，无法唯一定时。');
   }
-  const effectiveTime = dst?.inDst
-    ? (() => {
-        const shifted = new Date(
-          Date.UTC(
-            solarClockTime.year,
-            solarClockTime.month - 1,
-            solarClockTime.day,
-            solarClockTime.hour,
-            solarClockTime.minute + dst.offsetMinutes,
-            solarClockTime.second,
-          ),
-        );
-        return {
-          year: shifted.getUTCFullYear(),
-          month: shifted.getUTCMonth() + 1,
-          day: shifted.getUTCDate(),
-          hour: shifted.getUTCHours(),
-          minute: shifted.getUTCMinutes(),
-          second: shifted.getUTCSeconds(),
-        };
-      })()
-    : solarClockTime;
+  const ianaChinaDst =
+    resolvedLocation?.timeZoneId === 'Asia/Shanghai' &&
+    civilTime?.timezone === 9 &&
+    checkChinaDst(
+      solarClockTime.year,
+      solarClockTime.month,
+      solarClockTime.day,
+      solarClockTime.hour,
+      solarClockTime.minute,
+    ).inDst;
+  const effectiveTime = ianaChinaDst
+    ? getCivilDateTimeAtFixedOffset(new Date(civilTime!.utcTimestamp), 8)
+    : dst?.inDst
+      ? (() => {
+          const shifted = new Date(
+            Date.UTC(
+              solarClockTime.year,
+              solarClockTime.month - 1,
+              solarClockTime.day,
+              solarClockTime.hour,
+              solarClockTime.minute + dst.offsetMinutes,
+              solarClockTime.second,
+            ),
+          );
+          return {
+            year: shifted.getUTCFullYear(),
+            month: shifted.getUTCMonth() + 1,
+            day: shifted.getUTCDate(),
+            hour: shifted.getUTCHours(),
+            minute: shifted.getUTCMinutes(),
+            second: shifted.getUTCSeconds(),
+          };
+        })()
+      : solarClockTime;
   const selectedShichen = getShichenByIndex(
-    dst?.inDst
+    dst?.inDst || ianaChinaDst
       ? getTimeIndexFromClock(effectiveTime.hour, effectiveTime.minute)
       : timeInput.timeIndex,
   );
@@ -536,12 +549,14 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
     selectedShichen,
     solarClockTime,
     effectiveTime,
-    ...(dst?.inDst
+    ...(dst?.inDst || ianaChinaDst
       ? {
           chinaDstEvidence: {
-            offsetMinutes: dst.offsetMinutes,
+            offsetMinutes: -60,
             standardTimezone: 8,
-            utcDateTime: resolveCivilTime({ ...effectiveTime, timezone: 8 }).utcDateTime,
+            utcDateTime:
+              civilTime?.utcDateTime ??
+              resolveCivilTime({ ...effectiveTime, timezone: 8 }).utcDateTime,
           },
         }
       : {}),
@@ -558,7 +573,7 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
     timeInputMode: timeInput.inputMode,
     timePrecision: timeEvidence.precision,
     usedTrueSolarTime: false,
-    usedChinaDstCorrection: dst?.inDst ?? false,
+    usedChinaDstCorrection: dst?.inDst || Boolean(ianaChinaDst),
     timeEvidence,
     diagnostics,
   };
@@ -693,7 +708,10 @@ export function birthProfileToAstrolabeInput(profile: BirthProfile): AstrolabeBi
         }
       : undefined;
   requireReady(normalized, preciseTimeDiagnostic ?? locationDiagnostic ?? genderDiagnostic);
-  const clock = profile.useTrueSolarTime ? normalized.solarClockTime : normalized.effectiveTime;
+  const clock =
+    profile.useTrueSolarTime || location?.timeZoneId
+      ? normalized.solarClockTime
+      : normalized.effectiveTime;
   if (!location || location.latitude === undefined) throw new Error('出生地状态异常。');
   return {
     name: profile.name ?? '',
@@ -718,8 +736,8 @@ export function birthProfileToAstrolabeInput(profile: BirthProfile): AstrolabeBi
 /**
  * 将统一出生档案转换为七政四余输入。
  *
- * 七政四余只接受公历时刻。真太阳时模式传原始民用钟表时间，由七政自身
- * 校正传统宫位；普通模式传已还原历史夏令时的标准时间，供天文时刻和宫位共用。
+ * 七政四余只接受公历时刻。IANA 时区模式传原始民用钟表时间，由引擎解析
+ * 历史法定偏移；固定偏移模式先还原中国历史夏令时的标准时间。
  */
 export function birthProfileToQizhengInput(profile: BirthProfile): QizhengInput {
   const normalized = normalizeBirthProfile(profile);
@@ -733,8 +751,11 @@ export function birthProfileToQizhengInput(profile: BirthProfile): QizhengInput 
         }
       : undefined;
   requireReady(normalized, preciseTimeDiagnostic);
-  const clock = profile.useTrueSolarTime ? normalized.solarClockTime : normalized.effectiveTime;
   const location = normalized.resolvedLocation;
+  const clock =
+    profile.useTrueSolarTime || location?.timeZoneId
+      ? normalized.solarClockTime
+      : normalized.effectiveTime;
   if (!location || location.latitude === undefined) {
     throw new BirthProfileError({
       code: 'LATITUDE_REQUIRED',

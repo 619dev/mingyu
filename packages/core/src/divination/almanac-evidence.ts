@@ -69,7 +69,7 @@ export interface AlmanacCandidateDecisionFact {
   strongConstraintTexts: string[];
   promptText: string;
   sources: string[];
-  limitation: '候选状态只按明确事项忌项、参与人直接关系和可用时辰分组；算法不设置吉凶总分，不把候选等级解释为成功率或现实吉凶保证';
+  limitation: '候选状态按事项宜项命中、明确忌项、参与人直接关系和可用时辰分组；算法不设置吉凶总分，不把候选等级解释为成功率或现实吉凶保证';
 }
 
 export interface AlmanacTraditionalFact {
@@ -251,7 +251,7 @@ const HOUR_FACT_LIMITATION =
 const RAW_TABOO_FACT_LIMITATION =
   '原始宜忌只保留历书列项及其是否命中当前事项；未列不等于适宜，列出也不等于现实事项必然成功或失败' as const;
 const DECISION_FACT_LIMITATION =
-  '候选状态只按明确事项忌项、参与人直接关系和可用时辰分组；算法不设置吉凶总分，不把候选等级解释为成功率或现实吉凶保证' as const;
+  '候选状态按事项宜项命中、明确忌项、参与人直接关系和可用时辰分组；算法不设置吉凶总分，不把候选等级解释为成功率或现实吉凶保证' as const;
 const CALCULATION_STEP_LIMITATION =
   '计算步骤只证明候选范围、历法字段、事项宜忌、神煞、参与人关系、逐时时课与候选分组如何形成当前证据；不证明现实吉凶、成功率、个人结果或必然适宜' as const;
 const COUNTER_FACT_LIMITATION =
@@ -498,6 +498,12 @@ export function classifyAlmanacCandidate(
   constraintTexts: string[];
 } {
   const topicConstraints = (day.topicMatchFacts ?? []).filter((item) => item.status === '限制');
+  const dayRecommendFact = (day.topicMatchFacts ?? []).find((item) =>
+    item.key.endsWith(':topic:day-recommends'),
+  );
+  const missingTopicSupport =
+    dayRecommendFact?.status === '中性' &&
+    !(day.topicMatchFacts ?? []).some((item) => item.status === '支持');
   const participantConstraints = getParticipantConstraintTexts(
     day.participantRelationFacts,
     day.participantNotes,
@@ -527,6 +533,7 @@ export function classifyAlmanacCandidate(
     ...day.cautions,
     ...topicConstraints.map((item) => item.promptText),
     ...participantConstraints,
+    ...(missingTopicSupport ? ['原始宜项未见当前事项的明确匹配，需核对具体活动'] : []),
     ...(hasHourData && usableHourCount === 0 ? ['未筛出无强冲突时辰'] : []),
   ]);
   return {
@@ -773,6 +780,11 @@ function buildCandidateDecisionFact(params: {
   ];
   const topicLimitCount = params.topicMatchFacts.filter((item) => item.status === '限制').length;
   const topicSupportCount = params.topicMatchFacts.filter((item) => item.status === '支持').length;
+  const missingTopicSupport =
+    !topicSupportCount &&
+    params.topicMatchFacts.some(
+      (item) => item.key.endsWith(':topic:day-recommends') && item.status === '中性',
+    );
   const participantLimitCount = params.participantRelationFacts.filter(
     (item) => item.status === '限制',
   ).length;
@@ -799,12 +811,12 @@ function buildCandidateDecisionFact(params: {
           : '有限制'
         : topicSupportCount
           ? '有支持'
-          : params.topicMatchFacts.length
-            ? '通过'
-            : '未提供',
+          : missingTopicSupport || !params.topicMatchFacts.length
+            ? '未提供'
+            : '通过',
       factKeys: params.topicMatchFacts.map((item) => item.key),
       inputs: params.topicMatchFacts.flatMap((item) => item.matchedItems),
-      result: `支持${topicSupportCount}项，限制${topicLimitCount}项`,
+      result: `支持${topicSupportCount}项，限制${topicLimitCount}项${missingTopicSupport ? '；原始宜项未见当前事项' : ''}`,
       promptText:
         params.topicMatchFacts.map((item) => item.promptText).join('；') || '未保存事项命中事实',
       sources: unique(params.topicMatchFacts.flatMap((item) => item.sources)),
@@ -919,9 +931,11 @@ function buildCandidateDecisionFact(params: {
         ? `存在强限制，归入${params.status}`
         : params.hasHourData && !params.usableHours.length
           ? `未筛出无强冲突时辰，归入${params.status}`
-          : limitingFactKeys.length || params.traditionalConstraints.length
-            ? `存在一般限制，归入${params.status}`
-            : `未见明确限制，归入${params.status}`,
+          : missingTopicSupport
+            ? `原始宜项未见当前事项，归入${params.status}`
+            : limitingFactKeys.length || params.traditionalConstraints.length
+              ? `存在一般限制，归入${params.status}`
+              : `未见明确限制，归入${params.status}`,
       sources: ['黄历候选分组规则'],
     },
   ];
@@ -1136,6 +1150,9 @@ function formatCandidateForPrompt(item: AlmanacCandidateEvidence): string {
           : fact.matchedItems.join('、'),
       ),
   );
+  const missingTopicSupport = item.topicMatchFacts.some(
+    (fact) => fact.key.endsWith(':topic:day-recommends') && fact.status === '中性',
+  );
   const participantRelations = unique(
     item.participantRelationFacts
       .filter((fact) => fact.status === '支持' || fact.status === '限制')
@@ -1156,9 +1173,13 @@ function formatCandidateForPrompt(item: AlmanacCandidateEvidence): string {
   );
   return [
     `${item.date} ${item.status}：${item.calendarFact.promptText}`,
-    `宜：${item.rawTabooFact.recommends.join('、') || '未列'}；忌：${item.rawTabooFact.avoids.join('、') || '未列'}`,
-    ...(topicSupport.length ? [`事项支持：${topicSupport.join('、')}`] : []),
-    ...(topicConstraints.length ? [`事项限制：${topicConstraints.join('、')}`] : []),
+    `原始宜项：${item.rawTabooFact.recommends.join('、') || '未列'}；原始忌项：${item.rawTabooFact.avoids.join('、') || '未列'}`,
+    ...(topicSupport.length ? [`事项宜项命中：${topicSupport.join('、')}`] : []),
+    ...(topicConstraints.length ? [`事项忌项或规则命中：${topicConstraints.join('、')}`] : []),
+    ...(missingTopicSupport ? ['原始宜项未见当前事项的明确匹配，需核对具体活动'] : []),
+    ...(topicSupport.length && topicConstraints.length
+      ? ['当前事项宜忌并存，具体安排按所做步骤与原始列项核对']
+      : []),
     ...(participantRelations.length ? [`参与人关系：${participantRelations.join('；')}`] : []),
     ...(traditional.length ? [`传统资料：${traditional.join('、')}`] : []),
     ...(directionGods.length ? [`岁支方位：${directionGods.join('、')}`] : []),
@@ -1421,7 +1442,7 @@ function buildCalculationSteps(params: {
         cautionDateCount: params.cautionDates.length,
       },
       dependsOnStepKeys: ['almanac:calculation:hours'],
-      promptText: `按明确忌项、传统限制、参与人冲突与可用时辰分组：可用${params.preferredDates.length}项、有条件${params.conditionalDates.length}项、慎用${params.cautionDates.length}项`,
+      promptText: `按事项宜项命中、明确忌项、传统限制、参与人冲突与可用时辰分组：可用${params.preferredDates.length}项、有条件${params.conditionalDates.length}项、慎用${params.cautionDates.length}项`,
       sources: unique([
         '候选日七步状态形成链完整性检查',
         ...params.candidates.flatMap((item) => item.decisionFact.sources),
@@ -1518,7 +1539,7 @@ function buildLimitationFacts(params: {
         ]),
       ]),
       promptText:
-        '逐时时课只用于候选日内比较，候选状态只按明确忌项、参与人直接关系和可用时辰分组；算法不设置吉凶总分，不把候选等级解释为成功率、现实吉凶保证或唯一最佳日期',
+        '逐时时课只用于候选日内比较，候选状态按事项宜项命中、明确忌项、参与人直接关系和可用时辰分组；算法不设置吉凶总分，不把候选等级解释为成功率、现实吉凶保证或唯一最佳日期',
       sources: ['逐时时课事实与七步候选状态形成链'],
     },
     {
@@ -1723,7 +1744,7 @@ export function analyzeAlmanacEvidence(data: AlmanacData): AlmanacEvidenceAnalys
       '先按日期范围和事项限定建立候选集。',
       '再逐日核验事项宜忌、建除神煞、参与人刑冲破害和可用时辰。',
       '同时附加中国标准时间正午的日月黄经月相事实，但不据此自动增减传统候选等级。',
-      '明确忌项或直接冲突进入慎用组，其他限制进入条件组，不以总分覆盖反证。',
+      '明确忌项或直接冲突进入慎用组，宜项未明列及其他限制进入条件组，不以总分覆盖反证。',
       '最后叠加现实刚性约束；不输出吉凶总分、成功率或必然结论。',
     ],
   };

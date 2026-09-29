@@ -207,7 +207,7 @@ function formatBaziEvidence(evidence: BaziBranchEvidence[]): string {
 function getStarMutagenLabels(star: ZiweiStarEvidence): string[] {
   return [
     star.state.birthMutagen ? `生年化${star.state.birthMutagen}` : '',
-    star.state.horoscopeMutagen ? `流耀化${star.state.horoscopeMutagen}` : '',
+    star.state.horoscopeMutagen ? `流曜化${star.state.horoscopeMutagen}` : '',
     star.state.activeScopeMutagen ? `运限化${star.state.activeScopeMutagen}` : '',
   ].filter(Boolean);
 }
@@ -339,7 +339,7 @@ function buildTimingCondition(
       key: 'timing.period',
       status: hits.length ? '满足' : allPalacesLocated ? '不满足' : '资料不足',
       detail: hits.length
-        ? `紫微运限定位：${hits.join('；')}。这些是紫微单盘引动事实，双盘同一时间窗口仍需核对八字岁运。`
+        ? `紫微运限定位：${hits.join('；')}。${allPalacesLocated ? '' : '部分运限落宫未定位，其他目标星曜引动仍待核对。'}这些是紫微单盘引动事实，双盘同一时间窗口仍需核对八字岁运。`
         : allPalacesLocated
           ? `已核对${scopes.map((payload) => `${payload.active_scope.label}（${payload.active_scope.solar_date}）`).join('、')}，目标星未命中所列运限宫位或四化。`
           : '已列紫微运限日期，但部分落宫未定位，无法完整核对本命目标星曜的运限引动。',

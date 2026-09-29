@@ -6,6 +6,43 @@ import {
   generateAlmanacSelection,
 } from 'mingyu-core/divination/almanac';
 
+test('原始宜项未命中当前事项时列为条件候选并保留证据', () => {
+  const result = generateAlmanacSelection({
+    topic: 'opening',
+    startDate: '2025-01-03',
+    endDate: '2025-01-03',
+  });
+  const candidate = result.evidenceAnalysis?.candidates[0];
+  assert.ok(candidate);
+  assert.equal(
+    candidate.topicMatchFacts.find((fact) => fact.key.endsWith(':day-recommends'))?.status,
+    '中性',
+  );
+  assert.equal(candidate.status, '条件候选');
+  assert.equal(
+    candidate.decisionFact.steps.find((step) => step.stage === '事项命中')?.status,
+    '未提供',
+  );
+  assert.match(candidate.decisionFact.promptText, /原始宜项未见当前事项/);
+  assert.match(result.evidenceAnalysis?.promptText ?? '', /原始宜项未见当前事项的明确匹配/);
+});
+
+test('同类事项的不同步骤宜忌并存时保留原始列项与慎用裁决', () => {
+  const result = generateAlmanacSelection({
+    topic: 'move',
+    startDate: '2025-04-28',
+    endDate: '2025-04-28',
+  });
+  const candidate = result.evidenceAnalysis?.candidates[0];
+  assert.ok(candidate);
+  assert.ok(candidate.rawTabooFact.recommends.includes('移徙'));
+  assert.ok(candidate.rawTabooFact.avoids.includes('入宅'));
+  assert.equal(candidate.status, '慎用候选');
+  assert.match(result.evidenceAnalysis?.promptText ?? '', /原始宜项：[\s\S]*原始忌项：/);
+  assert.match(result.evidenceAnalysis?.promptText ?? '', /宜忌并存/);
+  assert.doesNotMatch(result.evidenceAnalysis?.promptText ?? '', /事项支持：/);
+});
+
 test('四离日的明确事项禁忌应压过原始宜嫁娶并保留两层证据', () => {
   const result = generateAlmanacSelection({
     topic: 'marriage',
@@ -159,7 +196,10 @@ test('黄历择日应内置透明约束与候选证据', () => {
         item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => factKeys.has(key)),
     ),
   );
-  assert.match(evidence.promptText, /候选日期[\s\S]*年柱[\s\S]*宜：[\s\S]*忌：[\s\S]*任务/);
+  assert.match(
+    evidence.promptText,
+    /候选日期[\s\S]*年柱[\s\S]*原始宜项：[\s\S]*原始忌项：[\s\S]*任务/,
+  );
   assert.doesNotMatch(evidence.promptText, /评分[：=]?\d|\d+分|成功率[：=]?\d|匹配率[：=]?\d/);
 });
 
@@ -268,7 +308,7 @@ test('择日证据应保留日课、宿曜、九星、百忌、方位神与逐�
         !('avoids' in item),
     ),
   );
-  assert.match(result.evidenceAnalysis?.promptText ?? '', /宜：/);
+  assert.match(result.evidenceAnalysis?.promptText ?? '', /原始宜项：/);
   assert.match(result.evidenceAnalysis?.promptText ?? '', /候选时辰/);
   assert.doesNotMatch(
     JSON.stringify(result.evidenceAnalysis?.evidence),
