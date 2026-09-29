@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { generateXiaoliuren } from '@core/divination/algorithms/xiaoliuren';
 import { formatDetailedDivinationInfo } from '@core/prompt/divination-detail';
 import { buildDivinationPrompt as buildCoreDivinationPrompt } from '@core/prompt/divination';
+import { generateDivinationSession } from '@core/divination/session';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 
 test('小六壬双口径在原生提示词中分别绑定定位用途与时宫歌诀', () => {
@@ -12,7 +13,8 @@ test('小六壬双口径在原生提示词中分别绑定定位用途与时宫�
     const day = rule === 'common' ? '空亡' : '大安';
     const primary = rule === 'common' ? '小吉' : '空亡';
     const firstDay = rule === 'common' ? '赤口' : '小吉';
-    assert.match(prompt, /公历占时（北京时间）：2026-05-19 10:30/);
+    assert.match(prompt, /公历：2026年5月19日 10时30分/);
+    assert.doesNotMatch(prompt, /公历占时（北京时间）：2026-05-19 10:30/);
     assert.ok(prompt.includes('起课过程：月、日、时各段起点计为第一位'));
     assert.ok(
       prompt.includes(
@@ -30,6 +32,35 @@ test('小六壬双口径在原生提示词中分别绑定定位用途与时宫�
     assert.ok(!prompt.includes(data.sequence.day.verse));
     assert.doesNotMatch(prompt, rule === 'common' ? /多能鄙事/ : /通行俗传/);
   }
+});
+
+test('小六壬占时与当前时间同分钟时只列一次，历史起课仍保留占时', () => {
+  const chartTime = new Date('2026-05-19T10:30:00+08:00');
+  const data = generateXiaoliuren({ customDate: chartTime });
+  const corePrompt = buildCoreDivinationPrompt({
+    method: 'xiaoliuren',
+    data,
+    question: '请分析进展。',
+    currentTime: chartTime,
+  });
+  assert.doesNotMatch(corePrompt, /公历占时（北京时间）/);
+
+  const sameTimeSession = generateDivinationSession({
+    method: 'xiaoliuren',
+    question: '请分析进展。',
+    divinationTime: chartTime,
+    currentTime: chartTime,
+  });
+  assert.doesNotMatch(sameTimeSession.aiPrompt, /公历占时（北京时间）/);
+
+  const laterTime = new Date('2026-05-20T10:30:00+08:00');
+  const historicalSession = generateDivinationSession({
+    method: 'xiaoliuren',
+    question: '请分析进展。',
+    divinationTime: chartTime,
+    currentTime: laterTime,
+  });
+  assert.match(historicalSession.aiPrompt, /公历占时（北京时间）：2026-05-19 10:30/);
 });
 
 test('小六壬初一起点随月宫与流派变化，空亡下一宫回到大安', () => {

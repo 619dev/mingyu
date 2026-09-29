@@ -648,7 +648,7 @@ function formatMeihuaInfo(data: MeihuaData) {
     .join('\n');
 }
 
-function formatXiaoliurenInfo(data: XiaoliurenData) {
+function formatXiaoliurenInfo(data: XiaoliurenData, omitRepeatedCivilTime = false) {
   analyzeXiaoliurenEvidence(data);
   const rule = resolveXiaoliurenRule(data.rule);
   const formatBeijingDateTime = (timestamp: number) => {
@@ -660,7 +660,11 @@ function formatXiaoliurenInfo(data: XiaoliurenData) {
     return `${parts.year}-${pad(parts.month)}-${pad(parts.day)} ${pad(parts.hour)}:${pad(parts.minute)}`;
   };
   const civilTimeLines = [
-    `公历占时（北京时间）：${formatBeijingDateTime(data.termReferenceTimestamp ?? data.timestamp)}`,
+    ...(!omitRepeatedCivilTime || data.termReferenceTimestamp !== undefined
+      ? [
+          `公历占时（北京时间）：${formatBeijingDateTime(data.termReferenceTimestamp ?? data.timestamp)}`,
+        ]
+      : []),
     ...(data.termReferenceTimestamp !== undefined
       ? [`真太阳时校正时刻：${formatBeijingDateTime(data.timestamp)}（用于定${data.hourLabel}）`]
       : []),
@@ -1526,7 +1530,10 @@ export function formatEnhancedDivinationInfo(
   data: DivinationData,
   _question = '',
   _supplementaryInfo?: SupplementaryInfo,
-  options?: { liuyaoTemplate?: 'general' | 'ganqing' | 'shiye' | 'caifu' | 'guaishen' },
+  options?: {
+    liuyaoTemplate?: 'general' | 'ganqing' | 'shiye' | 'caifu' | 'guaishen';
+    omitRepeatedXiaoliurenCivilTime?: boolean;
+  },
 ) {
   switch (method) {
     case 'liuyao':
@@ -1534,7 +1541,7 @@ export function formatEnhancedDivinationInfo(
     case 'meihua':
       return formatMeihuaInfo(data as MeihuaData);
     case 'xiaoliuren':
-      return formatXiaoliurenInfo(data as XiaoliurenData);
+      return formatXiaoliurenInfo(data as XiaoliurenData, options?.omitRepeatedXiaoliurenCivilTime);
     case 'jinkoujue':
       return formatJinkoujueInfo(data as JinkoujueData);
     case 'qimen':

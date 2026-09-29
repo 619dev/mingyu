@@ -13,6 +13,7 @@ import type {
   TarotSpreadType,
   TaiyiResult,
   TaiyiScope,
+  XiaoliurenData,
   XiaoliurenDivinationMethod,
   JinkoujueDivinationMethod,
   MeihuaDirection,
@@ -332,6 +333,10 @@ export function buildDivinationPrompt(
     supplementaryInfo,
     {
       liuyaoTemplate,
+      omitRepeatedXiaoliurenCivilTime:
+        method === 'xiaoliuren' &&
+        !options.omitCurrentTime &&
+        (data as XiaoliurenData).termReferenceTimestamp === undefined,
     },
   );
   const conditionalLiurenRange =

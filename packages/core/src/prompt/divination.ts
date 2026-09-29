@@ -640,7 +640,10 @@ export function formatDivinationInfo(
   data: DivinationData,
   question = '',
   supplementaryInfo?: SupplementaryInfo,
-  options?: { liuyaoTemplate?: LiuyaoTemplateType },
+  options?: {
+    liuyaoTemplate?: LiuyaoTemplateType;
+    omitRepeatedXiaoliurenCivilTime?: boolean;
+  },
 ) {
   return formatEnhancedDivinationInfo(method, data, question, supplementaryInfo, options);
 }
@@ -821,6 +824,14 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
         ? buildLiurenTemplateText(liurenTemplate, options.data as LiurenData)
         : '';
   const supplementaryText = formatSupplementaryInfo(options.supplementaryInfo, options.method);
+  const currentTime = options.currentTime ?? new Date();
+  const xiaoliurenData =
+    options.method === 'xiaoliuren' ? (options.data as XiaoliurenData) : undefined;
+  const omitRepeatedXiaoliurenCivilTime = Boolean(
+    xiaoliurenData &&
+    xiaoliurenData.termReferenceTimestamp === undefined &&
+    Math.floor(xiaoliurenData.timestamp / 60_000) === Math.floor(currentTime.getTime() / 60_000),
+  );
   const promptSchoolMethod =
     options.method === 'huangji'
       ? 'huangji-jingshi'
@@ -838,9 +849,7 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
       (options.method === 'taiyi'
         ? buildPromptSection('传统依据', formatTaiyiTradition(options.data as TaiyiResult))
         : buildPromptGuidance(options.method)),
-    isSignPrompt
-      ? ''
-      : buildPromptSection('当前时间', formatPromptCurrentTime(options.currentTime)),
+    isSignPrompt ? '' : buildPromptSection('当前时间', formatPromptCurrentTime(currentTime)),
     supplementaryText ? buildPromptSection('补充信息', supplementaryText) : '',
     options.astrolabeScopeText ? buildPromptSection('分析对象', options.astrolabeScopeText) : '',
     buildPromptSection(
@@ -848,6 +857,7 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
       [
         formatDivinationInfo(options.method, options.data, question, options.supplementaryInfo, {
           liuyaoTemplate,
+          omitRepeatedXiaoliurenCivilTime,
         }),
         ...(options.method === 'liuren'
           ? formatLiurenJudgmentFacts(options.data as LiurenData, {

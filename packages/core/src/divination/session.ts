@@ -61,6 +61,7 @@ import type {
   TarotSpreadType,
   TaiyiResult,
   TaiyiScope,
+  XiaoliurenData,
   XiaoliurenDivinationMethod,
 } from '../types/divination';
 
@@ -246,13 +247,22 @@ function formatAiChart(
   method: DivinationSessionMethod,
   data: DivinationData,
   summary: ReturnType<typeof getDivinationSummaryBlocks>,
+  currentTime: Date,
 ) {
   const base = [
     summary.title,
     summary.tags.filter(Boolean).join('；'),
     ...(method === 'taiyi' ? [] : summary.lines),
   ].filter(Boolean);
-  if (method === 'xiaoliuren' || method === 'jinkoujue') return formatDivinationInfo(method, data);
+  if (method === 'xiaoliuren') {
+    const item = data as XiaoliurenData;
+    return formatDivinationInfo(method, data, '', undefined, {
+      omitRepeatedXiaoliurenCivilTime:
+        item.termReferenceTimestamp === undefined &&
+        Math.floor(item.timestamp / 60_000) === Math.floor(currentTime.getTime() / 60_000),
+    });
+  }
+  if (method === 'jinkoujue') return formatDivinationInfo(method, data);
   if (method === 'liuyao') {
     const item = data as LiuyaoData;
     base.push(
@@ -593,7 +603,7 @@ export function generateDivinationSession(request: DivinationRequest): Divinatio
   const customDate = normalizeDate(request.divinationTime, '起课时间');
   const data = generateData(request, method, customDate, selectionRandom);
   const question = buildQuestion(method, request.question, data);
-  const currentTime = normalizeCurrentTime(request.currentTime);
+  const currentTime = normalizeCurrentTime(request.currentTime) ?? new Date();
   const promptOptions: DivinationPromptOptions = {
     method,
     data,
@@ -617,7 +627,7 @@ export function generateDivinationSession(request: DivinationRequest): Divinatio
           question,
           currentTime,
           supplementaryInfo: request.supplementaryInfo,
-          chartText: formatAiChart(method, data, summary),
+          chartText: formatAiChart(method, data, summary, currentTime),
           data,
         });
   const aiPrompt = aiPromptDocument.text;
