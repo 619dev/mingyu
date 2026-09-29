@@ -268,9 +268,12 @@ export function analyzeFortuneActionEvidence(params: {
         hitSources.push('patternBreakerRestrictions');
       }
 
-      const matchingControls = controlFunctions.filter(
-        (c) =>
-          c.status === '满足' && (c.sourceStems.includes(stem) || c.targetStems.includes(stem)),
+      const relatedControls = controlFunctions.filter(
+        (c) => c.sourceStems.includes(stem) || c.targetStems.includes(stem),
+      );
+      const matchingControls = relatedControls.filter((c) => c.status === '满足');
+      const hasUnresolvedControl = relatedControls.some(
+        (c) => c.status !== '满足' && c.status !== '不满足',
       );
       const matchingClimateEffects = climateCandidates
         .filter((candidate) => candidate.adopted)
@@ -484,7 +487,9 @@ export function analyzeFortuneActionEvidence(params: {
         };
 
         const hasUnimplementedRestrictions =
-          hitSources.includes('制化来源') || hitSources.includes('patternBreakerRestrictions');
+          hasUnresolvedControl ||
+          hitSources.includes('制化来源') ||
+          hitSources.includes('patternBreakerRestrictions');
 
         if (hasDirectStemCondition) {
           if (hasClearRoot && !hasUnimplementedRestrictions && !hasRelationFact) {
