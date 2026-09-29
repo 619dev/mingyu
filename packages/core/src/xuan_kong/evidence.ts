@@ -216,7 +216,7 @@ export function analyzeXuanKongEvidence(
         key: 'xuankong:fact:month-star',
         type: '流月飞星',
         promptText: `${result.flowStars.monthPlate.starName}入中；${result.flowStars.monthPlate.calendarNote}`,
-        sources: ['节气月紫白', 'tyme4ts 节气月九星'],
+        sources: ['tyme4ts 节气月九星与节令时刻', '《钦定协纪辨方书》三元月九星入中宫'],
         limitation: FACT_LIMIT,
       });
     }

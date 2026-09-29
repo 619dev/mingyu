@@ -2,7 +2,7 @@
  * @file 玄空流年、流月飞星
  * @description 以三元紫白入中后顺飞九宫，叠到下卦运、山、向盘上。
  * @传统依据 《协纪辨方书》三元紫白；年星随三元甲子逆计入中，月星按节气月紫白；飞布沿洛书顺飞。
- * 入中星委托 tyme4ts 干支年、节气月九星，与黄历紫白同源。
+ * 入中星委托 tyme4ts 干支年、节气月九星；纪年两端越界时按月紫白表推算。
  */
 import { SolarDay, SolarTerm, SolarTime, SixtyCycleYear } from 'tyme4ts';
 
@@ -95,6 +95,32 @@ const MONTH_JIE = [
   '大雪',
 ] as const;
 
+const MONTH_BRANCHES = [
+  '寅',
+  '卯',
+  '辰',
+  '巳',
+  '午',
+  '未',
+  '申',
+  '酉',
+  '戌',
+  '亥',
+  '子',
+  '丑',
+] as const;
+
+/** 《钦定协纪辨方书·三元月九星入中宫》：子午卯酉年正月八白，辰戌丑未年五黄，寅申巳亥年二黑。 */
+function firstMonthStar(solarTermYear: number): number {
+  const yearBranch = SixtyCycleYear.fromYear(solarTermYear)
+    .getSixtyCycle()
+    .getEarthBranch()
+    .getName();
+  if ('子午卯酉'.includes(yearBranch)) return 8;
+  if ('辰戌丑未'.includes(yearBranch)) return 5;
+  return 2;
+}
+
 export function resolveYearFlyingStar(year: number): XuanKongPeriodStarPlate {
   if (!Number.isSafeInteger(year) || year < 1 || year > 9999) {
     throw new Error('流年必须是 1-9999 的整数年份。');
@@ -133,17 +159,37 @@ export function resolveMonthFlyingStar(
   // SolarDay 在交节当天整日归新月；日期输入约定用中国标准时间正午作参照。
   const referenceTime = SolarTime.fromYmdHms(year, month, resolvedDay, 12, 0, 0);
   const effectiveDay = onJieDay && referenceTime.isBefore(jieTime) ? solarDay.next(-1) : solarDay;
-  const sixtyMonth = effectiveDay.getSixtyCycleDay().getSixtyCycleMonth();
-  const centerStar = sixtyMonth.getNineStar().getIndex() + 1;
+  let centerStar: number;
+  let solarTermYear: number;
+  let monthBranch: string;
+  try {
+    const sixtyMonth = effectiveDay.getSixtyCycleDay().getSixtyCycleMonth();
+    centerStar = sixtyMonth.getNineStar().getIndex() + 1;
+    solarTermYear = sixtyMonth.getSixtyCycleYear().getYear();
+    monthBranch = sixtyMonth.getSixtyCycle().getEarthBranch().getName();
+  } catch (error) {
+    // tyme4ts 在公元 1 年初和 9999 年末查询相邻干支年时越界。
+    if (
+      !((year === 1 && month === 1) || (year === 9999 && month === 12)) ||
+      !(error instanceof Error) ||
+      !/^illegal (solar|sixty cycle) year: (0|10000)$/.test(error.message)
+    ) {
+      throw error;
+    }
+    const beforeJie = referenceTime.isBefore(jieTime);
+    const monthIndex = (month + 10 - (beforeJie ? 1 : 0) + 12) % 12;
+    solarTermYear = year === 1 ? 0 : 9999;
+    centerStar = ((firstMonthStar(solarTermYear) - 1 - monthIndex + 18) % 9) + 1;
+    monthBranch = MONTH_BRANCHES[monthIndex];
+  }
   assertStar(centerStar);
-  const monthBranch = sixtyMonth.getSixtyCycle().getEarthBranch().getName();
   const dateBasis =
     day === undefined
       ? `以${year}年${month}月${resolvedDay}日中国标准时间12:00代表该流月，取所属节气月`
       : `按${year}年${month}月${resolvedDay}日中国标准时间12:00所属节气月`;
   return {
     year,
-    solarTermYear: sixtyMonth.getSixtyCycleYear().getYear(),
+    solarTermYear,
     month,
     day: resolvedDay,
     centerStar,

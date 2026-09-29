@@ -42,6 +42,7 @@ import {
 } from '../../shared/random';
 import { attachResultMeta } from '../../shared/result';
 import { analyzeJinkoujueEvidence } from '../jinkoujue-evidence';
+import { formatJinkoujuePositionPromptText, getYuanStemOnBranch } from '../jinkoujue-utils';
 
 const METHOD_LABELS: Record<JinkoujueDivinationMethod, string> = {
   time: '时间起课',
@@ -123,20 +124,6 @@ const JINKOU_GUI_SHEN_ATTRIBUTES: Record<
   天后: { stem: '癸', branch: '亥', element: '水', yinYang: '阴' },
 };
 
-/** 五子元遁：甲己还加甲，乙庚丙作初，丙辛从戊起，丁壬庚子居，戊癸何方发，壬子是真途 */
-const WUZI_YUAN_STEM: Record<string, string> = {
-  甲: '甲',
-  己: '甲',
-  乙: '丙',
-  庚: '丙',
-  丙: '戊',
-  辛: '戊',
-  丁: '庚',
-  壬: '庚',
-  戊: '壬',
-  癸: '壬',
-};
-
 const POSITION_ROLES: Record<JinkoujuePositionName, string> = {
   地分: '四象中的田宅、子孙、奴仆、鞍马与六畜位',
   将神: '四象中的己身、妻财、亲戚与内位',
@@ -193,19 +180,6 @@ function getMonthLeaderByZhongqi(timestamp: number) {
     throw new Error(`找不到中气 "${activeZhongqi}" 对应的金口诀月将。`);
   }
   return monthLeader;
-}
-
-function getYuanStemOnBranch(dayStem: string, branch: string) {
-  const startStem = WUZI_YUAN_STEM[dayStem];
-  if (!startStem) {
-    throw new Error(`无法识别日干 "${dayStem}" 的五子元遁起干。`);
-  }
-  const startStemIndex = HEAVENLY_STEMS.indexOf(startStem as (typeof HEAVENLY_STEMS)[number]);
-  const branchIndex = getBranchIndex(branch);
-  if (startStemIndex < 0 || branchIndex < 0) {
-    throw new Error(`五子元遁计算失败：日干 ${dayStem}，地支 ${branch}`);
-  }
-  return HEAVENLY_STEMS[(startStemIndex + branchIndex) % HEAVENLY_STEMS.length];
 }
 
 function getJinkouNoblemanBranch(dayStem: string, dayNight: '昼占' | '夜占') {
@@ -321,16 +295,12 @@ function buildPosition(params: {
     isVoid,
     support,
     constraints,
-    promptText: [
-      `${params.name}${params.stem || ''}${params.branch}`,
-      params.god ? `乘${params.god}` : '',
-      `${params.yinYang}${params.element}（按${params.elementBasis}）`,
-      stemElement && params.elementBasis !== '人元干' ? `遁干${params.stem}属${stemElement}` : '',
-      `月令${seasonState}`,
-      params.elementBasis === '人元干' ? '' : isVoid ? '旬空' : '不空',
-    ]
-      .filter(Boolean)
-      .join('；'),
+    promptText: formatJinkoujuePositionPromptText({
+      ...params,
+      stemElement,
+      seasonState,
+      isVoid,
+    }),
   };
 }
 

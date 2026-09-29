@@ -32,7 +32,12 @@ import type { RandomOptions, RandomTrace } from '../../shared/random';
 import { createRandomContext, hasRandomOptions, randomInt } from '../../shared/random';
 import { attachResultMeta, MingyuCoreError } from '../../shared/result';
 import { analyzeLiuyaoEvidence } from '../liuyao-evidence';
-import type { LiuyaoChangeRelation, LiuyaoData } from '../../types/divination';
+import {
+  getLiuyaoChangeDirection,
+  getLiuyaoChangeRelation,
+  getLiuyaoChangeRelations,
+} from '../liuyao-change';
+import type { LiuyaoData } from '../../types/divination';
 import {
   isSheng,
   isKe,
@@ -46,6 +51,8 @@ import {
   CHANGSHENG_ORDER,
   SANHE_GROUPS,
 } from '../../ganzhi';
+
+export { getLiuyaoChangeDirection, getLiuyaoChangeRelation, getLiuyaoChangeRelations };
 
 /**
  * 五行入墓支（《卜筮正宗》卷三《墓库章》、《增删卜易·入墓》定例）：
@@ -120,83 +127,6 @@ function checkSanheWithTrigger(
 
 // 六合月日暗助检测（已在 yaosDetail 中通过月令旺衰、日冲与动静状态实现暗动判定）
 
-/**
- * 回头生克冲：动爻变出之爻对动爻本身的关系。
- * - 回头生：变爻生动爻，如木爻动化水爻
- * - 回头克：变爻克动爻，如木爻动化金爻
- * - 回头冲：变爻冲动爻（六冲）
- * - 化空：变爻落旬空
- * - 化进/化退：同五行递进退（由 getLiuyaoChangeDirection 判定）
- * - 比和：同五行同比和
- * - 化泄：动爻生变爻，本爻之气外泄
- * - 化耗：动爻克变爻，本爻用力而耗
- */
-const VALID_LIUYAO_WUXING = new Set(Object.keys(wuxing));
-
-export function getLiuyaoChangeRelation(
-  originalWuxing: string,
-  changedWuxing: string,
-  originalBranch: string,
-  changedBranch: string,
-  changedIsVoid: boolean,
-): LiuyaoChangeRelation {
-  const relations = getLiuyaoChangeRelations(
-    originalWuxing,
-    changedWuxing,
-    originalBranch,
-    changedBranch,
-    changedIsVoid,
-  );
-  if (changedIsVoid) return '化空';
-  const relation = relations[0];
-  if (!relation) {
-    throw new Error(`动变五行关系无法判定：${originalWuxing}→${changedWuxing}`);
-  }
-  return relation;
-}
-
-/**
- * 返回动变条件的完整并见列表。
- * 《增删卜易》分别论回头生克冲、化空、进退等条件；化空描述变爻旬空，
- * 不会抹掉变爻对本爻原有的生、克、冲或比泄耗关系。卷二《六冲章》又以
- * “酉金化卯冲世而不克世”明确区分冲与克，故相冲和五行关系也分别保存。
- */
-export function getLiuyaoChangeRelations(
-  originalWuxing: string,
-  changedWuxing: string,
-  originalBranch: string,
-  changedBranch: string,
-  changedIsVoid: boolean,
-): LiuyaoChangeRelation[] {
-  if (!VALID_LIUYAO_WUXING.has(originalWuxing) || !VALID_LIUYAO_WUXING.has(changedWuxing)) {
-    throw new Error(`六爻动变五行无效：${originalWuxing || '空'}→${changedWuxing || '空'}`);
-  }
-  if (!BRANCH_ORDER.includes(originalBranch) || !BRANCH_ORDER.includes(changedBranch)) {
-    throw new Error(`六爻动变地支无效：${originalBranch || '空'}→${changedBranch || '空'}`);
-  }
-  if (typeof changedIsVoid !== 'boolean') {
-    throw new Error('六爻变爻旬空标记必须是布尔值');
-  }
-  const wuxingRelation: LiuyaoChangeRelation = isSheng(changedWuxing, originalWuxing)
-    ? '回头生'
-    : isKe(changedWuxing, originalWuxing)
-      ? '回头克'
-      : originalWuxing === changedWuxing
-        ? '比和'
-        : isSheng(originalWuxing, changedWuxing)
-          ? '化泄'
-          : isKe(originalWuxing, changedWuxing)
-            ? '化耗'
-            : (() => {
-                throw new Error(`动变五行关系无法判定：${originalWuxing}→${changedWuxing}`);
-              })();
-  const relations: LiuyaoChangeRelation[] = isLiuchong(originalBranch, changedBranch)
-    ? ['回头冲', wuxingRelation]
-    : [wuxingRelation];
-  if (changedIsVoid) relations.push('化空');
-  return relations;
-}
-
 const SHI_YANG_TO_GUA_SHEN: Record<number, string> = {
   1: '子',
   2: '丑',
@@ -239,43 +169,6 @@ function isDayClash(branch: string, dayBranch: string): boolean {
  */
 function isMonthBreak(branch: string, monthBranch: string): boolean {
   return isLiuchong(branch, monthBranch);
-}
-
-const LIUYAO_ADVANCING_CHANGE: Record<string, string> = {
-  亥: '子',
-  寅: '卯',
-  巳: '午',
-  申: '酉',
-  丑: '辰',
-  辰: '未',
-  未: '戌',
-};
-
-const LIUYAO_RETREATING_CHANGE: Record<string, string> = {
-  子: '亥',
-  卯: '寅',
-  午: '巳',
-  酉: '申',
-  辰: '丑',
-  未: '辰',
-  戌: '未',
-};
-
-/**
- * 判断化进神/退神。
- * 按《增删卜易》进神退神章明表取用，不按十二地支循环外推。
- */
-export function getLiuyaoChangeDirection(
-  originalBranch: string,
-  changedBranch: string,
-): '化进神' | '化退神' | null {
-  if (LIUYAO_ADVANCING_CHANGE[originalBranch] === changedBranch) {
-    return '化进神';
-  }
-  if (LIUYAO_RETREATING_CHANGE[originalBranch] === changedBranch) {
-    return '化退神';
-  }
-  return null;
 }
 
 export type LiuyaoHexagramRelation = '六合卦' | '六冲卦';

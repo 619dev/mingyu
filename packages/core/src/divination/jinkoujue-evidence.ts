@@ -10,7 +10,15 @@ import {
 import type { JinkoujueData, JinkoujueFourPosition, JinkoujueMovement } from '../types/divination';
 import { MingyuCoreError } from '../shared/result';
 import { getVoidBranches } from '../calendar/lunar';
-import { EARTHLY_BRANCHES, getSeasonState, isKe, isSheng } from '../ganzhi';
+import {
+  EARTHLY_BRANCHES,
+  getSeasonState,
+  getStemWuxing,
+  getStemYinYang,
+  isKe,
+  isSheng,
+} from '../ganzhi';
+import { formatJinkoujuePositionPromptText, getYuanStemOnBranch } from './jinkoujue-utils';
 
 export interface JinkoujuePositionFact {
   key: string;
@@ -201,6 +209,27 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
         : '金口诀地分与四位不一致，无法生成证据。',
     );
   }
+  const allPositions = [diFen, jiangShen, guiShen, renYuan];
+  const expectedHumanStem = getYuanStemOnBranch(data.ganzhi.day.charAt(0), diFen.branch);
+  const expectedHumanElement = getStemWuxing(expectedHumanStem);
+  if (
+    renYuan.elementBasis !== '人元干' ||
+    renYuan.stem !== expectedHumanStem ||
+    renYuan.stemElement !== expectedHumanElement ||
+    renYuan.element !== expectedHumanElement ||
+    renYuan.yinYang !== getStemYinYang(expectedHumanStem)
+  ) {
+    throw new Error('金口诀人元五子元遁与四位不一致，无法生成证据。');
+  }
+  if (
+    allPositions.some((position) =>
+      position.stem
+        ? position.stemElement !== getStemWuxing(position.stem)
+        : position.stemElement !== undefined,
+    )
+  ) {
+    throw new Error('金口诀四位遁干五行与结构化字段不一致，无法生成证据。');
+  }
   const monthLeaderIndex = EARTHLY_BRANCHES.indexOf(
     data.monthLeader as (typeof EARTHLY_BRANCHES)[number],
   );
@@ -231,7 +260,6 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
   ) {
     throw new Error('金口诀四位关系与五行不一致，无法生成证据。');
   }
-  const allPositions = [diFen, jiangShen, guiShen, renYuan];
   const expectedXunKong = getVoidBranches(data.ganzhi.day);
   const monthBranch = data.ganzhi.month.charAt(1);
   if (
@@ -358,6 +386,13 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
     })
   ) {
     throw new Error('金口诀动爻与四位五行不一致，无法生成证据。');
+  }
+  if (
+    allPositions.some(
+      (position) => position.promptText !== formatJinkoujuePositionPromptText(position),
+    )
+  ) {
+    throw new Error('金口诀四位结构化字段与提示文本不一致，无法生成证据。');
   }
   const positions = [
     data.positions.diFen,

@@ -301,6 +301,19 @@ test('旧中国夏令时兼容模式应拒绝跳时缺口和未消歧重复时�
   );
 });
 
+test('中国历史夏令时校正不应套用到其他固定时区', () => {
+  assert.throws(
+    () =>
+      convertTrueSolarTime({
+        localDateTime: '1988-07-15T12:00:00',
+        longitude: -74.006,
+        timezone: -5,
+        applyChinaDst: true,
+      }),
+    /中国历史夏令时校正仅适用于东八区/,
+  );
+});
+
 test('统一出生真太阳时入口应处理公历、农历、跨日和时辰索引', () => {
   const solar = resolveTrueSolarBirthTime({
     dateType: 'solar',

@@ -603,6 +603,33 @@ test('曲直格依据已包含亥卯未木局与成立事实时不再另列格�
   }
 });
 
+test('寅卯辰曲直格只保留成格依据，不重复列路线裁决和藏干长段', () => {
+  const result = createBaziResult({ year: 1988, month: 3, day: 1, timeIndex: 0 });
+  assert.equal(result.analysis.mingGe.specialAdjudication?.route, '寅卯辰东方');
+  assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
+  assert.equal(formatBaziPatternConditions(result), '');
+  const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  for (const prompt of [
+    buildBaziPrompt({ result }),
+    buildBaziPromptForResult({ result }),
+    buildPromptFromConfig(
+      '请分析事业方向。',
+      { id: 'ai-career', prompt: '测试', scopeLabel: '事业' },
+      result,
+    ).user,
+    buildBaziCompatibilityPrompt({ result1: result, result2: other }),
+    getCompatibilityPrompt('请分析双方关系。', result, other).user,
+    buildBaziPrompt({ result, school: 'ziping' }),
+    buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+  ]) {
+    assert.match(prompt, /《渊海子平·神趣八法·类象》春生寅卯辰法条件成立/);
+    assert.match(prompt, /未见庚辛金及局外支冲破/);
+    assert.match(prompt, /火土分别按泄秀与财星论/);
+    assert.doesNotMatch(prompt, /【(?:第一人)?格局条件】|特殊格裁决：曲直格成立/);
+    assert.doesNotMatch(prompt, /木局成员藏干如实保留：|无半分庚辛之气|按张楠按语核局外支/);
+  }
+});
+
 test('从儿格在线流派资料只补充成格关系，不复述四柱中的透干与藏根', () => {
   const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
   for (const prompt of [

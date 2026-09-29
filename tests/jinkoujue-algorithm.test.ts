@@ -9,6 +9,7 @@ import {
 import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
 import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 import { formatJinkoujueJudgmentFacts } from '../packages/core/src/prompt/jinkoujue-facts.ts';
+import { formatJinkoujuePositionPromptText } from '../packages/core/src/divination/jinkoujue-utils.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
 
@@ -36,6 +37,33 @@ test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () =>
   const wrongUse = structuredClone(source);
   wrongUse.yinYangUse.usePosition = source.yinYangUse.usePosition === '贵神' ? '将神' : '贵神';
   assert.throws(() => analyzeJinkoujueEvidence(wrongUse), /阴阳发用与四位不一致/);
+});
+
+test('金口诀证据按五子元遁复核人元，并拒绝四位结构字段与提示文本错配', () => {
+  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const wrongHumanStem = structuredClone(source);
+  const alternateStem: Record<string, string> = {
+    甲: '乙',
+    乙: '甲',
+    丙: '丁',
+    丁: '丙',
+    戊: '己',
+    己: '戊',
+    庚: '辛',
+    辛: '庚',
+    壬: '癸',
+    癸: '壬',
+  };
+  const renYuan = wrongHumanStem.positions.renYuan;
+  renYuan.stem = alternateStem[renYuan.stem!];
+  renYuan.yinYang = STEMS.indexOf(renYuan.stem) % 2 === 0 ? '阳' : '阴';
+  renYuan.promptText = formatJinkoujuePositionPromptText(renYuan);
+  assert.throws(() => analyzeJinkoujueEvidence(wrongHumanStem), /人元五子元遁与四位不一致/);
+  assert.throws(() => formatJinkoujueJudgmentFacts(wrongHumanStem), /人元五子元遁与四位不一致/);
+
+  const stalePromptText = structuredClone(source);
+  stalePromptText.positions.diFen.promptText += '；错误地分信息';
+  assert.throws(() => analyzeJinkoujueEvidence(stalePromptText), /四位结构化字段与提示文本不一致/);
 });
 
 test('金口诀真太阳时跨雨水仍以实际占时定月将与月建', () => {

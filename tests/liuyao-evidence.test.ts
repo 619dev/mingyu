@@ -27,6 +27,35 @@ test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
   }
 });
 
+test('六爻证据拒绝被改写的本爻六亲、动变关系和进退神', () => {
+  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const mutations: Array<(data: typeof source) => void> = [
+    (data) => {
+      data.yaosDetail[2].sixRelative = '妻财';
+    },
+    (data) => {
+      data.yaosDetail[2].changeRelations = ['回头生'];
+    },
+    (data) => {
+      data.yaosDetail[2].changeDirection = '化进神';
+    },
+  ];
+
+  for (const [index, mutate] of mutations.entries()) {
+    const changed = structuredClone(source);
+    mutate(changed);
+    assert.throws(
+      () => analyzeLiuyaoEvidence(changed),
+      /纳甲、世应、动变或月日空破与盘面不一致/u,
+      `第 ${index + 1} 个六亲或动变事实错位样本应被拒绝`,
+    );
+    assert.throws(
+      () => formatEnhancedDivinationInfo('liuyao', changed),
+      /纳甲、世应、动变或月日空破与盘面不一致/u,
+    );
+  }
+});
+
 test('六爻证据与提示词拒绝可复算的纳甲世应、动变和月日空破错位', () => {
   const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
   const mutations: Array<(data: typeof source) => void> = [
@@ -127,13 +156,13 @@ test('六爻动墓和化墓不归入日辰关系', () => {
   assert.match(firstLine.promptText, /入动墓、动而化墓/u);
 });
 
-test('六爻主用神缺失时保留已命中辅证，并保持主取用缺口', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
-  data.yaosDetail = data.yaosDetail.map((line) => ({ ...line, sixRelative: '父母' }));
-  data.hiddenSpirits = [];
+test('六爻旧盘缺少伏神资料时保留用神缺口与已命中辅证', () => {
+  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: [7, 8, 8, 8, 8, 7] });
+  data.hiddenSpirits = undefined;
   const evidence = analyzeLiuyaoEvidence(data, { topic: 'shiye' });
   assert.equal(evidence.selectedCandidate, null);
   assert.equal(evidence.selectionFact.selectedCandidateKey, null);
+  assert.equal(evidence.hiddenSpiritCoverageFact.status, '字段缺失');
   assert.equal(evidence.candidates[0].status, '未匹配');
   assert.equal(evidence.candidates[1].status, '已匹配');
   assert.match(evidence.selectionFact.promptText, /事业用神未匹配；已有辅证：文书辅证见/);

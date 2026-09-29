@@ -23,6 +23,11 @@ import {
   palaces,
 } from './divination-data';
 import { hexagramsData } from './hexagram-data';
+import {
+  getLiuyaoChangeDirection,
+  getLiuyaoChangeRelation,
+  getLiuyaoChangeRelations,
+} from './liuyao-change';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import { MingyuCoreError } from '../shared/result';
 import { generateYarrow } from './algorithms/yarrow';
@@ -470,6 +475,32 @@ function branchOf(ganzhi: string) {
   return ganzhi.slice(1, 2);
 }
 
+function getExpectedChangeFacts(
+  originalBranch: string,
+  changedBranch: string,
+  changedIsVoid: boolean,
+) {
+  const originalWuxing = getBranchWuxing(originalBranch);
+  const changedWuxing = getBranchWuxing(changedBranch);
+  return {
+    legacyRelation: getLiuyaoChangeRelation(
+      originalWuxing,
+      changedWuxing,
+      originalBranch,
+      changedBranch,
+      changedIsVoid,
+    ),
+    relations: getLiuyaoChangeRelations(
+      originalWuxing,
+      changedWuxing,
+      originalBranch,
+      changedBranch,
+      changedIsVoid,
+    ),
+    direction: getLiuyaoChangeDirection(originalBranch, changedBranch),
+  };
+}
+
 function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBranch: string) {
   if (
     !Array.isArray(data.yaoArray) ||
@@ -550,6 +581,32 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
     if (!Number.isInteger(index) || index < 0 || index >= 6) continue;
     const raw = data.yaoArray[index];
     const changing = raw === 6 || raw === 9;
+    const expectedLiuqin =
+      liuqinRelations[palace.wuxing as keyof typeof liuqinRelations][
+        getBranchWuxing(
+          mainNaJia[index],
+        ) as keyof (typeof liuqinRelations)[keyof typeof liuqinRelations]
+      ];
+    const expectedChangedBranch = changing ? changedNaJia?.[index] : undefined;
+    const expectedChangeFacts = expectedChangedBranch
+      ? getExpectedChangeFacts(
+          mainNaJia[index],
+          expectedChangedBranch,
+          expectedVoids.includes(expectedChangedBranch),
+        )
+      : null;
+    const changeFactsMatch = expectedChangeFacts
+      ? (yao.changeRelation === undefined ||
+          yao.changeRelation === expectedChangeFacts.legacyRelation) &&
+        (yao.changeRelations === undefined ||
+          (yao.changeRelations.length === expectedChangeFacts.relations.length &&
+            expectedChangeFacts.relations.every(
+              (relation, relationIndex) => yao.changeRelations?.[relationIndex] === relation,
+            ))) &&
+        (yao.changeDirection === undefined || yao.changeDirection === expectedChangeFacts.direction)
+      : (yao.changeRelation === undefined || yao.changeRelation === null) &&
+        (yao.changeRelations === undefined || yao.changeRelations.length === 0) &&
+        (yao.changeDirection === undefined || yao.changeDirection === null);
     const expectedSeason = getSeasonState(getBranchWuxing(yao.najiaDizhi), monthBranch);
     const dayClash = isLiuchong(yao.najiaDizhi, dayBranch);
     const hiddenMove =
@@ -561,6 +618,8 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
       (!changing && yao.changedYao != null) ||
       yao.najiaDizhi !== mainNaJia[index] ||
       yao.wuxing !== getBranchWuxing(yao.najiaDizhi) ||
+      yao.sixRelative !== expectedLiuqin ||
+      !changeFactsMatch ||
       yao.isWorld !== (yao.position === worldPosition) ||
       yao.isResponse !== (yao.position === responsePosition) ||
       yao.isVoid !== expectedVoids.includes(yao.najiaDizhi) ||

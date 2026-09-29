@@ -183,7 +183,10 @@ export function formatBaziPatternConditions(result: BaziChartResult): string {
         (specialAdjudication.kind === '曲直格' &&
           specialAdjudication.route === '亥卯未木局' &&
           basis.includes('亥卯未曲直法') &&
-          basis.includes('木局'));
+          basis.includes('木局')) ||
+        (specialAdjudication.kind === '曲直格' &&
+          specialAdjudication.route === '寅卯辰东方' &&
+          basis.includes('春生寅卯辰法条件成立'));
       const decisionAlreadySummarized =
         specialAdjudication.status === '成立' &&
         pattern.pattern === specialAdjudication.kind &&

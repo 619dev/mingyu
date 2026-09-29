@@ -368,16 +368,6 @@ function sampleStepDays(scope: AstrolabePeriodScopeMode) {
   return 1;
 }
 
-function houseForLongitude(cusps: number[], longitude: number) {
-  for (let index = 0; index < cusps.length; index += 1) {
-    const current = cusps[index];
-    const next = cusps[(index + 1) % cusps.length];
-    const span = normalizeLongitude(next - current);
-    if (normalizeLongitude(longitude - current) < span) return index + 1;
-  }
-  return 0;
-}
-
 function hasValidHouseCusps(cusps: number[]) {
   if (cusps.length !== 12 || !cusps.every(Number.isFinite)) return false;
   let totalArc = 0;
@@ -1220,8 +1210,7 @@ function buildAstrolabePeriodEventsInternal(
         const exactAt = (jd: number) => wrap180(cachedLongitudeOf(body, jd) - cusp);
         for (const jd of crossingsFromSamples(bodySamples, residualAt, exactAt)) {
           const speed = cachedPositionOf(body, jd).speed;
-          const arrivedHouse =
-            speed < 0 ? houseForLongitude(cusps, normalizeLongitude(cusp - 0.01)) : house;
+          const arrivedHouse = speed < 0 ? ((house + 10) % 12) + 1 : house;
           const verb = speed < 0 ? '退入' : '进入';
           pushEvent({
             kind: '换宫',

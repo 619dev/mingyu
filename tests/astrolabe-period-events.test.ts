@@ -364,6 +364,30 @@ test('重复或乱序宫头不能生成周期换宫事实', () => {
   );
 });
 
+test('逆行越过狭窄宫位的宫头时进入紧邻的前一宫', () => {
+  const source = buildAstrolabePeriodContext(astrolabeData);
+  const context = validateAstrolabePeriodContext({
+    ...source,
+    timezone: 0,
+    houseCusps: [23.595, 23.6, 53.6, 83.6, 113.6, 143.6, 173.6, 203.6, 233.6, 263.6, 293.6, 323.6],
+  });
+  const target = { year: 2024, month: 4, day: 10 };
+  const events = buildAstrolabePeriodEventsFromContext(context, 'daily', target, {
+    batch: { start: target, endExclusive: { year: 2024, month: 4, day: 11 } },
+  }).events;
+  const crossing = events.find(
+    (event) => event.kind === '换宫' && event.movingPoint === '水星' && event.house === 1,
+  );
+
+  assert.ok(crossing);
+  assert.equal(crossing.promptText, '水星退入本命第1宫');
+  const nextCrossing = events.find(
+    (event) => event.kind === '换宫' && event.movingPoint === '水星' && event.house === 12,
+  );
+  assert.ok(nextCrossing);
+  assert.ok(crossing.julianDate < nextCrossing.julianDate);
+});
+
 test('纽约夏令时流年批次的结果时区取父范围起点', () => {
   const newYorkData = generateAstrolabe({
     name: '本人',

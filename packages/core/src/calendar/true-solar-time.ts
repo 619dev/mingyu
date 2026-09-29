@@ -706,6 +706,9 @@ export function convertTrueSolarTime(
     throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
   }
   const requestedChinaDst = input.applyChinaDst ?? false;
+  if (requestedChinaDst && timezone !== DEFAULT_CHINA_TIMEZONE_HOURS) {
+    throw new Error('中国历史夏令时校正仅适用于东八区钟表时间。');
+  }
   const chinaDstCheck = requestedChinaDst
     ? checkChinaDst(
         clockTime.year,

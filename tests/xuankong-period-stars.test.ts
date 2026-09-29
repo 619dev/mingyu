@@ -217,3 +217,26 @@ test('低年份与年份上界流月叠盘保留实际节气年', () => {
     }
   }
 });
+
+test('流月年份两端跨节令时仍可排盘，不依赖越界的相邻干支月', () => {
+  const beforeXiaohan = resolveMonthFlyingStar(1, 1, 1);
+  assert.equal(beforeXiaohan.solarTermYear, 0);
+  assert.equal(beforeXiaohan.centerStar, 1);
+  assert.match(beforeXiaohan.calendarNote, /子月/);
+
+  const lateYear = generateXuanKong({
+    year: 2024,
+    sitMountain: '子',
+    flowYear: 9999,
+    flowMonth: 12,
+    flowDay: 31,
+  });
+  assert.equal(lateYear.flowStars?.monthPlate?.solarTermYear, 9999);
+  assert.equal(lateYear.flowStars?.monthPlate?.centerStar, 1);
+  assert.equal(lateYear.plates.month?.[4], 1);
+
+  // 中段年份仍沿用历法库的节气月，不让两端修复改变历史年份排盘。
+  const historical = resolveMonthFlyingStar(680, 2, 1);
+  assert.equal(historical.solarTermYear, 679);
+  assert.equal(historical.centerStar, 6);
+});
