@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
+import { formatPatternBasisForPrompt } from '../packages/core/src/bazi/baziAnalysisFormatter';
 import {
   buildZiweiChartInput,
   calculateZiweiChartForScopes,
@@ -326,10 +327,10 @@ test('八字紫微合参流派资料不重复通用八字盘面已列出的格�
     topic: 'career',
     baziSchools: ['ziping', 'mangpai'],
   }).prompt;
-  assert.equal(baziOnlyPrompt.split(basis).length - 1, 1);
+  assert.equal(baziOnlyPrompt.split(formatPatternBasisForPrompt(basis)).length - 1, 1);
   assert.doesNotMatch(baziOnlyPrompt, /特殊格条件：|特殊格裁决：从儿格成立/);
   for (const condition of satisfied) {
-    assert.equal(baziOnlyPrompt.split(condition).length - 1, 1);
+    assert.equal(baziOnlyPrompt.split(formatPatternBasisForPrompt(condition)).length - 1, 1);
   }
 
   const ziweiResult = await getSampleZiweiResult();
@@ -341,10 +342,10 @@ test('八字紫微合参流派资料不重复通用八字盘面已列出的格�
     baziSchools: ['ziping', 'mangpai'],
   });
 
-  assert.equal(prompt.split(basis).length - 1, 1);
+  assert.equal(prompt.split(formatPatternBasisForPrompt(basis)).length - 1, 1);
   assert.doesNotMatch(prompt, /特殊格条件：|特殊格裁决：从儿格成立/);
   for (const condition of satisfied) {
-    assert.equal(prompt.split(condition).length - 1, 1);
+    assert.equal(prompt.split(formatPatternBasisForPrompt(condition)).length - 1, 1);
   }
 });
 

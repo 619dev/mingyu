@@ -132,7 +132,8 @@ export interface BaziWarningFact {
   sources: string[];
   limitation:
     | '边界说明只记录当前输入下已经采用的时间口径与唯一定盘结果；不另起第二套盘面，也不改写已确定的四柱'
-    | '节气资料不完整只表示边界检查覆盖不足，交节距离仍待核验';
+    | '节气资料不完整只表示边界检查覆盖不足，交节距离仍待核验'
+    | '出生钟表时刻仍待核验，当前时柱仅对应本次输入口径';
 }
 
 export interface BaziWarningSummaryFact {
@@ -144,6 +145,7 @@ export interface BaziWarningSummaryFact {
   limitation:
     | '预警汇总只说明当前盘面是否贴近交界时刻，不改变已经按输入确定的时柱'
     | '节气资料不完整时交节距离待核验，时柱仍按当前输入确定'
+    | '出生时间原始记录待核验，当前时柱仅对应本次输入口径'
     | '缺时辰说明用于标注待补资料，候选场景分别记录，完整命盘尚未确定';
 }
 

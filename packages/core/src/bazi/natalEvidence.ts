@@ -533,8 +533,8 @@ function buildCalculationSteps(args: {
   ).length;
   const missingPillarFactCount = pillarFacts.filter((item) => item.status === '资料缺口').length;
   const missingAnalysisCount = analysisFacts.filter((item) => item.status === '资料缺口').length;
-  const incompleteBoundaryCount = data.warningFacts.filter(
-    (item) => item.status === '资料不完整',
+  const unresolvedBoundaryCount = data.warningFacts.filter(
+    (item) => item.status === '资料不完整' || item.status === '需核验原始记录',
   ).length;
   const hiddenTenGodMismatchCount = pillarFacts.filter(
     (item) => item.hiddenStems.length > 0 && item.hiddenTenGods.length !== item.hiddenStems.length,
@@ -544,7 +544,7 @@ function buildCalculationSteps(args: {
     {
       key: 'bazi:natal:calculation:birth-time',
       stage: '出生时间定盘',
-      status: data.isThreePillars ? '存在资料缺口' : '已计算',
+      status: data.isThreePillars || unresolvedBoundaryCount ? '存在资料缺口' : '已计算',
       inputs: {
         solarDate: `${data.solarDate.year}-${data.solarDate.month}-${data.solarDate.day}`,
         birthTime: `${data.timeInfo.name}（${data.timeInfo.range}）`,
@@ -630,7 +630,7 @@ function buildCalculationSteps(args: {
       key: 'bazi:natal:calculation:summary',
       stage: '证据汇总',
       status:
-        missingPillarFactCount || missingAnalysisCount || incompleteBoundaryCount
+        missingPillarFactCount || missingAnalysisCount || unresolvedBoundaryCount
           ? '存在资料缺口'
           : '已计算',
       inputs: {
@@ -640,10 +640,10 @@ function buildCalculationSteps(args: {
         warningFactCount: data.warningFacts.length,
       },
       result: {
-        missingFactCount: missingPillarFactCount + missingAnalysisCount + incompleteBoundaryCount,
+        missingFactCount: missingPillarFactCount + missingAnalysisCount + unresolvedBoundaryCount,
       },
       dependsOnStepKeys: ['bazi:natal:calculation:core-analysis'],
-      promptText: `汇总四柱${pillarFacts.length}项、核心判断${analysisFacts.length}项、柱间关系${relationFacts.length}项、排盘边界${data.warningFacts.length}项，资料缺口${missingPillarFactCount + missingAnalysisCount + incompleteBoundaryCount}项`,
+      promptText: `汇总四柱${pillarFacts.length}项、核心判断${analysisFacts.length}项、柱间关系${relationFacts.length}项、排盘边界${data.warningFacts.length}项，资料缺口${missingPillarFactCount + missingAnalysisCount + unresolvedBoundaryCount}项`,
       sources: ['出生时间、四柱、派生资料、核心判断与排盘边界逐项汇总'],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -659,7 +659,9 @@ function buildCounterEvidenceFacts(args: {
   const { data, pillarFacts, analysisFacts, relationFacts } = args;
   const missingPillars = pillarFacts.filter((item) => item.status === '资料缺口');
   const missingAnalysis = analysisFacts.filter((item) => item.status === '资料缺口');
-  const incompleteBoundaryCheck = data.warningFacts.some((item) => item.status === '资料不完整');
+  const unresolvedBoundaryCheck = data.warningFacts.some(
+    (item) => item.status === '资料不完整' || item.status === '需核验原始记录',
+  );
 
   return [
     {
@@ -708,7 +710,7 @@ function buildCounterEvidenceFacts(args: {
       key: 'bazi:natal:counter:boundary-coverage',
       type: '排盘边界覆盖',
       status:
-        data.isThreePillars || incompleteBoundaryCheck
+        data.isThreePillars || unresolvedBoundaryCheck
           ? '资料不足'
           : data.warningFacts.length
             ? '存在边界提示'
@@ -720,7 +722,7 @@ function buildCounterEvidenceFacts(args: {
       ],
       promptText: data.isThreePillars
         ? '出生时分待补充，交节与子初换日范围尚未确定'
-        : incompleteBoundaryCheck
+        : unresolvedBoundaryCheck
           ? data.warningSummaryFact.promptText
           : data.warningFacts.length
             ? `${data.warningSummaryFact.promptText}；已按明确输入生成当前唯一命盘`
@@ -938,13 +940,13 @@ export function analyzeBaziNatalEvidence(data: BaziChartResult): BaziNatalEviden
     relationFacts,
     counterEvidenceFacts,
   });
-  const incompleteBoundaryCount = data.warningFacts.filter(
-    (item) => item.status === '资料不完整',
+  const unresolvedBoundaryCount = data.warningFacts.filter(
+    (item) => item.status === '资料不完整' || item.status === '需核验原始记录',
   ).length;
   const missingFactCount =
     pillarFacts.filter((item) => item.status === '资料缺口').length +
     analysisFacts.filter((item) => item.status === '资料缺口').length +
-    incompleteBoundaryCount;
+    unresolvedBoundaryCount;
   const summaryFact: BaziNatalSummaryFact = {
     key: 'bazi:natal:evidence-summary',
     status: missingFactCount ? '证据链有缺口' : '证据链完整',

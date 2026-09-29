@@ -456,6 +456,15 @@ export function normalizeBirthProfile(profile: BirthProfile): NormalizedBirthPro
     second,
     isLeapMonth: profile.isLeapMonth,
   });
+  // 普通钟表模式也会把该时间交给八字、紫微等入口；先确认 IANA 当地时刻
+  // 确实存在且已消歧，避免它们接受星盘和七政会拒绝的虚构或重复出生时刻。
+  if (resolvedLocation?.timeZoneId && timeInput.inputMode === 'precise-clock-time') {
+    resolveCivilTime({
+      ...solarClockTime,
+      timezone: resolvedLocation.timezone,
+      timeZoneId: resolvedLocation.timeZoneId,
+    });
+  }
   // 仅精准钟表时间可还原历史夏令时的唯一瞬时；传统时辰没有可校正的分钟。
   const applyChinaDst =
     profile.applyChinaDst === true && timeInput.inputMode === 'precise-clock-time';

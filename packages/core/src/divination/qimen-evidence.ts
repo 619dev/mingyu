@@ -1486,7 +1486,17 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
           : item.traditionalTone === '混合'
             ? '吉凶并见'
             : '中性格局';
-    const basis = formatQimenPatternBasis(item);
+    let basis = formatQimenPatternBasis(item).replaceAll(`；乃${item.name}之格`, '');
+    const basePattern = item.name.match(/^([日月星]奇得使)临吉门$/u)?.[1];
+    if (
+      basePattern &&
+      classicFactsForPrompt.some(
+        (fact) =>
+          fact.name === basePattern && item.palaces.some((gong) => fact.palaces.includes(gong)),
+      )
+    ) {
+      basis = basis.replace(`${basePattern}又临吉门`, '同宫临');
+    }
     return `${tone}：${item.name}${palaceNames.length ? `（${palaceNames.join('、')}）` : ''}${basis !== item.name ? `；${basis}` : ''}`;
   });
   const palaceLines = [...data.jiuGongGe]

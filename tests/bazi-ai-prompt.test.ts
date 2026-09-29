@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { buildPromptFromConfig, getCompatibilityPrompt } from '../src/utils/ai/aiPrompts';
 import { formatBaziCompatibilityFacts } from '../src/lib/bazi-compatibility-facts';
 import { baziCalculator } from '@core/bazi/baziCalculator';
-import { formatBaziForPrompt as formatBaziForPromptLocal } from '@core/bazi/baziAnalysisFormatter';
+import {
+  formatBaziForPrompt as formatBaziForPromptLocal,
+  formatPatternBasisForPrompt,
+} from '@core/bazi/baziAnalysisFormatter';
 import { buildFortuneSelectionContext } from '@core/bazi/fortuneSelection';
 import { generateAnalysisDimensionHints } from '@core/bazi/baziEnhancement';
 import { formatBaziForPrompt as formatBaziForPromptCore } from '../packages/core/src/bazi/baziAnalysisFormatter';
@@ -380,17 +383,20 @@ test('从儿格流派资料不重复五行流向与已列的财星明透条件',
   const independentSchoolFacts = formatBaziSchoolPrompt(result, 'ziping');
   assert.match(independentSchoolFacts, /从儿五行流向：食伤土生财金/);
   assert.doesNotMatch(independentSchoolFacts, /^财星明透：/m);
-  assert.equal(independentSchoolFacts.split(basis).length - 1, 1);
+  assert.equal(independentSchoolFacts.split(formatPatternBasisForPrompt(basis)).length - 1, 1);
   assert.doesNotMatch(independentSchoolFacts, /特殊格条件：|特殊格裁决：从儿格成立/);
   for (const condition of satisfied) {
-    assert.equal(independentSchoolFacts.split(condition).length - 1, 1);
+    assert.equal(
+      independentSchoolFacts.split(formatPatternBasisForPrompt(condition)).length - 1,
+      1,
+    );
   }
 
   const multiSchoolFacts = formatBaziSchoolsPrompt(result, ['ziping', 'mangpai']);
-  assert.equal(multiSchoolFacts.split(basis).length - 1, 1);
+  assert.equal(multiSchoolFacts.split(formatPatternBasisForPrompt(basis)).length - 1, 1);
   assert.doesNotMatch(multiSchoolFacts, /特殊格条件：|特殊格裁决：从儿格成立/);
   for (const condition of satisfied) {
-    assert.equal(multiSchoolFacts.split(condition).length - 1, 1);
+    assert.equal(multiSchoolFacts.split(formatPatternBasisForPrompt(condition)).length - 1, 1);
   }
 
   const partiallySummarized = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
@@ -402,7 +408,83 @@ test('从儿格流派资料不重复五行流向与已列的财星明透条件',
   const partialFacts = formatBaziSchoolPrompt(partiallySummarized, 'ziping');
   assert.equal(partialFacts.match(/特殊格条件：/g)?.length, 1);
   assert.match(partialFacts, new RegExp(omittedCondition));
-  assert.equal(partialFacts.split(satisfied[0]).length - 1, 1);
+  assert.equal(partialFacts.split(formatPatternBasisForPrompt(satisfied[0])).length - 1, 1);
+});
+
+test('从儿格已列顺局作用时不在特殊格条件重复财星制印', () => {
+  const result = createBaziResult({ year: 1994, month: 2, day: 15, timeIndex: 6 });
+  const action = '月干丙财星有可用根，制日柱申藏庚偏印，印夺食有救';
+  assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
+  assert.ok(result.analysis.mingGe.specialAdjudication?.satisfied.includes(action));
+  assert.ok(result.analysis.mingGe.specialAdjudication?.functionalResolutions.includes(action));
+
+  for (const prompt of [
+    formatBaziSchoolPrompt(result, 'ziping'),
+    buildBaziPrompt({ result, school: 'ziping' }),
+    buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+  ]) {
+    assert.equal(prompt.split(action).length - 1, 1);
+    assert.doesNotMatch(prompt, new RegExp(`特殊格条件：[^\\n]*${action}`));
+  }
+});
+
+test('从儿格提示词保留成格依据而省略分日司权旁注', () => {
+  const result = createBaziResult({ year: 1980, month: 10, day: 3, timeIndex: 6 });
+  assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
+  assert.match(result.analysis.mingGe.basis ?? '', /分日司权辛为食神仅作当日月气事实/);
+
+  for (const prompt of [
+    buildBaziPrompt({ result }),
+    buildBaziPrompt({ result, school: 'ziping' }),
+    buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+    formatBaziSchoolPrompt(result, 'ziping'),
+  ]) {
+    assert.match(prompt, /月支酉本气辛为食神，食伤在月建当权/);
+    assert.match(prompt, /年支申藏壬生禄为可用结构财气，承接食伤所生/);
+    assert.doesNotMatch(prompt, /仅作当日月气事实/);
+  }
+});
+
+test('普通格提示词只保留所取格局依据，不展开从儿或曲直候选的多条反证', () => {
+  for (const input of [
+    { year: 1980, month: 1, day: 15, timeIndex: 6 },
+    { year: 1980, month: 2, day: 3, timeIndex: 6 },
+    { year: 1981, month: 6, day: 15, timeIndex: 6 },
+    { year: 2000, month: 2, day: 27, timeIndex: 6 },
+  ]) {
+    const result = createBaziResult(input);
+    const basis = result.analysis.mingGe.basis ?? '';
+    assert.match(basis, /(?:从儿|曲直)结构未立：/);
+    assert.ok(
+      buildBaziPrompt({ result }).includes(
+        `格局: ${result.analysis.mingGe.pattern}（${formatPatternBasisForPrompt(basis)}）`,
+      ),
+    );
+    for (const prompt of [
+      buildBaziPrompt({ result }),
+      buildBaziPrompt({ result, school: 'ziping' }),
+      formatBaziSchoolPrompt(result, 'ziping'),
+    ]) {
+      assert.match(prompt, /(?:格局: |格局与成败：)[^\n]*格/u);
+      assert.doesNotMatch(prompt, /从儿结构未立：|曲直结构未立：/);
+    }
+  }
+});
+
+test('曲直格提示词保留成立依据，省略本盘重复藏干与内部核验长规则', () => {
+  const result = createBaziResult({ year: 2023, month: 12, day: 3, timeIndex: 6 });
+  assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
+  assert.match(result.analysis.mingGe.basis ?? '', /无半分庚辛之气/);
+  for (const prompt of [
+    buildBaziPrompt({ result }),
+    buildBaziPrompt({ result, school: 'ziping' }),
+    buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+    formatBaziSchoolPrompt(result, 'ziping'),
+  ]) {
+    assert.match(prompt, /《三命通会》卷六亥卯未曲直法/);
+    assert.match(prompt, /未见庚辛金及局外支冲破/);
+    assert.doesNotMatch(prompt, /木局成员藏干如实保留：|无半分庚辛之气|按张楠按语核局外支/);
+  }
 });
 
 test('曲直格依据已包含亥卯未木局与成立事实时不再另列格局条件', () => {
@@ -460,8 +542,9 @@ test('从儿格在线流派资料只补充成格关系，不复述四柱中的�
 test('流派提示词不重复曲直格依据中的成立条件、透干和成员藏干', () => {
   const result = createBaziResult({ year: 1980, month: 1, day: 3, timeIndex: 3 });
   const independent = formatBaziSchoolPrompt(result, 'ziping');
-  assert.equal(independent.match(/亥藏壬、甲；卯藏乙；未藏己、丁、乙/g)?.length, 1);
+  assert.doesNotMatch(independent, /亥藏壬、甲；卯藏乙；未藏己、丁、乙/);
   assert.doesNotMatch(independent, /^成员支藏干保留：/m);
+  assert.doesNotMatch(independent, /^特殊格条件：/m);
   for (const prompt of [
     buildBaziPrompt({ result, school: 'ziping' }),
     buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),

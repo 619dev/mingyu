@@ -10,6 +10,17 @@ import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divinati
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 import { getDunJiaStem } from '../packages/core/src/divination/algorithms/qimen/helpers/palace-utils';
 
+test('奇门提示词按当前盘面重算格局与宫位证据', () => {
+  const data = structuredClone(generateQimen(new Date('2026-05-19T10:30:00+08:00')));
+  assert.ok(data.evidenceAnalysis?.patternFacts.length);
+  data.evidenceAnalysis.patternFacts[0].name = '伪造的旧格局';
+  data.evidenceAnalysis.palaceFacts[0].promptText = '伪造的旧宫位';
+
+  const prompt = formatEnhancedDivinationInfo('qimen', data);
+  assert.doesNotMatch(prompt, /伪造的旧格局|伪造的旧宫位/u);
+  assert.match(prompt, /盘面命中格局：/u);
+});
+
 test('奇门原生提示词绑定符使宫生克、天地盘时干和取用宫干冲', () => {
   const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
   const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);

@@ -19,7 +19,7 @@ import {
   analyzeXiaoliurenEvidence,
   formatXiaoliurenCalendarBoundary,
 } from '../divination/xiaoliuren-evidence';
-import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
+import { analyzeTarotEvidence } from '../divination/tarot-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -237,11 +237,11 @@ function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: Liu
 function formatLiuyaoSpecialAdvice(data: LiuyaoData) {
   if (!data.specialPattern) return '';
   const normalized: Partial<Record<NonNullable<LiuyaoData['specialPattern']>, string>> = {
-    静卦: '六爻安静；以本卦卦意、世应和用神为主',
-    独静卦: '五爻发动、一爻独静；以独静爻为关键并参看变卦趋势',
-    全动卦: '六爻全动；整体参看本卦与变卦气势，并以用神旺衰为主',
-    乾卦用九: '乾卦六爻皆动；用九“见群龙无首，吉”为主并参看变卦总势',
-    坤卦用六: '坤卦六爻皆动；用六“利永贞”为主并参看变卦总势',
+    静卦: '以本卦卦意、世应和用神为主',
+    独静卦: '以独静爻为关键并参看变卦趋势',
+    全动卦: '整体参看本卦与变卦气势，并以用神旺衰为主',
+    乾卦用九: '“见群龙无首，吉”；并参看变卦总势',
+    坤卦用六: '“利永贞”；并参看变卦总势',
   };
   return normalized[data.specialPattern] || data.specialAdvice || '';
 }
@@ -815,9 +815,7 @@ const qimenComboKindsByIntent = {
 } as const;
 
 function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: SupplementaryInfo) {
-  const evidenceAnalysis = data.evidenceAnalysis?.palaceFacts
-    ? data.evidenceAnalysis
-    : analyzeQimenEvidence(data);
+  const evidenceAnalysis = analyzeQimenEvidence(data);
   const zhiFuPalace = data.jiuGongGe.find(
     (item) => item.tianPan.star === data.zhiFu || item.tianPan.companionStar === data.zhiFu,
   );
@@ -1076,24 +1074,23 @@ function formatLiurenInfo(data: LiurenData) {
 }
 
 function formatTarotInfo(data: TarotData) {
-  const cardLines = data.cards.map(
+  const evidence = analyzeTarotEvidence(data);
+  const cardLines = evidence.cards.map(
     (card) =>
-      `  ${card.position}：${card.name}${card.reversed ? '（逆位）' : '（正位）'}${card.keywords.length ? `；关键词：${card.keywords.join('、')}` : ''}${card.element ? `；牌组属性：${card.element}` : ''}${card.archetype ? `；基础牌义：${card.archetype}` : ''}`,
+      `  ${card.position}：${card.name}（${card.orientation}）${card.keywords.length ? `；关键词：${card.keywords.join('、')}` : ''}${card.element !== '元素未列' ? `；牌组属性：${card.element}` : ''}${card.archetype !== '牌阶主题未列' ? `；基础牌义：${card.archetype}` : ''}`,
   );
-  const interactions =
-    data.evidenceAnalysis?.elementInteractionFacts
-      .filter((fact) => fact.status === '已计算')
-      .map(
-        (fact) =>
-          `  ${fact.fromPosition}${fact.fromCard}（${fact.fromElement}）与${fact.toPosition}${fact.toCard}（${fact.toElement}）：${fact.relation}`,
-      ) ?? [];
-  const repeatedThemes =
-    data.evidenceAnalysis?.recurringThemeFacts.map((fact) => `${fact.theme}${fact.count}张`) ?? [];
+  const interactions = evidence.elementInteractionFacts
+    .filter((fact) => fact.status === '已计算')
+    .map(
+      (fact) =>
+        `  ${fact.fromPosition}${fact.fromCard}（${fact.fromElement}）与${fact.toPosition}${fact.toCard}（${fact.toElement}）：${fact.relation}`,
+    );
+  const repeatedThemes = evidence.recurringThemeFacts.map((fact) => `${fact.theme}${fact.count}张`);
 
   return [
     '占法：塔罗',
-    `核心结构：牌阵${data.spreadName}；共${data.cards.length}张牌`,
-    data.cards.some((card) => card.reversed)
+    `核心结构：牌阵${data.spreadName}；共${evidence.cards.length}张牌`,
+    evidence.cards.some((card) => card.orientation === '逆位')
       ? '正逆位口径：逆位表示该牌主题可能受阻、过度、内化或方向偏离，结合所在牌位与整组牌序判断'
       : '',
     '牌位明细：',
@@ -1483,7 +1480,6 @@ export function formatHuangjiInfo(data: HuangjiJingshiResult) {
 }
 
 function formatJinkoujueInfo(data: JinkoujueData) {
-  analyzeJinkoujueEvidence(data);
   const p = data.positions;
   return [
     '占法：金口诀',

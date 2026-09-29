@@ -8,8 +8,20 @@ import {
 } from '../packages/core/src/divination/algorithms/jinkoujue.ts';
 import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
 import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
+import { formatJinkoujueJudgmentFacts } from '../packages/core/src/prompt/jinkoujue-facts.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
+
+test('金口诀判断依据不读取旧反证缓存', () => {
+  const data = structuredClone(
+    generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE }),
+  );
+  assert.ok(data.evidenceAnalysis);
+  Object.assign(data.evidenceAnalysis, {
+    counterEvidenceFacts: [{ promptText: '伪造的旧反证' }],
+  });
+  assert.doesNotMatch(formatJinkoujueJudgmentFacts(data).join('\n'), /伪造的旧反证/u);
+});
 
 test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () => {
   const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });

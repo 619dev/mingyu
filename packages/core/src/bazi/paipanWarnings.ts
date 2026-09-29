@@ -18,10 +18,14 @@ const WARNING_LIMITATION =
   '边界说明只记录当前输入下已经采用的时间口径与唯一定盘结果；不另起第二套盘面，也不改写已确定的四柱' as const;
 const INCOMPLETE_WARNING_LIMITATION =
   '节气资料不完整只表示边界检查覆盖不足，交节距离仍待核验' as const;
+const UNRESOLVED_TIME_WARNING_LIMITATION =
+  '出生钟表时刻仍待核验，当前时柱仅对应本次输入口径' as const;
 const SUMMARY_LIMITATION =
   '预警汇总只说明当前盘面是否贴近交界时刻，不改变已经按输入确定的时柱' as const;
 const INCOMPLETE_SUMMARY_LIMITATION =
   '节气资料不完整时交节距离待核验，时柱仍按当前输入确定' as const;
+const UNRESOLVED_TIME_SUMMARY_LIMITATION =
+  '出生时间原始记录待核验，当前时柱仅对应本次输入口径' as const;
 
 /** 十二"节"（换月柱的交接点；"气"不换柱，不预警） */
 const JIE_NAMES = new Set([
@@ -207,6 +211,7 @@ function classifyWarningStatus(
     text.includes('并不存在') ||
     text.includes('出现两次') ||
     text.includes('无法唯一') ||
+    text.includes('时辰可能需前移') ||
     text.includes('重复时段') ||
     text.includes('跳变时段')
   ) {
@@ -243,7 +248,12 @@ export function buildBaziWarningEvidence(warnings: string[]): {
             : type === '时辰边界'
               ? ['时辰边界规则与校正后时刻']
               : ['出生时间口径说明'],
-      limitation: status === '资料不完整' ? INCOMPLETE_WARNING_LIMITATION : WARNING_LIMITATION,
+      limitation:
+        status === '资料不完整'
+          ? INCOMPLETE_WARNING_LIMITATION
+          : status === '需核验原始记录'
+            ? UNRESOLVED_TIME_WARNING_LIMITATION
+            : WARNING_LIMITATION,
     } satisfies BaziWarningFact;
   });
   const incompleteCheck = warningFacts.some((item) => item.status === '资料不完整');
@@ -256,12 +266,16 @@ export function buildBaziWarningEvidence(warnings: string[]): {
     promptText: incompleteCheck
       ? `共记录${warningFacts.length}条时间边界事项；节气资料不完整，交节距离待核验${needsRecordReview ? '；出生时间原始记录也待核验' : ''}`
       : needsRecordReview
-        ? `共记录${warningFacts.length}条边界预警，其中存在需要结合原始记录核验的事项`
+        ? `共记录${warningFacts.length}条边界预警；出生时间原始记录待核验，当前时柱仅对应本次输入口径`
         : warningFacts.length
           ? `共记录${warningFacts.length}条边界预警；本次仍按已确认输入确定当前时柱`
           : '未见节气、时辰、换日或历史夏令时边界预警',
     sources: ['八字时间边界预警汇总'],
-    limitation: incompleteCheck ? INCOMPLETE_SUMMARY_LIMITATION : SUMMARY_LIMITATION,
+    limitation: incompleteCheck
+      ? INCOMPLETE_SUMMARY_LIMITATION
+      : needsRecordReview
+        ? UNRESOLVED_TIME_SUMMARY_LIMITATION
+        : SUMMARY_LIMITATION,
   };
   return { warningFacts, warningSummaryFact };
 }

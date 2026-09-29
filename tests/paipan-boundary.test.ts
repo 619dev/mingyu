@@ -220,6 +220,14 @@ test('夏令时:仅时辰精度时只提示不校正', () => {
     applyChinaDst: true,
   });
   assert.ok(r.warnings.some((w) => w.includes('夏令时')));
+  assert.ok(r.warningFacts.some((fact) => fact.status === '需核验原始记录'));
+  assert.equal(r.warningSummaryFact.status, '存在需核验事项');
+  assert.match(r.warningSummaryFact.promptText, /当前时柱仅对应本次输入口径/);
+  assert.equal(r.evidenceAnalysis.summaryFact.status, '证据链有缺口');
+  assert.equal(
+    r.evidenceAnalysis.counterEvidenceFacts.find((fact) => fact.type === '排盘边界覆盖')?.status,
+    '资料不足',
+  );
 });
 
 test('夏令时区间函数:边界与非夏令时年份', () => {
@@ -313,6 +321,16 @@ test('部分节气资料缺失时结构化状态标为待核', () => {
   ]);
   assert.equal(evidence.warningFacts[0].status, '资料不完整');
   assert.equal(evidence.warningSummaryFact.status, '存在需核验事项');
+});
+
+test('出生时刻重复时段不可标为唯一定盘', () => {
+  const evidence = buildBaziWarningEvidence([
+    '出生时刻落在夏令时结束日 01:00-02:00 的重复时段：该钟表时刻当天会出现两次，本次排盘无法在缺少原始记录标注时唯一定时。',
+  ]);
+  assert.equal(evidence.warningFacts[0].status, '需核验原始记录');
+  assert.match(evidence.warningFacts[0].limitation, /仍待核验/);
+  assert.equal(evidence.warningSummaryFact.status, '存在需核验事项');
+  assert.doesNotMatch(evidence.warningSummaryFact.promptText, /已确认输入确定当前时柱/);
 });
 
 test('边界预警对象应保留稳定键、来源、引用和唯一定盘结果限制', () => {

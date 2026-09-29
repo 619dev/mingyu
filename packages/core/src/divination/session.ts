@@ -300,7 +300,7 @@ function formatAiChart(
     base.push('太乙判断依据：', ...formatTaiyiJudgmentFacts(data as TaiyiResult));
   } else if (method === 'almanac') {
     const item = data as AlmanacData;
-    const evidence = item.evidenceAnalysis ?? analyzeAlmanacEvidence(item);
+    const evidence = analyzeAlmanacEvidence(item);
     const preferences = [
       item.weekendPreference === 'prefer' ? '优先周末' : '',
       item.weekendPreference === 'avoid' ? '避开周末' : '',

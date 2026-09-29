@@ -7,6 +7,7 @@ import {
   tarotSpreads,
 } from '../packages/core/src/divination/tarot.ts';
 import type { TarotData, TarotSpreadType } from '../packages/core/src/types/divination.ts';
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 
 const spreadTypes = Object.keys(tarotSpreads) as TarotSpreadType[];
 
@@ -48,6 +49,20 @@ test('塔罗证据分析按牌号重建被篡改的牌面资料并报告缺口',
   assert.equal(evidence.traditionalFacts[0].status, '存在缺口');
   assert.equal(evidence.summaryFact.status, '证据链有缺口');
   assert.doesNotMatch(evidence.promptText, /伪造关键词|伪造元素|伪造牌阶|皇帝/);
+});
+
+test('塔罗提示词按牌号与本次牌面重建逐牌资料和相邻关系', () => {
+  const data = structuredClone(drawTarotSpread('three', { seed: '塔罗提示词证据重算' }));
+  const originalName = data.cards[0].name;
+  assert.ok(data.evidenceAnalysis?.elementInteractionFacts.length);
+  data.cards[0].name = '伪造牌名';
+  data.cards[0].keywords = ['伪造关键词'];
+  data.evidenceAnalysis.elementInteractionFacts[0].relation = '伪造相邻关系';
+
+  const prompt = formatEnhancedDivinationInfo('tarot', data);
+  assert.match(prompt, new RegExp(originalName, 'u'));
+  assert.doesNotMatch(prompt, /伪造牌名|伪造关键词|伪造相邻关系/u);
+  assert.match(prompt, /相邻牌元素关系：/u);
 });
 
 test('凯尔特十字十牌位保留韦特原著的目标、基础、过去影响及希望恐惧', () => {

@@ -1,5 +1,6 @@
 import {
   formatAlternativePatternCandidates,
+  formatPatternBasisForPrompt,
   formatPatternDecisionForPrompt,
   formatPatternFulfillmentFacts,
   hasConfirmedPatternTarget,
@@ -193,7 +194,11 @@ function formatSchoolPatternFacts(
     basis.includes('成立') &&
     Boolean(special.route && basis.includes(special.route)) &&
     Boolean(special.method && basis.includes(special.method));
-  const curveFactsInChart = embedded && special?.kind === '曲直格';
+  const curveFactsInChart = special?.kind === '曲直格';
+  const conciseCurveBasis =
+    special?.status === '成立' && special.kind === '曲直格' && basis && !patternBasisIsVisible
+      ? `成格依据：${formatPatternBasisForPrompt(basis)}`
+      : '';
   const specialFacts = facts
     .filter(
       (item) =>
@@ -211,9 +216,15 @@ function formatSchoolPatternFacts(
     )
     .flatMap((item) => {
       if (item.startsWith('特殊格裁决：') && specialDecisionIsVisible) return [];
-      if (item.startsWith('特殊格条件：') && patternBasisIsVisible && special) {
-        const conditions = special.satisfied.filter((condition) => !basis.includes(condition));
-        return conditions.length ? [`特殊格条件：${conditions.join('；')}`] : [];
+      if (item.startsWith('特殊格条件：') && special) {
+        const conditions = special.satisfied.filter(
+          (condition) =>
+            !(patternBasisIsVisible && basis.includes(condition)) &&
+            !(special.kind === '从儿格' && special.functionalResolutions.includes(condition)),
+        );
+        return conditions.length
+          ? [`特殊格条件：${conditions.map(formatPatternBasisForPrompt).join('；')}`]
+          : [];
       }
       return [item];
     })
@@ -229,10 +240,15 @@ function formatSchoolPatternFacts(
         (!embedded || !/^(?:食伤结构根|财星结构根)：/u.test(item)),
     )
     .filter((item) => !curveFactsInChart || !/^(?:特殊格条件|成员支藏干保留)：/u.test(item));
-  if (embedded) return specialFacts.filter((item) => !item.startsWith('从儿五行流向：'));
+  if (embedded)
+    return [
+      conciseCurveBasis,
+      ...specialFacts.filter((item) => !item.startsWith('从儿五行流向：')),
+    ].filter(Boolean);
   return [
-    alternatives && basis ? `取格依据：${basis}` : '',
+    alternatives && basis ? `取格依据：${formatPatternBasisForPrompt(basis)}` : '',
     alternatives,
+    conciseCurveBasis,
     ...specialFacts,
     formatPatternDecisionForPrompt(result.analysis.mingGe),
     hasConfirmedPatternTarget(result.analysis.mingGe) &&
@@ -335,7 +351,7 @@ function formatZipingFacts(
     `透干通根：${formatRoots(result)}`,
     embedded
       ? ''
-      : `格局与成败：${result.analysis.mingGe.pattern}${result.analysis.mingGe.basis && !formatAlternativePatternCandidates(result.analysis.mingGe) ? `；${result.analysis.mingGe.basis}` : ''}`,
+      : `格局与成败：${result.analysis.mingGe.pattern}${result.analysis.mingGe.basis && !formatAlternativePatternCandidates(result.analysis.mingGe) ? `；${formatPatternBasisForPrompt(result.analysis.mingGe.basis)}` : ''}`,
     ...(patternEvidence
       ? formatSchoolPatternFacts(
           result,

@@ -133,7 +133,7 @@ test('从儿仅见受冲待核的藏财根时不把食伤生财写成已满足',
   assert.match(patternFacts.join('；'), /从儿格不成立/);
   assert.match(patternFacts.join('；'), /结构藏财根气受冲待核/);
   assert.doesNotMatch(patternFacts.join('；'), /受冲待核.*为结构财气，承接食伤所生/);
-  assert.match(formatBaziForPrompt(chart), /结构藏财根气受冲待核/);
+  assert.doesNotMatch(formatBaziForPrompt(chart), /从儿结构未立：|结构藏财根气受冲待核/);
 });
 
 test('顺局章九个原典命例均由月建、成局或食伤并透坐支同气的结构路径闭合', () => {
@@ -512,11 +512,10 @@ test('同干异柱的七杀反证合并作用理由并保留各柱位', () => {
     ['year', 'hour'],
   );
   const prompt = formatBaziForPrompt(chart);
-  assert.ok(prompt.includes(`从儿结构未立：${blocker}`));
-  assert.equal(prompt.match(/财星顺生转向官杀并与食伤交战/g)?.length, 1);
+  assert.doesNotMatch(prompt, /从儿结构未立：|财星顺生转向官杀并与食伤交战/);
   assert.doesNotMatch(prompt, /格局条件：|条件核验：|此处要求正官月令/);
   const completePrompt = buildBaziPromptForResult({ result: chart, question: '请合参本命格局。' });
-  assert.equal(completePrompt.match(/财星顺生转向官杀并与食伤交战/g)?.length, 1);
+  assert.doesNotMatch(completePrompt, /从儿结构未立：|财星顺生转向官杀并与食伤交战/);
 });
 
 test('月建食伤路径仍受异柱明透有根印星制约，不把普通食神格破格升级成从儿', () => {

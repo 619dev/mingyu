@@ -124,6 +124,17 @@ test('梅花完整提示词保留主互变逐阶段体用旺衰与制约条件',
   assert.doesNotMatch(prompt, /ownerFactKeys|limitationFacts|sourceStatus/);
 });
 
+test('梅花逐爻体用只补充归属与动爻，不重复主卦阴阳爻象', () => {
+  const data = generateMeihua(new Date('2025-06-18T10:30:00+08:00'), {
+    method: 'number',
+    number: 1,
+  });
+  const prompt = buildDivinationPrompt('meihua', '工作进展如何？', data);
+  assert.match(prompt, /主卦爻象：[^\n]*第1爻阴/);
+  assert.match(prompt, /逐爻体用：第1爻属用（动爻）、第2爻属用/);
+  assert.doesNotMatch(prompt, /逐爻体用：[^\n]*第[1-6]爻[阴阳]属/u);
+});
+
 test('梅花主卦生体而变卦克体时保留条件，不把旺衰写成吉凶或固定快慢', () => {
   const settings = { method: 'number' as const, number: 1 };
   for (const [date, state, speed, strength] of [

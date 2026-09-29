@@ -370,24 +370,33 @@ function createData(method: FixtureMethod): DivinationData {
       } satisfies LiurenData;
     case 'tarot':
       return {
-        spreadType: 'single',
-        spreadName: '单牌指引',
+        spreadType: 'three',
+        spreadName: '时间流牌阵',
         cards: [
           {
-            id: 1,
+            id: 7,
             name: '恋人',
-            position: '现状',
+            position: '过去',
             reversed: false,
             keywords: ['选择', '连接'],
             element: '大阿卡纳（核心课题与阶段转折）',
             archetype: '大阿卡纳的人生主轴',
           },
           {
-            id: 2,
+            id: 8,
             name: '战车',
-            position: '建议',
+            position: '现在',
             reversed: true,
             keywords: ['控制', '节奏'],
+            element: '大阿卡纳（核心课题与阶段转折）',
+            archetype: '大阿卡纳的人生主轴',
+          },
+          {
+            id: 9,
+            name: '力量',
+            position: '未来',
+            reversed: false,
+            keywords: ['力量', '勇气'],
             element: '大阿卡纳（核心课题与阶段转折）',
             archetype: '大阿卡纳的人生主轴',
           },
@@ -1219,8 +1228,9 @@ test('塔罗提示词保留牌阵、牌位、正逆位、关键词与可靠牌�
   assert.match(prompt, /核心结构：牌阵/);
   assert.match(prompt, /牌位明细：/);
   assert.doesNotMatch(prompt, /牌位顺序：/);
-  assert.match(prompt, /现状：恋人（正位）；关键词：/);
-  assert.match(prompt, /建议：战车（逆位）；关键词：/);
+  assert.match(prompt, /过去：恋人（正位）；关键词：/);
+  assert.match(prompt, /现在：战车（逆位）；关键词：/);
+  assert.match(prompt, /未来：力量（正位）；关键词：/);
   assert.match(prompt, /牌组属性：/);
   assert.match(prompt, /正逆位口径：逆位表示该牌主题可能受阻、过度、内化或方向偏离/);
   assert.doesNotMatch(prompt, /元素主题：|牌阶主题：/);

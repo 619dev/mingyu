@@ -132,6 +132,44 @@ test('自定义出生坐标缺少时区时应拒绝，行政区仍可使用已�
   );
 });
 
+test('普通出生钟表时间在 IANA 跳时与回拨边界须先确定唯一瞬时', () => {
+  const profile = {
+    gender: 'female' as const,
+    calendarType: 'solar' as const,
+    year: 2024,
+    month: 3,
+    day: 10,
+    hour: 2,
+    minute: 30,
+    location: { longitude: -74.006, latitude: 40.7128, timeZoneId: 'America/New_York' },
+  };
+  assert.throws(() => normalizeBirthProfile(profile), /当地钟表时间.*不存在/);
+  assert.throws(() => birthProfileToBaziPerson(profile), /当地钟表时间.*不存在/);
+  assert.throws(() => calculateBaziFromBirthProfile(profile), /当地钟表时间.*不存在/);
+  assert.throws(() => birthProfileToZiweiChartInput(profile), /当地钟表时间.*不存在/);
+
+  const repeated = { ...profile, month: 11, day: 3, hour: 1 };
+  assert.throws(() => normalizeBirthProfile(repeated), /回拨歧义/);
+  const first = normalizeBirthProfile({
+    ...repeated,
+    location: { ...repeated.location, timezone: -4 },
+  });
+  const second = normalizeBirthProfile({
+    ...repeated,
+    location: { ...repeated.location, timezone: -5 },
+  });
+  assert.deepEqual(first.solarClockTime, second.solarClockTime);
+  assert.equal(first.timeIndex, second.timeIndex);
+  assert.throws(
+    () =>
+      normalizeBirthProfile({
+        ...repeated,
+        location: { ...repeated.location, timezone: -6 },
+      }),
+    /历史偏移不一致/,
+  );
+});
+
 test('统一出生档案应保留传统时辰并返回时间口径结构化证据', () => {
   const profile = {
     name: '时辰样例',

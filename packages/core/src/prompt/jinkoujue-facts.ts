@@ -1,5 +1,6 @@
 import type { JinkoujueData, JinkoujueFourPosition } from '../types/divination';
 import { evaluateJinkoujueBihePoems } from '../divination/algorithms/jinkoujue';
+import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
 
 export function formatJinkoujueBihe(data: JinkoujueData): string {
   const facts = evaluateJinkoujueBihePoems(data.positions);
@@ -75,7 +76,7 @@ export function formatJinkoujueJudgmentFacts(
       );
     }
   }
-  const counters = data.evidenceAnalysis?.counterEvidenceFacts ?? [];
+  const counters = analyzeJinkoujueEvidence(data).counterEvidenceFacts;
   if (counters.length)
     lines.push(`四位反证：${counters.map((item) => item.promptText).join('；')}`);
   if (!compact)

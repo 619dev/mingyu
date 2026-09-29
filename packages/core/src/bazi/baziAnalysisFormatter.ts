@@ -99,6 +99,14 @@ export function formatUsefulGodFunctions(
 }
 
 /** 格局名称与成败条件分开呈现，所有解读入口复用同一份已计算结论。 */
+export function formatPatternBasisForPrompt(basis: string): string {
+  if (basis.startsWith('《三命通会》卷六亥卯未曲直法条件成立')) {
+    return '《三命通会》卷六亥卯未曲直法条件成立；未见庚辛金及局外支冲破；火土分别按泄秀与财星论';
+  }
+  const selectedBasis = basis.split(/；(?:曲直|从儿)结构未立：/u, 1)[0];
+  return selectedBasis.replace(/；分日司权[^；]*仅作当日月气事实/gu, '');
+}
+
 export function formatPatternFulfillmentFacts(pattern: PatternAnalysis): string[] {
   const fulfillment = pattern.fulfillment;
   const special = pattern.specialAdjudication;
@@ -190,7 +198,7 @@ export function hasConfirmedPatternTarget(pattern: PatternAnalysis): boolean {
 export function formatAlternativePatternCandidates(pattern: PatternAnalysis): string {
   const alternatives = pattern.patternCandidates?.filter((candidate) => !candidate.selected);
   return alternatives?.some((candidate) => candidate.pattern !== pattern.pattern)
-    ? `其他取格候选：${alternatives.map((candidate) => `${candidate.pattern}（${candidate.source}；${candidate.basis}）`).join('；')}`
+    ? `其他取格候选：${alternatives.map((candidate) => `${candidate.pattern}（${candidate.source}；${formatPatternBasisForPrompt(candidate.basis)}）`).join('；')}`
     : '';
 }
 
@@ -412,7 +420,7 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
   const alternativePatterns = formatAlternativePatternCandidates(analysis.mingGe);
   result += `格局: ${analysis.mingGe.pattern}`;
   if ((includeRules || alternativePatterns) && analysis.mingGe.basis) {
-    result += `（${analysis.mingGe.basis}）`;
+    result += `（${formatPatternBasisForPrompt(analysis.mingGe.basis)}）`;
   }
   if (analysis.mingGe.transformation?.status === '成化') {
     result += '；化气判定：成化';
