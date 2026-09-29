@@ -651,6 +651,21 @@ test('岁运各层应按精确交运时刻裁剪并返回结构化时间', () =>
     year?.promptPayload.breakdownLines?.[0] ?? '',
     /交运 2008-02-08 12:00:00～交运 2008-02-09 12:00:00/,
   );
+  assert.match(year?.displayText ?? '', /本运内 2008-02-08 12:00:00 至 2008-02-09 12:00:00/);
+  assert.ok(
+    year?.promptPayload.summaryLines.includes(
+      '本运有效时段：2008-02-08 12:00:00至2008-02-09 12:00:00（终点不含）',
+    ),
+  );
+  assert.match(
+    formatBaziFortuneSelection(year)?.focus ?? '',
+    /本运有效时段：2008-02-08 12:00:00至2008-02-09 12:00:00（终点不含）/,
+  );
+  const dayun = buildFortuneSelectionContext(result, { scope: 'dayun', cycleIndex: 0 });
+  assert.match(
+    dayun?.promptPayload.breakdownLines?.[0] ?? '',
+    /本运有效时段：2008-02-08 12:00:00至2008-02-09 12:00:00（终点不含）/,
+  );
 
   const month = buildFortuneSelectionContext(result, {
     scope: 'month',

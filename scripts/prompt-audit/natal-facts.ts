@@ -552,16 +552,6 @@ export function extractZiweiCompatibilityFacts(
       ]),
     );
   }
-  if (relation?.summaryFact?.promptText) {
-    facts.push(
-      ...collect([
-        fact('ziwei.compatibility.summary', '双盘关系资料', [relation.summaryFact.promptText], {
-          scope: relationScope,
-          unit: 'block',
-        }),
-      ]),
-    );
-  }
   return facts;
 }
 

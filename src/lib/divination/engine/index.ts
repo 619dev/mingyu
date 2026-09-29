@@ -974,7 +974,10 @@ function resolveDivinationTimeContext(
   baseDate: Date,
 ): { date: Date; context: DivinationTimeContext } {
   const isBaziReverseTime = draft.divinationTimeMode === 'pillars';
-  const clockDateTime = buildBeijingWallClockDateTime(baseDate, isBaziReverseTime);
+  const clockDateTime = buildBeijingWallClockDateTime(
+    baseDate,
+    isBaziReverseTime || method === 'taiyi',
+  );
   if (
     isBaziReverseTime ||
     draft.divinationTimeStandard !== 'true-solar' ||

@@ -58,7 +58,8 @@ export interface ZiweiCrossMutagenGap {
   star: string;
   mutagen: MutagenName;
   sourcePalace: string;
-  reason: '目标盘缺少同名星曜';
+  reason: '目标盘缺少同名星曜' | '目标盘同名星曜落宫不唯一';
+  candidatePalaces?: string[];
 }
 
 export interface ZiweiCompatibilityCalculationStep {
@@ -259,10 +260,12 @@ function calculateCrossMutagens(
     };
   }
 
-  const targetStars = new Map<string, PalaceFact>();
+  const targetStars = new Map<string, PalaceFact[]>();
   target.palaces.forEach((palace) => {
     allStars(palace).forEach((star) => {
-      if (!targetStars.has(star.name)) targetStars.set(star.name, palace);
+      const palaces = targetStars.get(star.name) ?? [];
+      if (!palaces.includes(palace)) palaces.push(palace);
+      targetStars.set(star.name, palaces);
     });
   });
   const placements: ZiweiCrossMutagenPlacement[] = [];
@@ -270,9 +273,8 @@ function calculateCrossMutagens(
   source.palaces.forEach((sourcePalace) => {
     allStars(sourcePalace).forEach((star) => {
       if (!star.birth_mutagen) return;
-      const targetPalace = targetStars.get(star.name);
-      if (!targetPalace) {
-        // 来源方带生年四化而目标盘无同名星曜：登记为资料覆盖缺口，不与未命中混同
+      const targetPalaces = targetStars.get(star.name) ?? [];
+      if (targetPalaces.length !== 1) {
         gaps.push({
           key: `跨盘四化缺口:${sourcePerson}:${star.name}:化${star.birth_mutagen}:${targetPerson}`,
           sourcePerson,
@@ -280,10 +282,14 @@ function calculateCrossMutagens(
           star: star.name,
           mutagen: star.birth_mutagen,
           sourcePalace: palaceDisplayName(sourcePalace),
-          reason: '目标盘缺少同名星曜',
+          reason: targetPalaces.length === 0 ? '目标盘缺少同名星曜' : '目标盘同名星曜落宫不唯一',
+          ...(targetPalaces.length > 1
+            ? { candidatePalaces: targetPalaces.map(palaceDisplayName) }
+            : {}),
         });
         return;
       }
+      const targetPalace = targetPalaces[0];
       const sourcePalaceName = palaceDisplayName(sourcePalace);
       const targetPalaceName = palaceDisplayName(targetPalace);
       placements.push({
@@ -408,6 +414,10 @@ function buildBaseCalculationSteps(params: {
       ),
     0,
   );
+  const missingTargetStarCount = params.gaps.filter(
+    (gap) => gap.reason === '目标盘缺少同名星曜',
+  ).length;
+  const ambiguousTargetStarCount = params.gaps.length - missingTargetStarCount;
   return [
     {
       key: 'ziwei:compatibility:calculation:input',
@@ -475,10 +485,11 @@ function buildBaseCalculationSteps(params: {
       inputs: { sourceMutagenStarCount: sourceMutagenCount, directionCount: 2 },
       result: {
         placementCount: params.mutagens.length,
-        missingTargetStarCount: params.gaps.length,
+        missingTargetStarCount,
+        ambiguousTargetStarCount,
       },
       dependsOnStepKeys: ['ziwei:compatibility:calculation:star-index'],
-      promptText: `来源方生年四化星曜按目标方同名星曜定位，记录${params.mutagens.length}项跨盘四化落宫事实${params.gaps.length ? `，另有${params.gaps.length}项目标方星曜资料缺口` : ''}`,
+      promptText: `来源方生年四化星曜按目标方同名星曜定位，记录${params.mutagens.length}项跨盘四化落宫事实${params.gaps.length ? `，另有${params.gaps.length}项目标方星曜定位资料缺口（缺少同名星曜${missingTargetStarCount}项、落宫不唯一${ambiguousTargetStarCount}项）` : ''}`,
       sources: ['来源方本命生年四化标记', '目标方同名星曜落宫资料'],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -514,6 +525,13 @@ function buildCounterEvidenceFacts(params: {
     const gaps = params.gaps.filter(
       (item) => item.sourcePerson === direction.source && item.targetPerson === direction.target,
     );
+    const gapDetails = gaps
+      .slice(0, 4)
+      .map(
+        (item) =>
+          `${item.star}化${item.mutagen}：${item.reason}${item.candidatePalaces?.length ? `（${item.candidatePalaces.join('、')}）` : ''}`,
+      )
+      .join('、');
     return [
       {
         key: `ziwei:compatibility:counter:palace-overlays:${direction.key}`,
@@ -542,13 +560,10 @@ function buildCounterEvidenceFacts(params: {
         ],
         promptText: mutagens.length
           ? gaps.length
-            ? `${direction.label}记录${mutagens.length}项生年四化同名星曜落宫事实；另有${gaps.length}项因目标盘缺少同名星曜未能定位（${gaps
-                .slice(0, 4)
-                .map((item) => `${item.star}化${item.mutagen}`)
-                .join('、')}${gaps.length > 4 ? '等' : ''}），该方向四化资料不完备`
+            ? `${direction.label}记录${mutagens.length}项生年四化同名星曜落宫事实；另有${gaps.length}项未能唯一定位（${gapDetails}${gaps.length > 4 ? '等' : ''}），该方向四化资料不完备`
             : `${direction.label}记录${mutagens.length}项生年四化同名星曜落宫事实`
           : gaps.length
-            ? `${direction.label}全部${gaps.length}项生年四化星曜均因目标盘缺少同名星曜未能定位，属资料覆盖缺口而非已核验未命中；不得补造四化落宫或据此推断关系好坏`
+            ? `${direction.label}全部${gaps.length}项生年四化星曜均未能唯一定位（${gapDetails}${gaps.length > 4 ? '等' : ''}），属资料覆盖缺口而非已核验未命中；不得补造四化落宫或据此推断关系好坏`
             : `${direction.label}未形成可定位的跨盘生年四化事实；不得补造四化落宫或据此推断关系好坏`,
         sources: ['来源方生年四化星曜与目标方同名星曜逐项定位结果'],
         limitation: COUNTER_FACT_LIMITATION,

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeZiweiCompatibility } from '../packages/core/src/ziwei/iztro/compatibility-evidence';
+import { buildZiweiCompatibilityPromptDocument } from '../packages/core/src/prompt/ziwei';
+import { buildCombinedZiweiCompatibilityPrompt } from '../packages/core/src/ziwei/prompt/combined';
 import {
   buildAstrolabeFromInput,
   buildAnalysisPayloadV1,
@@ -361,6 +363,78 @@ test('紫微双盘部分四化星曜缺失时应把该方向记为资料缺口�
   assert.match(result.promptText, /【反证】跨盘四化覆盖：资料缺口/);
   assertEvidenceReferences(result);
   assertPromptIsPortableTaskText(result.promptText);
+});
+
+test('目标盘同名四化星分处两宫时应记录定位歧义，不任取第一个宫位', () => {
+  const first = createPayload(0, '禄');
+  const second = createPayload(2, '忌');
+  second.palaces[4].major_stars.push({ name: '紫微', kind: 'major' });
+
+  const result = analyzeZiweiCompatibility(first, second);
+  const gap = result.crossMutagenGaps.find((item) => item.sourcePerson === 'person1');
+  const directionFact = result.counterEvidenceFacts.find(
+    (item) => item.type === '跨盘四化覆盖' && item.direction === 'person1-to-person2',
+  );
+
+  assert.equal(
+    result.crossMutagenPlacements.some((item) => item.sourcePerson === 'person1'),
+    false,
+  );
+  assert.equal(gap?.reason, '目标盘同名星曜落宫不唯一');
+  assert.deepEqual(gap?.candidatePalaces, ['命宫', '财帛']);
+  assert.equal(directionFact?.status, '资料缺口');
+  assert.ok(gap && directionFact.ownerFactKeys.includes(gap.key));
+  assert.equal(
+    result.calculationSteps.find((item) => item.stage === '跨盘生年四化')?.result
+      .ambiguousTargetStarCount,
+    1,
+  );
+  assert.match(result.promptText, /紫微化禄：目标盘同名星曜落宫不唯一（命宫、财帛）/);
+  assertEvidenceReferences(result);
+  assertPromptIsPortableTaskText(result.promptText);
+  const prompt = buildZiweiCompatibilityPromptDocument({
+    payload1: first,
+    payload2: second,
+    compatibility: result,
+  }).text;
+  const relationFacts = prompt.split('【双盘关系资料】')[1]?.split('【任务】')[0] ?? '';
+  assert.doesNotMatch(relationFacts, /资料缺口|落宫不唯一|未命中|证据汇总|计算链/);
+  const combinedPrompt = buildCombinedZiweiCompatibilityPrompt({
+    primaryPayload: first,
+    partnerPayload: second,
+    topic: 'career-wealth',
+    question: '请分析双方合作。',
+  });
+  const combinedFacts = combinedPrompt.split('【双盘关系资料】')[1]?.split('【任务】')[0] ?? '';
+  assert.doesNotMatch(combinedFacts, /资料缺口|落宫不唯一|未命中|证据汇总|计算链/);
+});
+
+test('同向一项四化已定位且另一项落宫不唯一时仍应判为部分资料缺口', () => {
+  const first = createPayload(0, '禄');
+  const second = createPayload(2, '忌');
+  first.palaces[4].major_stars[0].birth_mutagen = '权';
+  second.palaces[4].major_stars.push({ name: '紫微', kind: 'major' });
+
+  const result = analyzeZiweiCompatibility(first, second);
+  const directionFact = result.counterEvidenceFacts.find(
+    (item) => item.type === '跨盘四化覆盖' && item.direction === 'person1-to-person2',
+  );
+
+  assert.equal(
+    result.crossMutagenPlacements.filter((item) => item.sourcePerson === 'person1').length,
+    1,
+  );
+  assert.equal(result.crossMutagenGaps.filter((item) => item.sourcePerson === 'person1').length, 1);
+  assert.equal(directionFact?.status, '资料缺口');
+  assert.match(directionFact?.promptText ?? '', /记录1项.*另有1项未能唯一定位.*紫微化禄/);
+  const prompt = buildZiweiCompatibilityPromptDocument({
+    payload1: first,
+    payload2: second,
+    compatibility: result,
+  }).text;
+  const relationFacts = prompt.split('【双盘关系资料】')[1]?.split('【任务】')[0] ?? '';
+  assert.match(relationFacts, /天府生年化权/);
+  assert.doesNotMatch(relationFacts, /资料缺口|落宫不唯一|未命中|证据汇总|计算链/);
 });
 
 test('紫微双盘应拒绝缺少完整十二宫的资料', () => {

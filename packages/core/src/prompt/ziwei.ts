@@ -728,7 +728,6 @@ function formatZiweiCompatibilityFacts(result: ReturnType<typeof analyzeZiweiCom
   const overlays = result.palaceOverlays.map((item) => `  ${item.promptText}`);
   const mutagens = result.crossMutagenPlacements.map((item) => `  ${item.promptText}`);
   return [
-    `交叉资料：${result.summaryFact.promptText.replace(/^证据汇总：/, '')}`,
     overlays.length ? '宫位叠盘：' : '',
     ...overlays,
     mutagens.length ? '跨盘四化：' : '',

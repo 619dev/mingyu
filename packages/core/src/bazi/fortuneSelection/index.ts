@@ -81,9 +81,9 @@ function compactTenGod(result: BaziChartResult, ganZhi: string) {
 
 function formatYearBreakdownLine(
   result: BaziChartResult,
-  item: { year: number; age: number; ganZhi: string },
+  item: { year: number; age: number; ganZhi: string; timeRange: LocalTimeRange; clipped: boolean },
 ) {
-  return `${item.year}年(${item.age}岁) ${item.ganZhi}｜${compactTenGod(result, item.ganZhi)}`;
+  return `${item.year}年(${item.age}岁) ${item.ganZhi}｜${compactTenGod(result, item.ganZhi)}${item.clipped ? `｜本运有效时段：${formatClippedHourTimeRange(item.timeRange)}` : ''}`;
 }
 
 function formatLocalDateTime(time: LocalTimeRange['start']): string {
@@ -501,8 +501,21 @@ export function buildFortuneSelectionContext(
 
   if (normalized.scope === 'dayun') {
     const breakdown = cycle.years.flatMap((item) => {
-      const timeRange = clipToCycle(getYearTimeRange(item.year), cycleTimeRange);
-      return timeRange ? [{ year: item.year, ganZhi: item.ganZhi, age: item.age, timeRange }] : [];
+      const fullRange = getYearTimeRange(item.year);
+      const timeRange = clipToCycle(fullRange, cycleTimeRange);
+      return timeRange
+        ? [
+            {
+              year: item.year,
+              ganZhi: item.ganZhi,
+              age: item.age,
+              timeRange,
+              clipped:
+                timeRange.startTimestamp !== fullRange.startTimestamp ||
+                timeRange.endTimestamp !== fullRange.endTimestamp,
+            },
+          ]
+        : [];
     });
     const cycleTenGod = cycleGanZhi ? formatGanZhiTenGod(result, cycleGanZhi) : undefined;
     const cycleTrigger = cycleGanZhi
@@ -583,8 +596,12 @@ export function buildFortuneSelectionContext(
     return null;
   }
 
-  const yearTimeRange = clipToCycle(getYearTimeRange(yearItem.year), cycleTimeRange);
+  const fullYearTimeRange = getYearTimeRange(yearItem.year);
+  const yearTimeRange = clipToCycle(fullYearTimeRange, cycleTimeRange);
   if (!yearTimeRange) return null;
+  const yearClippedByCycle =
+    yearTimeRange.startTimestamp !== fullYearTimeRange.startTimestamp ||
+    yearTimeRange.endTimestamp !== fullYearTimeRange.endTimestamp;
 
   if (normalized.scope === 'year') {
     const breakdown = monthInfoList.flatMap((item, index) => {
@@ -606,9 +623,21 @@ export function buildFortuneSelectionContext(
           ]
         : [];
     });
-    const cycleYearLines = cycle.years
-      .filter((item) => clipToCycle(getYearTimeRange(item.year), cycleTimeRange))
-      .map((item) => formatYearBreakdownLine(result, item));
+    const cycleYearLines = cycle.years.flatMap((item) => {
+      const fullRange = getYearTimeRange(item.year);
+      const timeRange = clipToCycle(fullRange, cycleTimeRange);
+      return timeRange
+        ? [
+            formatYearBreakdownLine(result, {
+              ...item,
+              timeRange,
+              clipped:
+                timeRange.startTimestamp !== fullRange.startTimestamp ||
+                timeRange.endTimestamp !== fullRange.endTimestamp,
+            }),
+          ]
+        : [];
+    });
     const monthLines = breakdown.map((item) => formatMonthBreakdownLine(result, item));
     const yearTenGod = formatGanZhiTenGod(result, yearItem.ganZhi);
     const yearTrigger = buildGanZhiTriggerSummary(result, yearItem.ganZhi, '流年');
@@ -643,7 +672,9 @@ export function buildFortuneSelectionContext(
       scope: 'year',
       monthBreakdown: breakdown,
       displayLabel: formatYearLabel(yearItem),
-      displayText: `${yearItem.year}年 ${yearItem.ganZhi}（${yearItem.age}岁）`,
+      displayText: yearClippedByCycle
+        ? `${yearItem.year}年 ${yearItem.ganZhi}（${yearItem.age}岁，本运内 ${formatLocalDateTime(yearTimeRange.start)} 至 ${formatLocalDateTime(yearTimeRange.end)}）`
+        : `${yearItem.year}年 ${yearItem.ganZhi}（${yearItem.age}岁）`,
       actionEvidence,
       promptPayload: {
         scopeLabel: `分析对象：${yearItem.year}年流年`,
@@ -653,11 +684,17 @@ export function buildFortuneSelectionContext(
           `流年十神：${yearTenGod}`,
           yearTriggerSummary,
           `对应年龄：${yearItem.age}岁`,
+          ...(yearClippedByCycle
+            ? [`本运有效时段：${formatClippedHourTimeRange(yearTimeRange)}`]
+            : []),
         ].filter(Boolean) as string[],
         selectedFacts: [
           `流年十神：${yearTenGod}`,
           ...yearTrigger.supplementalFacts,
           `对应年龄：${yearItem.age}岁`,
+          ...(yearClippedByCycle
+            ? [`本运有效时段：${formatClippedHourTimeRange(yearTimeRange)}`]
+            : []),
         ],
         evidenceLines: buildFortuneEvidenceLines({
           scope: 'year',
@@ -670,7 +707,9 @@ export function buildFortuneSelectionContext(
           parentText: cycle.isXiaoyun
             ? '所属童运时段，流年需结合童运时间范围。'
             : `所属大运：${cycleLabel}（${cycleGanZhi}），年度判断必须承接该十年阶段。`,
-          timingText: `${yearItem.year}年（${yearItem.age}岁）为年度触发；流月列表只作月份窗口参考。`,
+          timingText: yearClippedByCycle
+            ? `${yearItem.year}年（${yearItem.age}岁）本运有效时段：${formatClippedHourTimeRange(yearTimeRange)}；流月列表对应此时段。`
+            : `${yearItem.year}年（${yearItem.age}岁）为年度触发；流月列表只作月份窗口参考。`,
           limitText: '未给出具体流月或流日时，不得把某月某日硬断成唯一应期。',
           triggerEvidence,
           actionEvidence,

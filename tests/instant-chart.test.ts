@@ -7,6 +7,10 @@ import {
   calculateInstantChart,
 } from 'mingyu-core/instant';
 import { calculateBaziChartFromInput } from '../packages/core/src/bazi';
+import {
+  buildZiweiChartInput,
+  calculateZiweiChartForScopes,
+} from '../packages/core/src/ziwei/runtime';
 
 const fixedInstant = new Date('2026-08-24T12:30:00+08:00');
 const beijingObserver = {
@@ -99,6 +103,54 @@ test('紫微即时盘只返回无性别的共通宫位资料', async () => {
   assert.equal('changsheng12' in response.result.palaces[0], false);
   assert.equal('boshi12' in response.result.palaces[0], false);
   assert.equal('ages' in response.result.palaces[0], false);
+});
+
+test('即时八字与紫微公开字段不随底层技术性性别参数改变', async () => {
+  const bazi = await calculateInstantChart({ type: 'bazi', customDate: fixedInstant });
+  const femaleBazi = calculateBaziChartFromInput({
+    gender: 'female',
+    year: 2026,
+    month: 8,
+    day: 24,
+    timeIndex: 6,
+    dateType: 'solar',
+    isLeapMonth: false,
+    birthHour: 12,
+    birthMinute: 30,
+    birthSecond: 0,
+  }) as unknown as Record<string, unknown>;
+  for (const [key, value] of Object.entries(bazi.result)) {
+    assert.deepEqual(value, femaleBazi[key], `八字即时盘字段 ${key} 不应依赖性别`);
+  }
+
+  const ziwei = await calculateInstantChart({ type: 'ziwei', customDate: fixedInstant });
+  const femaleInput = buildZiweiChartInput({
+    name: '紫微即时盘',
+    gender: 'female',
+    dateType: 'solar',
+    year: 2026,
+    month: 8,
+    day: 24,
+    timeIndex: 6,
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+    birthHour: 12,
+    birthMinute: 30,
+    birthSecond: 0,
+  });
+  const femaleZiwei = (await calculateZiweiChartForScopes(femaleInput, ['origin'])).payloadByScope
+    .origin;
+  const compareFields = (actual: object, expected: object, label: string) => {
+    const expectedRecord = expected as Record<string, unknown>;
+    for (const [key, value] of Object.entries(actual)) {
+      assert.deepEqual(value, expectedRecord[key], `${label}字段 ${key} 不应依赖性别`);
+    }
+  };
+  compareFields(ziwei.result.basicInfo, femaleZiwei.basic_info, '紫微基础资料');
+  compareFields(ziwei.result.activeScope, femaleZiwei.active_scope, '紫微当前范围');
+  ziwei.result.palaces.forEach((palace, index) =>
+    compareFields(palace, femaleZiwei.palaces[index], `紫微第 ${index + 1} 宫`),
+  );
 });
 
 test('真太阳时即时盘必须提供地点并返回校正结果', async () => {
