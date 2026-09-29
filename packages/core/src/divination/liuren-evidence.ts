@@ -1,5 +1,6 @@
 import type {
   LiurenData,
+  LiurenGuaTiFact,
   LiurenLesson,
   LiurenOrdinaryTransmissionCandidate,
   LiurenOrdinaryTransmissionStage,
@@ -21,6 +22,7 @@ import {
   TIANGAN,
 } from './algorithms/liuren/helpers/plate';
 import { buildFourLessons, resolveInitialTransmission } from './algorithms/liuren/helpers/lessons';
+import { getLiurenGuaTiFacts } from './algorithms/liuren/helpers/transmission';
 import {
   formatLiurenOrdinaryStage,
   getLiurenOrdinaryCandidateStatusLabel,
@@ -480,6 +482,30 @@ function buildTraditionalFacts(
     ...ridingFacts,
     ...shenShaFacts,
   ];
+}
+
+function getGuaTiFactSignatures(facts: LiurenGuaTiFact[]) {
+  return facts
+    .map((fact) =>
+      JSON.stringify({
+        id: fact.id,
+        stableKey: fact.stableKey,
+        name: fact.name,
+        category: fact.category,
+        branches: fact.branches,
+        matchedConditions: fact.matchedConditions,
+        sourceTitle: fact.sourceTitle,
+        sourceUrl: fact.sourceUrl,
+        sourceQuote: fact.sourceQuote,
+      }),
+    )
+    .sort();
+}
+
+function hasSameStrings(actual: string[], expected: string[]) {
+  return (
+    actual.length === expected.length && actual.every((item, index) => item === expected[index])
+  );
 }
 
 function lessonConstraints(lesson: LiurenLesson, xunKong: string[]) {
@@ -1404,6 +1430,39 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
         data.threeTransmissions.some((item, index) => item.branch !== expectedBranches[index])
       ) {
         throw new Error('大六壬取传规则或三传与四课、天地盘不一致，无法生成证据。');
+      }
+    }
+    if (data.guaTiFacts !== undefined) {
+      const initialGroundBranch = getPlateItemByBranch(
+        data.heavenlyPlate,
+        data.threeTransmissions[0].branch,
+      ).under;
+      const noblemanGroundBranch = data.noblemanBranch
+        ? getPlateItemByBranch(data.heavenlyPlate, data.noblemanBranch).under
+        : undefined;
+      const expectedGuaTiFacts = getLiurenGuaTiFacts({
+        transmissionBranches: data.threeTransmissions.map((item) => item.branch),
+        initialGroundBranch,
+        initialGod: data.threeTransmissions[0].god,
+        yearBranch: data.ganzhi.year.charAt(1),
+        monthBranch: data.ganzhi.month.charAt(1),
+        monthLeader: data.monthLeader,
+        noblemanBranch: data.noblemanBranch,
+        noblemanGroundBranch,
+        fourLessons: data.fourLessons,
+        dayStem,
+        dayBranch,
+      });
+      if (
+        JSON.stringify(getGuaTiFactSignatures(data.guaTiFacts)) !==
+          JSON.stringify(getGuaTiFactSignatures(expectedGuaTiFacts)) ||
+        (data.guaTi !== undefined &&
+          !hasSameStrings(
+            data.guaTi,
+            expectedGuaTiFacts.map((fact) => fact.name),
+          ))
+      ) {
+        throw new Error('大六壬课体与四课、三传、天地盘不一致，无法生成证据。');
       }
     }
   }

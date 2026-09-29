@@ -244,9 +244,6 @@ export function buildLifetimePrompt(
       .map((g) => data.baseChart.jiuGongGe.find((item) => item.gong === g)?.name || `${g}宫`)
       .join('、');
     lines.push(`  ${t.topicName}：主落${pNames}。依据：${t.basis}`);
-    if (t.patternSummary.length > 0) {
-      lines.push(`    宫位现状：${t.patternSummary.join('；')}`);
-    }
   }
   lines.push('');
 

@@ -414,6 +414,18 @@ test('大六壬取传规则与四课裁决不一致时不生成完整证据链',
   assert.throws(() => analyzeLiurenEvidence(data), /取传规则或三传与四课、天地盘不一致/);
 });
 
+test('大六壬已登记课体条件与当前盘面不一致时拒绝生成证据', () => {
+  const staleCondition = generateLiuren(fixedDate);
+  assert.ok(staleCondition.guaTiFacts?.length);
+  staleCondition.guaTiFacts[0].matchedConditions = ['错误课体条件'];
+  assert.throws(() => analyzeLiurenEvidence(staleCondition), /课体与四课、三传、天地盘不一致/);
+
+  const staleNames = generateLiuren(fixedDate);
+  assert.ok(staleNames.guaTi?.length);
+  staleNames.guaTi[0] = '错误课体名称';
+  assert.throws(() => analyzeLiurenEvidence(staleNames), /课体与四课、三传、天地盘不一致/);
+});
+
 test('大六壬三传地支虽与天将关系自洽，仍须符合四课取传与递传', () => {
   const data = generateLiuren(fixedDate);
   const middle = data.threeTransmissions[1];

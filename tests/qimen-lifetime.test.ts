@@ -992,9 +992,13 @@ test('奇门终身局阶段只引用本命格局名称，完整条件保留在�
     ),
   );
   const baseSection = prompt.split('【终身局基础盘】')[1].split('【个人标记与主题宫】')[0];
+  const topicSection = prompt.split('【个人标记与主题宫】')[1].split('【人生阶段资料】')[0];
   const stageSection = prompt.split('【人生阶段资料】')[1].split('【周期触发与事件簇】')[0];
   const taskSection = prompt.split('【任务】')[1].split('\n\n【问题】')[0];
   assert.ok(baseSection.includes(pattern.summary));
+  assert.ok(data.topicCandidates.some((item) => item.patternSummary.length > 0));
+  assert.match(topicSection, /人生重点主题候选宫：/);
+  assert.doesNotMatch(topicSection, /宫位现状：/);
   assert.ok(stageSection.includes(`${label}「${pattern.name}」`));
   assert.ok(!stageSection.includes(fullFact));
   assert.match(taskSection, /取象：先按问题确定主体、事项用神、主客与原宫/);

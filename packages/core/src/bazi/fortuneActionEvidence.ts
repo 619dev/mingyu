@@ -269,9 +269,11 @@ export function analyzeFortuneActionEvidence(params: {
       }
 
       const matchingControls = controlFunctions.filter(
-        (c) => c.sourceStems.includes(stem) || c.targetStems.includes(stem),
+        (c) =>
+          c.status === '满足' && (c.sourceStems.includes(stem) || c.targetStems.includes(stem)),
       );
       const matchingClimateEffects = climateCandidates
+        .filter((candidate) => candidate.adopted)
         .flatMap((c) => c.effects ?? [])
         .filter((e) => e.stem === stem || e.targetStems?.includes(stem));
       if (matchingControls.length > 0 || matchingClimateEffects.length > 0) {

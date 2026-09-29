@@ -976,11 +976,11 @@ function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
 
-function resolveCalendar(
-  date: Date,
-  termReferenceDate: Date = date,
-): HuangjiDateTimeForecast['civilTime'] & HuangjiDateTimeForecast['calendar'] {
-  const beijing = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+function getBeijingDate(date: Date): Date {
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000);
+}
+
+function formatBeijingDateTime(beijing: Date): string {
   const year = beijing.getUTCFullYear();
   const month = beijing.getUTCMonth() + 1;
   const day = beijing.getUTCDate();
@@ -988,6 +988,20 @@ function resolveCalendar(
   const minute = beijing.getUTCMinutes();
   const second = beijing.getUTCSeconds();
   const millisecond = beijing.getUTCMilliseconds();
+  return `${year}-${pad(month)}-${pad(day)} ${pad(hour)}:${pad(minute)}:${pad(second)}${millisecond ? `.${String(millisecond).padStart(3, '0')}` : ''}`;
+}
+
+function resolveCalendar(
+  date: Date,
+  termReferenceDate: Date = date,
+): HuangjiDateTimeForecast['civilTime'] & HuangjiDateTimeForecast['calendar'] {
+  const beijing = getBeijingDate(date);
+  const year = beijing.getUTCFullYear();
+  const month = beijing.getUTCMonth() + 1;
+  const day = beijing.getUTCDate();
+  const hour = beijing.getUTCHours();
+  const minute = beijing.getUTCMinutes();
+  const second = beijing.getUTCSeconds();
   const targetTimestamp = termReferenceDate.getTime();
   const candidates: Array<{
     forecastYear: number;
@@ -1028,7 +1042,7 @@ function resolveCalendar(
   const hourEnd = hourSegment * 4;
 
   return {
-    dateTime: `${year}-${pad(month)}-${pad(day)} ${pad(hour)}:${pad(minute)}:${pad(second)}${millisecond ? `.${String(millisecond).padStart(3, '0')}` : ''}`,
+    dateTime: formatBeijingDateTime(beijing),
     timezone: '北京时间（UTC+8）',
     year,
     month,
@@ -1065,7 +1079,7 @@ export function calculateHuangjiDateTimeForecast(
 
   const resolved = resolveCalendar(date, termReferenceDate);
   const referenceDateTime = termReferenceDate
-    ? resolveCalendar(termReferenceDate).dateTime
+    ? formatBeijingDateTime(getBeijingDate(termReferenceDate))
     : undefined;
   const annualForecast = calculateStandardHuangjiForecast(resolved.forecastYear);
   const annual = annualForecast.hexagrams.annual;

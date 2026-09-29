@@ -120,3 +120,17 @@ test('皇极年月日时只查目标所需节气，避免历表边界预取越�
     /无法定位起盘时间所属的皇极节气/,
   );
 });
+
+test('皇极实际占时跨公历年界时只格式化参照时刻', () => {
+  const result = calculateHuangjiJingshi({
+    date: new Date('9999-12-31T15:30:00.000Z'),
+    termReferenceDate: new Date('9999-12-31T16:30:00.000Z'),
+  });
+  const dateTime = result.dateTimeForecast!;
+
+  assert.equal(dateTime.civilTime.dateTime, '9999-12-31 23:30:00');
+  assert.equal(dateTime.civilTime.termReferenceDateTime, '10000-01-01 00:30:00');
+  assert.equal(dateTime.calendar.forecastYear, 10000);
+  assert.equal(dateTime.calendar.activeSolarTerm, '小寒');
+  assert.equal(result.input.year, 10000);
+});

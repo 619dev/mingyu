@@ -6,6 +6,7 @@ import { buildFortuneSelectionContext } from '@core/bazi/fortuneSelection';
 import { normalizeFortuneSelection } from '@core/bazi/fortuneSelection';
 import { baziCalculator } from '@core/bazi/baziCalculator';
 import {
+  analyzeFortuneActionEvidence,
   formatFortuneActionEvidenceForPrompt,
   formatFortuneActionFactLine,
 } from '@core/bazi/fortuneActionEvidence';
@@ -98,6 +99,93 @@ function createSyntheticChartWithLuck(): BaziChartResult {
     },
   } as unknown as BaziChartResult;
 }
+
+test('岁运作用只引用已采纳的调候候选，不把未满足规则当作制化来源', () => {
+  const layer = { id: '2026', type: 'year' as const, label: '流年', ganZhi: '丙午' };
+  const rejected = baziCalculator.calculateBazi({
+    year: 1980,
+    month: 1,
+    day: 3,
+    timeIndex: 6,
+    gender: 'male',
+  });
+  const rejectedEvidence = rejected.analysis.usefulGod.decisionEvidence;
+  assert.ok(rejectedEvidence);
+  assert.ok(
+    rejectedEvidence.climateCandidates.some(
+      (item) => !item.adopted && item.effects?.some((effect) => effect.stem === '丙'),
+    ),
+  );
+  assert.ok(
+    !rejectedEvidence.climateCandidates.some(
+      (item) => item.adopted && item.effects?.some((effect) => effect.stem === '丙'),
+    ),
+  );
+  const rejectedFact = analyzeFortuneActionEvidence({
+    result: rejected,
+    layers: [layer],
+  }).facts.find(
+    (item) => item.level === 'year' && item.placement === '岁运透干' && item.stem === '丙',
+  );
+  assert.ok(rejectedFact);
+  assert.ok(!rejectedFact.hitSources.includes('制化来源'));
+  assert.deepEqual(rejectedFact.targetObjects, []);
+
+  const adopted = baziCalculator.calculateBazi({
+    year: 1985,
+    month: 2,
+    day: 3,
+    timeIndex: 6,
+    gender: 'male',
+  });
+  const adoptedFact = analyzeFortuneActionEvidence({ result: adopted, layers: [layer] }).facts.find(
+    (item) => item.level === 'year' && item.placement === '岁运透干' && item.stem === '丙',
+  );
+  assert.ok(adoptedFact);
+  assert.ok(adoptedFact.hitSources.includes('制化来源'));
+  assert.ok(adoptedFact.targetObjects.includes('癸'));
+});
+
+test('岁运作用只引用已闭合的格局制化路径', () => {
+  const uncertain = baziCalculator.calculateBazi({
+    year: 1980,
+    month: 1,
+    day: 3,
+    timeIndex: 6,
+    gender: 'male',
+  });
+  assert.ok(
+    uncertain.analysis.usefulGod.decisionEvidence?.controlFunctions?.some(
+      (item) => item.status === '资料不足' && item.sourceStems.includes('乙'),
+    ),
+  );
+  const uncertainFact = analyzeFortuneActionEvidence({
+    result: uncertain,
+    layers: [{ id: '2025', type: 'year', label: '流年', ganZhi: '乙巳' }],
+  }).facts.find(
+    (item) => item.level === 'year' && item.placement === '岁运透干' && item.stem === '乙',
+  );
+  assert.ok(uncertainFact);
+  assert.ok(!uncertainFact.hitSources.includes('制化来源'));
+  assert.deepEqual(uncertainFact.targetObjects, []);
+
+  const confirmed = baziCalculator.calculateBazi({
+    year: 1980,
+    month: 5,
+    day: 15,
+    timeIndex: 6,
+    gender: 'male',
+  });
+  const confirmedFact = analyzeFortuneActionEvidence({
+    result: confirmed,
+    layers: [{ id: '2018', type: 'year', label: '流年', ganZhi: '戊戌' }],
+  }).facts.find(
+    (item) => item.level === 'year' && item.placement === '岁运透干' && item.stem === '戊',
+  );
+  assert.ok(confirmedFact);
+  assert.ok(confirmedFact.hitSources.includes('制化来源'));
+  assert.ok(confirmedFact.targetObjects.includes('辛'));
+});
 
 test('同盘 2027 丁命中 conditionalUnfavorableStems 丁，而 2026 丙不命中丁', () => {
   const chart = createSyntheticChartWithLuck();
