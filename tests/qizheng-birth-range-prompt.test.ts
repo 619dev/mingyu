@@ -31,6 +31,43 @@ test('七政本命区间资料保留月亮换宫两侧、整秒范围与完整�
   );
 });
 
+test('黄道宫界两侧的零度吊照在出生区间资料中称为合相', () => {
+  const startTimestamp = Date.parse('2024-06-20T12:00:00+08:00');
+  const input = {
+    year: 2024,
+    month: 6,
+    day: 20,
+    hour: 12,
+    timezone: 8,
+  };
+  const natal = generateQizhengBirthRange(input, {
+    startTimestamp,
+    endTimestamp: startTimestamp + 1_000,
+  });
+  const natalStars = natal.branches[0].representative.stars;
+  assert.notEqual(
+    natalStars.find((star) => star.name === '太阳')?.signBranch,
+    natalStars.find((star) => star.name === '太白(金)')?.signBranch,
+  );
+  const natalText = formatQizhengBirthRangePrompt(natal);
+  assert.match(natalText, /太阳与太白\(金\)合相/);
+  assert.doesNotMatch(natalText, /太阳与太白\(金\)同宫/);
+
+  const flow = generateQizhengFlowBirthRange(
+    { ...input, flowYear: 2024, flowMonth: 6, flowDay: 21 },
+    {
+      startTimestamp,
+      endTimestamp: startTimestamp + 1_000,
+      endExclusive: true,
+      timezone: 'Asia/Shanghai',
+      offsetHours: 8,
+    },
+  );
+  const flowText = formatQizhengBirthRangePrompt(flow);
+  assert.match(flowText, /流曜太阳与本命太阳合相/);
+  assert.doesNotMatch(flowText, /流曜太阳与本命太阳同宫/);
+});
+
 test('七政流曜区间资料保留目标窗口、所有分段、行限与事件连续量', () => {
   const startTimestamp = Date.parse('2024-02-19T11:24:48+08:00');
   const range = generateQizhengFlowBirthRange(

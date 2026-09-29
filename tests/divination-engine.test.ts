@@ -2169,6 +2169,7 @@ test('奇门三奇入墓应使用三奇专门墓宫', () => {
         pattern.summary.includes('三奇墓在未'),
     ),
   );
+  assert.ok(!yiAtKun.some((pattern) => pattern.name === '乙入墓'));
 
   const yiAtQian = getClassicPatterns({
     jiuGongGe: [buildQimenPalace(6, '乙')],
@@ -2183,6 +2184,7 @@ test('奇门三奇入墓应使用三奇专门墓宫', () => {
     zhiShi: '',
   });
   assert.ok(bingAtQian.some((pattern) => pattern.name === '月奇入墓' && pattern.palace === 6));
+  assert.ok(!bingAtQian.some((pattern) => pattern.name === '丙入墓'));
 
   const dingAtGen = getClassicPatterns({
     jiuGongGe: [buildQimenPalace(8, '丁')],
@@ -2190,6 +2192,7 @@ test('奇门三奇入墓应使用三奇专门墓宫', () => {
     zhiShi: '',
   });
   assert.ok(dingAtGen.some((pattern) => pattern.name === '星奇入墓' && pattern.palace === 8));
+  assert.ok(!dingAtGen.some((pattern) => pattern.name === '丁入墓'));
 });
 
 test('奇门三奇受制应按乙临金宫与丙丁临坎宫判定', () => {
@@ -3520,7 +3523,7 @@ test('奇门六庚值符遇丙加庚应输出勃格而不替代荧入太白', ()
   assert.ok(noGengZhiFu.some((pattern) => pattern.name === '荧入太白' && pattern.palace === 6));
 });
 
-test('奇门相佐与守户应按值符值使加地盘丙丁判定', () => {
+test('奇门相佐按值符加地盘丙丁判定，值使加丁只保留玉女守门', () => {
   for (const earthStem of ['丙', '丁']) {
     const patterns = getClassicPatterns({
       jiuGongGe: [
@@ -3565,12 +3568,7 @@ test('奇门相佐与守户应按值符值使加地盘丙丁判定', () => {
     zhiFu: '',
     zhiShi: '杜门',
   });
-  assert.ok(
-    shouHu.some(
-      (pattern) =>
-        pattern.name === '守户' && pattern.palace === 2 && pattern.summary.includes('地盘丁奇'),
-    ),
-  );
+  assert.ok(!shouHu.some((pattern) => pattern.name === '守户'));
   assert.ok(
     shouHu.some(
       (pattern) =>
@@ -3590,7 +3588,7 @@ test('奇门相佐与守户应按值符值使加地盘丙丁判定', () => {
     zhiFu: '',
     zhiShi: '杜门',
   });
-  assert.ok(!noShouHu.some((pattern) => pattern.name === '守户'));
+  assert.ok(!noShouHu.some((pattern) => pattern.name === '玉女守门'));
 });
 
 test('奇门玉女守门应按值使门加地盘丁判定', () => {
@@ -3617,6 +3615,7 @@ test('奇门玉女守门应按值使门加地盘丁判定', () => {
         pattern.summary.includes('休门三吉门'),
     ),
   );
+  assert.equal(patterns.filter((pattern) => ['守户', '玉女守门'].includes(pattern.name)).length, 1);
 });
 
 test('奇门六癸时应按天盘癸落宫区分天网高低', () => {

@@ -9,6 +9,8 @@ export interface XuanKongEvidenceSourceResult {
     yun: number;
     yunStar: number;
     label: string;
+    boundaryStatus?: '待核定';
+    boundaryNote?: string;
   };
   sitMountain: string;
   facingMountain: string;
@@ -136,7 +138,9 @@ export function analyzeXuanKongEvidence(
     {
       key: 'xuankong:calculation:yun',
       stage: '定运',
-      promptText: `建造或起运年 ${result.period.year} 落入${result.period.yuan}${result.period.yun}运，当运星${result.period.yunStar}`,
+      promptText: result.period.boundaryStatus
+        ? `建造或起运年 ${result.period.year} 按立春后暂列${result.period.yuan}${result.period.yun}运，当运星${result.period.yunStar}；实际运期按建造或起运日期核定`
+        : `建造或起运年 ${result.period.year} 落入${result.period.yuan}${result.period.yun}运，当运星${result.period.yunStar}`,
       sources: ['三元九运公开运表', '玄空飞星通行定运口径'],
       limitation: STEP_LIMIT,
     },
@@ -241,6 +245,15 @@ export function analyzeXuanKongEvidence(
   }
 
   const counterFacts = [];
+  if (result.period.boundaryNote) {
+    counterFacts.push({
+      key: 'xuankong:counter:period-boundary',
+      type: '立春交运边界',
+      promptText: result.period.boundaryNote,
+      sources: ['《风水宅典实用建筑风水》三元九运立春交运说明'],
+      limitation: COUNTER_LIMIT,
+    });
+  }
   if (
     result.measurement?.stability &&
     (result.measurement.stability !== '稳定' || result.measurement.warnings?.length)
@@ -304,8 +317,12 @@ export function analyzeXuanKongEvidence(
 
   const summaryFact = {
     key: 'xuankong:summary',
-    status: counterFacts.length ? '含边界提示' : '结构完整',
-    promptText: `${result.period.yuan}${result.period.yun}运，坐${result.sitMountain}向${result.facingMountain}，${result.guaType}，${result.formation}；${result.daoShanXiang.summary}${result.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}`,
+    status: result.period.boundaryStatus
+      ? '运期待核定'
+      : counterFacts.length
+        ? '含边界提示'
+        : '结构完整',
+    promptText: `${result.period.yuan}${result.period.yun}运，坐${result.sitMountain}向${result.facingMountain}，${result.guaType}，${result.formation}；${result.daoShanXiang.summary}${result.period.boundaryStatus ? '（运期待核定）' : ''}${result.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}`,
     sources: ['定运、山向、三盘飞布与到山到向汇总'],
     limitation: FACT_LIMIT,
   };

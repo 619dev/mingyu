@@ -16,6 +16,10 @@ function formatValue(value: number, unit: string): string {
     : String(Number(value.toPrecision(10)));
 }
 
+function formatAspectType(type: string): string {
+  return type === '同宫' ? '合相' : type;
+}
+
 function formatNatalFacts(data: QizhengResult): string[] {
   const context = data.calculationContext;
   const enNan = data.enNan;
@@ -26,7 +30,7 @@ function formatNatalFacts(data: QizhengResult): string[] {
       (star) =>
         `${star.name}：${star.xiu}宿，${star.signBranch}宫${star.palace}，${star.dignity || '无庙旺标记'}${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
     ),
-    `吊照：${data.aspects.length ? data.aspects.map((item) => `${item.star1}与${item.star2}${item.type}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
+    `吊照：${data.aspects.length ? data.aspects.map((item) => `${item.star1}与${item.star2}${formatAspectType(item.type)}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
     `神煞：${data.shensha.map((item) => `${item.name}${item.value}`).join('；')}。`,
     ...(enNan
       ? [
@@ -54,7 +58,7 @@ export function formatQizhengFlowRangeFacts(
       (star) =>
         `${star.name}：${star.signBranch}宫${star.palace}，${star.xiu}宿${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
     ),
-    `流曜与本命吊照：${flow.transits.length ? flow.transits.map((item) => `${item.star1}与${item.star2}${item.type}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
+    `流曜与本命吊照：${flow.transits.length ? flow.transits.map((item) => `${item.star1}与${item.star2}${formatAspectType(item.type)}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
     ...(limits
       ? [
           `行限：${limits.gender === 'male' ? '男命' : '女命'}，生年干${limits.yearStem}属${limits.yearStemYinYang}，${limits.direction}，虚岁${limits.nominalAge}；${limits.ageNote}。`,

@@ -2016,6 +2016,9 @@ test('MCP 五运六气与皇极经世应返回可复核结构并严格拒绝冲�
       qiSteps: Array<{
         guestRole?: string;
         solarTerms: string[];
+        gregorianStart?: string;
+        gregorianEnd?: string;
+        boundaryTime?: { endBeijingExclusive: string };
         hostGuestRelation: { kind: string; fireOrder?: string };
       }>;
       annualClassification: { sitianTransformation: string; governance: string };
@@ -2060,6 +2063,9 @@ test('MCP 五运六气与皇极经世应返回可复核结构并严格拒绝冲�
     assert.equal(wuyunResult.movementSteps[0].guestMovement.toneName, '太羽');
     assert.equal(wuyunResult.movementSteps[1].startBoundary.description, '春分后第13日起');
     assert.deepEqual(wuyunResult.qiSteps[0].solarTerms, ['大寒', '立春', '雨水', '惊蛰']);
+    assert.equal(wuyunResult.qiSteps[0].gregorianEnd, '2026-03-20');
+    assert.equal(wuyunResult.qiSteps[1].gregorianStart, '2026-03-20');
+    assert.equal(wuyunResult.qiSteps[0].boundaryTime?.endBeijingExclusive, '2026-03-20 22:45:59');
     assert.equal(typeof wuyunResult.qiSteps[0].hostGuestRelation.kind, 'string');
     assert.equal(wuyunResult.qiSteps[2].guestRole, '司天');
     assert.equal(wuyunResult.qiSteps[5].guestRole, '在泉');
@@ -5841,6 +5847,7 @@ test('MCP 小六壬多能鄙事口径贯穿课盘与完整提示词', async () =
     const prompt = (response.structuredContent as { prompt: string }).prompt;
     assert.match(prompt, /多能鄙事/);
     assert.match(prompt, /月宫大安下一宫起初一/);
+    assert.match(prompt, /公历占时（北京时间）：2025-01-29 00:30/);
     assert.match(prompt, /占得宫：留连/);
     assert.doesNotMatch(prompt, /通行俗传/);
   });

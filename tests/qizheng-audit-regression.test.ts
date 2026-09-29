@@ -36,6 +36,14 @@ test('同一瞬时点采用不同民用时区时，七政立春年干和年支�
   );
 });
 
+test('七政完整提示词逐类写明四余位置口径', () => {
+  const chart = generateQizheng({ year: 2024, month: 6, day: 20, hour: 12, timezone: 8 });
+  assert.match(chart.prompt, /罗睺、计都取月球真交点/);
+  assert.match(chart.prompt, /月孛取月球平均远地点模型/);
+  assert.match(chart.prompt, /紫炁按古法均速/);
+  assert.doesNotMatch(chart.prompt, /月孛按星历位置/);
+});
+
 test('宫支按太阳宫顺数见卯安命，十二宫地支逆布', () => {
   // 《张果星宗》例：太阳子宫，酉时生，午宫安命。
   const chart = generateQizheng({ year: 2025, month: 2, day: 3, hour: 18, timezone: 8 });

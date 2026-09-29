@@ -177,7 +177,12 @@ test('奇门转盘中宫干随天禽时应参与三奇、入墓、击刑与天�
   const yiRelations = getStemRelations(yiRuMu.palaces);
   assert.equal(yiRuMu.palaces[1].tianPan.companionStem, '乙');
   assert.ok(yiPatterns.some((pattern) => pattern.name === '日奇入墓' && pattern.palace === 2));
-  assert.ok(yiPatterns.some((pattern) => pattern.name === '乙入墓' && pattern.palace === 2));
+  assert.equal(
+    yiPatterns.filter(
+      (pattern) => pattern.palace === 2 && ['日奇入墓', '乙入墓'].includes(pattern.name),
+    ).length,
+    1,
+  );
   assert.ok(
     yiRelations.some(
       (relation) => relation.heaven === '乙' && relation.earth === '癸' && relation.palace === 2,

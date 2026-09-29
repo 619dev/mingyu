@@ -1,10 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateMeihua } from '@core/divination/algorithms/meihua';
-import { buildDivinationPrompt as buildCoreDivinationPrompt } from '@core/prompt/divination';
+import { generateDivinationSession as generateCoreSession } from '@core/divination/session';
+import {
+  buildDivinationPrompt as buildCoreDivinationPrompt,
+  getDivinationSummaryBlocks,
+} from '@core/prompt/divination';
 import { formatMeihuaFacts } from '@core/prompt/meihua-facts';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 import { ZHOUYI_HEXAGRAMS_TEXT } from '@core/classics/zhouyi';
+
+test('梅花兼容起卦入口的在线提示只显示实际年月日时取数法', () => {
+  const date = new Date('2026-05-19T10:30:00+08:00');
+  const data = generateMeihua(date, { method: 'timeTrigram' });
+  const summary = getDivinationSummaryBlocks('meihua', data);
+  const core = generateCoreSession({
+    method: 'meihua',
+    question: '工作进展如何？',
+    divinationTime: date,
+    currentTime: date,
+    meihua: { method: 'timeTrigram' },
+  });
+  for (const text of [
+    summary.lines.join('\n'),
+    buildCoreDivinationPrompt({ method: 'meihua', data, question: '工作进展如何？' }),
+    buildDivinationPrompt('meihua', '工作进展如何？', data),
+    core.aiPrompt,
+  ]) {
+    assert.match(text, /起卦法：年月日时起卦法/u);
+    assert.doesNotMatch(text, /timeTrigram|兼容/u);
+  }
+});
 
 test('梅花旧盘取数与卦数不一致时不输出错误算式', () => {
   const date = new Date('2026-05-19T10:30:00+08:00');

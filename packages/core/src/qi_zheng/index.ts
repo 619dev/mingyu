@@ -2374,7 +2374,7 @@ function generateQizhengInternal(
     }。`,
     enNan.summary,
     `神煞：天乙贵人${shensha[0].value}、驿马${shensha[1].value}、劫煞${shensha[2].value}、咸池${shensha[3].value}、华盖${shensha[4].value}、孤辰${shensha[5].value}、寡宿${shensha[6].value}。`,
-    '星历口径：七政、罗睺、计都、月孛按星历位置；紫炁按古法均速。',
+    '位置口径：七政按太阳系星历计算；罗睺、计都取月球真交点；月孛取月球平均远地点模型；紫炁按古法均速。',
     ...(timeLords ? formatQizhengTimeLordPrompt(timeLords) : []),
     ...(flowingStars ? formatQizhengFlowingPrompt(flowingStars, stars) : []),
     timeLords

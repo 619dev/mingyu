@@ -12,6 +12,7 @@ test('小六壬双口径在原生提示词中分别绑定定位用途与时宫�
     const day = rule === 'common' ? '空亡' : '大安';
     const primary = rule === 'common' ? '小吉' : '空亡';
     const firstDay = rule === 'common' ? '赤口' : '小吉';
+    assert.match(prompt, /公历占时（北京时间）：2026-05-19 10:30/);
     assert.ok(prompt.includes('起课过程：月、日、时各段起点计为第一位'));
     assert.ok(
       prompt.includes(
@@ -114,6 +115,8 @@ test('小六壬真太阳时跨民用日期时提示词说明农历日与干支�
     buildCoreDivinationPrompt({ method: 'xiaoliuren', data, question: '请分析当前课。' }),
   ]) {
     assert.match(prompt, /起课农历月日、节气与年月柱参照实际占时，时辰与日时柱取校正钟表时刻/);
+    assert.match(prompt, /公历占时（北京时间）：2025-06-30 00:20/);
+    assert.match(prompt, /真太阳时校正时刻：2025-06-29 21:15（用于定亥时）/);
   }
   assert.match(
     buildDivinationPrompt('xiaoliuren', '请分析当前课。', data),

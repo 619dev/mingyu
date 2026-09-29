@@ -2210,7 +2210,7 @@ export function getPublicApiOpenApiDocument(
               type: 'integer',
               minimum: 1,
               maximum: 9999,
-              description: '住宅建造年或起运年。',
+              description: '住宅建造年或起运年；交运首年只有年份时，运期待按立春前后核定。',
             },
             sitMountain: { type: 'string', description: '坐山，二十四山之一。' },
             facingMountain: { type: 'string', description: '朝向，二十四山之一。' },

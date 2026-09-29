@@ -60,7 +60,7 @@ test('五运六气六步在交节当日展示准确时界', () => {
   const result = calculateWuyunLiuqi({ year: 2026 });
   const first = result.qiSteps[0];
   const second = result.qiSteps[1];
-  assert.equal(first.gregorianEnd, '2026-03-19');
+  assert.equal(first.gregorianEnd, '2026-03-20');
   assert.equal(second.gregorianStart, '2026-03-20');
   assert.ok(first.boundaryTime && second.boundaryTime);
   assert.equal(first.boundaryTime.endTimestampExclusive, second.boundaryTime.startTimestamp);

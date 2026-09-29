@@ -1,5 +1,7 @@
 import type { WuyunLiuqiResult } from '../wuyun-liuqi';
 import { formatWuyunLiuqiFacts } from '../wuyun-liuqi';
+import { DEFAULT_CHINA_TIMEZONE_HOURS } from '../calendar/civil-time';
+import { TimeManager } from '../calendar/timeManager';
 import { formatAstrolabeForPrompt } from './astrolabe';
 import {
   formatLiurenLesson,
@@ -109,7 +111,7 @@ function formatKongmingInfo(data: KongmingHexagramResult) {
     .join('\n');
 }
 
-function getMeihuaMethodLabel(
+export function getMeihuaMethodLabel(
   calculation?: Pick<NonNullable<MeihuaData['calculation']>, 'method' | 'methodKey'> | null,
 ) {
   if (!calculation) {
@@ -120,9 +122,12 @@ function getMeihuaMethodLabel(
     time: '年月日时起卦法',
     number: '数字起卦法',
     random: '随机起卦法',
-    timeTrigram: '年月日时起卦法（兼容）',
+    timeTrigram: '年月日时起卦法',
   };
 
+  if (calculation.methodKey && methodLabelMap[calculation.methodKey]) {
+    return methodLabelMap[calculation.methodKey];
+  }
   if (calculation.method?.trim()) {
     return methodLabelMap[calculation.method] || calculation.method;
   }
@@ -646,6 +651,20 @@ function formatMeihuaInfo(data: MeihuaData) {
 function formatXiaoliurenInfo(data: XiaoliurenData) {
   analyzeXiaoliurenEvidence(data);
   const rule = resolveXiaoliurenRule(data.rule);
+  const formatBeijingDateTime = (timestamp: number) => {
+    const parts = TimeManager.getWallClockParts(
+      new Date(timestamp),
+      DEFAULT_CHINA_TIMEZONE_HOURS * 60,
+    );
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${parts.year}-${pad(parts.month)}-${pad(parts.day)} ${pad(parts.hour)}:${pad(parts.minute)}`;
+  };
+  const civilTimeLines = [
+    `公历占时（北京时间）：${formatBeijingDateTime(data.termReferenceTimestamp ?? data.timestamp)}`,
+    ...(data.termReferenceTimestamp !== undefined
+      ? [`真太阳时校正时刻：${formatBeijingDateTime(data.timestamp)}（用于定${data.hourLabel}）`]
+      : []),
+  ];
   const calendarBasis = data.calculation
     ? [
         data.calculation.dayBoundary,
@@ -664,6 +683,7 @@ function formatXiaoliurenInfo(data: XiaoliurenData) {
   if (!firstDayPalace) throw new Error('小六壬初一对应宫位缺失');
   return [
     '占法：小六壬',
+    ...civilTimeLines,
     `起课：农历${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月${data.lunarDay}日，${data.hourLabel}`,
     '起课过程：月、日、时各段起点计为第一位',
     `  定月宫：${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月从大安顺数，落${data.sequence.month.name}`,

@@ -300,6 +300,69 @@ test('梅花：年月日时起卦应以农历年支入数，不应在立春后�
   assert.equal(data.changedName, '泽风大过');
 });
 
+test('梅花时间卦证据应以原占时复核农历取数，识别取余结果不变的伪记录', () => {
+  const date = new Date('2024-02-05T12:00:00+08:00');
+  for (const method of ['time', 'timeTrigram'] as const) {
+    const data = generateMeihua(date, { method });
+    assert.equal(data.calculation.timezoneOffsetMinutes, 480);
+    assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
+
+    const changedDay = structuredClone(data);
+    changedDay.calculation.day = 2; // 原日数26，减24后除8、除6的余数都不变。
+    assert.equal(analyzeMeihuaEvidence(changedDay).calculationFact.status, '计算不一致');
+    assert.match(
+      analyzeMeihuaEvidence(changedDay).calculationFact.promptText,
+      /农历年支、月、日与时间戳重算结果不一致/,
+    );
+
+    const legacy = structuredClone(data);
+    delete legacy.calculation.timezoneOffsetMinutes;
+    const legacyFact = analyzeMeihuaEvidence(legacy).calculationFact;
+    assert.equal(legacyFact.status, '缺少中间参数');
+    assert.equal(legacyFact.steps.length, 0);
+    assert.match(legacyFact.promptText, /起卦民用时区偏移/);
+  }
+});
+
+test('梅花公元1年时间卦应记录真实时区偏移并完成来源复核', () => {
+  const data = generateMeihua(new Date('0001-03-01T08:00:00+08:00'), { method: 'time' });
+  assert.equal(data.calculation.timezoneOffsetMinutes, 480);
+  assert.equal(data.calculation.yearZhi, '酉');
+  assert.equal(data.calculation.month, 1);
+  assert.equal(data.calculation.day, 18);
+  assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
+});
+
+test('梅花数字、声音、方位仅以占时复核时支，字占和随机不以时间入数', () => {
+  const date = new Date('2025-01-01T08:00:00+08:00');
+  const clockMethods = [
+    { method: 'number' as const, number: 123 },
+    { method: 'sound' as const, soundCount: 3 },
+    { method: 'direction' as const, direction: 'south' as const, objectType: 'fire' as const },
+  ];
+  for (const settings of clockMethods) {
+    const data = generateMeihua(date, settings);
+    assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
+    const changedTime = structuredClone(data);
+    changedTime.timestamp += 2 * 60 * 60 * 1000;
+    assert.equal(analyzeMeihuaEvidence(changedTime).calculationFact.status, '计算不一致');
+  }
+
+  const withoutTimeNumber = [
+    generateMeihua(date, {
+      method: 'character',
+      characterText: '西林',
+      characterStrokeCounts: [7, 8],
+    }),
+    generateMeihua(date, { method: 'random', seed: '梅花时间非取数' }),
+  ];
+  for (const data of withoutTimeNumber) {
+    const changedTime = structuredClone(data);
+    changedTime.timestamp += 2 * 60 * 60 * 1000;
+    assert.equal(analyzeMeihuaEvidence(changedTime).calculationFact.status, '完整');
+  }
+});
+
 test('梅花：观梅占原例应取兑上离下、初爻动', () => {
   // 《梅花易数》卷一《观梅占》：辰年十二月十七日申时，34取兑、43取离与初爻。
   const sample = getDivinationTime(SAMPLE_DATE);

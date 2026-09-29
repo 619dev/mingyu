@@ -67,10 +67,34 @@ test('三元九运：2024 应落入下元九运区间附近可复现运表', () 
     startYear: 2024,
     endYear: 2043,
     label: '下元9运（2024-2043）',
+    boundaryStatus: '待核定',
+    boundaryNote:
+      '2024年立春前建造或起运属8运，立春后属9运；本盘按9运列示，实际运期需依建造或起运日期核定',
   });
   assert.equal(period.yunStar, period.yun);
   assert.ok(period.startYear <= 2024 && period.endYear >= 2024);
   assert.match(period.label, /运/);
+});
+
+test('交运首年仅有年份时保留立春前后运期待核定状态', () => {
+  const transition = generateXuanKong({ year: 2004, sitMountain: '子' });
+  assert.equal(transition.period.yun, 8);
+  assert.equal(transition.period.boundaryStatus, '待核定');
+  assert.match(transition.period.boundaryNote ?? '', /2004年立春前.*7运.*立春后.*8运/);
+  assert.ok(transition.prompt.includes(transition.period.boundaryNote!));
+  assert.equal(transition.evidenceAnalysis.summaryFact.status, '运期待核定');
+  assert.ok(
+    transition.evidenceAnalysis.counterFacts.some(
+      (item) =>
+        item.key === 'xuankong:counter:period-boundary' &&
+        item.promptText === transition.period.boundaryNote,
+    ),
+  );
+
+  const settled = generateXuanKong({ year: 2005, sitMountain: '子' });
+  assert.equal(settled.period.boundaryStatus, undefined);
+  assert.equal(settled.period.boundaryNote, undefined);
+  assert.equal(settled.evidenceAnalysis.summaryFact.status, '结构完整');
 });
 
 test('九运周期跨公元元年时使用无公元0年的民用纪年', () => {

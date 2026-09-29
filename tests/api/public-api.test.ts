@@ -114,6 +114,7 @@ test('小六壬公开接口使用所选底本起课并生成同口径提示词',
   const prompted = await callApi('divination/xiaoliuren/prompt', options(input));
   assert.equal(prompted.response.status, 200);
   assert.match(prompted.body.data.prompt, /多能鄙事/);
+  assert.match(prompted.body.data.prompt, /公历占时（北京时间）：2025-01-29 00:30/);
   assert.match(prompted.body.data.prompt, /占得宫：留连/);
   assert.doesNotMatch(prompted.body.data.prompt, /通行俗传/);
   for (const xiaoliurenRule of ['bad', false, ['duoneng']]) {
@@ -7506,6 +7507,15 @@ test('五运六气公开接口保留全年份年度结构并明确公历日期�
       year >= 1900 && year <= 2199 ? '公历日期已换算' : '节令边界',
     );
   }
+  const { response, body } = await callApi('metaphysics/wuyun-liuqi/calculate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ year: 2026 }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.data.qiSteps[0].gregorianEnd, '2026-03-20');
+  assert.equal(body.data.qiSteps[1].gregorianStart, '2026-03-20');
+  assert.equal(body.data.qiSteps[0].boundaryTime.endBeijingExclusive, '2026-03-20 22:45:59');
 });
 
 test('八宅公开提示词完整保留八宫生克及命宅分组', async () => {

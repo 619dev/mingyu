@@ -334,6 +334,15 @@ export function generateMeihua(
 
   const { upperTrigramIndex, lowerTrigramIndex, movingYaoIndex, calculation, randomTrace } =
     methodResult;
+  if (method !== 'character' && method !== 'random') {
+    const { solar } = timeInfo;
+    const localClock = new Date(0);
+    localClock.setUTCFullYear(solar.year, solar.month - 1, solar.day);
+    localClock.setUTCHours(solar.hour, solar.minute, 0, 0);
+    const localMinute = localClock.getTime();
+    const utcMinute = Math.floor(timestamp / 60_000) * 60_000;
+    calculation.timezoneOffsetMinutes = (localMinute - utcMinute) / 60_000;
+  }
 
   // 3. 确定主卦、互卦、变卦
   const upperTrigram = trigrams[upperTrigramIndex];

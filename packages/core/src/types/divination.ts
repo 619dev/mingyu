@@ -451,6 +451,8 @@ export interface MeihuaCalculation {
   yearZhiIndex?: number;
   timeZhi?: string;
   timeZhiIndex?: number;
+  /** 起卦时采用的民用时区偏移，用于从时间戳复核取数。 */
+  timezoneOffsetMinutes?: number;
   upperTrigramIndex?: number;
   lowerTrigramIndex?: number;
   movingYaoIndex?: number;

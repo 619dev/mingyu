@@ -147,6 +147,7 @@ function XuanKongBoard({ xuankong }: { xuankong: XuanKongResult }) {
           {xuankong.period.label} · 坐{xuankong.sitMountain}向{xuankong.facingMountain}
           {targetDateLabel ? ` · 目标${targetDateLabel}` : ''}
         </p>
+        {xuankong.period.boundaryNote ? <p>{xuankong.period.boundaryNote}</p> : null}
       </div>
       <div className="xuankong-grid" role="img" aria-label="玄空飞星九宫盘">
         {LO_SHU_ORDER.map((gong) => {
@@ -186,7 +187,9 @@ function XuanKongBoard({ xuankong }: { xuankong: XuanKongResult }) {
               </div>
               <div className="xuankong-cell-caption">
                 {palace.yearStar !== undefined || palace.monthStar !== undefined
-                  ? '运·山·向·年·月'
+                  ? palace.monthStar !== undefined
+                    ? '运·山·向·年·月'
+                    : '运·山·向·年'
                   : '运·山·向'}
               </div>
             </div>

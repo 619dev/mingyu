@@ -122,7 +122,7 @@ export interface LiuqiStep {
   order: number;
   label: '初之气' | '二之气' | '三之气' | '四之气' | '五之气' | '终之气';
   solarTerms: string[];
-  /** 现代节气日期标签；交节当日的节令归属可参照 boundaryTime。 */
+  /** 本步所覆盖的首末北京时间日期；交节当日可同时出现在相邻两步，瞬时归属以 boundaryTime 为准。 */
   gregorianStart?: string;
   gregorianEnd?: string;
   /** 现代节气历表的北京时间交节瞬时，仅用于节令分段，不等同传统六气交司时刻。 */
@@ -354,6 +354,15 @@ function addCivilDays(date: { year: number; month: number; day: number }, days: 
 
 function formatCivilDate(date: { year: number; month: number; day: number }) {
   return `${date.year}-${padDatePart(date.month)}-${padDatePart(date.day)}`;
+}
+
+function beijingCivilDateAt(timestamp: number) {
+  const shifted = new Date(timestamp + 8 * 3_600_000);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+  };
 }
 
 /** 一年二十四节气按六步分主，每步四个节气。 */
@@ -685,9 +694,8 @@ function buildQiSteps(sitianName: LiuqiName, year?: number): LiuqiStep[] {
     for (let index = 0; index < steps.length; index += 1) {
       const start = starts[index];
       const next = index + 1 < starts.length ? starts[index + 1] : nextYearStart;
-      const end = addCivilDays(next.date, -1);
       steps[index].gregorianStart = formatCivilDate(start.date);
-      steps[index].gregorianEnd = formatCivilDate(end);
+      steps[index].gregorianEnd = formatCivilDate(beijingCivilDateAt(next.timestamp - 1));
       steps[index].boundaryTime = {
         startTimestamp: start.timestamp,
         endTimestampExclusive: next.timestamp,

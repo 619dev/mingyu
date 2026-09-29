@@ -412,7 +412,12 @@ function getClassicPatternAliasesForBasicTag(tag: string): string[] {
   if (punishmentMatch) return [`${punishmentMatch[1]}击刑`];
 
   const tombMatch = tag.match(/^入墓（(?:年干|月干|日干|时干)([乙丙丁戊己庚辛壬癸])/u);
-  if (tombMatch) return [`${tombMatch[1]}入墓`];
+  if (tombMatch) {
+    const qiTombName = { 乙: '日奇入墓', 丙: '月奇入墓', 丁: '星奇入墓' }[
+      tombMatch[1] as '乙' | '丙' | '丁'
+    ];
+    return qiTombName ? [qiTombName] : [`${tombMatch[1]}入墓`];
+  }
 
   return [];
 }

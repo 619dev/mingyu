@@ -104,6 +104,9 @@ export interface XuanKongPeriod {
   startYear: number;
   endYear: number;
   label: string;
+  boundaryStatus?: '待核定';
+  /** 交运首年只有公历年份、没有建造或起运日期时的定运边界说明。 */
+  boundaryNote?: string;
 }
 
 export type XuanKongMeasurementBoundaryReason = '二十四山分界' | '中央九度分界';
@@ -127,6 +130,7 @@ export interface XuanKongMeasurement {
 }
 
 export interface XuanKongInput {
+  /** 住宅建造或起运公历年；交运首年无月日时，运期标为待核定。 */
   year: number;
   sitMountain?: string;
   facingMountain?: string;
@@ -372,6 +376,12 @@ export function resolveXuanKongPeriod(year: number): XuanKongPeriod {
     startYear,
     endYear,
     label: `${yuan}${yun}运（${periodRange}）`,
+    ...(y === astronomicalStartYear
+      ? {
+          boundaryStatus: '待核定' as const,
+          boundaryNote: `${y}年立春前建造或起运属${yun === 1 ? 9 : yun - 1}运，立春后属${yun}运；本盘按${yun}运列示，实际运期需依建造或起运日期核定`,
+        }
+      : {}),
   };
 }
 
@@ -689,6 +699,7 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
     ),
     '【盘面资料】',
     `运程：${result.period.label}`,
+    result.period.boundaryNote ?? '',
     result.measurement
       ? [
           `测量资料：坐山${result.measurement.sitDegree}°、朝向${result.measurement.facingDegree}°、误差±${result.measurement.uncertaintyDegrees}°`,

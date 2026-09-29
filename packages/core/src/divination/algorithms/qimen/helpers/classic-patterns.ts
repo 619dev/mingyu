@@ -1,6 +1,6 @@
 /**
  * @file 奇门遁甲经典格局识别
- * @description 实现九大遁格、三奇格局、三诈五假、值符值使关系、相佐、守户、玉女守门、门迫、击刑、入墓、
+ * @description 实现九大遁格、三奇格局、三诈五假、值符值使关系、相佐、玉女守门、门迫、击刑、入墓、
  * 天地盘干关系等经典格局的完整检测。
  *
  * 古籍依据：
@@ -1115,21 +1115,16 @@ function getZhiFuZhiShiPatterns(
 }
 
 /**
- * 识别相佐、守户格局
+ * 识别相佐格局
  *
  * 《遁甲演义》：「符加丙丁为相佐，使加六丁为守户。」
- * 相佐看值符星所在宫的地盘丙/丁；守户看值使门所在宫的地盘丁。
+ * 相佐看值符星所在宫的地盘丙/丁；使加六丁与玉女守门同一条件，统一由玉女守门输出。
  *
  * @param jiuGongGe - 九宫格数据
  * @param zhiFu - 值符星
- * @param zhiShi - 值使门
- * @returns 检测到的相佐、守户格局列表
+ * @returns 检测到的相佐格局列表
  */
-function getXiangZuoShouHuPatterns(
-  jiuGongGe: QimenJiuGongGe[],
-  zhiFu: string,
-  zhiShi: string,
-): ClassicPattern[] {
+function getXiangZuoPatterns(jiuGongGe: QimenJiuGongGe[], zhiFu: string): ClassicPattern[] {
   const out: ClassicPattern[] = [];
 
   if (zhiFu) {
@@ -1145,23 +1140,6 @@ function getXiangZuoShouHuPatterns(
         manifestation: '贵人助力、关键资源配合、推进有人相帮',
         palace: fuPalace.gong,
         tokens: [zhiFu, fuPalace.diPan.stem],
-      });
-    }
-  }
-
-  if (zhiShi) {
-    const shiPalace = findDoorPalace(jiuGongGe, zhiShi);
-    if (shiPalace && shiPalace.diPan.stem === '丁') {
-      out.push({
-        key: `pattern:shouHu:${shiPalace.gong}`,
-        name: '守户',
-        tone: 'good',
-        score: 4,
-        summary: `值使${zhiShi}加地盘丁奇于${shiPalace.name}，合“使加六丁为守户”，主门户得护。`,
-        modern: '今天行动入口、沟通窗口或办事通道有保护与缓冲，适合稳住关键环节后再推进。',
-        manifestation: '入口得护、手续有缓冲、关键通道较稳',
-        palace: shiPalace.gong,
-        tokens: [zhiShi, '丁'],
       });
     }
   }
@@ -1650,7 +1628,7 @@ function getYuNvShouMenPattern(jiuGongGe: QimenJiuGongGe[], zhiShi: string): Cla
       name: '玉女守门',
       tone: 'good',
       score: isGoodDoor ? 8 : 4,
-      summary: `值使${zhiShi}加地盘丁奇于${zhiShiPal.name}，合《奇门宝鉴御定》“地盘六丁守直使之门”为玉女守门；${doorText}`,
+      summary: `值使${zhiShi}加地盘丁奇于${zhiShiPal.name}，合《奇门宝鉴御定》“地盘六丁守直使之门”为玉女守门，亦称守户；${doorText}`,
       modern: isGoodDoor
         ? '今天适合柔性协商、和合关系、处理文书或需要保密推进的事。'
         : '今天可借柔性方式守住沟通入口，适合保密协调；大事仍要结合门星吉凶再定。',
@@ -1821,6 +1799,7 @@ function getJiXingPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[] {
  *   乙入未（坤2），丙入戌（乾6），丁入丑（艮8），
  *   戊入戌（乾6），己入辰（巽4），庚入未（坤2），
  *   辛入丑（艮8），壬入辰（巽4），癸入辰（巽4）
+ * 天盘三奇入墓由三奇专名格局输出，此处保留其余天干的通用格局。
  *
  * @param jiuGongGe - 九宫格数据
  * @param position - 检查天盘或地盘，默认为天盘
@@ -1836,6 +1815,8 @@ function getRuMuPatterns(
     const stems = position === 'tianPan' ? getTianPanStems(palace) : [palace.diPan.stem];
     for (const stem of stems) {
       if (!stem) continue;
+      // 天盘三奇已由日奇、月奇、星奇入墓按同一墓宫输出。
+      if (position === 'tianPan' && sanQi.includes(stem)) continue;
 
       const muGong = getStemTombPalace(stem);
       if (!muGong) continue;
@@ -2059,7 +2040,7 @@ export interface PatternContext {
  * 涵盖：
  *   九大遁格（天遁、地遁、人遁、神遁、鬼遁、龙遁、虎遁、风遁、云遁）
  *   三奇格局（得使、升殿、入墓、会甲）与三诈五假
- *   值符值使关系（符使同宫、相佐、守户、天乙飞宫格、天乙伏宫格、天辅时）
+ *   值符值使关系（符使同宫、相佐、天乙飞宫格、天乙伏宫格、天辅时）
  *   玉女守门
  *   门迫与门宫相生
  *   击刑
@@ -2092,7 +2073,7 @@ export function getClassicPatterns(ctx: PatternContext): ClassicPattern[] {
     ...(dayStem ? getSanQiHuiJiaPattern(jiuGongGe, dayStem) : []),
     // 3. 值符值使关系
     ...getZhiFuZhiShiPatterns(jiuGongGe, zhiFu, zhiShi),
-    ...getXiangZuoShouHuPatterns(jiuGongGe, zhiFu, zhiShi),
+    ...getXiangZuoPatterns(jiuGongGe, zhiFu),
     ...getTianYiGongGePatterns(jiuGongGe, zhiFu),
     ...getGengZhiFuBoGePatterns(jiuGongGe, zhiFu),
     ...getDayGanFeiFuPatterns(jiuGongGe, dayStem, dayGanZhi),

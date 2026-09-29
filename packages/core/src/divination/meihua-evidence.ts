@@ -3,6 +3,7 @@ import { trigramsByIndex } from './hexagram-data';
 import { dizhi } from './divination-data';
 import { MEIHUA_DIRECTION_OPTIONS, MEIHUA_OBJECT_OPTIONS } from './config';
 import { getBranchWuxing, getSeasonState, isKe, isSheng } from '../ganzhi';
+import { getDivinationTime } from '../calendar/timeManager';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import { MingyuCoreError } from '../shared/result';
 import {
@@ -803,6 +804,52 @@ function validateMeihuaCalculation(data: MeihuaData): {
       calculation.methodKey === 'sound' ||
       calculation.methodKey === 'direction'
     ) {
+      const offset = calculation.timezoneOffsetMinutes;
+      if (
+        typeof offset !== 'number' ||
+        !Number.isInteger(offset) ||
+        offset < -720 ||
+        offset > 840
+      ) {
+        missing.push('起卦民用时区偏移');
+      } else if (!Number.isSafeInteger(data.timestamp)) {
+        missing.push('有效的起卦时间戳');
+      } else if (
+        data.termReferenceTimestamp !== undefined &&
+        !Number.isSafeInteger(data.termReferenceTimestamp)
+      ) {
+        missing.push('有效的节气参考时间戳');
+      } else {
+        try {
+          const sourceTime = getDivinationTime(
+            new Date(data.timestamp),
+            offset,
+            data.termReferenceTimestamp === undefined
+              ? undefined
+              : new Date(data.termReferenceTimestamp),
+          );
+          const sourceHourBranch = sourceTime.ganzhi.hour.slice(-1);
+          if (calculation.timeZhi !== sourceHourBranch) {
+            mismatches.push('起卦时支与时间戳重算结果不一致');
+          }
+          if (data.ganzhi.hour.slice(-1) !== sourceHourBranch) {
+            mismatches.push('盘面时支与时间戳重算结果不一致');
+          }
+          if (calculation.methodKey === 'time' || calculation.methodKey === 'timeTrigram') {
+            const sourceLunar = sourceTime.timeInfo.lunar;
+            const sourceYearZhi = sourceLunar.yearInChinese.replace(/^农历/, '').charAt(1);
+            if (
+              calculation.yearZhi !== sourceYearZhi ||
+              calculation.month !== sourceLunar.monthNumber ||
+              calculation.day !== sourceLunar.dayNumber
+            ) {
+              mismatches.push('农历年支、月、日与时间戳重算结果不一致');
+            }
+          }
+        } catch {
+          missing.push('可重算的起卦时间资料');
+        }
+      }
       const chartHourBranch = data.ganzhi.hour.slice(-1);
       if (!dizhi.includes(chartHourBranch) || calculation.timeZhi !== chartHourBranch) {
         mismatches.push('起卦时支与盘面时柱不一致');
@@ -1218,6 +1265,9 @@ function buildMeihuaCalculationFact(data: MeihuaData): MeihuaCalculationFact {
   const calculation = data.calculation;
   const methodKey = calculation?.methodKey ?? '未记录';
   const inputs: Record<string, string | number> = {};
+  if (typeof calculation?.timezoneOffsetMinutes === 'number') {
+    inputs.timezoneOffsetMinutes = calculation.timezoneOffsetMinutes;
+  }
   const steps: MeihuaCalculationStep[] = [];
   if (calculation && (methodKey === 'time' || methodKey === 'timeTrigram')) {
     if (hasText(calculation.yearZhi)) inputs.yearZhi = calculation.yearZhi;

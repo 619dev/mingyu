@@ -1,4 +1,3 @@
-import { formatJinkoujueJudgmentFacts } from '../prompt/jinkoujue-facts';
 import { formatLiurenJudgmentFacts } from '../prompt/liuren-judgment';
 import type { WuyunLiuqiResult } from '../wuyun-liuqi';
 import type { DivinationMethodId } from './config';
@@ -51,7 +50,6 @@ import type {
   AstrolabeData,
   DivinationData,
   JinkoujueDivinationMethod,
-  JinkoujueData,
   LenormandData,
   LenormandSpreadType,
   LiurenData,
@@ -254,7 +252,7 @@ function formatAiChart(
     summary.tags.filter(Boolean).join('；'),
     ...(method === 'taiyi' ? [] : summary.lines),
   ].filter(Boolean);
-  if (method === 'xiaoliuren') return formatDivinationInfo(method, data);
+  if (method === 'xiaoliuren' || method === 'jinkoujue') return formatDivinationInfo(method, data);
   if (method === 'liuyao') {
     const item = data as LiuyaoData;
     base.push(
@@ -285,8 +283,6 @@ function formatAiChart(
   } else if (method === 'wuyun') {
     const item = data as WuyunLiuqiResult;
     base.push(`岁运五音：${item.annualMovement.toneName}`);
-  } else if (method === 'jinkoujue') {
-    base.push('金口诀判断依据：', ...formatJinkoujueJudgmentFacts(data as JinkoujueData));
   } else if (method === 'liuren') {
     base.push(
       '六壬判断依据：',

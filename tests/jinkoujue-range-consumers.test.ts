@@ -3,7 +3,6 @@ import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { getDivinationTime, reverseBaziDates } from 'mingyu-core/calendar';
-import { formatJinkoujueJudgmentFacts } from 'mingyu-core/prompt';
 import { generateDivinationSession as generateCoreSession } from 'mingyu-core/divination/session';
 import type { JinkoujueData } from 'mingyu-core/types';
 import { defaultDraft } from '../src/components/DivinationPanel/constants';
@@ -188,7 +187,7 @@ test('随机金口诀分段历史重开保持同一次随机地分与全部课�
   }
 });
 
-test('金口诀普通网页与核心会话使用完整四位判断资料', async () => {
+test('金口诀普通网页与核心会话保留四位判断资料且核心提示词不重复', async () => {
   const draft = {
     ...createDraft(),
     divinationTimeMode: 'custom' as const,
@@ -212,9 +211,10 @@ test('金口诀普通网页与核心会话使用完整四位判断资料', async
     assertJinkoujuePromptFacts(prompt, item);
     assert.doesNotMatch(prompt, /事态主轴：见|evidenceAnalysis|schemaVersion|randomTrace/);
   }
-  for (const fact of formatJinkoujueJudgmentFacts(core.data as JinkoujueData)) {
-    assert.ok(core.aiPrompt.includes(fact));
-  }
+  assert.equal(core.aiPrompt.match(/^阴阳发用：/gm)?.length, 1);
+  assert.equal(core.aiPrompt.match(/^四位：/gm)?.length, 1);
+  assert.equal(core.aiPrompt.match(/^五动三动：/gm)?.length, 1);
+  assert.doesNotMatch(core.aiPrompt, /金口诀判断依据：/);
 });
 
 test('旧金口诀文本来源仍按代表时刻起课', async () => {

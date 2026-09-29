@@ -45,7 +45,11 @@ import { buildPromptSchoolSection, type PromptSchoolMethod } from './schools';
 import type { AstrolabePromptTopic } from './astrolabe';
 import type { KongmingHexagramResult, ZhugeNumberResult } from '../name-number';
 import type { PromptBuildOptions, PromptDocument } from './types';
-import { formatEnhancedDivinationInfo, formatTaiyiTradition } from './divination-enhanced';
+import {
+  formatEnhancedDivinationInfo,
+  formatTaiyiTradition,
+  getMeihuaMethodLabel,
+} from './divination-enhanced';
 import { resolveSsgwStoryContent } from '../divination/ssgw-content';
 import { buildSolarTimeInfoText, buildTimeInfoText } from './formatters';
 import { buildTarotSpreadTask } from './tarot-spread';
@@ -314,7 +318,7 @@ export function getDivinationSummaryBlocks(
             ? `变后：体卦${item.changedTiGua.name}（${item.changedTiGua.element}）；用卦${item.changedYongGua.name}（${item.changedYongGua.element}）；关系${item.analysis.changedTiYongRelation}`
             : '',
           item.calculation?.method || item.calculation?.methodKey
-            ? `起卦法：${item.calculation.method || item.calculation.methodKey}`
+            ? `起卦法：${getMeihuaMethodLabel(item.calculation)}`
             : '',
         ].filter(Boolean),
       };
