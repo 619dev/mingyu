@@ -232,12 +232,12 @@ function formatLenormandDetail(data: LenormandData) {
   const combinations =
     evidence.spreadCoverageFact.status === '完整' &&
     evidence.cards.every((card) => card.status === '已映射')
-      ? data.combinations
+      ? evidence.traditionalFacts.filter((fact) => fact.kind !== '单牌牌义')
       : [];
   return [
     `牌位：${evidence.cards.map((card) => `${card.position}${card.name}（${card.keywords.join('、')}）`).join('；')}`,
     combinations?.length
-      ? `组合：${combinations.map((item) => `${item.card1}+${item.card2}：${item.meaning}`).join('；')}`
+      ? `组合：${combinations.map((item) => `${item.kind} ${item.cardNames.join('+')}：${item.originalText}`).join('；')}`
       : '',
   ];
 }

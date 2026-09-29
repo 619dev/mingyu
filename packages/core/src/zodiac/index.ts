@@ -140,35 +140,35 @@ export function getTaiSuiConflicts(zodiacBranch: string, yearBranch: string): Ta
     out.push({
       type: '值太岁',
       with: yearBranch,
-      desc: '本命年，环境变化与自我要求容易放大，重要事项多做复核。',
+      desc: `生肖年支${zodiacBranch}与流年年支${yearBranch}同支，传统分类为值太岁。`,
     });
   }
   if (isLiuchong(zodiacBranch, yearBranch)) {
     out.push({
       type: '冲太岁',
       with: yearBranch,
-      desc: '岁冲，变动和对立感容易增加，适合预留调整空间。',
+      desc: `生肖年支${zodiacBranch}与流年年支${yearBranch}命中六冲，传统分类为冲太岁。`,
     });
   }
   if (isSanxing(zodiacBranch, yearBranch)) {
     out.push({
       type: '刑太岁',
       with: yearBranch,
-      desc: '相刑，规则、沟通和重复摩擦需要更仔细处理。',
+      desc: `生肖年支${zodiacBranch}与流年年支${yearBranch}命中相刑，传统分类为刑太岁。`,
     });
   }
   if (isLiuhai(zodiacBranch, yearBranch)) {
     out.push({
       type: '害太岁',
       with: yearBranch,
-      desc: '相害，信息差、边界不清和间接影响值得留意。',
+      desc: `生肖年支${zodiacBranch}与流年年支${yearBranch}命中六害，传统分类为害太岁。`,
     });
   }
   if (isLiupo(zodiacBranch, yearBranch)) {
     out.push({
       type: '破太岁',
       with: yearBranch,
-      desc: '相破，计划容易出现小缺口，需提前检查资源和约定。',
+      desc: `生肖年支${zodiacBranch}与流年年支${yearBranch}命中六破，传统分类为破太岁。`,
     });
   }
   return out;
@@ -341,10 +341,12 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
     elementRelation.classification === '风险关系' ? relation : '',
   ].filter(Boolean);
   const actionSignals = [
-    conflicts.some((item) => item.type === '冲太岁') ? '重大变动前预留备选方案' : '',
-    conflicts.some((item) => item.type === '值太岁') ? '重要决定多做一轮现实复核' : '',
-    conflicts.some((item) => item.type === '刑太岁') ? '合同、规则和沟通内容尽量留痕' : '',
-    noble ? '有合作或求助机会时，优先看对方是否真正可靠' : '',
+    conflicts.some((item) => item.type === '冲太岁') ? '涉及变动时预留备选方案' : '',
+    conflicts.some((item) => item.type === '值太岁') ? '作重要决定时核对现实条件' : '',
+    conflicts.some((item) => item.type === '刑太岁')
+      ? '涉及合同、规则或沟通时明确约定并留存记录'
+      : '',
+    noble ? '出现合作或求助机会时核对具体条件与对方可靠性' : '',
   ].filter(Boolean);
   const resultBase = {
     zodiacBranch,
@@ -371,7 +373,7 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
   const prompt = [
     '【任务】',
     buildPromptTask(
-      '围绕所问事项解读以下生肖与流年资料，说明各项关系的传统含义及适用条件。涉及个人具体情况时，结合完整出生资料和实际处境展开。',
+      '围绕所问事项解读以下生肖与流年资料，列明实际命中的传统关系类别、参与地支及五行条件。讨论个人情况时，按问题和已提供资料核对对应条件；资料不足时，说明关系类别与尚需核对的资料。',
       'zodiac',
     ),
     `【生肖与流年关系简析】`,
@@ -381,7 +383,7 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
       : '',
     `五行关系：流年年干${yearGanZhi[0]}属${yearStemWuxing}，生肖地支${zodiacBranch}属${zodiacWuxing}，${relation}。`,
     '传统依据：五行生克看作用方向；十神以个人出生日干和流年年干的阴阳五行为参照。',
-    noble ? `贵人：${noble}。` : '',
+    noble ? `相合关系：按十二地支关系表命中${noble}。` : '',
     noble?.startsWith('三合')
       ? `三合成员：本次具有生肖年支${zodiacBranch}、流年年支${yearBranch}两支，同组另一支为${sanhePartners.filter((branch) => !presentBranches.has(branch)).join('、')}；三支齐备及成化条件分别结合完整命盘核验。`
       : '',

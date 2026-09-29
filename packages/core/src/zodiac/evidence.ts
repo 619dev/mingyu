@@ -119,6 +119,12 @@ const LIMITATION_FACT_LIMITATION =
 const SUMMARY_FACT_LIMITATION =
   '生肖证据汇总只统计生肖年支、流年干支、关系表、五行辅助、反证与限制覆盖；不得按数量生成个人吉凶等级、成功率、灾祸概率、固定应期或化解效果保证' as const;
 
+function sameTextList(actual: string[], expected: string[]) {
+  return (
+    actual.length === expected.length && actual.every((value, index) => value === expected[index])
+  );
+}
+
 function conflictEvidence(conflict: TaiSuiConflict, zodiacBranch: string): ZodiacRelationEvidence {
   const rule =
     conflict.type === '值太岁'
@@ -357,13 +363,30 @@ export function analyzeZodiacEvidence(
         : isKe(zodiacWuxing, yearStemWuxing)
           ? { kind: '生肖克年干', label: '生肖地支本气克年干五行', classification: '中性关系' }
           : { kind: '同类', label: '年干五行与生肖地支本气同类', classification: '中性关系' };
+  const expectedFavorableRelations = [
+    expectedNoble ?? '',
+    expectedElementRelation.classification === '有利关系' ? expectedElementRelation.label : '',
+  ].filter(Boolean);
+  const expectedRiskRelations = [
+    ...recomputedConflicts.map((conflict) => `${conflict.type}：${conflict.desc}`),
+    expectedElementRelation.classification === '风险关系' ? expectedElementRelation.label : '',
+  ].filter(Boolean);
+  const expectedActionSignals = [
+    recomputedConflicts.some((item) => item.type === '冲太岁') ? '涉及变动时预留备选方案' : '',
+    recomputedConflicts.some((item) => item.type === '值太岁') ? '作重要决定时核对现实条件' : '',
+    recomputedConflicts.some((item) => item.type === '刑太岁')
+      ? '涉及合同、规则或沟通时明确约定并留存记录'
+      : '',
+    expectedNoble ? '出现合作或求助机会时核对具体条件与对方可靠性' : '',
+  ].filter(Boolean);
   const incomingConflicts = data.conflicts;
   const conflictsConsistent =
     recomputedConflicts.length === incomingConflicts.length &&
     recomputedConflicts.every(
       (conflict, index) =>
         conflict.type === incomingConflicts[index]?.type &&
-        conflict.with === incomingConflicts[index]?.with,
+        conflict.with === incomingConflicts[index]?.with &&
+        conflict.desc === incomingConflicts[index]?.desc,
     );
   const elementConsistent =
     data.elementRelation.kind === expectedElementRelation.kind &&
@@ -385,6 +408,12 @@ export function analyzeZodiacEvidence(
     consistencyGap = '贵人关系重算结果与传入资料不一致';
   } else if ((data.meeting ?? null) !== expectedMeeting) {
     consistencyGap = '三会关系重算结果与传入资料不一致';
+  } else if (!sameTextList(data.favorableRelations, expectedFavorableRelations)) {
+    consistencyGap = '有利关系列表重算结果与传入资料不一致';
+  } else if (!sameTextList(data.riskRelations, expectedRiskRelations)) {
+    consistencyGap = '风险关系列表重算结果与传入资料不一致';
+  } else if (!sameTextList(data.actionSignals, expectedActionSignals)) {
+    consistencyGap = '行动提示重算结果与传入资料不一致';
   }
 
   const relations: ZodiacRelationEvidence[] = [
@@ -541,14 +570,6 @@ export function analyzeZodiacEvidence(
     .map((fact) => fact.promptText);
   const limitationFacts = buildLimitationFacts(calculationSteps, relations);
   const limitations = limitationFacts.map((fact) => fact.promptText);
-  const favorableRelations = [
-    expectedNoble ?? '',
-    expectedElementRelation.classification === '有利关系' ? expectedElementRelation.label : '',
-  ].filter(Boolean);
-  const riskRelations = [
-    ...recomputedConflicts.map((conflict) => `${conflict.type}：${conflict.desc}`),
-    expectedElementRelation.classification === '风险关系' ? expectedElementRelation.label : '',
-  ].filter(Boolean);
   const summaryFact = buildSummaryFact({
     calculationSteps,
     relations,
@@ -630,8 +651,8 @@ export function analyzeZodiacEvidence(
     '【生肖流年关系矩阵结构化证据】',
     ...formatPromptEvidenceBundle(evidence),
     `计算链：${calculationChain.join(' → ')}。`,
-    `有利关系：${favorableRelations.join('；') || '未命中三合六合或明确年干辅助关系'}。`,
-    `风险关系：${riskRelations.join('；') || '未命中值、冲、刑、害、破关系'}。`,
+    `有利关系：${expectedFavorableRelations.join('；') || '未命中三合六合或明确年干辅助关系'}。`,
+    `风险关系：${expectedRiskRelations.join('；') || '未命中值、冲、刑、害、破关系'}。`,
     `反证限制：${counterSummaryFact.promptText}。`,
     `证据汇总：${summaryFact.promptText}。`,
     `解释限制：${limitations.join('；')}。`,

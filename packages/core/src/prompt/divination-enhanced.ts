@@ -1238,6 +1238,34 @@ function formatAlmanacInfo(data: AlmanacData) {
         ? `忌${unique(item.avoids).join('、') || '未列'}`
         : '';
     const strongConstraints = candidate?.decisionFact.strongConstraintTexts ?? [];
+    const rawTabooItems = new Set([...allRecommendations, ...allAvoids]);
+    const repeatedRawConstraints = new Set(
+      topicFacts
+        .filter(
+          (fact) =>
+            fact.status === '限制' &&
+            /:topic:(?:day-avoids|day-general-constraint)$/.test(fact.key) &&
+            fact.matchedItems.length > 0 &&
+            fact.matchedItems.every((item) => rawTabooItems.has(item)),
+        )
+        .map((fact) => fact.promptText),
+    );
+    if (
+      topicFacts.some(
+        (fact) =>
+          fact.key.endsWith(':topic:day-avoids') &&
+          fact.matchedItems.length > 0 &&
+          fact.matchedItems.every((item) => allAvoids.includes(item)),
+      )
+    ) {
+      repeatedRawConstraints.add(`黄历忌项触及${data.topicLabel}`);
+    }
+    if (rawTabooItems.has('诸事不宜')) {
+      repeatedRawConstraints.add('候选日明列诸事不宜');
+    }
+    const visibleStrongConstraints = strongConstraints.filter(
+      (text) => !repeatedRawConstraints.has(text),
+    );
     const participantNotes = unique(item.participantNotes).filter(
       (note) =>
         !/未见.*直接|未命中|未采用/u.test(note) &&
@@ -1263,7 +1291,7 @@ function formatAlmanacInfo(data: AlmanacData) {
       !needsLegacyFallback && allAvoids.length ? `忌${allAvoids.join('、')}` : '',
       ...formatAlmanacGods(item),
       participantNotes.length ? `参与人${participantNotes.join('；')}` : '',
-      strongConstraints.length ? `明确限制${strongConstraints.join('、')}` : '',
+      visibleStrongConstraints.length ? `明确限制${visibleStrongConstraints.join('、')}` : '',
       hourText ? `时辰${hourText}` : '',
     ].filter(Boolean);
     return [

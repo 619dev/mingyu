@@ -498,7 +498,7 @@ export function getDivinationSummaryBlocks(
       const combinations =
         evidence.spreadCoverageFact.status === '完整' &&
         evidence.cards.every((card) => card.status === '已映射')
-          ? (item.combinations ?? [])
+          ? evidence.traditionalFacts.filter((fact) => fact.kind !== '单牌牌义')
           : [];
       return {
         title: '雷诺曼抽牌结果',
@@ -518,7 +518,8 @@ export function getDivinationSummaryBlocks(
             return `${card.position}：${card.name}；${fact?.promptText ?? conditionLenormandTraditionalText(card.meaning, { cardNames: [card.name], keywords: card.keywords })}`;
           }),
           ...combinations.map(
-            (combination) => `${combination.card1}+${combination.card2}：${combination.meaning}`,
+            (combination) =>
+              `${combination.kind} ${combination.cardNames.join('+')}：${combination.originalText}`,
           ),
         ].filter(Boolean),
       };

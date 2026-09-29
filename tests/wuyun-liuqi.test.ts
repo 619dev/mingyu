@@ -329,7 +329,7 @@ test('五运六气年度资料列出平气条件，不据年干支确认全年�
   assert.ok(result2026.pathomechanism);
   assert.equal(result2026.pathomechanism.isPingQi, null);
   assert.equal(result2026.pathomechanism.movementRegime, '流衍之纪');
-  assert.match(result2026.prompt, /岁运纪：流衍之纪/);
+  assert.match(result2026.prompt, /岁运纪：流衍之纪（按年干太过不及推得的基准）/);
   assert.doesNotMatch(result2026.prompt, /平气参考条件：|年度符会：/);
   assert.doesNotMatch(result2026.prompt, /五脏受候|心神亢燥|病机偏胜与平气/);
 
@@ -342,6 +342,14 @@ test('五运六气年度资料列出平气条件，不据年干支确认全年�
   assert.match(resultDingHai.prompt, /平气参考条件：/);
   assert.match(resultDingHai.pathomechanism.pingQiBasis, /平气成立时称敷和之纪/);
   assert.match(resultDingHai.pathomechanism.pingQiBasis, /交气日时干德符/);
+});
+
+test('具平气条件的年度提示词不把年干太过所对应之纪写成已定的实际气候', () => {
+  const result = calculateWuyunLiuqi({ yearGanZhi: '庚午' });
+  assert.equal(result.pathomechanism?.isPingQi, null);
+  assert.equal(result.pathomechanism?.movementRegime, '坚成之纪');
+  assert.match(result.pathomechanism?.pingQiBasis ?? '', /按年干推得坚成之纪为基准/);
+  assert.match(result.prompt, /岁运纪：坚成之纪（按年干太过不及推得的基准）；平气参考条件：/);
 });
 
 test('五运六气跨节气精度范围保留完整年度结构并省略计算状态', () => {

@@ -13,6 +13,7 @@ import type { LenormandData, LenormandSpreadType } from '../packages/core/src/ty
 import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination.ts';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { generateDivinationSession } from '../packages/core/src/divination/session.ts';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const spreadTypes: LenormandSpreadType[] = [
@@ -378,6 +379,59 @@ test('雷诺曼选择牌阵不把A方案走向与B方案拼成连续组合', () 
       (item) => !(item.position1 === '选择A走向' && item.position2 === '选择B'),
     ),
   );
+});
+
+test('雷诺曼非时间牌阵按牌位并列合读，三牌事件线保留先后', () => {
+  for (const spreadType of ['five', 'relationship', 'decision', 'element'] as const) {
+    const cardCount = {
+      five: 5,
+      relationship: 5,
+      decision: 6,
+      element: 4,
+    }[spreadType];
+    const result = drawLenormandSpread(spreadType, {
+      manualCardIds: Array.from({ length: cardCount }, (_, index) => index + 1),
+    });
+    const adjacent = result.combinations?.find((item) => item.relation === '牌序相邻');
+
+    assert.ok(adjacent);
+    assert.match(adjacent.meaning, /牌序相邻的两组线索/u);
+    assert.doesNotMatch(adjacent.meaning, /前后相接|先按|再看/u);
+  }
+
+  const eventLine = drawLenormandSpread('three', { manualCardIds: [1, 2, 3] });
+  assert.match(eventLine.combinations?.[0]?.meaning ?? '', /前后相接，先按[\s\S]*再看/u);
+});
+
+test('雷诺曼在线提示词使用重算后的关系牌阵组合事实', () => {
+  const session = generateDivinationSession({
+    method: 'lenormand',
+    question: '我和对方目前的关系如何？',
+    currentTime: new Date('2026-09-28T00:00:00+08:00'),
+    lenormand: { spread: 'relationship', manualCardIds: [1, 2, 3, 4, 5] },
+  });
+  const first = session.data.combinations?.[0];
+  assert.equal(first?.position1, '你的状态');
+  assert.equal(first?.position2, '对方状态');
+  assert.match(
+    session.aiPrompt,
+    /你的状态骑士（消息、到来）与对方状态三叶草（机会、短暂好运）是牌序相邻的两组线索/u,
+  );
+  assert.doesNotMatch(session.aiPrompt, /前后相接|先按|再看/u);
+});
+
+test('雷诺曼关系牌阵旧版组合文案可核验并在证据输出中重算', () => {
+  const legacy = structuredClone(
+    drawLenormandSpread('relationship', { manualCardIds: [1, 2, 3, 4, 5] }),
+  );
+  const first = legacy.cards[0]!;
+  const second = legacy.cards[1]!;
+  legacy.combinations![0]!.meaning = `${first.position}${first.name}的“${first.keywords.slice(0, 2).join('、')}”与${second.position}${second.name}的“${second.keywords.slice(0, 2).join('、')}”前后相接，先按${first.meaning.replace(/[。！？]$/u, '')}，再看${second.meaning}`;
+
+  const evidence = analyzeLenormandEvidence(legacy);
+  assert.equal(evidence.summaryFact.status, '证据链完整');
+  assert.match(evidence.adjacentReadings[0]?.meaning ?? '', /牌序相邻的两组线索/u);
+  assert.doesNotMatch(evidence.promptText, /前后相接|先按|再看/u);
 });
 
 test('雷诺曼九宫固定组合应按纵向空间相邻命中并保留牌位', () => {

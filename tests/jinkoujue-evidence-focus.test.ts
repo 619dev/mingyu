@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { generateJinkoujue } from '../packages/core/src/divination/algorithms/jinkoujue';
+import { generateDivinationSession } from '../packages/core/src/divination/session';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 
 const date = new Date('2025-01-01T08:00:00+08:00');
@@ -42,6 +43,44 @@ test('金口诀发用位旬空仍标主线受限，辅助位旬空只作为该�
   const prompt = formatEnhancedDivinationInfo('jinkoujue', auxiliaryVoid);
   assert.match(prompt, /贵神巳落日旬空/);
   assert.doesNotMatch(prompt, /需待填实后再作主断|主证受限/);
+});
+
+test('金口诀发用位受克应列为盘内反证并标记主线受限', () => {
+  const data = generateJinkoujue({
+    method: 'number',
+    number: 1,
+    customDate: new Date('2025-01-01T20:00:00+08:00'),
+  });
+  const evidence = data.evidenceAnalysis!;
+  const mainPositionKey = `jinkoujue:position:${data.yinYangUse.usePosition}`;
+  const mainPositionCounters = evidence.counterEvidenceFacts.filter(
+    (item) => item.ownerKey === mainPositionKey,
+  );
+
+  assert.equal(data.yinYangUse.usePosition, '将神');
+  assert.equal(data.relations.guiToJiang, '克');
+  assert.equal(data.positions.jiangShen.seasonState, '相');
+  assert.equal(data.positions.jiangShen.isVoid, false);
+  assert.deepEqual(data.positions.jiangShen.constraints, []);
+  assert.ok(
+    mainPositionCounters.some((item) => item.type === '受克' && item.detail === '将神受贵神克'),
+  );
+  assert.ok(evidence.counterEvidenceFacts.some((item) => item.detail === '贵神受人元克'));
+  assert.equal(evidence.summaryFact.status, '主线受限');
+  assert.match(evidence.promptText, /反证：[^\n]*将神受贵神克/u);
+  assert.doesNotMatch(evidence.promptText, /未见明确空亡、休囚死或受克限制/u);
+
+  const session = generateDivinationSession({
+    method: 'jinkoujue',
+    question: '请核对这次问事的进展。',
+    divinationTime: '2025-01-01T20:00:00+08:00',
+    currentTime: '2025-01-01T20:00:00+08:00',
+    jinkoujue: { method: 'number', number: 1 },
+  });
+  assert.match(session.aiPrompt, /将神受贵神克/u);
+
+  const enhanced = formatEnhancedDivinationInfo('jinkoujue', data);
+  assert.match(enhanced, /四位反证：[^\n]*将神受贵神克/u);
 });
 
 test('金口诀公元 1 年大寒前沿用上一冬至的丑将', () => {

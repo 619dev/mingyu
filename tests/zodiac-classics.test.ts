@@ -9,6 +9,7 @@ import {
   getZodiacYearFortune,
   getYearTaiSui,
 } from '../packages/core/src/zodiac/index.ts';
+import { buildMetaphysicsPrompt } from '@core/prompt';
 
 const stems = [...'甲乙丙丁戊己庚辛壬癸'];
 const branches = [...'子丑寅卯辰巳午未申酉戌亥'];
@@ -56,6 +57,13 @@ test('生肖六十流年七百二十组合保留全部刑冲害破与合会关�
         `${branch}/${yearGanZhi}`,
       );
       assert.ok(result.conflicts.every((item) => item.with === yearBranch));
+      assert.ok(
+        result.conflicts.every(
+          (item) =>
+            item.desc.includes(`生肖年支${branch}与流年年支${yearBranch}`) &&
+            item.desc.endsWith(`传统分类为${item.type}。`),
+        ),
+      );
       const hasNoble =
         hasPair(he, branch, yearBranch) ||
         (branch !== yearBranch &&
@@ -135,4 +143,24 @@ test('生肖提示词只列实际命中的太岁关系', () => {
     ['冲太岁'],
   );
   assert.match(conflict.prompt, /太岁关系：冲太岁（生肖年支子与流年年支午相冲）/);
+});
+
+test('生肖流年描述只列传统关系类别，提示词要求结合资料核对条件', () => {
+  const result = getZodiacYearFortune('子', '丙午');
+  assert.equal(result.conflicts.length, 1);
+  assert.match(result.conflicts[0].desc, /生肖年支子与流年年支午命中六冲，传统分类为冲太岁/);
+  assert.doesNotMatch(result.conflicts[0].desc, /象征|主题|容易增加|容易出现|值得留意/);
+  assert.match(result.riskRelations[0], /命中六冲/);
+
+  const prompt = buildMetaphysicsPrompt(result.prompt, '今年的关系如何理解？', {
+    method: 'zodiac',
+    schools: ['ganzhi', 'sanhe'],
+  });
+  assert.match(prompt, /实际命中的.*关系，列明参与地支和五行条件/);
+  assert.match(prompt, /结合.*已提供的资料.*核对对应条件/);
+  assert.doesNotMatch(prompt, /形成年度判断|观察助力、牵制与环境变化/);
+  assert.doesNotMatch(
+    prompt,
+    /象义|象征.*主题|容易增加|容易出现|规则、责任|合作破损|环境变化与自我要求/,
+  );
 });

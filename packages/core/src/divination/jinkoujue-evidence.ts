@@ -431,12 +431,32 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
       });
     }
   }
+  // “克”与“被克”统一成施克者 -> 受克者，供主证约束和提示词反证使用。
+  // 关系事实本身仍保持中性；这里只标明盘内的受克方向，不推断现实结果。
+  for (const [from, to, relation] of relationPairs) {
+    const source = relation === '克' ? from : relation === '被克' ? to : undefined;
+    const target = relation === '克' ? to : relation === '被克' ? from : undefined;
+    if (!source || !target) continue;
+    counterEvidenceFacts.push({
+      key: `jinkoujue:counter:ke:${target.name}:${source.name}`,
+      ownerKey: `jinkoujue:position:${target.name}`,
+      type: '受克',
+      status: '已触发',
+      detail: `${target.name}受${source.name}克`,
+      promptText: `${target.name}受${source.name}克`,
+      sources: ['《六壬神课金口诀古本》“干类、神类、将类、方类”'],
+      limitation: COUNTER_LIMITATION,
+    });
+  }
   const usePosition = positions.find(
     (position) => position.position === data.yinYangUse.usePosition,
   );
+  const mainPositionConstrained =
+    Boolean(usePosition?.constraints.length) ||
+    counterEvidenceFacts.some((fact) => fact.type === '受克' && fact.ownerKey === usePosition?.key);
   const summaryFact: JinkoujueEvidenceSummaryFact = {
     key: 'jinkoujue:evidence-summary',
-    status: usePosition?.constraints.length ? '主线受限' : '证据链完整',
+    status: mainPositionConstrained ? '主线受限' : '证据链完整',
     positionCount: positions.length,
     relationCount: relations.length,
     focusCount: focusFacts.length,

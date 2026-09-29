@@ -10,6 +10,23 @@ import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divina
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedYaos = [7, 8, 9, 6, 7, 8] as const;
 
+test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
+  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  for (const field of ['originalName', 'interName', 'changedName'] as const) {
+    const changed = structuredClone(source);
+    changed[field] = changed[field] === '乾为天' ? '坤为地' : '乾为天';
+    assert.throws(
+      () => analyzeLiuyaoEvidence(changed),
+      /主卦、互卦或变卦与原始爻值不一致/u,
+      `${field} 与原始爻值不一致时应拒绝生成证据`,
+    );
+    assert.throws(
+      () => formatEnhancedDivinationInfo('liuyao', changed),
+      /主卦、互卦或变卦与原始爻值不一致/u,
+    );
+  }
+});
+
 test('六爻证据与提示词拒绝可复算的纳甲世应、动变和月日空破错位', () => {
   const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
   const mutations: Array<(data: typeof source) => void> = [

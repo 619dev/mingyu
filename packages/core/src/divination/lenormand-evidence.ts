@@ -1223,9 +1223,6 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
   const spreadCoverageFact = buildSpreadCoverageFact(data, cards);
   const sequenceFacts = buildSequenceFacts(cards);
   const sequence = sequenceFacts.map((fact) => fact.promptText);
-  const fixedCombinations = (data.combinations ?? []).filter((item) => item.source === '固定组合');
-  const adjacentReadings = (data.combinations ?? []).filter((item) => item.source !== '固定组合');
-  const traditionalFacts = buildTraditionalFacts(cards, data.combinations ?? []);
   const structuredLayoutFacts = buildStructuredLayoutFacts(data, cards);
   const layoutFacts = data.layoutEvidence ?? [];
   const layoutCoverageFact = buildLayoutCoverageFact(data, structuredLayoutFacts, layoutFacts);
@@ -1285,6 +1282,7 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
       });
     }
   }
+  let verifiedCombinations = data.combinations ?? [];
   if (
     spreadCoverageFact.status === '完整' &&
     (data.combinations !== undefined || data.draw !== undefined)
@@ -1303,8 +1301,8 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
       recorded.length === expected.length &&
       recorded.every((actual, index) => {
         const calculated = expected[index];
-        return (
-          calculated &&
+        if (!calculated) return false;
+        const structureMatches =
           actual.card1 === calculated.card1 &&
           actual.card2 === calculated.card2 &&
           actual.position1 === calculated.position1 &&
@@ -1312,8 +1310,23 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
           actual.relation === calculated.relation &&
           actual.rowDistance === calculated.rowDistance &&
           actual.columnDistance === calculated.columnDistance &&
-          actual.meaning === calculated.meaning &&
-          actual.source === calculated.source
+          actual.source === calculated.source;
+        const first = data.cards.find(
+          (card) => card.name === calculated.card1 && card.position === calculated.position1,
+        );
+        const second = data.cards.find(
+          (card) => card.name === calculated.card2 && card.position === calculated.position2,
+        );
+        const previousSequentialMeaning =
+          data.spreadType !== 'three' &&
+          calculated.relation === '牌序相邻' &&
+          calculated.source === '相邻牌义合读' &&
+          first &&
+          second &&
+          actual.meaning ===
+            `${first.position}${first.name}的“${first.keywords.slice(0, 2).join('、')}”与${second.position}${second.name}的“${second.keywords.slice(0, 2).join('、')}”前后相接，先按${first.meaning.replace(/[。！？]$/u, '')}，再看${second.meaning}`;
+        return (
+          structureMatches && (actual.meaning === calculated.meaning || previousSequentialMeaning)
         );
       });
     if (!matching) {
@@ -1324,7 +1337,11 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
         field: 'combinations',
       });
     }
+    if (data.combinations !== undefined) verifiedCombinations = expected;
   }
+  const fixedCombinations = verifiedCombinations.filter((item) => item.source === '固定组合');
+  const adjacentReadings = verifiedCombinations.filter((item) => item.source !== '固定组合');
+  const traditionalFacts = buildTraditionalFacts(cards, verifiedCombinations);
   const fixedCombinationFacts = traditionalFacts.filter((fact) => fact.kind === '固定组合');
   const counterEvidenceFacts = buildCounterEvidenceFacts(fixedCombinationFacts, layoutCoverageFact);
   const counterSummaryFact = buildCounterSummaryFact(counterEvidenceFacts);

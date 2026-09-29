@@ -16,6 +16,7 @@ import {
 } from '../ganzhi';
 import { getVoidBranches } from '../calendar/lunar';
 import { hexagramNaJia, hexagramPalaceMap, palaceHexagrams } from './divination-data';
+import { hexagramsData } from './hexagram-data';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import { MingyuCoreError } from '../shared/result';
 import { generateYarrow } from './algorithms/yarrow';
@@ -464,6 +465,34 @@ function branchOf(ganzhi: string) {
 }
 
 function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBranch: string) {
+  if (
+    !Array.isArray(data.yaoArray) ||
+    data.yaoArray.length !== 6 ||
+    !data.yaoArray.every((value) => value === 6 || value === 7 || value === 8 || value === 9)
+  ) {
+    throw new Error('六爻原始爻值必须为初爻至上爻的六个有效爻值。');
+  }
+  const mainLines = data.yaoArray.map((value) => (value === 7 || value === 9 ? '1' : '0'));
+  const changedLines = data.yaoArray.map((value, index) =>
+    value === 6 || value === 9 ? (mainLines[index] === '1' ? '0' : '1') : mainLines[index],
+  );
+  const toBinary = (lines: string[]) => [...lines.slice(3), ...lines.slice(0, 3)].join('');
+  const expectedMain = hexagramsData.find((item) => item.binarySymbol === toBinary(mainLines));
+  const expectedChanged = hexagramsData.find(
+    (item) => item.binarySymbol === toBinary(changedLines),
+  );
+  const interLines = [...mainLines.slice(1, 4), ...mainLines.slice(2, 5)];
+  const expectedInter = hexagramsData.find((item) => item.binarySymbol === toBinary(interLines));
+  if (
+    !expectedMain ||
+    !expectedChanged ||
+    !expectedInter ||
+    data.originalName !== expectedMain.name ||
+    (data.changedName !== undefined && data.changedName !== expectedChanged.name) ||
+    (data.interName !== undefined && data.interName !== expectedInter.name)
+  ) {
+    throw new Error('六爻主卦、互卦或变卦与原始爻值不一致，无法生成证据。');
+  }
   const expectedVoids = getVoidBranches(data.ganzhi.day);
   if (
     data.voidBranches.length !== expectedVoids.length ||

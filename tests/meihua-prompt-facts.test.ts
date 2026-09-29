@@ -298,6 +298,25 @@ test('梅花提示词将本次动爻与其他爻辞分层且不丢本互变原�
   }
 });
 
+test('梅花旧盘缺少卦象详情时仍核对互卦与变卦别名', () => {
+  const source = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
+    method: 'number',
+    number: 42,
+  });
+  for (const [detailField, aliasField] of [
+    ['interHexagram', 'interName'],
+    ['changedHexagram', 'changedName'],
+  ] as const) {
+    const changed = structuredClone(source);
+    delete changed[detailField];
+    changed[aliasField] = changed[aliasField] === '乾为天' ? '坤为地' : '乾为天';
+    assert.throws(
+      () => buildDivinationPrompt('meihua', '请做整体解读。', changed),
+      /梅花盘面与起卦资料不一致/u,
+    );
+  }
+});
+
 test('梅花旧盘缺少取数输入时不把卦象反填为起卦输入', () => {
   const date = new Date('2026-05-19T10:30:00+08:00');
   const number = generateMeihua(date, { method: 'number', number: 42 });

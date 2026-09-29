@@ -33,6 +33,37 @@ test('生肖证据复验应校验犯太岁关系的流年地支', () => {
   assert.match(analysis.summaryFact.promptText, /犯太岁关系重算结果与传入资料不一致/);
 });
 
+test('生肖证据复验应校验说明与派生关系列表', () => {
+  const complete = getZodiacYearFortune('子', '丙午');
+  const cases = [
+    {
+      data: {
+        ...complete,
+        conflicts: complete.conflicts.map((conflict) => ({ ...conflict, desc: '自定义关系说明' })),
+      },
+      reason: /犯太岁关系重算结果与传入资料不一致/,
+    },
+    {
+      data: { ...complete, favorableRelations: ['自定义有利关系'] },
+      reason: /有利关系列表重算结果与传入资料不一致/,
+    },
+    {
+      data: { ...complete, riskRelations: ['自定义风险关系'] },
+      reason: /风险关系列表重算结果与传入资料不一致/,
+    },
+    {
+      data: { ...complete, actionSignals: ['自定义行动提示'] },
+      reason: /行动提示重算结果与传入资料不一致/,
+    },
+  ];
+
+  for (const { data, reason } of cases) {
+    const analysis = analyzeZodiacEvidence(data);
+    assert.equal(analysis.summaryFact.status, '证据链有缺口');
+    assert.match(analysis.summaryFact.promptText, reason);
+  }
+});
+
 test('生肖证据复验应核对生肖名称、流年干支拆分与五行关系', () => {
   const complete = getZodiacYearFortune('子', '丙午');
   const cases = [

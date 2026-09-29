@@ -135,11 +135,28 @@ test('黄历择日最终提示词保留逐日历法和备选时辰依据', () =>
   const hour = data.evidenceAnalysis!.candidates.flatMap((candidate) => candidate.usableHours)[0];
   assert.ok(hour);
   assert.ok(prompt.includes(`${hour.name}${hour.range}${hour.ganzhi}/${hour.twelveStar}`));
-  for (const candidate of data.evidenceAnalysis!.candidates) {
-    for (const constraint of candidate.decisionFact.strongConstraintTexts) {
-      assert.ok(prompt.includes(constraint), constraint);
-    }
-  }
+});
+
+test('黄历提示词合并原始忌项的重复限制并保留独立四绝规则', () => {
+  const ordinary = generateAlmanacSelection({
+    topic: 'marriage',
+    startDate: '2026-10-01',
+    endDate: '2026-10-01',
+  });
+  const ordinaryPrompt = formatDivinationInfo('almanac', ordinary);
+  assert.equal(ordinaryPrompt.match(/嫁娶/g)?.length, 1);
+  assert.equal(ordinaryPrompt.match(/纳采/g)?.length, 1);
+  assert.doesNotMatch(ordinaryPrompt, /原始忌项触及订婚结婚|黄历忌项触及订婚结婚/);
+
+  const fourTermination = generateAlmanacSelection({
+    topic: 'marriage',
+    startDate: '2025-11-06',
+    endDate: '2025-11-06',
+  });
+  const fourTerminationPrompt = formatDivinationInfo('almanac', fourTermination);
+  assert.ok(fourTermination.days[0].recommends.includes('嫁娶'));
+  assert.match(fourTerminationPrompt, /四绝日（立冬前一日）/);
+  assert.match(fourTerminationPrompt, /宜[^；]*嫁娶/);
 });
 
 test('黄历事项宜忌与参与人限制在候选日明细中各展开一次', () => {

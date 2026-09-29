@@ -410,7 +410,9 @@ export function buildLenormandCombinations(
     const meaning =
       fixedMeaning ??
       (isSequential
-        ? `${first.position}${first.name}的“${first.keywords.slice(0, 2).join('、')}”与${second.position}${second.name}的“${second.keywords.slice(0, 2).join('、')}”前后相接，先按${firstMeaning}，再看${second.meaning}`
+        ? spreadType === 'three'
+          ? `${first.position}${first.name}的“${first.keywords.slice(0, 2).join('、')}”与${second.position}${second.name}的“${second.keywords.slice(0, 2).join('、')}”前后相接，先按${firstMeaning}，再看${second.meaning}`
+          : `${first.position}${first.name}（${first.keywords.slice(0, 2).join('、')}）与${second.position}${second.name}（${second.keywords.slice(0, 2).join('、')}）是牌序相邻的两组线索，可按各自牌位并读`
         : `${first.position}${first.name}与${second.position}${second.name}为${relation}，互参“${first.keywords.slice(0, 2).join('、')}”与“${second.keywords.slice(0, 2).join('、')}”两组线索`);
     const combination: LenormandCombination = {
       card1: first.name,

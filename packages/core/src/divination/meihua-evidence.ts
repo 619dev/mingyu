@@ -874,13 +874,15 @@ function validateMeihuaCalculation(data: MeihuaData): {
           Number(Object.entries(trigramsByIndex).find(([, item]) => item === expectedUpper)?.[0]),
           Number(Object.entries(trigramsByIndex).find(([, item]) => item === expectedLower)?.[0]),
         );
+        if (alias?.trim() && alias !== expected.name) {
+          mismatches.push(`${label}别名与主卦六爻推得的${expected.name}不一致`);
+        }
         if (
           recorded &&
           (recorded.name !== expected.name ||
             recorded.symbol !== expected.symbol ||
             recorded.upper !== expectedUpper.name ||
-            recorded.lower !== expectedLower.name ||
-            (alias !== undefined && alias !== expected.name))
+            recorded.lower !== expectedLower.name)
         ) {
           mismatches.push(`${label}记录与主卦六爻推得的${expected.name}不一致`);
         }
