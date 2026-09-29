@@ -916,7 +916,7 @@ test('六爻提示词会保留世应、动变、空亡、伏神和月日资料',
   assert.doesNotMatch(prompt, /兄弟持世，主竞争、破财、朋友/);
   assert.doesNotMatch(prompt, /取用评分表|权重\d/);
   assert.match(prompt, /月日触发：月建、日辰午：未直接同支入爻，冲第1爻兄弟子水、第6爻兄弟子水/);
-  assert.match(prompt, /用神：/);
+  assert.match(prompt, /用神主线：事项用神待按具体问题取用/);
   assert.doesNotMatch(prompt, /应期资料：|组合时机：|六亲持世：|应爻与动变：/);
   assert.doesNotMatch(prompt, /结构化证据|证据汇总|解释边界|只使用上方/);
   assert.doesNotMatch(prompt, /课传|盘局|牌阵|签诗|牌位/);

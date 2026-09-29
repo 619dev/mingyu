@@ -752,10 +752,18 @@ function analyzeNameStructure(
     birthContext?: ReturnType<typeof calculateNamingBirthContext>;
   } = {},
 ) {
-  const surnameDetails = [...surname].map(charDetail);
-  const givenDetails = [...given].map(charDetail);
-  if ([...surnameDetails, ...givenDetails].some((item) => !item))
-    throw new Error('姓名中含字典未收录的汉字');
+  const nameCharacters = [...surname, ...given];
+  if (nameCharacters.some((char) => !/\p{Script=Han}/u.test(char))) {
+    throw new Error('姓名只能包含汉字');
+  }
+  const nameDetails = nameCharacters.map(charDetail);
+  const missingCharacters = nameCharacters.filter((_, index) => !nameDetails[index]);
+  if (missingCharacters.length) {
+    throw new Error(`姓名用字暂未收录在字典中：${[...new Set(missingCharacters)].join('、')}`);
+  }
+  const surnameLength = [...surname].length;
+  const surnameDetails = nameDetails.slice(0, surnameLength);
+  const givenDetails = nameDetails.slice(surnameLength);
   const canonicalSurname = surnameDetails.map((item) => item!.simplified).join('');
   const compoundReadings = COMPOUND_SURNAME_READINGS[canonicalSurname];
   const rawGrids = wuge(
@@ -959,7 +967,7 @@ export type GenerationCharacterPosition = 'first' | 'second';
 
 function namingLimit(value: number | undefined, defaultValue: number, maximum: number): number {
   if (value !== undefined && !Number.isSafeInteger(value))
-    throw new Error('候选数量必须为有限整数');
+    throw new Error('候选数量必须为安全整数');
   return Math.min(Math.max(value ?? defaultValue, 1), maximum);
 }
 
@@ -1012,6 +1020,9 @@ export function generateChineseNames(input: {
 }) {
   const surname = input.surname.trim();
   if (![1, 2].includes([...surname].length)) throw new Error('姓氏需为 1 至 2 个汉字');
+  if ([...surname].some((char) => !/\p{Script=Han}/u.test(char))) {
+    throw new Error('姓氏只能包含汉字');
+  }
   // 枚举前先核验姓氏用字，避免候选分析异常被吞掉后误报为“无可用名字”
   const missingSurnameChars = [...surname].filter((char) => !charDetail(char));
   if (missingSurnameChars.length) {

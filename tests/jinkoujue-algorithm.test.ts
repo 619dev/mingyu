@@ -112,6 +112,32 @@ test('金口诀证据拒绝地分与人元、月将加时及五动条件错位',
   });
   assert.throws(() => analyzeJinkoujueEvidence(wrongMovement), /动爻与四位五行不一致/);
 });
+
+test('金口诀证据拒绝旬空和月令旺衰与日月柱错位', () => {
+  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const wrongXunKong = structuredClone(source);
+  wrongXunKong.xunKong = [];
+  assert.throws(() => analyzeJinkoujueEvidence(wrongXunKong), /旬空或月令旺衰/);
+
+  const wrongPositionVoid = structuredClone(source);
+  wrongPositionVoid.positions.guiShen.isVoid = !wrongPositionVoid.positions.guiShen.isVoid;
+  assert.throws(() => analyzeJinkoujueEvidence(wrongPositionVoid), /旬空或月令旺衰/);
+  assert.throws(
+    () =>
+      buildDivinationPrompt({
+        method: 'jinkoujue',
+        data: wrongPositionVoid,
+        question: '进展如何',
+      }),
+    /旬空或月令旺衰/,
+  );
+
+  const wrongSeason = structuredClone(source);
+  wrongSeason.positions.renYuan.seasonState =
+    wrongSeason.positions.renYuan.seasonState === '旺' ? '囚' : '旺';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongSeason), /旬空或月令旺衰/);
+});
+
 const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 const TIANJIANG = [

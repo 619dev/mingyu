@@ -330,19 +330,25 @@ test('纯乾纯坤互卦取爻事实与变卦来源及阴阳一致', () => {
   }
 });
 
-test('梅花提示词将本次动爻与其他爻辞分层且不丢本互变原文', () => {
+test('梅花提示词保留三卦卦辞与本次动爻，不送入未发动爻辞', () => {
   const data = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
     method: 'number',
     number: 42,
   });
   const prompt = buildDivinationPrompt('meihua', '请做整体解读。', data);
   assert.equal((prompt.match(/动爻爻辞：/gu) ?? []).length, 1);
-  assert.doesNotMatch(prompt, /背景爻辞：/u);
+  assert.doesNotMatch(prompt, /其他爻辞：|特殊用辞：/u);
   assert.ok(data.mainHexagram.movingYaoCi);
   assert.ok(prompt.includes(data.mainHexagram.movingYaoCi));
   for (const gua of [data.mainHexagram, data.interHexagram, data.changedHexagram]) {
-    for (const line of gua?.yaoCi ?? []) assert.ok(prompt.includes(line), line);
+    if (!gua) continue;
+    assert.ok(prompt.includes(`卦辞：${gua.name}，${gua.description}`));
   }
+  const unusedLine = data.mainHexagram.yaoCi?.find(
+    (_, index) => index + 1 !== data.movingYao.position,
+  );
+  assert.ok(unusedLine);
+  assert.ok(!prompt.includes(unusedLine));
 });
 
 test('梅花旧盘缺少卦象详情时仍核对互卦与变卦别名', () => {

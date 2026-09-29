@@ -456,7 +456,10 @@ function createAstrolabeResult() {
     },
     planets: points,
     angles: [makePoint('Ascendant', 120), makePoint('Midheaven', 210)],
-    houses: Array.from({ length: 12 }, (_, index) => makePoint(`House ${index + 1}`, index * 30)),
+    houses: Array.from({ length: 12 }, (_, index) => ({
+      ...makePoint(`House ${index + 1}`, index * 30),
+      house: index + 1,
+    })),
     aspects: [],
     summary: { elements: {}, modalities: {}, retrograde: [], patterns: [] },
     timestamp: 0,

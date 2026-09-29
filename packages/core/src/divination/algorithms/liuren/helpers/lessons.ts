@@ -294,10 +294,6 @@ function pickByHarmDepth(candidates: KeCandidate[], context: ResolveTransmission
     index,
     depth: getHarmAssessment(candidate, context).depth,
   }));
-  const preferredUpper = YANG_STEMS.has(context.dayStem)
-    ? getUpperByUnder(context.heavenlyPlate, context.dayStemResidence)
-    : getUpperByUnder(context.heavenlyPlate, context.dayBranch);
-
   if (ranked.length === 0) {
     throw new Error('涉害法没有可供比较的候选课。');
   }
@@ -307,21 +303,25 @@ function pickByHarmDepth(candidates: KeCandidate[], context: ResolveTransmission
   const maxDepth = Math.max(...ranked.map((item) => item.depth));
   let tied = ranked.filter((item) => item.depth === maxDepth);
 
-  // 涉害复等（《六壬大全》“缀瑕”）：阳日先见干上神，阴日先见支上神。
-  // 这是深浅完全相等时的先见取法，应先于孟仲季的次级区分。
-  const preferred = tied.find((item) => item.candidate.lesson.upper === preferredUpper);
-  if (preferred) {
-    return preferred.candidate;
-  }
-
-  // 深浅相同且无干支上神时，再看发用上神所居四孟、四仲、四季（见机、察微）。
-  // 这里比较的是上神本身，而非它所临的地盘；“亥加丑”仍属四孟上神。
+  // 深浅相同时，先比较候选上神所临地盘的四孟、四仲、四季。
+  // 《六壬大全》以“午加庚四孟位”为例，午为上神，庚寄申为孟位。
   for (const branchGroup of [MENG_BRANCHES, ZHONG_BRANCHES, JI_BRANCHES]) {
-    const sameClass = tied.filter((item) => branchGroup.has(item.candidate.lesson.upper));
+    const sameClass = tied.filter((item) =>
+      branchGroup.has(getUnderByUpper(context.heavenlyPlate, item.candidate.lesson.upper)),
+    );
     if (sameClass.length > 0) {
       tied = sameClass;
       break;
     }
+  }
+
+  // 涉害与所临孟仲季均复等时，阳日先见干上神，阴日先见支上神。
+  const preferredUpper = YANG_STEMS.has(context.dayStem)
+    ? getUpperByUnder(context.heavenlyPlate, context.dayStemResidence)
+    : getUpperByUnder(context.heavenlyPlate, context.dayBranch);
+  const preferred = tied.find((item) => item.candidate.lesson.upper === preferredUpper);
+  if (preferred) {
+    return preferred.candidate;
   }
 
   const picked = tied.sort((left, right) => left.index - right.index)[0];
@@ -671,20 +671,24 @@ function buildOrdinaryTransmissionAdjudication(args: {
     }));
     const maxDepth = Math.max(...ranked.map((item) => item.assessment.depth));
     const tied = ranked.filter((item) => item.assessment.depth === maxDepth);
+    const selectedClass =
+      [MENG_BRANCHES, ZHONG_BRANCHES, JI_BRANCHES].find((branchGroup) =>
+        tied.some((item) =>
+          branchGroup.has(getUnderByUpper(args.context.heavenlyPlate, item.candidate.lesson.upper)),
+        ),
+      ) ?? null;
+    const classTied = selectedClass
+      ? tied.filter((item) =>
+          selectedClass.has(
+            getUnderByUpper(args.context.heavenlyPlate, item.candidate.lesson.upper),
+          ),
+        )
+      : tied;
     const preferredUpper = YANG_STEMS.has(args.context.dayStem)
       ? getUpperByUnder(args.context.heavenlyPlate, args.context.dayStemResidence)
       : getUpperByUnder(args.context.heavenlyPlate, args.context.dayBranch);
-    const preferred = tied.find((item) => item.candidate.lesson.upper === preferredUpper);
-    let selectedClass: Set<string> | null = null;
-    if (!preferred) {
-      selectedClass =
-        [MENG_BRANCHES, ZHONG_BRANCHES, JI_BRANCHES].find((branchGroup) =>
-          tied.some((item) => branchGroup.has(item.candidate.lesson.upper)),
-        ) ?? null;
-    }
-    const selectedClassCount = selectedClass
-      ? tied.filter((item) => selectedClass.has(item.candidate.lesson.upper)).length
-      : 0;
+    const preferred = classTied.find((item) => item.candidate.lesson.upper === preferredUpper);
+    const selectedClassCount = selectedClass ? classTied.length : 0;
 
     for (const item of ranked) {
       const output = values.find((candidate) => candidate.upper === item.candidate.lesson.upper);
@@ -692,22 +696,25 @@ function buildOrdinaryTransmissionAdjudication(args: {
       const depth = item.assessment.depth;
       if (depth < maxDepth) {
         output.reasons.push(`涉害深度${depth}低于最大深度${maxDepth}`);
+      } else if (
+        selectedClass &&
+        !selectedClass.has(getUnderByUpper(args.context.heavenlyPlate, output.upper))
+      ) {
+        output.reasons.push(`涉害深度同为${maxDepth}，所临地盘孟仲季次序未取`);
       } else if (preferred) {
         output.reasons.push(
           output.upper === preferredUpper
-            ? `涉害深度同为${maxDepth}，复等先取${YANG_STEMS.has(args.context.dayStem) ? '干上神' : '支上神'}`
-            : `涉害深度同为${maxDepth}，复等未先见${YANG_STEMS.has(args.context.dayStem) ? '干上神' : '支上神'}`,
+            ? `涉害深度及所临孟仲季复等，先取${YANG_STEMS.has(args.context.dayStem) ? '干上神' : '支上神'}`
+            : `涉害深度及所临孟仲季复等，未先见${YANG_STEMS.has(args.context.dayStem) ? '干上神' : '支上神'}`,
         );
-      } else if (selectedClass && !selectedClass.has(output.upper)) {
-        output.reasons.push(`涉害深度同为${maxDepth}，按孟仲季次序未取`);
       } else if (output.upper === args.result.initial) {
         output.reasons.push(
           selectedClassCount > 1
-            ? `涉害深度同为${maxDepth}，按孟仲季后再依原课序取定`
-            : `涉害深度同为${maxDepth}，按孟仲季次序取定`,
+            ? `涉害深度同为${maxDepth}，按所临地盘孟仲季后再依原课序取定`
+            : `涉害深度同为${maxDepth}，按所临地盘孟仲季次序取定`,
         );
       } else {
-        output.reasons.push(`涉害深度与孟仲季类别相同，按原课序未取`);
+        output.reasons.push(`涉害深度与所临地盘孟仲季类别相同，按原课序未取`);
       }
     }
   };

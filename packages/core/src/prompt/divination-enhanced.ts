@@ -508,13 +508,11 @@ function formatLiuyaoInfo(
 }
 
 type MeihuaClassicalEntry = {
-  kind: '卦辞' | '爻辞' | '用辞';
+  kind: '卦辞' | '爻辞';
   text: string;
   references: Array<{
     stage: '主卦' | '互卦' | '变卦';
     hexagram: string;
-    position?: number;
-    isMoving?: boolean;
   }>;
 };
 
@@ -542,68 +540,21 @@ function formatMeihuaClassicalText(data: MeihuaData) {
   for (const [stage, hexagram] of stages) {
     if (!hexagram) continue;
     add('卦辞', hexagram.description, { stage, hexagram: hexagram.name });
-    (hexagram.yaoCi ?? []).forEach((text, index) =>
-      add('爻辞', text, {
+    if (stage === '主卦') {
+      add('爻辞', hexagram.movingYaoCi || hexagram.yaoCi?.[data.movingYao.position - 1], {
         stage,
         hexagram: hexagram.name,
-        position: index + 1,
-        isMoving: stage === '主卦' && index + 1 === data.movingYao.position,
-      }),
-    );
-    if (stage === '主卦' && !(hexagram.yaoCi ?? []).length) {
-      add('爻辞', hexagram.movingYaoCi, {
-        stage,
-        hexagram: hexagram.name,
-        position: data.movingYao.position,
-        isMoving: true,
       });
     }
   }
 
-  const allChanging =
-    data.yaosDetail.length === 6 && data.yaosDetail.every((item) => item.isChanging);
-  const usesSpecialYongCi =
-    allChanging &&
-    (data.mainHexagram.name === '乾为天' || data.mainHexagram.name === '坤为地') &&
-    data.mainHexagram.yongCi;
-  if (usesSpecialYongCi) {
-    add('用辞', data.mainHexagram.yongCi, {
-      stage: '主卦',
-      hexagram: data.mainHexagram.name,
-      isMoving: true,
-    });
-  }
-
   return [...entries.values()].map((entry) => {
-    const references = [...entry.references].sort(
-      (left, right) => Number(Boolean(right.isMoving)) - Number(Boolean(left.isMoving)),
-    );
-    const first = references[0];
     if (entry.kind === '卦辞') {
       const stageNames = [...new Set(entry.references.map((item) => item.stage))].join('、');
       const names = [...new Set(entry.references.map((item) => item.hexagram))].join('、');
       return `${stageNames}卦辞：${names}，${entry.text}`;
     }
-    if (entry.kind === '用辞') {
-      const firstReference = entry.references[0];
-      return `特殊用辞：${firstReference.hexagram}六爻皆动，${entry.text}`;
-    }
-    const moving = references.some((item) => item.isMoving);
-    const referenceText =
-      first.position !== undefined
-        ? first.stage === '主卦' && first.isMoving
-          ? `第${first.position}爻`
-          : `${first.stage}${first.hexagram}第${first.position}爻`
-        : `${first.stage}${first.hexagram}特殊用辞`;
-    const label = moving ? '动爻爻辞' : '其他爻辞';
-    const additionalReferences = references
-      .slice(1)
-      .map((item) =>
-        item.position === undefined
-          ? `${item.stage}${item.hexagram}特殊用辞`
-          : `${item.stage}${item.hexagram}第${item.position}爻`,
-      );
-    return `${label}：${referenceText}${additionalReferences.length ? `（同文：${additionalReferences.join('、')}）` : ''}，${entry.text}`;
+    return `动爻爻辞：第${data.movingYao.position}爻，${entry.text}`;
   });
 }
 

@@ -259,7 +259,7 @@ export interface LiuyaoHiddenSpiritCoverageFact {
 
 export interface LiuyaoUsefulGodSelectionFact {
   key: 'liuyao:useful-god-selection';
-  status: '已选定候选' | '缺少可用候选';
+  status: '已选定候选' | '待按问题取用' | '缺少可用候选';
   topic: LiuyaoEvidenceTopic;
   requestedRelative: string | null;
   selectedCandidateKey: string | null;
@@ -340,7 +340,7 @@ export interface LiuyaoCalculationStep {
 
 export interface LiuyaoSummaryFact {
   key: 'liuyao:evidence-summary';
-  status: '证据链完整' | '部分资料缺失' | '缺少可用候选';
+  status: '证据链完整' | '部分资料缺失' | '待按问题取用' | '缺少可用候选';
   factKeys: string[];
   lineFactCount: number;
   hiddenSpiritFactCount: number;
@@ -1206,7 +1206,9 @@ function buildSummaryFact(params: {
       ? '部分资料缺失'
       : params.selectionFact.status === '缺少可用候选'
         ? '缺少可用候选'
-        : '证据链完整';
+        : params.selectionFact.status === '待按问题取用'
+          ? '待按问题取用'
+          : '证据链完整';
   const matchedCandidateCount = params.candidates.filter((item) => item.status === '已匹配').length;
   return {
     key: 'liuyao:evidence-summary',
@@ -1515,28 +1517,39 @@ export function analyzeLiuyaoEvidence(
       limitation: CANDIDATE_FACT_LIMITATION,
     };
   });
-  const selectedCandidate = candidates[0]?.references.length ? candidates[0] : null;
+  // 世应只是人物与外部条件的爻位；怪异题的官鬼也只是类象候选。
+  // 只有明确指定六亲，或事项主题已给出可取的六亲时，才建立用神五行链。
+  const hasUsefulGodBasis =
+    Boolean(options.usefulGodRelative) || topic === 'shiye' || topic === 'caifu';
+  const selectedCandidate =
+    hasUsefulGodBasis && candidates[0]?.references.length ? candidates[0] : null;
+  const chartClues = candidates
+    .filter((candidate) => candidate.references.length)
+    .map((candidate) => `${candidate.label}见${candidate.references.map(formatYao).join('、')}`)
+    .join('；');
   const selectionFact: LiuyaoUsefulGodSelectionFact = {
     key: 'liuyao:useful-god-selection',
-    status: selectedCandidate ? '已选定候选' : '缺少可用候选',
+    status: selectedCandidate ? '已选定候选' : hasUsefulGodBasis ? '缺少可用候选' : '待按问题取用',
     topic,
     requestedRelative: options.usefulGodRelative ?? null,
     selectedCandidateKey: selectedCandidate?.key ?? null,
     candidateKeys: candidates.map((item) => item.key),
     promptText: selectedCandidate
       ? `本次用神取${selectedCandidate.label}；盘面匹配${selectedCandidate.references.map(formatYao).join('、')}`
-      : `本次${candidates[0]?.label ?? '主用神'}未匹配；${
-          candidates.slice(1).some((candidate) => candidate.references.length)
-            ? `已有辅证：${candidates
-                .slice(1)
-                .filter((candidate) => candidate.references.length)
-                .map(
-                  (candidate) =>
-                    `${candidate.label}见${candidate.references.map(formatYao).join('、')}`,
-                )
-                .join('；')}；主用神取用仍待核实`
-            : '本卦与伏神未见本次候选对应爻；主用神取用待核实'
-        }；世应与动变作为现有盘面线索保留`,
+      : !hasUsefulGodBasis
+        ? `事项用神待按具体问题取用；${chartClues ? `盘面线索：${chartClues}` : '世应与动变资料待核'}`
+        : `本次${candidates[0]?.label ?? '主用神'}未匹配；${
+            candidates.slice(1).some((candidate) => candidate.references.length)
+              ? `已有辅证：${candidates
+                  .slice(1)
+                  .filter((candidate) => candidate.references.length)
+                  .map(
+                    (candidate) =>
+                      `${candidate.label}见${candidate.references.map(formatYao).join('、')}`,
+                  )
+                  .join('；')}；主用神取用仍待核实`
+              : '本卦与伏神未见本次候选对应爻；主用神取用待核实'
+          }；世应与动变作为现有盘面线索保留`,
     sources: ['候选顺序、匹配状态与逐爻引用核验'],
     limitation: SELECTION_FACT_LIMITATION,
   };
@@ -1963,7 +1976,9 @@ export function analyzeLiuyaoEvidence(
     `证据汇总：${summaryFact.promptText}。`,
     godChain.length
       ? `作用链：${godChain.map((item) => item.promptText).join('；')}`
-      : '作用链：本次未见可匹配用神爻，按世应与动变主线裁定。',
+      : selectionFact.status === '待按问题取用'
+        ? '作用链：事项用神待按具体问题取用，现列世应与动变线索。'
+        : '作用链：本次未见可匹配用神爻，按世应与动变主线裁定。',
     `触发条件：${timingConditions.join('；')}`,
     `解释限制：${limitations.join('；')}。`,
   ].join('\n');

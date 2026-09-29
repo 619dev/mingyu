@@ -120,9 +120,6 @@ function calculateAspects(
       const actualAngle = angularDistance(point1.longitude, point2.longitude);
       for (const definition of ASPECT_DEFINITIONS) {
         const allowedOrb = options.aspectOrbs?.[definition.type] ?? definition.defaultOrb;
-        if (!Number.isFinite(allowedOrb) || allowedOrb <= 0 || allowedOrb > 15) {
-          throw new Error(`${definition.type}容许度需在 0 到 15 度之间。`);
-        }
         const orb = Math.abs(actualAngle - definition.angle);
         if (orb > allowedOrb) continue;
         const orbRatio = Number((orb / allowedOrb).toFixed(4));
@@ -690,6 +687,12 @@ export function analyzeAstrolabeSynastry(
     (!Number.isInteger(options.maxAspects) || options.maxAspects < 1 || options.maxAspects > 200)
   ) {
     throw new Error('西占合盘最大相位数需为 1 到 200 之间的整数。');
+  }
+  for (const definition of ASPECT_DEFINITIONS) {
+    const allowedOrb = options.aspectOrbs?.[definition.type] ?? definition.defaultOrb;
+    if (!Number.isFinite(allowedOrb) || allowedOrb <= 0 || allowedOrb > 15) {
+      throw new Error(`${definition.type}容许度需在 0 到 15 度之间。`);
+    }
   }
   const selectedNames = new Set(options.pointNames ?? DEFAULT_POINT_NAMES);
   const aspectCalculation = calculateAspects(chart1, chart2, options);

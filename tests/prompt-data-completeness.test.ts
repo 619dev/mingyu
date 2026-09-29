@@ -75,14 +75,19 @@ test('六爻提示词逐爻保留原爻、月日旺衰、十二长生与反伏�
   assert.match(text, new RegExp(fanfu.description));
 });
 
-test('梅花完整保留本互变的卦辞与六爻辞', () => {
+test('梅花保留本互变卦辞与本次动爻辞', () => {
   const data = generateMeihua(date, { method: 'number', number: 123 });
   const text = buildDivinationPrompt('meihua', '整体解读', data);
   for (const gua of [data.mainHexagram, data.interHexagram, data.changedHexagram]) {
     if (!gua) continue;
     assert.ok(text.includes(gua.description));
-    for (const line of gua.yaoCi ?? []) assert.ok(text.includes(line), line);
   }
+  const movingText = data.mainHexagram.yaoCi?.[data.movingYao.position - 1];
+  if (movingText) assert.ok(text.includes(movingText));
+  const unusedText = data.mainHexagram.yaoCi?.find(
+    (_, index) => index + 1 !== data.movingYao.position,
+  );
+  if (unusedText) assert.ok(!text.includes(unusedText));
   assert.match(text, /逐爻体用：/);
   assert.ok(data.analysis.yingQi?.length, '固定梅花卦例应提供实际应期条件');
   for (const yao of data.yaosDetail) {
@@ -99,7 +104,6 @@ test('梅花完整保留本互变的卦辞与六爻辞', () => {
   assert.doesNotMatch(text, /只作取数来源旁证，不换算绝对日期/);
   const mainDescription = `${data.mainHexagram.name}，${data.mainHexagram.description}`;
   assert.equal(text.split(mainDescription).length - 1, 1);
-  const movingText = data.mainHexagram.yaoCi?.[data.movingYao.position - 1];
   if (movingText) assert.equal(text.split(movingText).length - 1, 1);
 });
 

@@ -80,7 +80,7 @@ test('六爻三钱来源须同时吻合铜钱合计与原始爻值', () => {
   }));
   const data = generateLiuyao(fixedDate, { method: 'coins', coinThrows });
   assert.equal(data.evidenceAnalysis?.generationFact.status, '可核验');
-  assert.equal(data.evidenceAnalysis?.summaryFact.status, '证据链完整');
+  assert.equal(data.evidenceAnalysis?.summaryFact.status, '待按问题取用');
 
   const wrongTotal = {
     ...data,
@@ -128,7 +128,7 @@ test('六爻主用神缺失时保留已命中辅证，并保持主取用缺口',
   assert.doesNotMatch(evidence.selectionFact.promptText, /改以世应.*裁定/);
 });
 
-test('六爻排盘应内置无总分的用神作用链结构化证据', () => {
+test('六爻通用排盘保留取用候选，不将世爻自动选为用神', () => {
   const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
   const evidence = data.evidenceAnalysis;
 
@@ -148,9 +148,11 @@ test('六爻排盘应内置无总分的用神作用链结构化证据', () => {
     ),
   );
   assert.ok(evidence.candidates.length > 0);
-  assert.ok(evidence.selectedCandidate);
-  assert.equal(evidence.selectionFact.status, '已选定候选');
-  assert.equal(evidence.selectionFact.selectedCandidateKey, evidence.selectedCandidate.key);
+  assert.equal(evidence.selectedCandidate, null);
+  assert.equal(evidence.selectionFact.status, '待按问题取用');
+  assert.equal(evidence.selectionFact.selectedCandidateKey, null);
+  assert.deepEqual(evidence.godChain, []);
+  assert.match(evidence.selectionFact.promptText, /事项用神待按具体问题取用；盘面线索：通用主轴见/);
   assert.equal(evidence.lineCoverageFact.status, '完整');
   assert.deepEqual(evidence.lineCoverageFact.actualPositions, [1, 2, 3, 4, 5, 6]);
   assert.equal(evidence.lineFacts.length, 6);
@@ -239,7 +241,7 @@ test('六爻排盘应内置无总分的用神作用链结构化证据', () => {
         item.limitation.includes('不得把爻位'),
     ),
   );
-  assert.equal(evidence.summaryFact.status, '证据链完整');
+  assert.equal(evidence.summaryFact.status, '待按问题取用');
   assert.equal(evidence.summaryFact.lineFactCount, evidence.lineFacts.length);
   assert.equal(evidence.summaryFact.hiddenSpiritFactCount, evidence.hiddenSpiritFacts.length);
   assert.equal(evidence.summaryFact.candidateCount, evidence.candidates.length);
@@ -354,6 +356,25 @@ test('六爻原神忌神仇神应按生克作用链推导', () => {
   assert.equal(isSheng(enemy.wuxing, taboo.wuxing), true);
   assert.equal(isKe(enemy.wuxing, source.wuxing), true);
   assert.ok(evidence.godChain.every((item) => item.status === '盘中有对应'));
+});
+
+test('感情和怪异主题只列盘面线索，明确指定六亲时才可取用', () => {
+  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  for (const topic of ['ganqing', 'guaishen'] as const) {
+    const evidence = analyzeLiuyaoEvidence(data, { topic });
+    assert.equal(evidence.selectionFact.status, '待按问题取用');
+    assert.equal(evidence.selectedCandidate, null);
+    assert.deepEqual(evidence.godChain, []);
+    assert.match(evidence.selectionFact.promptText, /事项用神待按具体问题取用/);
+  }
+
+  const specified = analyzeLiuyaoEvidence(data, {
+    topic: 'ganqing',
+    usefulGodRelative: '官鬼',
+  });
+  assert.equal(specified.selectionFact.status, '已选定候选');
+  assert.equal(specified.selectedCandidate?.relative, '官鬼');
+  assert.equal(specified.godChain.length, 4);
 });
 
 test('六爻整卦关系、反吟伏吟与三合应形成独立结构事实', () => {

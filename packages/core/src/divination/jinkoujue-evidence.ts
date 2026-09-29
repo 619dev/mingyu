@@ -9,7 +9,8 @@ import {
 } from '../shared/random';
 import type { JinkoujueData, JinkoujueFourPosition, JinkoujueMovement } from '../types/divination';
 import { MingyuCoreError } from '../shared/result';
-import { EARTHLY_BRANCHES, isKe, isSheng } from '../ganzhi';
+import { getVoidBranches } from '../calendar/lunar';
+import { EARTHLY_BRANCHES, getSeasonState, isKe, isSheng } from '../ganzhi';
 
 export interface JinkoujuePositionFact {
   key: string;
@@ -231,6 +232,20 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
     throw new Error('金口诀四位关系与五行不一致，无法生成证据。');
   }
   const allPositions = [diFen, jiangShen, guiShen, renYuan];
+  const expectedXunKong = getVoidBranches(data.ganzhi.day);
+  const monthBranch = data.ganzhi.month.charAt(1);
+  if (
+    !Array.isArray(data.xunKong) ||
+    data.xunKong.length !== expectedXunKong.length ||
+    expectedXunKong.some((branch) => !data.xunKong.includes(branch)) ||
+    allPositions.some(
+      (position) =>
+        position.isVoid !== expectedXunKong.includes(position.branch) ||
+        position.seasonState !== getSeasonState(position.element, monthBranch),
+    )
+  ) {
+    throw new Error('金口诀旬空或月令旺衰与日月柱及四位不一致，无法生成证据。');
+  }
   const yinPositions = allPositions.filter((position) => position.yinYang === '阴');
   const yangPositions = allPositions.filter((position) => position.yinYang === '阳');
   const expectedUse =

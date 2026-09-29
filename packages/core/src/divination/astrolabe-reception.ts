@@ -179,7 +179,7 @@ export function evaluateAstrolabeSynastryReceptions(
 
   const summary = receptions.length
     ? `【古典接纳互溶】${receptions.map((r) => r.summary).join('；')}`
-    : '【古典接纳互溶】双方主要行星未见守护互溶或伴随相位的接纳结构，以常规几何相位交感为主';
+    : '【古典接纳互溶】所选计算点未见守护互溶或伴随相位的接纳结构；跨盘相位与落宫以已列事实为准';
 
   return {
     receptions,

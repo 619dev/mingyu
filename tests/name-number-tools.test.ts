@@ -135,6 +135,19 @@ test('姓名分析拒绝超出五格单双姓口径的姓氏字数', () => {
   assert.equal(analyzeChineseName({ fullName: '欧阳娜娜', surnameLength: 2 }).surname, '欧阳');
 });
 
+test('姓名分析与取名候选区分非汉字和字典未收录汉字', () => {
+  assert.throws(() => analyzeChineseName({ fullName: '李·明' }), /姓名只能包含汉字/);
+  assert.throws(() => analyzeChineseName({ fullName: '李𠀀' }), /姓名用字暂未收录在字典中：𠀀/);
+  assert.throws(() => generateChineseNames({ surname: '李·' }), /姓氏只能包含汉字/);
+  assert.throws(() => generateChineseNames({ surname: '𠀀' }), /姓氏用字暂未收录在字典中：𠀀/);
+});
+
+test('取名候选数拒绝非安全整数并给出准确错误', () => {
+  for (const limit of [1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => generateChineseNames({ surname: '李', limit }), /候选数量必须为安全整数/);
+  }
+});
+
 test('汉字选字同时支持康熙笔画与五行过滤', () => {
   const result = selectChineseCharacters({ strokes: 8, wuxing: '木', limit: 20 });
   assert.ok(result.length > 0);
@@ -402,10 +415,10 @@ test('孔明神卦完整覆盖32种五钱阴阳组合并支持随机重放', () 
   assert.equal(replay.number, first.number);
 });
 
-test('起名数量必须有限且为整数，避免NaN绕过候选上限', () => {
+test('起名与选字数量必须为安全整数，避免NaN绕过候选上限', () => {
   for (const limit of [NaN, Infinity, -Infinity, 1.5]) {
-    assert.throws(() => generateChineseNames({ surname: '李', limit }), /有限整数/);
-    assert.throws(() => selectNamingCharacters({ limit }), /有限整数/);
+    assert.throws(() => generateChineseNames({ surname: '李', limit }), /安全整数/);
+    assert.throws(() => selectNamingCharacters({ limit }), /安全整数/);
   }
   assert.throws(() => selectNamingCharacters({ gender: '未知' as never }), /性别取值无效/);
   assert.throws(

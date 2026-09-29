@@ -5635,7 +5635,8 @@ test('MCP 六爻支持模拟三钱投掷与随机轨迹重放', async () => {
       ),
     );
     assert.ok(firstResult.evidenceAnalysis.candidates.length > 0);
-    assert.equal(firstResult.evidenceAnalysis.selectionFact.status, '已选定候选');
+    assert.equal(firstResult.evidenceAnalysis.selectionFact.status, '待按问题取用');
+    assert.equal(firstResult.evidenceAnalysis.selectionFact.selectedCandidateKey, null);
     assert.equal(firstResult.evidenceAnalysis.lineCoverageFact.status, '完整');
     assert.deepEqual(
       firstResult.evidenceAnalysis.lineCoverageFact.actualPositions,
@@ -5689,7 +5690,7 @@ test('MCP 六爻支持模拟三钱投掷与随机轨迹重放', async () => {
       firstResult.evidenceAnalysis.timingSummaryFact.factKeys.length,
       firstResult.evidenceAnalysis.timingFacts.length,
     );
-    assert.equal(firstResult.evidenceAnalysis.summaryFact.status, '证据链完整');
+    assert.equal(firstResult.evidenceAnalysis.summaryFact.status, '待按问题取用');
     assert.equal(
       firstResult.evidenceAnalysis.summaryFact.lineFactCount,
       firstResult.evidenceAnalysis.lineFacts.length,

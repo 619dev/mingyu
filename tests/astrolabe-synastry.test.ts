@@ -210,6 +210,10 @@ test('西占双盘应允许显式调整容许度并拒绝非法参数', () => {
     /合相容许度需在 0 到 15 度之间/,
   );
   assert.throws(
+    () => analyzeAstrolabeSynastry(first, second, { pointNames: [], aspectOrbs: { 合相: 20 } }),
+    /合相容许度需在 0 到 15 度之间/,
+  );
+  assert.throws(
     () => analyzeAstrolabeSynastry(first, second, { maxAspects: 0 }),
     /最大相位数需为 1 到 200 之间的整数/,
   );
@@ -239,6 +243,8 @@ test('西占双盘应保留截断数量和关闭落宫的反证', () => {
   assert.equal(noFacts.aspects.length, 0);
   assert.equal(noFacts.houseOverlays.length, 0);
   assert.equal(noFacts.summaryFact.status, '未见已列交叉事实');
+  assert.match(noFacts.receptionSummary ?? '', /跨盘相位与落宫以已列事实为准/);
+  assert.doesNotMatch(noFacts.receptionSummary ?? '', /几何相位交感为主/);
   assert.equal(
     noFacts.counterEvidenceFacts.find((item) => item.type === '主要相位覆盖')?.status,
     '未命中',

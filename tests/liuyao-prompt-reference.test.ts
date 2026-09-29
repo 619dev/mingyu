@@ -56,6 +56,20 @@ test('六爻事业用神与世爻不同五行时保留原忌仇神的作用对�
   assert.doesNotMatch(text, /变爻寅木克本爻酉金|变爻子水生本爻未土/);
 });
 
+test('六爻通用与感情提示词不把世爻写成事项用神', () => {
+  const data = generateLiuyao(new Date('2026-05-19T10:30:00+08:00'), {
+    method: 'manual',
+    yaos: [6, 8, 8, 8, 8, 6],
+  });
+  for (const liuyaoTemplate of ['general', 'ganqing', 'guaishen'] as const) {
+    const text = formatEnhancedDivinationInfo('liuyao', data, '', undefined, {
+      liuyaoTemplate,
+    });
+    assert.match(text, /用神主线：事项用神待按具体问题取用；盘面线索：/);
+    assert.doesNotMatch(text, /本次所选用神|生克关系：原神|用神：通用主轴|用神：关系我方/);
+  }
+});
+
 test('六爻有实际伏神时保留伏藏位置和飞神资料', () => {
   const data = generateLiuyao(new Date('2025-06-18T10:30:00+08:00'), {
     method: 'manual',

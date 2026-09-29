@@ -11,6 +11,7 @@ import {
   mergeAstrolabePeriodEvents,
   rankAstrolabeAspects,
   resolveAstrolabePeriodWindow,
+  validateAstrolabePeriodContext,
 } from 'mingyu-core/divination/astrolabe-scope';
 import { generateAstrolabe } from 'mingyu-core/divination/astrolabe';
 import { formatAstrolabeForPrompt, formatAstrolabeInfo } from 'mingyu-core/prompt';
@@ -335,6 +336,32 @@ test('完整星盘入口保留缺失宫头兼容，紧凑上下文明确要求�
     }),
   );
   assert.throws(() => buildAstrolabePeriodContext(incompleteData), /完整十二宫宫头/);
+});
+
+test('重复或乱序宫头不能生成周期换宫事实', () => {
+  const source = buildAstrolabePeriodContext(astrolabeData);
+  const target = { year: 2028, month: 3, day: 20 };
+  const duplicateData = {
+    ...astrolabeData,
+    houses: astrolabeData.houses.map((house) => ({ ...house, longitude: 0 })),
+  };
+  const events = buildAstrolabePeriodEvents(duplicateData, 'monthly', target).events;
+  assert.equal(
+    events.some((event) => event.kind === '换宫'),
+    false,
+  );
+  assert.throws(() => buildAstrolabePeriodContext(duplicateData), /完整十二宫宫头/);
+  assert.throws(
+    () => validateAstrolabePeriodContext({ ...source, houseCusps: Array(12).fill(0) }),
+    /完整十二宫区间/,
+  );
+
+  const reversed = [...source.houseCusps];
+  [reversed[1], reversed[2]] = [reversed[2], reversed[1]];
+  assert.throws(
+    () => validateAstrolabePeriodContext({ ...source, houseCusps: reversed }),
+    /完整十二宫区间/,
+  );
 });
 
 test('纽约夏令时流年批次的结果时区取父范围起点', () => {

@@ -3483,7 +3483,9 @@ test('公开 API 六爻支持模拟三钱投掷并可按随机轨迹重放', asy
   assert.equal(first.body.data.evidenceAnalysis.calculationSteps.length, 7);
   assert.equal(first.body.data.evidenceAnalysis.calculationChain.length, 7);
   assert.ok(first.body.data.evidenceAnalysis.candidates.length > 0);
-  assert.equal(first.body.data.evidenceAnalysis.selectionFact.status, '已选定候选');
+  assert.equal(first.body.data.evidenceAnalysis.selectionFact.status, '待按问题取用');
+  assert.equal(first.body.data.evidenceAnalysis.selectedCandidate, null);
+  assert.deepEqual(first.body.data.evidenceAnalysis.godChain, []);
   assert.equal(first.body.data.evidenceAnalysis.lineCoverageFact.status, '完整');
   assert.deepEqual(
     first.body.data.evidenceAnalysis.lineCoverageFact.actualPositions,
@@ -3534,7 +3536,7 @@ test('公开 API 六爻支持模拟三钱投掷并可按随机轨迹重放', asy
     first.body.data.evidenceAnalysis.timingSummaryFact.factKeys.length,
     first.body.data.evidenceAnalysis.timingFacts.length,
   );
-  assert.equal(first.body.data.evidenceAnalysis.summaryFact.status, '证据链完整');
+  assert.equal(first.body.data.evidenceAnalysis.summaryFact.status, '待按问题取用');
   assert.equal(
     first.body.data.evidenceAnalysis.summaryFact.lineFactCount,
     first.body.data.evidenceAnalysis.lineFacts.length,

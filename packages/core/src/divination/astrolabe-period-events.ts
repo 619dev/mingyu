@@ -372,10 +372,21 @@ function houseForLongitude(cusps: number[], longitude: number) {
   for (let index = 0; index < cusps.length; index += 1) {
     const current = cusps[index];
     const next = cusps[(index + 1) % cusps.length];
-    const span = normalizeLongitude(next - current) || 360;
+    const span = normalizeLongitude(next - current);
     if (normalizeLongitude(longitude - current) < span) return index + 1;
   }
   return 0;
+}
+
+function hasValidHouseCusps(cusps: number[]) {
+  if (cusps.length !== 12 || !cusps.every(Number.isFinite)) return false;
+  let totalArc = 0;
+  for (let index = 0; index < cusps.length; index += 1) {
+    const arc = normalizeLongitude(cusps[(index + 1) % 12] - cusps[index]);
+    if (arc === 0) return false;
+    totalArc += arc;
+  }
+  return Math.abs(totalArc - 360) < 0.000001;
 }
 
 type AstrolabePeriodSource = AstrolabeData | AstrolabePeriodContext;
@@ -645,18 +656,12 @@ function natalPointsOf(source: AstrolabePeriodSource) {
 
 function natalCuspsOf(source: AstrolabePeriodSource) {
   if (isAstrolabePeriodContext(source)) {
-    return source.houseCusps.length === 12 &&
-      source.houseCusps.every((item) => Number.isFinite(item))
-      ? source.houseCusps.map(normalizeLongitude)
-      : null;
+    return hasValidHouseCusps(source.houseCusps) ? source.houseCusps.map(normalizeLongitude) : null;
   }
-  const cusps = source.houses
-    .slice()
-    .sort((first, second) => first.house - second.house)
-    .map((item) => item.longitude);
-  return cusps.length === 12 && cusps.every((item) => Number.isFinite(item))
-    ? cusps.map(normalizeLongitude)
-    : null;
+  const houses = source.houses.slice().sort((first, second) => first.house - second.house);
+  if (houses.some((house, index) => house.house !== index + 1)) return null;
+  const cusps = houses.map((item) => item.longitude);
+  return hasValidHouseCusps(cusps) ? cusps.map(normalizeLongitude) : null;
 }
 
 export function buildAstrolabePeriodContext(data: AstrolabeData): AstrolabePeriodContext {
@@ -734,6 +739,9 @@ export function validateAstrolabePeriodContext(value: unknown): AstrolabePeriodC
   }
   if (!input.houseCusps.every((item) => typeof item === 'number' && Number.isFinite(item))) {
     throw new Error('astrolabePeriodContext.houseCusps 必须全部是有限数字。');
+  }
+  if (!hasValidHouseCusps(input.houseCusps as number[])) {
+    throw new Error('astrolabePeriodContext.houseCusps 必须形成不重叠的完整十二宫区间。');
   }
   return {
     timezone: input.timezone,

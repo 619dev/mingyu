@@ -1240,7 +1240,7 @@ test('大六壬多处贼克且同阴阳候选不唯一时进入涉害法', () =>
   assert.ok(['巳', '未', '亥'].includes(result.initial));
 });
 
-test('大六壬涉害先按受克深浅，复等再取干支上与孟仲季', () => {
+test('大六壬涉害先按受克深浅及所临孟仲季，复等再取干支上', () => {
   const cases = [
     {
       day: '丁卯',
@@ -1295,6 +1295,26 @@ test('大六壬涉害先按受克深浅，复等再取干支上与孟仲季', ()
       item.source,
     );
   }
+});
+
+test('大六壬涉害同深按所临地盘取孟仲季，不按上神自身支类取舍', () => {
+  // 庚午日、子时、辰将：上克下候选辰加子和寅加戌均涉害一重。
+  // 辰所临子为四仲，寅所临戌为四季；按所临位应取辰发用。
+  const result = buildReferenceLiurenPlate({
+    day: '庚午',
+    hour: '丙子',
+    monthLeader: '辰',
+  });
+
+  assert.equal(result.initial.rule, '涉害法');
+  assert.deepEqual(result.branches, ['辰', '申', '子']);
+  const candidates = result.initial.ordinaryAdjudication?.candidates ?? [];
+  assert.equal(candidates.find((item) => item.upper === '辰')?.harmAssessment?.depth, 1);
+  assert.equal(candidates.find((item) => item.upper === '寅')?.harmAssessment?.depth, 1);
+  assert.match(
+    candidates.find((item) => item.upper === '寅')?.reasons.join('；') ?? '',
+    /所临地盘孟仲季次序未取/,
+  );
 });
 
 test('大六壬涉害深度较大时应优先取深，不被孟位浅害改取', () => {
