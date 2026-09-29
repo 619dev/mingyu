@@ -637,7 +637,8 @@ function buildSummaryFact(args: {
   const hasHouse = args.calculationFact.status === '命宅完整';
   const measurementComplete =
     args.measurementFact.status === '未提供' ||
-    (args.measurementFact.referenceStatus === '已声明' &&
+    (args.measurementFact.status !== '宅卦不稳定' &&
+      args.measurementFact.referenceStatus === '已声明' &&
       args.measurementCandidateFacts.length > 0);
   const structurallyComplete =
     args.calculationFact.yearBoundaryStatus !== '待复核' &&

@@ -8,6 +8,7 @@ import type {
 import { analyzeBaziNatalEvidence } from './natalEvidence';
 import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
 import { checkChinaDst } from '../calendar/china-dst';
+import { getHistoricalTimezoneOffsetAt } from '../calendar/historical-timezone';
 import { MONTH_COMMANDER, TIME_MAP } from './baziDefinitions';
 import { resolveShenShaVariantConfig } from './baziShenSha';
 import { SolarTerm } from 'tyme4ts';
@@ -48,6 +49,7 @@ export interface UnknownTimeCandidatePoint {
   boundaryName?: string;
   boundarySide?: 'before' | 'at';
   dstInterpretation?: 'daylight' | 'standard';
+  timezone?: number;
 }
 
 function pad(value: number): string {
@@ -98,9 +100,24 @@ function clockFromTimestamp(timestamp: number) {
   };
 }
 
-function wallClockFromStandardTimestamp(timestamp: number, applyChinaDst: boolean) {
-  const daylightClock = clockFromTimestamp(timestamp + HOUR);
-  const daylight = applyChinaDst
+function wallClockFromStandardTimestamp(timestamp: number, person: Person) {
+  if (person.timeZoneId) {
+    const offset = getHistoricalTimezoneOffsetAt(new Date(timestamp), person.timeZoneId);
+    return {
+      timestamp: timestamp + offset * HOUR,
+      dstInterpretation: 'standard' as const,
+      timezone: offset,
+    };
+  }
+  if (person.timezone !== undefined && !person.applyChinaDst) {
+    return {
+      timestamp: timestamp + person.timezone * HOUR,
+      dstInterpretation: 'standard' as const,
+    };
+  }
+  const beijingClockTimestamp = timestamp + BEIJING_OFFSET;
+  const daylightClock = clockFromTimestamp(beijingClockTimestamp + HOUR);
+  const daylight = person.applyChinaDst
     ? checkChinaDst(
         daylightClock.year,
         daylightClock.month,
@@ -110,9 +127,9 @@ function wallClockFromStandardTimestamp(timestamp: number, applyChinaDst: boolea
       )
     : undefined;
   if (daylight?.inDst && !daylight.nonexistent) {
-    return { timestamp: timestamp + HOUR, dstInterpretation: 'daylight' as const };
+    return { timestamp: beijingClockTimestamp + HOUR, dstInterpretation: 'daylight' as const };
   }
-  return { timestamp, dstInterpretation: 'standard' as const };
+  return { timestamp: beijingClockTimestamp, dstInterpretation: 'standard' as const };
 }
 
 function collectBoundaryCandidatePoints(person: Person): UnknownTimeCandidatePoint[] {
@@ -179,10 +196,7 @@ function collectBoundaryCandidatePoints(person: Person): UnknownTimeCandidatePoi
       ['before', timestamp - SECOND],
       ['at', timestamp],
     ] as const) {
-      const wall = wallClockFromStandardTimestamp(
-        standardTimestamp + BEIJING_OFFSET,
-        person.applyChinaDst === true,
-      );
+      const wall = wallClockFromStandardTimestamp(standardTimestamp, person);
       const pointTimestamp = wall.timestamp - BEIJING_OFFSET;
       if (pointTimestamp < dayStart || pointTimestamp >= dayEnd) continue;
       const local = new Date(wall.timestamp);
@@ -200,6 +214,7 @@ function collectBoundaryCandidatePoints(person: Person): UnknownTimeCandidatePoi
           boundaryName: fact.name,
           boundarySide: side,
           ...(person.applyChinaDst === true ? { dstInterpretation: wall.dstInterpretation } : {}),
+          ...('timezone' in wall ? { timezone: wall.timezone } : {}),
           timeName: `${fact.name}${sideLabel}${clock}候选`,
         });
       }
@@ -266,6 +281,7 @@ function buildScenarioKey(point: UnknownTimeCandidatePoint): string {
     point.boundaryName ?? 'point',
     point.boundarySide ?? 'point',
     ...(point.dstInterpretation ? [point.dstInterpretation] : []),
+    ...(point.timezone !== undefined ? [point.timezone] : []),
   ].join(':');
 }
 
@@ -358,6 +374,9 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
             birthHour: standard.hour,
             birthMinute: standard.minute,
             birthSecond: standard.second,
+            ...(point.timezone !== undefined && candidateInput.timezone === undefined
+              ? { timezone: point.timezone }
+              : {}),
             applyChinaDst: false,
           },
         };

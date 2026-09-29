@@ -1172,7 +1172,8 @@ function formatCandidateForPrompt(item: AlmanacCandidateEvidence): string {
     fact.classification === '未分级' ? fact.name : `${fact.name}（${fact.classification}）`,
   );
   const usableHours = item.usableHours.map(
-    (hour) => `${hour.name}${hour.range}（${hour.ganzhi}，${hour.twelveStar}）`,
+    (hour) =>
+      `${hour.name}${hour.range}（${hour.ganzhi}，${hour.twelveStar}${hour.constraints.length ? `，条件候选；限制${hour.constraints.join('、')}` : ''}）`,
   );
   const hourResult = item.decisionFact.steps.find((step) => step.stage === '可用时辰')?.result;
   return [

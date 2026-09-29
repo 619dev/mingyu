@@ -280,6 +280,33 @@ test('在线提示词保留时段偏好、无可用时辰原因和值日神煞�
   assert.doesNotMatch(prompt, /2026-03-03 可用候选/);
 });
 
+test('在线任务书列出条件候选时辰的具体限制', () => {
+  const data = generateAlmanacSelection({
+    topic: 'travel',
+    startDate: '2025-01-01',
+    endDate: '2025-01-03',
+  });
+  const firstUsableHour = data.evidenceAnalysis?.candidates[0]?.usableHours[0];
+  assert.ok(firstUsableHour);
+  const day = data.days[0];
+  const hour = day?.hours?.find((item) => item.name === firstUsableHour.name);
+  assert.ok(hour);
+  hour.cautions.push('该时辰的具体安排需核对');
+
+  const evidence = analyzeAlmanacEvidence(data);
+  const candidateHour = evidence.candidates[0]?.usableHours.find((item) => item.name === hour.name);
+  assert.ok(candidateHour);
+  assert.equal(candidateHour.status, '条件候选');
+  const dayLine = evidence.promptText.split('\n').find((line) => line.startsWith(`${day.date} `));
+  assert.ok(dayLine);
+  assert.ok(
+    dayLine.includes(
+      `${hour.name}${hour.range}（${hour.ganzhi}，${hour.twelveStar}，条件候选；限制`,
+    ),
+  );
+  assert.ok(dayLine.includes('该时辰的具体安排需核对'));
+});
+
 test('缺少逐时资料时应标记未提供，不误报无可用时辰', () => {
   const data = generateAlmanacSelection({
     topic: 'travel',

@@ -324,6 +324,19 @@ test('八宅测量应换算磁北并识别跨宅卦边界的不稳定候选', ()
   assert.equal(result.evidenceAnalysis.summaryFact.status, '证据链有缺口');
 });
 
+test('命卦已直接给定时，跨宅卦边界仍应保留证据链缺口', () => {
+  const result = analyzeBaZhaiByDoorDegree({
+    mingGua: '坎',
+    doorToInteriorDegree: 65,
+    northReference: 'true',
+    measurementUncertaintyDegrees: 3,
+  });
+
+  assert.equal(result.evidenceAnalysis.calculationFact.yearBoundaryStatus, '直接命卦');
+  assert.equal(result.directionMeasurement.stability, '宅卦不稳定');
+  assert.equal(result.evidenceAnalysis.summaryFact.status, '证据链有缺口');
+});
+
 test('八宅磁北读数缺少磁偏角时应拒绝生成伪精确坐向', () => {
   assert.throws(
     () =>

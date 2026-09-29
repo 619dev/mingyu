@@ -164,6 +164,62 @@ test('申时内部交立春保留临界前后两个具体时刻而不以申时�
   }
 });
 
+test('外地未知时辰按当地钟表时间列出立春临界候选', () => {
+  for (const location of [
+    { timezone: -5 },
+    { timeZoneId: 'America/New_York' },
+    { timezone: -5, timeZoneId: 'America/New_York' },
+  ]) {
+    const result = baziCalculator.calculateBazi({
+      year: 2024,
+      month: 2,
+      day: 4,
+      gender: 'female',
+      ...location,
+    });
+    const scenarios = result.unknownTimeAnalysis?.scenarios ?? [];
+    const before = scenarios.find(
+      (scenario) => scenario.boundary?.name === '立春' && scenario.boundary.side === 'before',
+    );
+    const at = scenarios.find(
+      (scenario) => scenario.boundary?.name === '立春' && scenario.boundary.side === 'at',
+    );
+    assert.equal(before?.inputClockTime, '03:27:06');
+    assert.equal(at?.inputClockTime, '03:27:07');
+    assert.equal(before?.pillars.year.ganZhi, '癸卯');
+    assert.equal(before?.pillars.month.ganZhi, '乙丑');
+    assert.equal(at?.pillars.year.ganZhi, '甲辰');
+    assert.equal(at?.pillars.month.ganZhi, '丙寅');
+    for (const scenario of [before, at]) {
+      assert.ok(scenario);
+      const [hour, minute, second] = scenario.inputClockTime.split(':').map(Number);
+      const explicit = baziCalculator.calculateBazi({
+        year: 2024,
+        month: 2,
+        day: 4,
+        birthHour: hour,
+        birthMinute: minute,
+        birthSecond: second,
+        gender: 'female',
+        ...location,
+      });
+      assert.deepEqual(scenario.pillars, explicit.pillars);
+    }
+  }
+  assert.throws(
+    () =>
+      baziCalculator.calculateBazi({
+        year: 2024,
+        month: 2,
+        day: 4,
+        gender: 'female',
+        timezone: -4,
+        timeZoneId: 'America/New_York',
+      }),
+    /历史偏移不一致/,
+  );
+});
+
 test('农历未知时辰先沿用实际历法换算再检查同一公历日的交节边界', () => {
   const solar = baziCalculator.calculateBazi({
     year: 2024,
