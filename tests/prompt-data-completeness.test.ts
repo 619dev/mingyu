@@ -4,6 +4,7 @@ import { generateAstrolabe } from 'mingyu-core/divination/astrolabe';
 import { generateLiuyao } from 'mingyu-core/divination/liuyao';
 import { generateMeihua } from 'mingyu-core/divination/meihua';
 import { generateQimen, analyzeQimenEvidence } from 'mingyu-core/divination/qimen';
+import { formatQimenPatternBasis } from '@core/divination/qimen-evidence';
 import { drawRandomSign } from 'mingyu-core/divination/ssgw';
 import { buildAstrolabePrompt, formatDivinationInfo } from 'mingyu-core/prompt';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
@@ -131,12 +132,29 @@ test('灵签解释保留完整段落及有效补充并合并同文', () => {
 
 test('奇门经典格局保留触发事实而非只列名称', () => {
   const data = generateQimen(date);
-  const facts = analyzeQimenEvidence(data).patternFacts.filter((item) => item.kind === '经典格局');
+  const facts = analyzeQimenEvidence(data).patternFacts.filter(
+    (item) => item.kind === '经典格局' && item.status === '已命中',
+  );
   assert.ok(facts.length);
   const text = formatDivinationInfo('qimen', data);
   for (const fact of facts) {
-    assert.ok(text.includes(fact.name), fact.name);
-    assert.ok(text.includes(fact.promptText.split(/[，；]/u)[0].replace(/。$/u, '')), fact.name);
+    const lines = text.split('\n').filter((item) => item.startsWith(`${fact.name}（`));
+    assert.ok(lines.length, fact.name);
+    if (
+      /^[日月星]奇得使临吉门$/u.test(fact.name) &&
+      lines.some((line) => line.includes('同宫临'))
+    ) {
+      const door = fact.promptText.match(/[休生开]门/u)?.[0];
+      assert.ok(door && lines.some((line) => line.includes(`同宫临${door}`)), fact.name);
+    } else {
+      const factualBasis = formatQimenPatternBasis(fact).split('；')[0];
+      if (factualBasis !== fact.name) {
+        assert.ok(
+          lines.some((line) => line.includes(factualBasis)),
+          fact.name,
+        );
+      }
+    }
   }
   assert.doesNotMatch(text, /不作通用吉凶评分/);
 });

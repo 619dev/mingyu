@@ -7,6 +7,7 @@ import {
   formatLiurenTransmission,
 } from './liuren-facts';
 import { formatMeihuaFacts } from './meihua-facts';
+import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
 import {
   formatQimenActiveStem,
   formatQimenHourStem,
@@ -14,7 +15,11 @@ import {
   formatQimenStemLocations,
 } from './qimen-facts';
 import { resolveXiaoliurenRule } from '../divination/xiaoliuren-rules';
-import { formatXiaoliurenCalendarBoundary } from '../divination/xiaoliuren-evidence';
+import {
+  analyzeXiaoliurenEvidence,
+  formatXiaoliurenCalendarBoundary,
+} from '../divination/xiaoliuren-evidence';
+import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -576,11 +581,15 @@ function formatMeihuaClassicalText(data: MeihuaData) {
 }
 
 function formatMeihuaInfo(data: MeihuaData) {
+  const evidence = analyzeMeihuaEvidence(data);
+  if (evidence.calculationFact.status === '计算不一致') {
+    throw new Error(`梅花盘面与起卦资料不一致：${evidence.calculationFact.promptText}`);
+  }
   const calculation = data.calculation;
   const methodLabel = getMeihuaMethodLabel(calculation);
   const facts = formatMeihuaFacts(data);
   const hasCalculationFact = facts.some((fact) => fact.startsWith('起卦取数：'));
-  const stages = data.evidenceAnalysis?.stages ?? [];
+  const stages = evidence.stages;
   const hasOriginStage = stages.some(
     (stage) => stage.stage === 'origin' && stage.status === '已计算',
   );
@@ -655,6 +664,7 @@ function formatMeihuaInfo(data: MeihuaData) {
 }
 
 function formatXiaoliurenInfo(data: XiaoliurenData) {
+  analyzeXiaoliurenEvidence(data);
   const rule = resolveXiaoliurenRule(data.rule);
   const calendarBasis = data.calculation
     ? [
@@ -824,22 +834,36 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
       : `${scopePresentation.branchLabel}${data.horseStar.sourceBranch}起驿马在${data.horseStar.branch}，落${data.horseStar.name}`
     : '无';
   const classicPatternFacts = evidenceAnalysis.patternFacts.filter(
-    (item) => item.kind === '经典格局',
+    (item) => item.kind === '经典格局' && item.status === '已命中',
   );
-  const classicPatternLines = classicPatternFacts.map((item) => {
-    const tone =
-      item.traditionalTone === '有利'
-        ? '吉格'
-        : item.traditionalTone === '风险'
-          ? '凶格'
-          : '中性格局';
-    const basis = formatQimenPatternBasis(item);
-    const missingPalaces = item.palaces
-      .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
-      .filter((name) => !basis.includes(name));
-    const basisText = basis === item.name ? '' : `：${basis}`;
-    return `${item.name}（${tone}${missingPalaces.length ? `，${missingPalaces.join('、')}` : ''}）${basisText}`;
-  });
+  const classicPatternLines = [
+    ...new Set(
+      classicPatternFacts.map((item) => {
+        const tone =
+          item.traditionalTone === '有利'
+            ? '吉格'
+            : item.traditionalTone === '风险'
+              ? '凶格'
+              : '中性格局';
+        let basis = formatQimenPatternBasis(item).replaceAll(`；乃${item.name}之格`, '');
+        const basePattern = item.name.match(/^([日月星]奇得使)临吉门$/u)?.[1];
+        if (
+          basePattern &&
+          classicPatternFacts.some(
+            (fact) =>
+              fact.name === basePattern && item.palaces.some((gong) => fact.palaces.includes(gong)),
+          )
+        ) {
+          basis = basis.replace(`${basePattern}又临吉门`, '同宫临');
+        }
+        const missingPalaces = item.palaces
+          .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
+          .filter((name) => !basis.includes(name));
+        const basisText = basis === item.name ? '' : `：${basis}`;
+        return `${item.name}（${tone}${missingPalaces.length ? `，${missingPalaces.join('、')}` : ''}）${basisText}`;
+      }),
+    ),
+  ];
   const questionContext = [
     question,
     supplementaryInfo?.currentSituation,
@@ -1459,6 +1483,7 @@ export function formatHuangjiInfo(data: HuangjiJingshiResult) {
 }
 
 function formatJinkoujueInfo(data: JinkoujueData) {
+  analyzeJinkoujueEvidence(data);
   const p = data.positions;
   return [
     '占法：金口诀',

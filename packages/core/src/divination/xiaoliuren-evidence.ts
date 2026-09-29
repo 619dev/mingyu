@@ -1,4 +1,5 @@
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
+import { getShichenByIndex } from '../calendar/dateUtils';
 import type { XiaoliurenData, XiaoliurenPalaceDetail } from '../types/divination';
 
 import { resolveXiaoliurenRule } from './xiaoliuren-rules';
@@ -174,6 +175,47 @@ export function formatXiaoliurenCalendarBoundary(data: XiaoliurenData): string {
 }
 
 export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvidenceAnalysis {
+  const rule = resolveXiaoliurenRule(data.rule);
+  const calculation = data.calculation;
+  const monthIndex = (data.lunarMonth - 1) % 6;
+  const dayIndex = (data.lunarMonth + data.lunarDay - 2 + rule.dayStartOffset) % 6;
+  const hourIndex = (dayIndex + (data.hourIndex % 12)) % 6;
+  if (
+    !Number.isInteger(data.lunarMonth) ||
+    data.lunarMonth < 1 ||
+    data.lunarMonth > 12 ||
+    !Number.isInteger(data.lunarDay) ||
+    data.lunarDay < 1 ||
+    data.lunarDay > 30 ||
+    !Number.isInteger(data.hourIndex) ||
+    data.hourIndex < 0 ||
+    data.hourIndex > 12 ||
+    data.hourLabel !== getShichenByIndex(data.hourIndex)?.name ||
+    (calculation !== undefined &&
+      (calculation.lunarMonth !== data.lunarMonth ||
+        calculation.lunarDay !== data.lunarDay ||
+        calculation.hourNumber !== (data.hourIndex % 12) + 1 ||
+        calculation.monthSeed !== data.lunarMonth ||
+        calculation.daySeed !== data.lunarMonth + data.lunarDay - 1 + rule.dayStartOffset ||
+        calculation.hourSeed !==
+          data.lunarMonth + data.lunarDay + (data.hourIndex % 12) - 1 + rule.dayStartOffset ||
+        calculation.monthPalaceIndex !== monthIndex ||
+        calculation.dayPalaceIndex !== dayIndex ||
+        calculation.hourPalaceIndex !== hourIndex)) ||
+    data.sequence.month.index !== monthIndex ||
+    data.sequence.day.index !== dayIndex ||
+    data.sequence.hour.index !== hourIndex ||
+    [data.sequence.month, data.sequence.day, data.sequence.hour].some(
+      (palace) =>
+        palace.name !== data.palaceOrder[palace.index]?.name ||
+        palace.verse !== data.palaceOrder[palace.index]?.verse,
+    ) ||
+    data.primary.index !== hourIndex ||
+    data.primary.name !== data.sequence.hour.name ||
+    data.primary.verse !== data.sequence.hour.verse
+  ) {
+    throw new Error('小六壬月日时顺数或占得宫与盘面不一致，无法生成证据。');
+  }
   const calculationSteps = buildCalculationSteps(data);
   const complete = calculationSteps.length === 3;
   const calendarBoundary = formatXiaoliurenCalendarBoundary(data);

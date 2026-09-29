@@ -461,6 +461,15 @@ function relationOf(yong: string, ti: string) {
   return '关系未定';
 }
 
+function relationToOriginalTi(label: '体互' | '用互', source: string, originalTi: string) {
+  if (source === originalTi) return `${label}与原体比和`;
+  if (isSheng(source, originalTi)) return `${label}生原体`;
+  if (isSheng(originalTi, source)) return `原体生${label}`;
+  if (isKe(source, originalTi)) return `${label}克原体`;
+  if (isKe(originalTi, source)) return `原体克${label}`;
+  return '关系未定';
+}
+
 function relationEvidence(relation: string) {
   switch (relation) {
     case '用生体':
@@ -637,7 +646,7 @@ function validateMeihuaCalculation(data: MeihuaData): {
   const calculation = data.calculation;
   const missing: string[] = [];
   const mismatches: string[] = [];
-  if (!calculation) return { missing: ['起卦计算记录'], mismatches };
+  if (!calculation) missing.push('起卦计算记录');
 
   const requireSafeInteger = (value: unknown, label: string): number | undefined => {
     if (!Number.isSafeInteger(value)) {
@@ -671,137 +680,163 @@ function validateMeihuaCalculation(data: MeihuaData): {
     return total;
   };
 
-  switch (calculation.methodKey) {
-    case 'time':
-    case 'timeTrigram': {
-      const yearZhiIndex = branchIndex(calculation.yearZhi);
-      const timeZhiIndex = branchIndex(calculation.timeZhi);
-      const month = requireSafeInteger(calculation.month, '农历月份');
-      const day = requireSafeInteger(calculation.day, '农历日期');
-      if (yearZhiIndex === undefined) missing.push('有效的农历年支');
-      if (timeZhiIndex === undefined) missing.push('有效的时支');
-      if (month !== undefined && (month < 1 || month > 12)) missing.push('有效的农历月份');
-      if (day !== undefined && (day < 1 || day > 30)) missing.push('有效的农历日期');
-      compare('年支序', calculation.yearZhiIndex, yearZhiIndex);
-      compare('时支序', calculation.timeZhiIndex, timeZhiIndex);
-      const upperTotal = sum(yearZhiIndex, month, day);
-      const fullTotal = sum(upperTotal, timeZhiIndex);
-      compareRemainder('上卦索引', calculation.upperTrigramIndex, upperTotal, 8);
-      compareRemainder('下卦索引', calculation.lowerTrigramIndex, fullTotal, 8);
-      compareRemainder('动爻索引', calculation.movingYaoIndex, fullTotal, 6);
-      break;
-    }
-    case 'number':
-    case 'sound': {
-      const sourceValue = requireSafeInteger(
-        calculation.methodKey === 'number' ? calculation.number : calculation.soundCount,
-        calculation.methodKey === 'number' ? '起卦数字' : '声音数',
-      );
-      if (sourceValue !== undefined && sourceValue <= 0) {
-        missing.push(calculation.methodKey === 'number' ? '正起卦数字' : '正声音数');
-      }
-      const timeZhiIndex = branchIndex(calculation.timeZhi);
-      if (timeZhiIndex === undefined) missing.push('有效的时支');
-      compare('时支序', calculation.timeZhiIndex, timeZhiIndex);
-      const totalWithTime = sum(sourceValue, timeZhiIndex);
-      compare('数字与时支合数', calculation.totalWithTime, totalWithTime);
-      compareRemainder('上卦索引', calculation.upperTrigramIndex, sourceValue, 8);
-      compareRemainder('下卦索引', calculation.lowerTrigramIndex, totalWithTime, 8);
-      compareRemainder('动爻索引', calculation.movingYaoIndex, totalWithTime, 6);
-      break;
-    }
-    case 'character': {
-      const expected = getExpectedCharacterNumbers(calculation);
-      if (!expected) {
-        missing.push('字占原始分段、笔画或声类取数');
+  if (calculation) {
+    switch (calculation.methodKey) {
+      case 'time':
+      case 'timeTrigram': {
+        const yearZhiIndex = branchIndex(calculation.yearZhi);
+        const timeZhiIndex = branchIndex(calculation.timeZhi);
+        const month = requireSafeInteger(calculation.month, '农历月份');
+        const day = requireSafeInteger(calculation.day, '农历日期');
+        if (yearZhiIndex === undefined) missing.push('有效的农历年支');
+        if (timeZhiIndex === undefined) missing.push('有效的时支');
+        if (month !== undefined && (month < 1 || month > 12)) missing.push('有效的农历月份');
+        if (day !== undefined && (day < 1 || day > 30)) missing.push('有效的农历日期');
+        compare('年支序', calculation.yearZhiIndex, yearZhiIndex);
+        compare('时支序', calculation.timeZhiIndex, timeZhiIndex);
+        const upperTotal = sum(yearZhiIndex, month, day);
+        const fullTotal = sum(upperTotal, timeZhiIndex);
+        compareRemainder('上卦索引', calculation.upperTrigramIndex, upperTotal, 8);
+        compareRemainder('下卦索引', calculation.lowerTrigramIndex, fullTotal, 8);
+        compareRemainder('动爻索引', calculation.movingYaoIndex, fullTotal, 6);
         break;
       }
-      if (
-        calculation.characterText !== undefined &&
-        Array.from(calculation.characterText).length !== calculation.characterCount
-      ) {
-        mismatches.push('字占原文字符数与记录数量不一致');
-        break;
-      }
-      const compareCharacterCache = (label: string, recorded: unknown, value: number) => {
-        if (recorded === undefined || recorded === null) {
-          missing.push(label);
-        } else if (!Number.isSafeInteger(recorded)) {
-          mismatches.push(`${label}记录值无效`);
-        } else {
-          compare(label, recorded, value);
+      case 'number':
+      case 'sound': {
+        const sourceValue = requireSafeInteger(
+          calculation.methodKey === 'number' ? calculation.number : calculation.soundCount,
+          calculation.methodKey === 'number' ? '起卦数字' : '声音数',
+        );
+        if (sourceValue !== undefined && sourceValue <= 0) {
+          missing.push(calculation.methodKey === 'number' ? '正起卦数字' : '正声音数');
         }
-      };
-      compareCharacterCache('字占上卦取数', calculation.characterUpperNumber, expected.upper);
-      compareCharacterCache('字占下卦取数', calculation.characterLowerNumber, expected.lower);
-      compareCharacterCache(
-        '上卦索引',
-        calculation.upperTrigramIndex,
-        normalizedRemainder(expected.upper, 8),
-      );
-      compareCharacterCache(
-        '下卦索引',
-        calculation.lowerTrigramIndex,
-        normalizedRemainder(expected.lower, 8),
-      );
-      compareCharacterCache(
-        '动爻索引',
-        calculation.movingYaoIndex,
-        normalizedRemainder(expected.total, 6),
-      );
-      break;
+        const timeZhiIndex = branchIndex(calculation.timeZhi);
+        if (timeZhiIndex === undefined) missing.push('有效的时支');
+        compare('时支序', calculation.timeZhiIndex, timeZhiIndex);
+        const totalWithTime = sum(sourceValue, timeZhiIndex);
+        compare('数字与时支合数', calculation.totalWithTime, totalWithTime);
+        compareRemainder('上卦索引', calculation.upperTrigramIndex, sourceValue, 8);
+        compareRemainder('下卦索引', calculation.lowerTrigramIndex, totalWithTime, 8);
+        compareRemainder('动爻索引', calculation.movingYaoIndex, totalWithTime, 6);
+        break;
+      }
+      case 'character': {
+        const expected = getExpectedCharacterNumbers(calculation);
+        if (!expected) {
+          missing.push('字占原始分段、笔画或声类取数');
+          break;
+        }
+        if (
+          calculation.characterText !== undefined &&
+          Array.from(calculation.characterText).length !== calculation.characterCount
+        ) {
+          mismatches.push('字占原文字符数与记录数量不一致');
+          break;
+        }
+        const compareCharacterCache = (label: string, recorded: unknown, value: number) => {
+          if (recorded === undefined || recorded === null) {
+            missing.push(label);
+          } else if (!Number.isSafeInteger(recorded)) {
+            mismatches.push(`${label}记录值无效`);
+          } else {
+            compare(label, recorded, value);
+          }
+        };
+        compareCharacterCache('字占上卦取数', calculation.characterUpperNumber, expected.upper);
+        compareCharacterCache('字占下卦取数', calculation.characterLowerNumber, expected.lower);
+        compareCharacterCache(
+          '上卦索引',
+          calculation.upperTrigramIndex,
+          normalizedRemainder(expected.upper, 8),
+        );
+        compareCharacterCache(
+          '下卦索引',
+          calculation.lowerTrigramIndex,
+          normalizedRemainder(expected.lower, 8),
+        );
+        compareCharacterCache(
+          '动爻索引',
+          calculation.movingYaoIndex,
+          normalizedRemainder(expected.total, 6),
+        );
+        break;
+      }
+      case 'direction': {
+        const objectIndex =
+          MEIHUA_OBJECT_OPTIONS.findIndex((item) => item.value === calculation.objectType) + 1;
+        const directionIndex =
+          MEIHUA_DIRECTION_OPTIONS.findIndex((item) => item.value === calculation.direction) + 1;
+        const timeZhiIndex = branchIndex(calculation.timeZhi);
+        if (!objectIndex) missing.push('有效的所见物类');
+        if (!directionIndex) missing.push('有效的后天方位');
+        if (timeZhiIndex === undefined) missing.push('有效的时支');
+        compare('所见物类卦数', calculation.objectTrigramIndex, objectIndex || undefined);
+        compare('方位卦数', calculation.directionTrigramIndex, directionIndex || undefined);
+        compare('时支序', calculation.timeZhiIndex, timeZhiIndex);
+        const total = sum(objectIndex || undefined, directionIndex || undefined, timeZhiIndex);
+        compare('物类、方位与时支合数', calculation.totalWithTime, total);
+        compare('上卦索引', calculation.upperTrigramIndex, objectIndex || undefined);
+        compare('下卦索引', calculation.lowerTrigramIndex, directionIndex || undefined);
+        compareRemainder('动爻索引', calculation.movingYaoIndex, total, 6);
+        break;
+      }
+      case 'random': {
+        const upper = requireSafeInteger(calculation.upperTrigramIndex, '随机上卦索引');
+        const lower = requireSafeInteger(calculation.lowerTrigramIndex, '随机下卦索引');
+        const moving = requireSafeInteger(calculation.movingYaoIndex, '随机动爻索引');
+        if (upper !== undefined && (upper < 1 || upper > 8))
+          mismatches.push(`随机上卦索引${upper}超出1-8`);
+        if (lower !== undefined && (lower < 1 || lower > 8))
+          mismatches.push(`随机下卦索引${lower}超出1-8`);
+        if (moving !== undefined && (moving < 1 || moving > 6))
+          mismatches.push(`随机动爻索引${moving}超出1-6`);
+        break;
+      }
+      default:
+        missing.push('可识别的梅花起卦方式');
     }
-    case 'direction': {
-      const objectIndex =
-        MEIHUA_OBJECT_OPTIONS.findIndex((item) => item.value === calculation.objectType) + 1;
-      const directionIndex =
-        MEIHUA_DIRECTION_OPTIONS.findIndex((item) => item.value === calculation.direction) + 1;
-      const timeZhiIndex = branchIndex(calculation.timeZhi);
-      if (!objectIndex) missing.push('有效的所见物类');
-      if (!directionIndex) missing.push('有效的后天方位');
-      if (timeZhiIndex === undefined) missing.push('有效的时支');
-      compare('所见物类卦数', calculation.objectTrigramIndex, objectIndex || undefined);
-      compare('方位卦数', calculation.directionTrigramIndex, directionIndex || undefined);
-      compare('时支序', calculation.timeZhiIndex, timeZhiIndex);
-      const total = sum(objectIndex || undefined, directionIndex || undefined, timeZhiIndex);
-      compare('物类、方位与时支合数', calculation.totalWithTime, total);
-      compare('上卦索引', calculation.upperTrigramIndex, objectIndex || undefined);
-      compare('下卦索引', calculation.lowerTrigramIndex, directionIndex || undefined);
-      compareRemainder('动爻索引', calculation.movingYaoIndex, total, 6);
-      break;
-    }
-    case 'random': {
-      const upper = requireSafeInteger(calculation.upperTrigramIndex, '随机上卦索引');
-      const lower = requireSafeInteger(calculation.lowerTrigramIndex, '随机下卦索引');
-      const moving = requireSafeInteger(calculation.movingYaoIndex, '随机动爻索引');
-      if (upper !== undefined && (upper < 1 || upper > 8))
-        mismatches.push(`随机上卦索引${upper}超出1-8`);
-      if (lower !== undefined && (lower < 1 || lower > 8))
-        mismatches.push(`随机下卦索引${lower}超出1-8`);
-      if (moving !== undefined && (moving < 1 || moving > 6))
-        mismatches.push(`随机动爻索引${moving}超出1-6`);
-      break;
-    }
-    default:
-      missing.push('可识别的梅花起卦方式');
-  }
 
-  const checkBoardTrigram = (label: string, index: unknown, name: string) => {
-    if (!Number.isSafeInteger(index)) return;
-    const trigram = trigramsByIndex[index as number];
-    if (!trigram || trigram.name !== name) {
-      mismatches.push(`${label}记录索引${index}与主卦${name}不一致`);
-    }
-  };
-  checkBoardTrigram('上卦', calculation.upperTrigramIndex, data.mainHexagram.upper);
-  checkBoardTrigram('下卦', calculation.lowerTrigramIndex, data.mainHexagram.lower);
-  compare('主卦动爻位置', data.movingYao.position, calculation.movingYaoIndex);
+    const checkBoardTrigram = (label: string, index: unknown, name: string) => {
+      if (!Number.isSafeInteger(index)) return;
+      const trigram = trigramsByIndex[index as number];
+      if (!trigram || trigram.name !== name) {
+        mismatches.push(`${label}记录索引${index}与主卦${name}不一致`);
+      }
+    };
+    checkBoardTrigram('上卦', calculation.upperTrigramIndex, data.mainHexagram.upper);
+    checkBoardTrigram('下卦', calculation.lowerTrigramIndex, data.mainHexagram.lower);
+    compare('主卦动爻位置', data.movingYao.position, calculation.movingYaoIndex);
+  }
 
   const upper = trigramByName.get(data.mainHexagram.upper);
   const lower = trigramByName.get(data.mainHexagram.lower);
   const moving = data.movingYao.position;
   if (upper && lower && Number.isInteger(moving) && moving >= 1 && moving <= 6) {
     const mainLines = [...lower.lines, ...upper.lines];
+    const expectedYaoName = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻'][moving - 1];
+    if (data.movingYao.yaoName !== expectedYaoName) {
+      mismatches.push('动爻名称与爻位不一致');
+    }
+    for (const line of data.yaosDetail ?? []) {
+      const position = line.position;
+      if (!Number.isInteger(position) || position < 1 || position > 6) {
+        mismatches.push('逐爻记录含无效爻位');
+        continue;
+      }
+      const expectedType = mainLines[position - 1] === 1 ? '阳' : '阴';
+      const expectedRole = position <= 3 === moving <= 3 ? '用' : '体';
+      if (
+        line.yaoType !== expectedType ||
+        line.tiYong !== expectedRole ||
+        line.isChanging !== (position === moving)
+      ) {
+        mismatches.push(`第${position}爻记录与主卦、动爻体用不一致`);
+      }
+    }
+    const recordedPositions = (data.yaosDetail ?? []).map((line) => line.position);
+    if (new Set(recordedPositions).size !== recordedPositions.length) {
+      mismatches.push('逐爻记录含重复爻位');
+    }
     const changedLines = [...mainLines];
     changedLines[moving - 1] = 1 - changedLines[moving - 1];
     const isPureQianOrKun =
@@ -818,7 +853,19 @@ function validateMeihuaCalculation(data: MeihuaData): {
     if (interLower && interUpper && changedLower && changedUpper) {
       const checkHexagram = (
         label: string,
-        recorded: { name: string; symbol: string; upper: string; lower: string } | null | undefined,
+        recorded:
+          | {
+              name: string;
+              symbol: string;
+              upper: string;
+              lower: string;
+              description: string;
+              yaoCi?: string[];
+              yongCi?: string;
+              movingYaoCi?: string;
+            }
+          | null
+          | undefined,
         alias: string | undefined,
         expectedUpper: typeof upper,
         expectedLower: typeof lower,
@@ -836,6 +883,17 @@ function validateMeihuaCalculation(data: MeihuaData): {
             (alias !== undefined && alias !== expected.name))
         ) {
           mismatches.push(`${label}记录与主卦六爻推得的${expected.name}不一致`);
+        }
+        if (
+          recorded &&
+          ((recorded.description && recorded.description !== expected.description) ||
+            (recorded.yaoCi &&
+              (recorded.yaoCi.length !== expected.yaoCi?.length ||
+                recorded.yaoCi.some((line, index) => line !== expected.yaoCi?.[index]))) ||
+            (recorded.yongCi && recorded.yongCi !== expected.yongCi) ||
+            (recorded.movingYaoCi && recorded.movingYaoCi !== expected.yaoCi?.[moving - 1]))
+        ) {
+          mismatches.push(`${label}${expected.name}卦爻辞与固定文本不一致`);
         }
       };
       checkHexagram('主卦', data.mainHexagram, data.originalName, upper, lower);
@@ -861,6 +919,50 @@ function validateMeihuaCalculation(data: MeihuaData): {
       checkGua('用互', data.interYongGua, movingInLower ? interLower : interUpper);
       checkGua('变后体卦', data.changedTiGua, movingInLower ? changedUpper : changedLower);
       checkGua('变后用卦', data.changedYongGua, movingInLower ? changedLower : changedUpper);
+
+      const expectedTi = movingInLower ? upper : lower;
+      const expectedYong = movingInLower ? lower : upper;
+      const expectedRelation = relationOf(expectedYong.element, expectedTi.element);
+      const expectedDisplayRelation = expectedRelation === '比和' ? '体用比和' : expectedRelation;
+      if (
+        data.analysis.tiYongRelation &&
+        data.analysis.tiYongRelation !== expectedDisplayRelation
+      ) {
+        mismatches.push('主卦体用关系记录与卦象不一致');
+      }
+      if (data.analysis.tiYongRaw && data.analysis.tiYongRaw !== expectedRelation) {
+        mismatches.push('主卦体用原始关系记录与卦象不一致');
+      }
+      const expectedInterTi = movingInLower ? interUpper : interLower;
+      const expectedInterYong = movingInLower ? interLower : interUpper;
+      if (
+        data.analysis.inter1Relation &&
+        data.analysis.inter1Relation !==
+          relationToOriginalTi('体互', expectedInterTi.element, expectedTi.element)
+      ) {
+        mismatches.push('体互对原体关系记录与互卦不一致');
+      }
+      if (
+        data.analysis.inter2Relation &&
+        data.analysis.inter2Relation !==
+          relationToOriginalTi('用互', expectedInterYong.element, expectedTi.element)
+      ) {
+        mismatches.push('用互对原体关系记录与互卦不一致');
+      }
+      const expectedChangedRelation = relationOf(
+        (movingInLower ? changedLower : changedUpper).element,
+        (movingInLower ? changedUpper : changedLower).element,
+      );
+      const expectedChangedDisplay =
+        expectedChangedRelation === '比和' ? '体用比和' : expectedChangedRelation;
+      if (
+        (data.analysis.changedRelation &&
+          data.analysis.changedRelation !== expectedChangedDisplay) ||
+        (data.analysis.changedTiYongRelation &&
+          data.analysis.changedTiYongRelation !== expectedChangedDisplay)
+      ) {
+        mismatches.push('变卦体用关系记录与卦象不一致');
+      }
 
       const monthBranch = data.ganzhi.month.slice(-1);
       if (dizhi.includes(monthBranch)) {

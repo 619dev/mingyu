@@ -44,6 +44,52 @@ test('梅花旧盘取数与卦数不一致时不输出错误算式', () => {
   assert.doesNotMatch(formatMeihuaFacts(mismatched).join('\n'), /起卦取数：/u);
 });
 
+test('梅花提示词重新核验逐爻、关系和卦爻辞，不采信旧证据缓存', () => {
+  const makeChart = () =>
+    generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
+      method: 'number',
+      number: 42,
+    });
+  const stale = makeChart();
+  stale.evidenceAnalysis!.stages[0].promptText = '伪造的体用阶段';
+  assert.doesNotMatch(buildDivinationPrompt('meihua', '请做整体解读。', stale), /伪造的体用阶段/u);
+
+  const mutations = [
+    (chart: ReturnType<typeof makeChart>) => {
+      chart.yaosDetail[0].yaoType = chart.yaosDetail[0].yaoType === '阳' ? '阴' : '阳';
+    },
+    (chart: ReturnType<typeof makeChart>) => {
+      chart.yaosDetail.push({ ...chart.yaosDetail[0] });
+    },
+    (chart: ReturnType<typeof makeChart>) => {
+      chart.analysis.tiYongRelation = '虚构关系';
+    },
+    (chart: ReturnType<typeof makeChart>) => {
+      chart.mainHexagram.description += '伪造卦辞';
+    },
+    (chart: ReturnType<typeof makeChart>) => {
+      chart.mainHexagram.movingYaoCi = '伪造爻辞';
+    },
+  ];
+  for (const mutate of mutations) {
+    const chart = makeChart();
+    mutate(chart);
+    assert.throws(
+      () => buildDivinationPrompt('meihua', '请做整体解读。', chart),
+      /梅花盘面与起卦资料不一致/u,
+    );
+  }
+
+  const legacy = makeChart();
+  delete legacy.calculation;
+  assert.doesNotThrow(() => buildDivinationPrompt('meihua', '请做整体解读。', legacy));
+  legacy.mainHexagram.description += '伪造卦辞';
+  assert.throws(
+    () => buildDivinationPrompt('meihua', '请做整体解读。', legacy),
+    /梅花盘面与起卦资料不一致/u,
+  );
+});
+
 test('梅花字占保留原字及分笔，方位取象使用中文资料', () => {
   const date = new Date('2026-09-11T05:27:00+08:00');
   const character = generateMeihua(date, {

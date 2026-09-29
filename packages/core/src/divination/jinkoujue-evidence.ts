@@ -178,6 +178,15 @@ function buildRelationFact(
   };
 }
 
+function expectedRelation(from: string, to: string) {
+  if (from === to) return '比和';
+  if (isSheng(from, to)) return '生';
+  if (isSheng(to, from)) return '被生';
+  if (isKe(from, to)) return '克';
+  if (isKe(to, from)) return '被克';
+  return '无直接生克';
+}
+
 export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidenceAnalysis {
   const { diFen, jiangShen, guiShen, renYuan } = data.positions;
   if (
@@ -206,6 +215,50 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
       EARTHLY_BRANCHES[(monthLeaderIndex + diFenIndex - hourBranchIndex + 12) % 12]
   ) {
     throw new Error('金口诀将神与月将加时不一致，无法生成证据。');
+  }
+  const relationPairs = [
+    [guiShen, jiangShen, data.relations.guiToJiang],
+    [guiShen, renYuan, data.relations.guiToRen],
+    [jiangShen, diFen, data.relations.jiangToDi],
+    [renYuan, diFen, data.relations.renToDi],
+    [guiShen, diFen, data.relations.guiToDi],
+  ] as const;
+  if (
+    relationPairs.some(
+      ([from, to, relation]) => relation !== expectedRelation(from.element, to.element),
+    )
+  ) {
+    throw new Error('金口诀四位关系与五行不一致，无法生成证据。');
+  }
+  const allPositions = [diFen, jiangShen, guiShen, renYuan];
+  const yinPositions = allPositions.filter((position) => position.yinYang === '阴');
+  const yangPositions = allPositions.filter((position) => position.yinYang === '阳');
+  const expectedUse =
+    yinPositions.length === 3
+      ? { pattern: '三阴一阳', position: yangPositions[0] }
+      : yangPositions.length === 3
+        ? { pattern: '三阳一阴', position: yinPositions[0] }
+        : yinPositions.length === 2 || yinPositions.length === 4
+          ? { pattern: yinPositions.length === 2 ? '二阴二阳' : '纯阴', position: jiangShen }
+          : { pattern: '纯阳', position: guiShen };
+  const expectedUseRule = {
+    三阴一阳: '三阴一阳，以唯一阳位为用',
+    三阳一阴: '三阳一阴，以唯一阴位为用',
+    二阴二阳: '二阴二阳，以将神为用',
+    纯阴: '纯阴反阳，以将神为用',
+    纯阳: '纯阳反阴，以贵神为用',
+  }[expectedUse.pattern];
+  if (
+    yinPositions.length + yangPositions.length !== 4 ||
+    !expectedUse.position ||
+    data.yinYangUse.pattern !== expectedUse.pattern ||
+    data.yinYangUse.usePosition !== expectedUse.position.name ||
+    data.yinYangUse.rule !== expectedUseRule ||
+    data.yinYangUse.yinCount !== yinPositions.length ||
+    data.yinYangUse.yangCount !== yangPositions.length ||
+    data.yinYangUse.isVoid !== expectedUse.position.isVoid
+  ) {
+    throw new Error('金口诀阴阳发用与四位不一致，无法生成证据。');
   }
   const movementRules = [
     {

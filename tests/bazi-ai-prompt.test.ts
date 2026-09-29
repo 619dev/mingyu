@@ -440,8 +440,28 @@ test('曲直格依据已包含亥卯未木局与成立事实时不再另列格�
   }
 });
 
+test('从儿格在线流派资料只补充成格关系，不复述四柱中的透干与藏根', () => {
+  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  for (const prompt of [
+    buildBaziPrompt({ result, school: 'ziping' }),
+    buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
+    buildPromptFromConfig(
+      '分析格局。',
+      { id: 'ai-career', prompt: '分析事业。', scopeLabel: '事业' },
+      result,
+    ).user,
+  ]) {
+    assert.match(prompt, /月支辰本气戊为食神，食伤在月建当权/);
+    assert.match(prompt, /庚财星明透，承接食伤所生/);
+    assert.doesNotMatch(prompt, /^(?:食伤明透|财星明透|食伤结构根|财星结构根)：/m);
+  }
+});
+
 test('流派提示词不重复曲直格依据中的成立条件、透干和成员藏干', () => {
   const result = createBaziResult({ year: 1980, month: 1, day: 3, timeIndex: 3 });
+  const independent = formatBaziSchoolPrompt(result, 'ziping');
+  assert.equal(independent.match(/亥藏壬、甲；卯藏乙；未藏己、丁、乙/g)?.length, 1);
+  assert.doesNotMatch(independent, /^成员支藏干保留：/m);
   for (const prompt of [
     buildBaziPrompt({ result, school: 'ziping' }),
     buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),

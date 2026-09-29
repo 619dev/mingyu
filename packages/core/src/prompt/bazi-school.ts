@@ -218,17 +218,17 @@ function formatSchoolPatternFacts(
       return [item];
     })
     .filter((item) => !item.startsWith('原支藏印官事实：'))
+    .filter((item) => {
+      const detail = item.split('：').slice(1).join('：');
+      return !patternBasisIsVisible || !detail || !basis.includes(detail);
+    })
+    // 透干已列在四柱或通根资料中；内嵌盘面的藏根也无需重复。
     .filter(
       (item) =>
-        !curveFactsInChart || !/^(?:特殊格条件|食伤明透|财星明透|成员支藏干保留)：/u.test(item),
+        !/^(?:食伤明透|财星明透)：/u.test(item) &&
+        (!embedded || !/^(?:食伤结构根|财星结构根)：/u.test(item)),
     )
-    .filter(
-      (item) =>
-        !item.startsWith('财星明透：') ||
-        !special?.visibleWealthStems.every((stem) =>
-          special.satisfied.some((condition) => condition.includes(`${stem}财星明透`)),
-        ),
-    );
+    .filter((item) => !curveFactsInChart || !/^(?:特殊格条件|成员支藏干保留)：/u.test(item));
   if (embedded) return specialFacts.filter((item) => !item.startsWith('从儿五行流向：'));
   return [
     alternatives && basis ? `取格依据：${basis}` : '',

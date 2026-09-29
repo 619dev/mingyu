@@ -7,9 +7,29 @@ import {
 } from '../packages/core/src/divination/algorithms/xiaoliuren.ts';
 import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
 import { buildTimeInfoText } from '../packages/core/src/prompt/formatters.ts';
+import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const PALACE_NAMES = ['大安', '留连', '速喜', '赤口', '小吉', '空亡'] as const;
+
+test('小六壬证据与提示词拒绝时宫、占得宫及顺数索引错位', () => {
+  const source = generateXiaoliuren({ customDate: new Date('2026-05-19T10:30:00+08:00') });
+  const wrongPrimary = structuredClone(source);
+  wrongPrimary.primary = wrongPrimary.sequence.day;
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongPrimary), /顺数或占得宫与盘面不一致/);
+  assert.throws(
+    () => buildDivinationPrompt({ method: 'xiaoliuren', data: wrongPrimary, question: '进展如何' }),
+    /顺数或占得宫与盘面不一致/,
+  );
+
+  const wrongIndex = structuredClone(source);
+  wrongIndex.calculation.hourPalaceIndex = (wrongIndex.calculation.hourPalaceIndex + 1) % 6;
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongIndex), /顺数或占得宫与盘面不一致/);
+
+  const wrongHourLabel = structuredClone(source);
+  wrongHourLabel.hourLabel = '子时';
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongHourLabel), /顺数或占得宫与盘面不一致/);
+});
 
 test('小六壬真太阳时跨民用零点时，农历日按实际东八区日期、时辰按校正钟表', () => {
   const actual = new Date('2025-06-30T00:20:00+08:00');

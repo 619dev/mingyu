@@ -19,6 +19,7 @@ import {
   analyzeXiaoliurenEvidence,
   formatXiaoliurenCalendarBoundary,
 } from '../divination/xiaoliuren-evidence';
+import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -320,7 +321,7 @@ export function getDivinationSummaryBlocks(
     }
     case 'xiaoliuren': {
       const item = data as XiaoliurenData;
-      const evidence = item.evidenceAnalysis ?? analyzeXiaoliurenEvidence(item);
+      const evidence = analyzeXiaoliurenEvidence(item);
       return {
         title: '小六壬起课结果',
         tags: [
@@ -337,6 +338,7 @@ export function getDivinationSummaryBlocks(
     }
     case 'jinkoujue': {
       const item = data as JinkoujueData;
+      analyzeJinkoujueEvidence(item);
       const positions = item.positions;
       return {
         title: '金口诀起课结果',
@@ -380,7 +382,7 @@ export function getDivinationSummaryBlocks(
           `实际节气：${item.timeInfo.solarTerm}`,
           `定局：${isYearOrMonth ? `干支年${item.ganzhi.year}` : item.timeInfo.juTerm || item.timeInfo.solarTerm}${item.timeInfo.epoch}`,
           wrapMainEvidence(formatQimenFocusSummary(item)),
-          `格局：${item.patternTags?.join('、') || '未列'}`,
+          item.patternTags?.length ? `格局：${[...new Set(item.patternTags)].join('、')}` : '',
           formatQimenPatternComboSummary(item),
           `空亡：${item.voidBranches?.join('、') || '无'}`,
           formatQimenHorseSummary(item),

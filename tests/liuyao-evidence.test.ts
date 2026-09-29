@@ -1,10 +1,60 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { generateLiuyao, analyzeLiuyaoEvidence } from 'mingyu-core/divination/liuyao';
+import {
+  generateLiuyao,
+  analyzeLiuyaoEvidence,
+} from '../packages/core/src/divination/algorithms/liuyao.ts';
 import { isKe, isSheng } from 'mingyu-core/ganzhi';
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedYaos = [7, 8, 9, 6, 7, 8] as const;
+
+test('六爻证据与提示词拒绝可复算的纳甲世应、动变和月日空破错位', () => {
+  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const mutations: Array<(data: typeof source) => void> = [
+    (data) => {
+      data.voidBranches = ['子'];
+    },
+    (data) => {
+      data.yaosDetail[0].najiaDizhi = data.yaosDetail[0].najiaDizhi === '子' ? '丑' : '子';
+    },
+    (data) => {
+      data.yaosDetail[0].wuxing = data.yaosDetail[0].wuxing === '木' ? '火' : '木';
+    },
+    (data) => {
+      data.yaosDetail[0].isWorld = !data.yaosDetail[0].isWorld;
+    },
+    (data) => {
+      data.yaosDetail[0].seasonState = data.yaosDetail[0].seasonState === '旺' ? '死' : '旺';
+    },
+    (data) => {
+      data.yaosDetail[0].isMonthBreak = !data.yaosDetail[0].isMonthBreak;
+    },
+    (data) => {
+      data.yaosDetail[2].changedYao!.dizhi =
+        data.yaosDetail[2].changedYao!.dizhi === '子' ? '丑' : '子';
+    },
+    (data) => {
+      data.yaosDetail[2].rawValue = 7;
+    },
+  ];
+  for (const [index, mutate] of mutations.entries()) {
+    const changed = structuredClone(source);
+    mutate(changed);
+    assert.throws(
+      () => analyzeLiuyaoEvidence(changed),
+      /日柱旬空与盘面不一致|纳甲、世应、动变或月日空破与盘面不一致/,
+      `第 ${index + 1} 个错盘样本应被拒绝`,
+    );
+  }
+  const wrongMonth = structuredClone(source);
+  wrongMonth.yaosDetail[0].seasonState = source.yaosDetail[0].seasonState === '旺' ? '死' : '旺';
+  assert.throws(
+    () => formatEnhancedDivinationInfo('liuyao', wrongMonth),
+    /纳甲、世应、动变或月日空破与盘面不一致/,
+  );
+});
 
 test('六爻三钱来源须同时吻合铜钱合计与原始爻值', () => {
   const coinThrows = Array.from({ length: 6 }, () => ({

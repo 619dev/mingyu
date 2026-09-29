@@ -7,8 +7,24 @@ import {
   generateJinkoujue,
 } from '../packages/core/src/divination/algorithms/jinkoujue.ts';
 import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
+import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
+
+test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () => {
+  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const wrongRelation = structuredClone(source);
+  wrongRelation.relations.guiToJiang = wrongRelation.relations.guiToJiang === '克' ? '生' : '克';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongRelation), /四位关系与五行不一致/);
+  assert.throws(
+    () => buildDivinationPrompt({ method: 'jinkoujue', data: wrongRelation, question: '进展如何' }),
+    /四位关系与五行不一致/,
+  );
+
+  const wrongUse = structuredClone(source);
+  wrongUse.yinYangUse.usePosition = source.yinYangUse.usePosition === '贵神' ? '将神' : '贵神';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongUse), /阴阳发用与四位不一致/);
+});
 
 test('金口诀真太阳时跨雨水仍以实际占时定月将与月建', () => {
   const corrected = new Date('2024-02-19T11:30:00+08:00');

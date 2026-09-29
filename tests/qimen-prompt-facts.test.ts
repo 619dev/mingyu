@@ -88,6 +88,33 @@ test('奇门经典格局保留各宫命中且省略重复条件与通用叠加',
   assert.doesNotMatch(prompt, /复合格局：/);
 });
 
+test('奇门在线格局省略重复的规则名称和前置条件', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const prompt = formatEnhancedDivinationInfo('qimen', data);
+  assert.match(prompt, /天遁（吉格，兑七宫）：生门、丙奇、地盘戊同宫/);
+  assert.doesNotMatch(prompt, /乃天遁之格/);
+  assert.match(prompt, /月奇得使（吉格）：丙奇加地盘戊/);
+  assert.match(prompt, /月奇得使临吉门（吉格，兑七宫）：同宫临生门/);
+  assert.doesNotMatch(prompt, /月奇得使临吉门（吉格，兑七宫）：月奇得使又临吉门/);
+});
+
+test('奇门无命中格局时省略格局标题，重复命中只列一次', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const duplicate = data.classicPatterns?.find((item) => item.name === '天遁');
+  assert.ok(duplicate);
+  data.classicPatterns?.push({ ...duplicate });
+  data.evidenceAnalysis = undefined;
+  const duplicatedPrompt = formatEnhancedDivinationInfo('qimen', data);
+  assert.equal(duplicatedPrompt.match(/^天遁（吉格，兑七宫）：/gmu)?.length, 1);
+
+  data.classicPatterns = [];
+  data.patternTags = [];
+  data.patternCombos = [];
+  data.evidenceAnalysis = undefined;
+  assert.doesNotMatch(formatEnhancedDivinationInfo('qimen', data), /盘面命中格局：|复合格局：/);
+  assert.doesNotMatch(getDivinationSummaryBlocks('qimen', data).lines.join('\n'), /格局：/);
+});
+
 test('奇门甲子时以旬首所遁戊分别定位天盘和地盘', () => {
   for (const method of ['zhuanpan', 'feipan'] as const) {
     const data = generateQimen(new Date('2026-05-20T00:30:00+08:00'), method);

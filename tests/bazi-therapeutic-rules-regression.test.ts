@@ -164,6 +164,36 @@ test('庚金丑未调候先后与酉月功名条件按本月原文区分', () =>
   assert.equal(selectTherapeuticHintRule(youWithBing, '身强')?.id, 'you-month-geng-ding-jia');
 });
 
+test('庚金子月无丙丁时仍按本月丁甲为先，不套用亥月丙火主作用', () => {
+  const base = context(['壬', '甲', '庚', '癸']);
+  const ziCandidates = collectClimateRuleCandidates({ ...base, monthBranch: '子' });
+  const haiCandidates = collectClimateRuleCandidates({ ...base, monthBranch: '亥' });
+  const crossMonthRuleId = 'geng-winter-no-fire-warm';
+
+  assert.equal(
+    ziCandidates.find((candidate) => candidate.rule.id === crossMonthRuleId)?.status,
+    '不满足',
+  );
+  assert.equal(selectTherapeuticHintRule(ziCandidates, '身强')?.id, 'zi-month-geng-ding-jia-first');
+  assert.equal(
+    haiCandidates.find((candidate) => candidate.rule.id === crossMonthRuleId)?.status,
+    '满足',
+  );
+
+  const baseline = {
+    favorableWuxing: ['土'],
+    unfavorableWuxing: ['火'],
+    trace: [],
+    primaryReason: '扶抑',
+  };
+  const ziDecision = applyClimateCandidates(baseline, ziCandidates);
+  const haiDecision = applyClimateCandidates(baseline, haiCandidates);
+  assert.equal(ziDecision.appliedCandidateIds?.includes(crossMonthRuleId) ?? false, false);
+  assert.deepEqual(ziDecision.state.conditionalFavorableStems ?? [], []);
+  assert.equal(haiDecision.appliedCandidateIds?.includes(crossMonthRuleId), true);
+  assert.deepEqual(haiDecision.state.conditionalFavorableStems, ['丙']);
+});
+
 test('乙子专丙与甲丑先庚后丁不把相反天干列入推荐', () => {
   const cases = [
     {

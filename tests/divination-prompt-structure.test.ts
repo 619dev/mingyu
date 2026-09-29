@@ -4,6 +4,8 @@ import { taiyi } from 'mingyu-core';
 
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 import { generateQimen } from '../packages/core/src/divination/algorithms/qimen/index.ts';
+import { generateLiuyao } from '../packages/core/src/divination/algorithms/liuyao.ts';
+import { generateMeihua } from '../packages/core/src/divination/algorithms/meihua/index.ts';
 import { drawTarotSpread, tarotSpreads } from '../packages/core/src/divination/tarot.ts';
 import { drawLenormandSpread } from '../packages/core/src/divination/algorithms/lenormand.ts';
 import { generateXiaoliuren } from '../packages/core/src/divination/algorithms/xiaoliuren.ts';
@@ -227,213 +229,15 @@ function createAstrolabeData(
 function createData(method: FixtureMethod): DivinationData {
   switch (method) {
     case 'liuyao':
-      return {
-        originalName: '乾为天',
-        changedName: '坤为地',
-        interName: '风山渐',
-        ganzhi: { year: '甲子', month: '乙丑', day: '丙寅', hour: '丁卯' },
-        timestamp: Date.now(),
-        yaoArray: [9, 7, 8, 8, 7, 6],
-        changingYaos: [
-          { position: 1, isChanging: true, type: '老阳' },
-          { position: 6, isChanging: true, type: '老阴' },
-        ],
-        sixGods: ['青龙', '朱雀', '勾陈', '螣蛇', '白虎', '玄武'],
-        sixRelatives: ['兄弟', '子孙', '妻财', '官鬼', '父母', '兄弟'],
-        najiaDizhi: ['子', '寅', '辰', '午', '申', '戌'],
-        wuxing: ['水', '木', '土', '火', '金', '土'],
-        worldAndResponse: ['世', '', '', '', '', '应'],
-        voidBranches: ['戌', '亥'],
-        palace: { name: '乾', wuxing: '金' },
-        palaceStage: '首卦',
-        yaosDetail: [
-          {
-            position: 1,
-            yaoType: '阳',
-            isChanging: true,
-            rawValue: 9,
-            changeType: '老阳',
-            sixGod: '青龙',
-            sixRelative: '兄弟',
-            najiaDizhi: '子',
-            wuxing: '水',
-            isWorld: true,
-            isResponse: false,
-            isVoid: false,
-            changedYao: null,
-          },
-          {
-            position: 2,
-            yaoType: '阳',
-            isChanging: false,
-            rawValue: 7,
-            changeType: '',
-            sixGod: '朱雀',
-            sixRelative: '子孙',
-            najiaDizhi: '寅',
-            wuxing: '木',
-            isWorld: false,
-            isResponse: false,
-            isVoid: false,
-            changedYao: null,
-          },
-          {
-            position: 3,
-            yaoType: '阴',
-            isChanging: false,
-            rawValue: 8,
-            changeType: '',
-            sixGod: '勾陈',
-            sixRelative: '妻财',
-            najiaDizhi: '辰',
-            wuxing: '土',
-            isWorld: false,
-            isResponse: false,
-            isVoid: false,
-            changedYao: null,
-          },
-          {
-            position: 4,
-            yaoType: '阴',
-            isChanging: false,
-            rawValue: 8,
-            changeType: '',
-            sixGod: '螣蛇',
-            sixRelative: '官鬼',
-            najiaDizhi: '午',
-            wuxing: '火',
-            isWorld: false,
-            isResponse: false,
-            isVoid: false,
-            changedYao: null,
-          },
-          {
-            position: 5,
-            yaoType: '阳',
-            isChanging: false,
-            rawValue: 7,
-            changeType: '',
-            sixGod: '白虎',
-            sixRelative: '父母',
-            najiaDizhi: '申',
-            wuxing: '金',
-            isWorld: false,
-            isResponse: false,
-            isVoid: false,
-            changedYao: null,
-          },
-          {
-            position: 6,
-            yaoType: '阴',
-            isChanging: true,
-            rawValue: 6,
-            changeType: '老阴',
-            sixGod: '玄武',
-            sixRelative: '兄弟',
-            najiaDizhi: '戌',
-            wuxing: '土',
-            isWorld: false,
-            isResponse: true,
-            isVoid: true,
-            changedYao: null,
-          },
-        ],
-        hiddenSpirits: [
-          {
-            sixRelative: '子孙',
-            position: 2,
-            najiaDizhi: '寅',
-            wuxing: '木',
-            isVoid: false,
-            underYao: {
-              position: 2,
-              sixRelative: '子孙',
-              najiaDizhi: '寅',
-              wuxing: '木',
-            },
-          },
-        ],
-        hexagramRelations: {
-          original: '六冲卦',
-          changed: '六冲卦',
-          transition: '六冲变六冲',
-        },
-        fanfuRelations: {
-          fanyin: [
-            {
-              kind: '卦反吟',
-              scope: '内外',
-              label: '内外反吟',
-              description: '内卦乾变巽，外卦乾变巽，按乾巽、坎离、震兑、坤艮相变',
-            },
-          ],
-          fuyin: [],
-          labels: ['内外反吟'],
-        },
-        specialPattern: '全动卦',
-        specialAdvice: '宜统观全局，不宜逐爻碎断。',
-      };
+      return generateLiuyao(new Date('2025-06-18T10:30:00+08:00'), {
+        method: 'manual',
+        yaos: [9, 8, 8, 8, 7, 8],
+      });
     case 'meihua':
-      return {
-        originalName: '雷火丰',
-        changedName: '地火明夷',
-        interName: '泽风大过',
-        ganzhi: { year: '甲子', month: '乙丑', day: '丙寅', hour: '丁卯' },
-        timestamp: Date.now(),
-        tiGua: { name: '离', element: '火', nature: '明' },
-        yongGua: { name: '震', element: '木', nature: '动' },
-        changedTiGua: { name: '坤', element: '土', nature: '顺' },
-        changedYongGua: { name: '离', element: '火', nature: '明' },
-        interTiGua: { name: '兑', element: '金', nature: '泽' },
-        interYongGua: { name: '巽', element: '木', nature: '风' },
-        movingYao: { position: 3, description: '三爻发动', yaoName: '九三' },
-        analysis: {
-          season: '春',
-          tiYongRelation: '用生体，主有助力',
-          tiSeasonState: '相',
-          yongSeasonState: '旺',
-          inter1Relation: '原体克体互',
-          inter2Relation: '用互生原体',
-          changedRelation: '体生变，后续需付出',
-          changedTiYongRelation: '体克用',
-        },
-        mainHexagram: {
-          name: '雷火丰',
-          symbol: '䷶',
-          upper: '震',
-          lower: '离',
-          description: '先盛后谨',
-          yaoCi: ['初爻背景', '二爻背景', '三爻发动取象', '四爻背景', '五爻背景', '上爻背景'],
-          movingYaoCi: '三爻发动取象',
-        },
-        interHexagram: {
-          name: '泽风大过',
-          symbol: '䷛',
-          upper: '兑',
-          lower: '巽',
-          description: '中间承压',
-        },
-        changedHexagram: {
-          name: '地火明夷',
-          symbol: '䷣',
-          upper: '坤',
-          lower: '离',
-          description: '宜守光待时',
-        },
-        yaosDetail: [
-          { position: 1, yaoType: '阳', isChanging: false, tiYong: '体' },
-          { position: 2, yaoType: '阴', isChanging: false, tiYong: '体' },
-          { position: 3, yaoType: '阳', isChanging: true, tiYong: '体' },
-          { position: 4, yaoType: '阳', isChanging: false, tiYong: '用' },
-          { position: 5, yaoType: '阴', isChanging: false, tiYong: '用' },
-          { position: 6, yaoType: '阴', isChanging: false, tiYong: '用' },
-        ],
-        calculation: {
-          method: 'number',
-          methodKey: 'number',
-          number: 123,
-        },
-      };
+      return generateMeihua(new Date('2025-01-01T08:00:00+08:00'), {
+        method: 'number',
+        number: 123,
+      });
     case 'qimen':
       return {
         jiuGongGe: [
@@ -1089,20 +893,20 @@ test('六爻提示词会保留世应、动变、空亡、伏神和月日资料',
   );
 
   assert.match(prompt, /核心结构：主卦/);
-  assert.match(prompt, /世应：世爻第1爻兄弟子水；应爻第6爻兄弟戌土/);
-  assert.match(prompt, /六爻全表：[\s\S]*第1爻兄弟子水/);
+  assert.match(prompt, /世应：世爻第2爻子孙寅木；应爻第5爻官鬼戌土/);
+  assert.match(prompt, /六爻全表：[\s\S]*第1爻兄弟子水[^\n]*动[^\n]*化官鬼未土（回头克）/);
   assert.doesNotMatch(prompt, /^动变：/m);
-  assert.match(prompt, /旬空戌、亥；命中第6爻兄弟戌土（本爻空亡；本爻戌逢值，辰冲戌）/);
   assert.match(
     prompt,
-    /明伏分布：本卦明爻6爻，六亲为兄弟、子孙、妻财、官鬼、父母；伏神1爻：子孙伏第2爻寅木，伏于子孙寅木下/,
+    /旬空子、丑；命中第1爻兄弟子水（本爻空亡；本爻子逢值，午冲子）、第6爻兄弟子水/,
+  );
+  assert.match(
+    prompt,
+    /明伏分布：本卦明爻6爻，六亲为兄弟、子孙、官鬼、父母；伏神1爻：妻财伏第3爻午火，伏于官鬼辰土下/,
   );
   assert.doesNotMatch(prompt, /兄弟持世，主竞争、破财、朋友/);
   assert.doesNotMatch(prompt, /取用评分表|权重\d/);
-  assert.match(
-    prompt,
-    /月日触发：月建丑：未直接同支入爻；日辰寅：同支第2爻子孙寅木，冲第5爻父母申金/,
-  );
+  assert.match(prompt, /月日触发：月建、日辰午：未直接同支入爻，冲第1爻兄弟子水、第6爻兄弟子水/);
   assert.match(prompt, /用神：/);
   assert.doesNotMatch(prompt, /应期资料：|组合时机：|六亲持世：|应爻与动变：/);
   assert.doesNotMatch(prompt, /结构化证据|证据汇总|解释边界|只使用上方/);
@@ -1260,13 +1064,20 @@ test('梅花提示词会保留体用、互卦、变卦与起卦细节', () => {
     createSupplementaryInfo(),
   );
 
-  assert.match(prompt, /体用：体卦离（火）；用卦震（木）；动爻第3爻；体用关系用生体/);
-  assert.match(prompt, /互卦：泽风大过；体互兑（金）；用互巽（木）；原体克体互；用互生原体/);
-  assert.match(prompt, /变卦：地火明夷；变后体卦坤（土）；变后用卦离（火）；变后体用体克用/);
-  assert.match(prompt, /月令：春季，体卦相，用卦旺；起卦法：数字起卦法；起卦数字123/);
+  assert.match(prompt, /核心结构：主卦火地晋；互卦水山蹇；变卦火水未济/);
+  assert.match(prompt, /体用：体卦离（火）；用卦坤（土）；动爻第2爻；体用关系体生用/);
+  assert.match(prompt, /互卦：水山蹇；体互坎（水）；用互艮（土）；体互克原体；原体生用互/);
+  assert.match(prompt, /结果火水未济：体卦离火（月令死），用卦坎水（月令旺），关系用克体/);
+  assert.match(prompt, /主卦体用月令条件：主卦体生用，体卦月令死、用卦月令囚/);
+  assert.match(prompt, /起卦法：数字起卦法/);
+  assert.match(
+    prompt,
+    /起卦取数：数字123除8取余得上卦数3；数字123加时支辰序数5，除8取余得下卦数8，除6取余得动爻2/,
+  );
+  assert.match(prompt, /动爻变化：主卦第2爻阴变阳；动爻位于下卦，用卦随之变化，体卦保持/);
   assert.doesNotMatch(prompt, /应期线索：/);
-  assert.match(prompt, /主卦卦辞：雷火丰，先盛后谨/);
-  assert.match(prompt, /动爻爻辞：第3爻，三爻发动取象/);
+  assert.match(prompt, /主卦卦辞：火地晋，康侯用锡马蕃庶/);
+  assert.match(prompt, /动爻爻辞：第2爻，晋如愁如，贞吉/);
   assert.doesNotMatch(prompt, /卦辞分类：|动爻传统资料：/);
   assert.doesNotMatch(prompt, /未发动，不展开爻辞解释/);
   assert.doesNotMatch(prompt, /第1爻（静，属体）：阳爻|结构明细：/);
