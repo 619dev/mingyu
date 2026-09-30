@@ -64,6 +64,7 @@ import {
   type QizhengTimeLordResult,
 } from './time-lords';
 import { evaluateQizhengEnNan, type QizhengEnNanProfile } from './en-nan';
+import { QIZHENG_ASPECTS } from './aspect-rules';
 
 // astronomy-engine 在 Node 22 的 tsx 环境中可能以 default 暴露，浏览器和 Rollup
 // 则通常直接暴露具名导出。动态读取只用于选择运行时模块形态，避免静态读取
@@ -491,18 +492,6 @@ export interface QizhengFlowingStarsResult {
   transits: QizhengAspect[];
   periodEvents?: QizhengPeriodEventCollection;
 }
-
-const QIZHENG_ASPECTS: ReadonlyArray<{
-  type: QizhengAspect['type'];
-  angle: number;
-  orb: number;
-}> = [
-  { type: '同宫', angle: 0, orb: 8 },
-  { type: '六合', angle: 60, orb: 4 },
-  { type: '四正', angle: 90, orb: 6 },
-  { type: '三方', angle: 120, orb: 6 },
-  { type: '对照', angle: 180, orb: 8 },
-];
 
 function buildQizhengAspects(stars: QizhengStar[]): QizhengAspect[] {
   const aspects: QizhengAspect[] = [];
@@ -2334,6 +2323,7 @@ function generateQizhengInternal(
     birthUtcTimestamp: calculationContext.astronomicalTime.unixMilliseconds,
     sunriseSunset: calculationContext.solarIllumination.sunriseSunset,
     mingZhu,
+    stars,
     aspects,
   });
 

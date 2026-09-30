@@ -2,8 +2,9 @@
  * @file 七政四余古典恩难仇用与昼夜分金定性算法
  * @传统依据 《果老星宗·论五行相克》《果老星宗·昼夜篇》：生我者为恩，克我者为难，我生者为用，克恩者为仇；昼生以日为尊，夜生以月为重。
  */
-import type { QizhengAspect } from './index';
+import type { QizhengAspect, QizhengStar } from './index';
 import type { SolarCrossingEvidence } from '../calendar/solar-illumination-evidence';
+import { QIZHENG_ASPECTS } from './aspect-rules';
 
 export type WuxingElement = '木' | '火' | '土' | '金' | '水';
 
@@ -112,9 +113,11 @@ export function evaluateQizhengEnNan(params: {
   birthUtcTimestamp: number;
   sunriseSunset: SunriseSunset;
   mingZhu: string;
+  stars: ReadonlyArray<Pick<QizhengStar, 'name' | 'longitude'>>;
   aspects: QizhengAspect[];
 }): QizhengEnNanProfile {
-  const { birthUtcTimestamp, sunriseSunset, mingZhu, aspects } = params;
+  const { birthUtcTimestamp, sunriseSunset, mingZhu, stars, aspects } = params;
+  if (!Array.isArray(stars)) throw new Error('七政四余恩难需要本命星曜黄经。');
 
   const isDay = isQizhengDaylightAtBirth(birthUtcTimestamp, sunriseSunset);
   const sect: '昼生' | '夜生' = isDay ? '昼生' : '夜生';
@@ -156,10 +159,13 @@ export function evaluateQizhengEnNan(params: {
     else if (element === yongElement) yongStars.push(starName);
   }
 
-  // 3. 扫描吊照中与命主星交会的相位
-  // 相位星曜按同一别名表归一后再比对，避免单字命主与展示名互不匹配
+  // 3. 逐项核对本命星曜当前黄经，再采用相位记录描述恩难交会。
+  // 相位字段可能来自旧盘，不能单凭缓存的类型或角距形成当前交会事实。
   const aspectInteraction: string[] = [];
   const interactionRoleFacts: string[] = [];
+  const longitudeByStar = new Map(
+    stars.map((star) => [resolveCanonicalStar(star.name), star.longitude]),
+  );
   const mingZhuAspects = aspects.filter((a) => {
     const s1 = resolveCanonicalStar(a.star1);
     const s2 = resolveCanonicalStar(a.star2);
@@ -171,6 +177,20 @@ export function evaluateQizhengEnNan(params: {
     const counterpart = s1 === canonicalMingZhu ? aspect.star2 : aspect.star1;
     const counterpartCanonical = resolveCanonicalStar(counterpart);
     if (!counterpartCanonical) continue;
+    const firstLongitude = longitudeByStar.get(s1);
+    const secondLongitude = longitudeByStar.get(resolveCanonicalStar(aspect.star2));
+    const rule = QIZHENG_ASPECTS.find((item) => item.type === aspect.type);
+    if (
+      firstLongitude === undefined ||
+      secondLongitude === undefined ||
+      !Number.isFinite(firstLongitude) ||
+      !Number.isFinite(secondLongitude) ||
+      !rule
+    )
+      continue;
+    const separation = Math.abs((((firstLongitude - secondLongitude) % 360) + 360) % 360);
+    const actualAngle = Math.min(separation, 360 - separation);
+    if (Math.abs(actualAngle - rule.angle) > rule.orb) continue;
     const counterpartElement = STAR_WUXING[counterpartCanonical]!;
     const relation = aspect.type === '同宫' ? '合相' : aspect.type;
     if (counterpartElement === nanElement) {
@@ -182,12 +202,11 @@ export function evaluateQizhengEnNan(params: {
     }
   }
 
-  // 无命主相位时不得径直给出拱护、受约等结论
   const interactionDesc = interactionRoleFacts.length
     ? [...new Set(interactionRoleFacts)].slice(0, 2).join('；')
-    : '命主未见恩难星曜直接交会相位，恩难实效待吊照与行运另行核对';
+    : '';
 
-  const summary = `【七政恩难】${sect}（${sectSummary}）；命主：${mingZhu}（${mingElement}）；${interactionDesc}；按出生时刻与当地日出日落星历交点划分昼夜（太阳上缘阈值-0.833°，${sunriseSunset.status}）`;
+  const summary = `【七政恩难】${sect}（${sectSummary}）；命主：${mingZhu}（${mingElement}）${interactionDesc ? `；${interactionDesc}` : ''}；按出生时刻与当地日出日落星历交点划分昼夜（太阳上缘阈值-0.833°，${sunriseSunset.status}）`;
 
   return {
     sect,

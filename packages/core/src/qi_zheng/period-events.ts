@@ -174,6 +174,9 @@ export function scanQizhengPeriodEvents(params: {
   mode: QizhengPeriodMode;
   sampleLongitudes: (utcMs: number) => QizhengLongitudeSample[];
 }): QizhengPeriodEventCollection {
+  if (params.natalStars.some((star) => !Number.isFinite(star.longitude))) {
+    throw new Error('七政周期吊照需要有效的本命星曜黄经。');
+  }
   const formatEventTime = (utcMs: number) => formatUtc(utcMs, params.timezone, params.timeZoneId);
   const startDateTime = formatEventTime(params.startUtcMs);
   const endDateTime = formatEventTime(params.endUtcMs);
@@ -194,7 +197,12 @@ export function scanQizhengPeriodEvents(params: {
   for (let utc = params.startUtcMs; utc < params.endUtcMs; utc += step) times.push(utc);
   times.push(params.endUtcMs);
   const frames = times.map((utc) => ({ utc, map: mapByName(params.sampleLongitudes(utc)) }));
+  // 只有窗口每个采样点都具备黄经的流曜，才能用于整段事件扫描与空结果判断。
+  const coveredBodies = bodies.filter((name) =>
+    frames.every((frame) => Number.isFinite(frame.map.get(name))),
+  );
   const velocitySamples = new Map<number, Map<string, number>>();
+  const missingVelocityBodies = new Set<string>();
   const velocityAt = (utc: number, name: string) => {
     const delta = 60_000;
     for (const time of [utc - delta, utc + delta]) {
@@ -204,7 +212,15 @@ export function scanQizhengPeriodEvents(params: {
     }
     const before = velocitySamples.get(utc - delta)?.get(name);
     const after = velocitySamples.get(utc + delta)?.get(name);
-    if (before === undefined || after === undefined) return undefined;
+    if (
+      before === undefined ||
+      after === undefined ||
+      !Number.isFinite(before) ||
+      !Number.isFinite(after)
+    ) {
+      missingVelocityBodies.add(name);
+      return undefined;
+    }
     const velocity = wrap180(after - before);
     return Math.abs(velocity) < 1e-10 ? 0 : velocity;
   };
@@ -215,7 +231,7 @@ export function scanQizhengPeriodEvents(params: {
   for (let index = 1; index < frames.length; index += 1) {
     const left = frames[index - 1].utc;
     const right = frames[index].utc;
-    for (const name of bodies) {
+    for (const name of coveredBodies) {
       if (!frames[index - 1].map.has(name) || !frames[index].map.has(name)) continue;
       const leftVelocity = velocityAt(left, name);
       const rightVelocity = velocityAt(right, name);
@@ -239,13 +255,16 @@ export function scanQizhengPeriodEvents(params: {
     ...frames,
     ...[...stationTimes].map((utc) => ({ utc, map: mapByName(params.sampleLongitudes(utc)) })),
   ].sort((left, right) => left.utc - right.utc);
+  const missingStationFrame = stationAwareFrames.some((frame) =>
+    coveredBodies.some((name) => !Number.isFinite(frame.map.get(name))),
+  );
 
   for (let index = 1; index < stationAwareFrames.length; index += 1) {
     const previousUtc = stationAwareFrames[index - 1].utc;
     const currentUtc = stationAwareFrames[index].utc;
     const previous = stationAwareFrames[index - 1].map;
     const current = stationAwareFrames[index].map;
-    for (const name of bodies) {
+    for (const name of coveredBodies) {
       const before = previous.get(name);
       const after = current.get(name);
       if (before === undefined || after === undefined) continue;
@@ -369,6 +388,9 @@ export function scanQizhengPeriodEvents(params: {
     }
   }
 
+  if (missingVelocityBodies.size || missingStationFrame) {
+    throw new Error('七政周期扫描缺少完整的流曜黄经采样。');
+  }
   const unique = new Map<string, QizhengPeriodEvent>();
   for (const event of events.sort((left, right) => left.utcMs - right.utcMs)) {
     if (!unique.has(event.key)) unique.set(event.key, event);
@@ -393,14 +415,18 @@ export function scanQizhengPeriodEvents(params: {
   const axisSummary = formatAxisSummary(priorityEvents, ordered.length);
   const promptText = [
     `范围：${startDateTime} 至 ${endDateTime}`,
-    `周期事件参考：流曜${bodies.join('、')}；吊照本命${natalTargets.map((star) => star.name).join('、') || '星曜未列'}；角度关系${aspectKinds.map((aspect) => (aspect.type === '同宫' ? '合相' : aspect.type)).join('、')}`,
+    `周期事件参考：流曜${coveredBodies.join('、') || '未列'}；吊照本命${natalTargets.map((star) => star.name).join('、') || '未列'}；角度关系${aspectKinds.map((aspect) => (aspect.type === '同宫' ? '合相' : aspect.type)).join('、')}`,
     axisSummary
       ? `周期主轴：${axisSummary}`
-      : '周期主轴：所列流曜未见停逆、换入重点宫或精确合相对照三方',
+      : coveredBodies.length
+        ? `周期主轴：所列流曜未见停逆、换入重点宫${natalTargets.length ? '或精确合相对照三方' : ''}`
+        : '',
     windows.length ? `关键窗口：${windows.join('；')}` : '',
     ordered.length
       ? `完整明细：\n${ordered.map((item) => item.promptText).join('\n')}`
-      : '完整明细：所列流曜未见换宫、停逆或精确吊照',
+      : coveredBodies.length
+        ? `完整明细：所列流曜未见换宫、停逆${natalTargets.length ? '或精确吊照' : ''}`
+        : '',
   ]
     .filter(Boolean)
     .join('\n');

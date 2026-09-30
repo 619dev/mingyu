@@ -200,6 +200,10 @@ test('恩难相位中的四余加括注不改变星曜身份', () => {
         eveningUtcDateTime: null,
       },
       mingZhu,
+      stars: [
+        { name: mingZhu, longitude: 0 },
+        { name: star, longitude: 90 },
+      ],
     };
     const aspect: QizhengAspect = {
       star1: mingZhu,
@@ -236,6 +240,10 @@ test('恩难相位以合相描述零度吊照，不把跨宫关系写成同宫',
       eveningUtcDateTime: null,
     },
     mingZhu: '火',
+    stars: [
+      { name: '荧惑(火)', longitude: 0 },
+      { name: '月孛(水余)', longitude: 2 },
+    ],
     aspects: [
       {
         star1: '荧惑(火)',
@@ -254,4 +262,60 @@ test('恩难相位以合相描述零度吊照，不把跨宫关系写成同宫',
   });
   assert.ok(result.aspectInteraction.some((item) => item.includes('合相吊照')));
   assert.ok(result.aspectInteraction.every((item) => !item.includes('同宫吊照')));
+});
+
+test('恩难只采用本命当前黄经支持的吊照，不沿用旧角距或缺位星曜', () => {
+  const base = {
+    birthUtcTimestamp: Date.parse('2024-06-21T12:00:00Z'),
+    sunriseSunset: {
+      status: '全天高于阈值' as const,
+      morningUtcDateTime: null,
+      eveningUtcDateTime: null,
+    },
+    mingZhu: '火',
+    aspects: [
+      {
+        star1: '荧惑(火)',
+        star2: '月孛(水余)',
+        type: '四正' as const,
+        exactAngle: 90,
+        actualAngle: 90,
+        orb: 0,
+        allowedOrb: 6,
+        orbRatio: 0,
+        closeness: '紧密' as const,
+        precisionClass: '混合模型' as const,
+        source: '旧盘相位',
+      },
+    ],
+  };
+  const current = evaluateQizhengEnNan({
+    ...base,
+    stars: [
+      { name: '荧惑(火)', longitude: 5 },
+      { name: '月孛(水余)', longitude: 95 },
+    ],
+  });
+  assert.equal(current.aspectInteraction.length, 1);
+
+  for (const stars of [
+    [
+      { name: '荧惑(火)', longitude: 5 },
+      { name: '月孛(水余)', longitude: 150 },
+    ],
+    [{ name: '荧惑(火)', longitude: 5 }],
+  ]) {
+    const stale = evaluateQizhengEnNan({ ...base, stars });
+    assert.deepEqual(stale.aspectInteraction, []);
+    assert.doesNotMatch(stale.summary, /命主难星：月孛/u);
+  }
+  const wrongType = evaluateQizhengEnNan({
+    ...base,
+    stars: [
+      { name: '荧惑(火)', longitude: 5 },
+      { name: '月孛(水余)', longitude: 95 },
+    ],
+    aspects: [{ ...base.aspects[0], type: '三方' }],
+  });
+  assert.deepEqual(wrongType.aspectInteraction, []);
 });
