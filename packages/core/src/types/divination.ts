@@ -9,6 +9,7 @@ import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import type { KongmingHexagramResult, ZhugeNumberResult } from '../name-number';
 import type { WuyunLiuqiResult } from '../wuyun-liuqi';
 import type { BirthProfileTimeRange } from '../profile/time-range';
+import type { BirthProfile } from '../profile';
 
 export type { RandomOptions, RandomSource } from '../shared/random';
 export type { CoreResultMeta } from '../shared/result';
@@ -169,6 +170,8 @@ export interface JinkoujueData {
   relations: {
     guiToJiang: string;
     guiToRen: string;
+    /** 新版生成时总会记录；旧版历史结果可按四位五行关系复算。 */
+    renToJiang?: string;
     jiangToDi: string;
     renToDi: string;
     guiToDi: string;
@@ -1291,7 +1294,13 @@ export interface AlmanacParticipantInput {
   birthSecond?: string;
   birthPlace?: string;
   birthLongitude?: string;
+  /** 原始当地钟表时间对应的固定 UTC 偏移。 */
+  timezone?: number;
+  /** 原始当地钟表时间对应的 IANA 历史时区。 */
+  timeZoneId?: string;
   useTrueSolarTime?: boolean;
+  /** 已校正展示字段对应的原始出生记录，供择日按真实瞬时计算节令。 */
+  originalTrueSolarProfile?: BirthProfile;
   /** 四柱反推得到的完整北京时间区间；必须与上面的区间起点标量字段一致。 */
   birthTimeRange?: BirthProfileTimeRange & {
     pillars: BaseGanZhi;

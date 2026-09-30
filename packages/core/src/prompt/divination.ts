@@ -639,6 +639,12 @@ export function getDivinationSummaryBlocks(
         item.input.year === undefined
           ? item.input.yearGanZhi
           : `${item.input.year}年${item.input.yearGanZhi}`;
+      const firstBoundary = item.qiSteps[0]?.boundaryTime;
+      const lastBoundary = item.qiSteps.at(-1)?.boundaryTime;
+      const annualPeriod =
+        firstBoundary && lastBoundary
+          ? `${firstBoundary.startBeijing}大寒起，至${lastBoundary.endBeijingExclusive}次年大寒前（北京时间，按现代节气交节标示）`
+          : '大寒起，至次年大寒前';
       return {
         title: '五运六气年度结果',
         tags: [
@@ -647,6 +653,7 @@ export function getDivinationSummaryBlocks(
           `司天${item.sitian.name}`,
         ],
         lines: [
+          `运气年度：${annualPeriod}`,
           `在泉：${item.zaiquan.name}`,
           `司天化令：${item.annualClassification.sitianTransformation}；${item.annualClassification.governance}`,
           `中运与司天：${item.annualRelation.kind}`,

@@ -144,6 +144,7 @@ function XuanKongBoard({ xuankong }: { xuankong: XuanKongResult }) {
       <div className="result-side-head">
         <h3>玄空九宫盘</h3>
         <p>
+          {xuankong.period.boundaryStatus ? '暂按' : ''}
           {xuankong.period.label} · 坐{xuankong.sitMountain}向{xuankong.facingMountain}
           {targetDateLabel ? ` · 目标${targetDateLabel}` : ''}
         </p>
@@ -399,7 +400,12 @@ export function MetaphysicsPanel({
           <div className="result-chip-row">
             {bazhai ? <span className="result-chip">命卦 {bazhai.mingGua}</span> : null}
             {bazhai?.houseGua ? <span className="result-chip">宅卦 {bazhai.houseGua}</span> : null}
-            {xuankong ? <span className="result-chip">{xuankong.period.label}</span> : null}
+            {xuankong ? (
+              <span className="result-chip">
+                {xuankong.period.boundaryStatus ? '暂按' : ''}
+                {xuankong.period.label}
+              </span>
+            ) : null}
             {xuankong ? <span className="result-chip">{xuankong.guaType}</span> : null}
             {!bazhai && !xuankong ? <span className="result-chip">待补充资料</span> : null}
           </div>
@@ -697,14 +703,13 @@ export function MetaphysicsPanel({
         <div className="traditional-classic-card fengshui-classic-card">
           <div className="traditional-classic-head">
             <div>
-              <span className="traditional-classic-badge">八宅明镜 · 紫白诀</span>
-              <strong>堪舆风水 · 先贤经典要诀</strong>
+              <span className="traditional-classic-badge">八宅 · 玄空</span>
+              <strong>传统关系概要</strong>
             </div>
           </div>
           <div className="traditional-classic-body">
             <p className="traditional-classic-verse">
-              生气贪狼木第一，延年武曲次相宜。天医巨门消除病，伏位辅弼保安宁。
-              一白二黑三碧巡，四绿五黄六白明。七赤八白九紫位，当令生旺百事成。
+              生气配贪狼，延年配武曲；天医配巨门，伏位配辅弼。九星依洛书飞布，旺衰随运而论。
             </p>
             <p className="traditional-classic-advice">
               【八宅与玄空要义】八宅分别列出命卦与宅卦的八方关系，玄空按所属运期判断飞星状态；结合各宫星气、生克与实际山水形势解读。

@@ -34,6 +34,11 @@ test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () =>
     /四位关系与五行不一致/,
   );
 
+  const wrongHumanGeneralRelation = structuredClone(source);
+  wrongHumanGeneralRelation.relations.renToJiang =
+    wrongHumanGeneralRelation.relations.renToJiang === '克' ? '生' : '克';
+  assert.throws(() => analyzeJinkoujueEvidence(wrongHumanGeneralRelation), /四位关系与五行不一致/);
+
   const wrongUse = structuredClone(source);
   wrongUse.yinYangUse.usePosition = source.yinYangUse.usePosition === '贵神' ? '将神' : '贵神';
   assert.throws(() => analyzeJinkoujueEvidence(wrongUse), /阴阳发用与四位不一致/);

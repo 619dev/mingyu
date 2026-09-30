@@ -24,6 +24,7 @@ import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
 import { analyzeAlmanacEvidence, formatAlmanacGods } from '../divination/almanac-evidence';
 import { analyzeLenormandEvidence } from '../divination/lenormand-evidence';
+import { formatLiuyaoSanxing } from './liuyao-facts';
 
 type SupportedMethod = Exclude<DivinationMethodId, 'random'>;
 
@@ -66,9 +67,7 @@ function formatLiuyaoDetail(data: LiuyaoData) {
     data.sanheWithMonth
       ? `月建三合：${data.sanheWithMonth.group}（${data.sanheWithMonth.members.join('、')}）`
       : '',
-    data.sanxingInYaos?.length
-      ? `三刑：${data.sanxingInYaos.map((item) => `${item.branches.join('、')}为${item.type}`).join('；')}`
-      : '',
+    data.sanxingInYaos?.length ? `刑支关系：${formatLiuyaoSanxing(data.sanxingInYaos)}` : '',
   ].filter(Boolean);
 }
 

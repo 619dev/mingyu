@@ -236,8 +236,8 @@ export const QizhengBoard = memo(function QizhengBoard({
                   </strong>
                   <small>
                     {star.kind}
-                    {star.dignity ? ` · ${star.dignity}` : ''}
-                    {star.retrograde ? ' · 逆行' : ' · 顺行'}
+                    {star.dignity && star.dignity !== '—' ? ` · ${star.dignity}` : ''}
+                    {star.retrograde === undefined ? '' : star.retrograde ? ' · 逆行' : ' · 顺行'}
                   </small>
                 </div>
               ))}

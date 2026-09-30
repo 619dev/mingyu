@@ -22,6 +22,7 @@ import {
 import {
   JINKOU_POSITION_ROLES,
   formatJinkoujuePositionPromptText,
+  getJinkoujueElementRelation,
   getGuiShenOnDiFen,
   getJinkouNoblemanBranch,
   getYuanStemOnBranch,
@@ -195,12 +196,7 @@ function buildRelationFact(
 }
 
 function expectedRelation(from: string, to: string) {
-  if (from === to) return '比和';
-  if (isSheng(from, to)) return '生';
-  if (isSheng(to, from)) return '被生';
-  if (isKe(from, to)) return '克';
-  if (isKe(to, from)) return '被克';
-  return '无直接生克';
+  return getJinkoujueElementRelation(from, to);
 }
 
 export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidenceAnalysis {
@@ -306,6 +302,11 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
   const relationPairs = [
     [guiShen, jiangShen, data.relations.guiToJiang],
     [guiShen, renYuan, data.relations.guiToRen],
+    [
+      renYuan,
+      jiangShen,
+      data.relations.renToJiang ?? expectedRelation(renYuan.element, jiangShen.element),
+    ],
     [jiangShen, diFen, data.relations.jiangToDi],
     [renYuan, diFen, data.relations.renToDi],
     [guiShen, diFen, data.relations.guiToDi],
@@ -590,6 +591,13 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
       `贵神${data.positions.guiShen.god || ''}${data.positions.guiShen.branch}`,
       `人元${data.positions.renYuan.stem || ''}${data.positions.renYuan.branch}`,
       data.relations.guiToRen,
+    ),
+    buildRelationFact(
+      'jinkoujue:relation:ren-jiang',
+      `人元${data.positions.renYuan.stem || ''}${data.positions.renYuan.branch}`,
+      `将神${data.positions.jiangShen.stem || ''}${data.positions.jiangShen.branch}`,
+      data.relations.renToJiang ??
+        expectedRelation(data.positions.renYuan.element, data.positions.jiangShen.element),
     ),
     buildRelationFact(
       'jinkoujue:relation:jiang-di',

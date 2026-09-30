@@ -1,6 +1,6 @@
 import { BASIC_MAPPINGS } from './baziMappingsData';
 import type { BaziChartResult } from './baziTypes';
-import { assertGanZhiPair } from './baziUtils';
+import { assertGanZhiPair, getWuxing } from './baziUtils';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import { SANHE_GROUPS, SANHUI_GROUPS } from '../ganzhi/relations';
@@ -78,7 +78,7 @@ export interface FortuneTriggerRelation {
   targetLayerKey: string;
   calculationStepKey: string;
   dependsOnStepKeys: string[];
-  stemRelation?: 'same' | 'combine' | 'clash';
+  stemRelation?: 'same' | 'combine' | 'clash' | 'overcome';
   branchRelation?: 'same' | 'combine' | 'clash' | 'punishment' | 'harm' | 'break';
   rule: string;
   sources: string[];
@@ -228,6 +228,11 @@ function compareLayers(
   const prefix = `${source.label}${source.ganZhi}与${target.label}${target.ganZhi}`;
   const stemSame = sourceParts.gan === targetParts.gan;
   const stemClash = BASIC_MAPPINGS.TIAN_GAN_CHONG[sourceParts.gan] === targetParts.gan;
+  const sourceStemWuxing = getWuxing(sourceParts.gan);
+  const targetStemWuxing = getWuxing(targetParts.gan);
+  const stemOvercome =
+    BASIC_MAPPINGS.WUXING_KE[sourceStemWuxing] === targetStemWuxing ||
+    BASIC_MAPPINGS.WUXING_KE[targetStemWuxing] === sourceStemWuxing;
   const branchSame = sourceParts.zhi === targetParts.zhi;
   const branchClash = BASIC_MAPPINGS.DI_ZHI_CHONG[sourceParts.zhi] === targetParts.zhi;
 
@@ -259,7 +264,7 @@ function compareLayers(
       );
     }
   }
-  if (stemClash && branchClash) {
+  if (stemOvercome && branchClash) {
     items.push(
       relation(
         'tianke-dichong',
@@ -267,8 +272,8 @@ function compareLayers(
         source,
         target,
         calculationStepKey,
-        '两层天干相冲且地支相冲',
-        { stemRelation: 'clash', branchRelation: 'clash' },
+        '两层天干五行相克且地支相冲',
+        { stemRelation: stemClash ? 'clash' : 'overcome', branchRelation: 'clash' },
       ),
     );
   }
@@ -451,8 +456,8 @@ function buildComparisonStep(params: {
       `bazi:fortune-trigger:calculation:layer:${source.type}:${source.id}`,
       `bazi:fortune-trigger:calculation:layer:${target.type}:${target.id}`,
     ],
-    promptText: `${source.label}${source.ganZhi}与${target.label}${target.ganZhi}已逐项核验同干、五合、天干冲、同支、六合、六冲、刑、害、破、同柱伏吟、天克地冲与岁运并临，命中${relations.length}项关系`,
-    sources: ['天干同干、五合与相冲固定关系', '地支同支、六合、六冲、刑、害、破固定关系'],
+    promptText: `${source.label}${source.ganZhi}与${target.label}${target.ganZhi}已逐项核验同干、五合、天干冲、天干五行相克、同支、六合、六冲、刑、害、破、同柱伏吟、天克地冲与岁运并临，命中${relations.length}项关系`,
+    sources: ['天干同干、五合、五行相克与相冲固定关系', '地支同支、六合、六冲、刑、害、破固定关系'],
     limitation: CALCULATION_STEP_LIMITATION,
   };
 }

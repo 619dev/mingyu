@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 
 import { generateAlmanacSelection } from '../packages/core/src/divination/algorithms/almanac.ts';
 import { isLiuhai, isSanxing } from '../packages/core/src/ganzhi/index.ts';
+import {
+  birthProfileToAlmanacParticipant,
+  calculateBaziFromBirthProfile,
+} from '../packages/core/src/profile/index.ts';
 
 test('寅日与巳年参与人同时命中刑害，逐日事实与公开证据均保留', () => {
   assert.equal(isSanxing('寅', '巳'), true);
@@ -75,6 +79,75 @@ test('参与人仅提供时分时按零秒跨立春排盘，传统时辰输入�
   assert.equal(byId.get('after')?.pillars.year, '甲辰');
   assert.equal(byId.get('after')?.pillars.month, '丙寅');
   assert.deepEqual(byId.get('shichen')?.pillars, byId.get('before')?.pillars);
+});
+
+test('非北京时间出生档案进入择日后仍按出生地时区判定立春节令', () => {
+  const profile = {
+    id: 'new-york',
+    name: '参与人',
+    gender: 'male' as const,
+    calendarType: 'solar' as const,
+    year: 2024,
+    month: 2,
+    day: 4,
+    hour: 4,
+    minute: 0,
+    location: {
+      longitude: -74.006,
+      latitude: 40.7128,
+      timeZoneId: 'America/New_York',
+    },
+  };
+  const participant = birthProfileToAlmanacParticipant(profile);
+  const direct = calculateBaziFromBirthProfile(profile);
+  const result = generateAlmanacSelection({
+    topic: 'custom',
+    startDate: '2026-06-09',
+    endDate: '2026-06-09',
+    participants: [participant],
+  });
+
+  assert.equal(participant.timeZoneId, 'America/New_York');
+  assert.equal(result.participants[0]!.pillars.year, direct.pillars.year.ganZhi);
+  assert.equal(result.participants[0]!.pillars.month, direct.pillars.month.ganZhi);
+  assert.equal(direct.pillars.month.ganZhi, '丙寅');
+
+  const fixedOffsetProfile = {
+    ...profile,
+    location: { longitude: -74.006, latitude: 40.7128, timezone: -5 },
+  };
+  const fixedOffsetParticipant = birthProfileToAlmanacParticipant(fixedOffsetProfile);
+  const fixedOffsetResult = generateAlmanacSelection({
+    topic: 'custom',
+    startDate: '2026-06-09',
+    endDate: '2026-06-09',
+    participants: [fixedOffsetParticipant],
+  });
+  assert.equal(fixedOffsetParticipant.timezone, -5);
+  assert.deepEqual(fixedOffsetResult.participants[0]!.pillars, result.participants[0]!.pillars);
+
+  const trueSolarProfile = { ...profile, useTrueSolarTime: true };
+  const trueSolarParticipant = birthProfileToAlmanacParticipant(trueSolarProfile);
+  const trueSolarResult = generateAlmanacSelection({
+    topic: 'custom',
+    startDate: '2026-06-09',
+    endDate: '2026-06-09',
+    participants: [trueSolarParticipant],
+  });
+  assert.equal(
+    trueSolarResult.participants[0]!.pillars.month,
+    calculateBaziFromBirthProfile(trueSolarProfile).pillars.month.ganZhi,
+  );
+  assert.throws(
+    () =>
+      generateAlmanacSelection({
+        topic: 'custom',
+        startDate: '2026-06-09',
+        endDate: '2026-06-09',
+        participants: [{ ...trueSolarParticipant, birthMinute: '0' }],
+      }),
+    /校正时间与真太阳时原始出生记录不一致/,
+  );
 });
 
 test('出生区间内稳定的寅巳刑害分别覆盖完整半开区间', () => {

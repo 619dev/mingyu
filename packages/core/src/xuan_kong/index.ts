@@ -698,7 +698,7 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
       'xuankong',
     ),
     '【盘面资料】',
-    `运程：${result.period.label}`,
+    `运程：${result.period.boundaryStatus ? '暂按' : ''}${result.period.label}`,
     result.period.boundaryNote ?? '',
     result.measurement
       ? [

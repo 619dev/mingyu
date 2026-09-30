@@ -39,7 +39,7 @@ import {
   birthProfileAtRangeTimestamp,
   validateBirthProfileTimeRange,
 } from '../../profile/time-range';
-import { birthProfileToBaziPerson, type BirthProfile } from '../../profile';
+import { birthProfileToBaziPerson, normalizeBirthProfile, type BirthProfile } from '../../profile';
 
 interface AlmanacLunarHourSource {
   getSixtyCycle(): { getName(): string };
@@ -431,6 +431,8 @@ function readParticipantBirthInput(item: AlmanacParticipantInput) {
     throw new Error('参与人需要提供出生时辰或精准出生时间。');
   }
   const birthLongitude = readOptionalParticipantNumber(item.birthLongitude, '出生经度');
+  const timezone = item.timezone;
+  const timeZoneId = item.timeZoneId;
   if (item.useTrueSolarTime === true && (birthHour === undefined || birthMinute === undefined)) {
     throw new Error('参与人真太阳时需要精准出生小时和分钟。');
   }
@@ -459,6 +461,8 @@ function readParticipantBirthInput(item: AlmanacParticipantInput) {
     birthSecond,
     birthPlace: item.birthPlace?.trim() || undefined,
     birthLongitude,
+    timezone,
+    timeZoneId,
     useTrueSolarTime: item.useTrueSolarTime === true,
   };
 }
@@ -705,7 +709,14 @@ function createParticipantProfiles(
       const id = readParticipantText(item.id, 'id', `participant-${index + 1}`);
       const name = readParticipantText(item.name, '姓名', '未命名参与人');
       if (item.birthTimeRange) {
-        if (item.dateType !== 'solar' || item.isLeapMonth || item.useTrueSolarTime) {
+        if (
+          item.dateType !== 'solar' ||
+          item.isLeapMonth ||
+          item.useTrueSolarTime ||
+          (item.timezone !== undefined && item.timezone !== BEIJING_OFFSET_HOURS) ||
+          item.timeZoneId !== undefined ||
+          item.originalTrueSolarProfile !== undefined
+        ) {
           throw new Error('四柱反推参与人必须使用公历、非闰月和标准北京时间。');
         }
         return createRangeParticipantProfile(item, birthInput, id, name);
@@ -729,8 +740,40 @@ function createParticipantProfiles(
         ...(birthInput.birthLongitude === undefined
           ? {}
           : { birthLongitude: birthInput.birthLongitude }),
+        ...(birthInput.timezone === undefined ? {} : { timezone: birthInput.timezone }),
+        ...(birthInput.timeZoneId === undefined ? {} : { timeZoneId: birthInput.timeZoneId }),
         useTrueSolarTime: birthInput.useTrueSolarTime,
       };
+
+      if (item.originalTrueSolarProfile) {
+        const source = item.originalTrueSolarProfile;
+        if (source.useTrueSolarTime !== true) {
+          throw new Error('择日真太阳时原始出生记录必须启用真太阳时。');
+        }
+        const normalized = normalizeBirthProfile(source);
+        const corrected = normalized.effectiveTime;
+        if (
+          item.dateType !== 'solar' ||
+          Number(item.year) !== corrected.year ||
+          Number(item.month) !== corrected.month ||
+          Number(item.day) !== corrected.day ||
+          birthInput.birthHour !== corrected.hour ||
+          birthInput.birthMinute !== corrected.minute ||
+          (birthInput.birthSecond ?? 0) !== corrected.second ||
+          birthInput.timeIndex !== normalized.timeIndex ||
+          item.gender !==
+            (source.gender === 'male' ? '男' : source.gender === 'female' ? '女' : '') ||
+          birthInput.birthLongitude !== normalized.resolvedLocation?.longitude
+        ) {
+          throw new Error('择日参与人校正时间与真太阳时原始出生记录不一致。');
+        }
+        return calculateParticipantProfileSnapshot(
+          item,
+          id,
+          name,
+          birthProfileToBaziPerson(source),
+        );
+      }
 
       return calculateParticipantProfileSnapshot(item, id, name, person);
     });

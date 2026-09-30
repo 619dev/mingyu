@@ -24,6 +24,8 @@ test('太乙五将属性按金镜式经文昌土、始击火、主将金、客�
     assert.ok(entry?.verse.includes(`受${element}德之正气`));
     assert.equal(entry?.sourceBook, '太乙金镜式经·卷二·推五将所主法');
   }
+  assert.equal(getTaiyiGeneralClassic('主参')?.role, '主方参将');
+  assert.equal(getTaiyiGeneralClassic('客参')?.role, '客方参将');
 });
 
 test('梅花数字加时辰的安全边界应覆盖十二时辰', () => {

@@ -141,6 +141,29 @@ test('岁运触发证据应识别天克地冲但不直接给出吉凶', () => {
   assert.doesNotMatch(result.promptText, /判定为凶|匹配总分：/);
 });
 
+test('天克地冲按天干五行相克与地支六冲判定，不限于天干四冲', () => {
+  const overcome = analyzeFortuneTriggers(createResult(), [
+    { id: 'year', type: 'year', label: '戊午流年', ganZhi: '戊午' },
+  ]);
+  const relation = overcome.relations.find(
+    (item) => item.type === 'tianke-dichong' && item.target.id === 'natal-year',
+  );
+  assert.ok(relation);
+  assert.equal(relation.stemRelation, 'overcome');
+  assert.equal(relation.branchRelation, 'clash');
+  assert.match(relation.rule, /天干五行相克/);
+
+  const generating = analyzeFortuneTriggers(createResult(), [
+    { id: 'year', type: 'year', label: '丙午流年', ganZhi: '丙午' },
+  ]);
+  assert.equal(
+    generating.relations.some(
+      (item) => item.type === 'tianke-dichong' && item.target.id === 'natal-year',
+    ),
+    false,
+  );
+});
+
 test('岁运触发证据应把未见主要关系保留为反证但不否定较弱触发', () => {
   const result = analyzeFortuneTriggers(createResult(), [
     { id: 'year', type: 'year', label: '乙巳流年', ganZhi: '乙巳' },

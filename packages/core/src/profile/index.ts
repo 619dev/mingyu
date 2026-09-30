@@ -799,7 +799,7 @@ export function birthProfileToAlmanacParticipant(
   const effective = normalized.effectiveTime;
   const useTrueSolarTime = profile.useTrueSolarTime === true;
   const location = normalized.resolvedLocation;
-  // 择日算法接收最终四柱时间；统一档案已完成所需校正，此处直接传入结果。
+  // 展示字段使用校正时间；真太阳时原始钟表记录另用于按真实瞬时判定节令。
   const participantTime = effective;
   const useCorrectedDate = useTrueSolarTime || normalized.usedChinaDstCorrection;
   return {
@@ -820,5 +820,10 @@ export function birthProfileToAlmanacParticipant(
       : {}),
     ...(location?.name ? { birthPlace: location.name } : {}),
     ...(location?.longitude !== undefined ? { birthLongitude: String(location.longitude) } : {}),
+    ...(!useCorrectedDate && location?.timezone !== undefined
+      ? { timezone: location.timezone }
+      : {}),
+    ...(!useCorrectedDate && location?.timeZoneId ? { timeZoneId: location.timeZoneId } : {}),
+    ...(useTrueSolarTime ? { originalTrueSolarProfile: profile } : {}),
   };
 }

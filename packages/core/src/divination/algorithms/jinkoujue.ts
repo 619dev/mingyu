@@ -45,6 +45,7 @@ import { analyzeJinkoujueEvidence } from '../jinkoujue-evidence';
 import {
   JINKOU_POSITION_ROLES,
   formatJinkoujuePositionPromptText,
+  getJinkoujueElementRelation,
   getGuiShenOnDiFen,
   getJinkouNoblemanBranch,
   getYuanStemOnBranch,
@@ -156,15 +157,7 @@ function getJiangOnDiFen(monthLeader: string, hourBranch: string, diFenBranch: s
 }
 
 function describeElementRelation(sourceElement: string, targetElement: string) {
-  if (!VALID_WUXING.has(sourceElement) || !VALID_WUXING.has(targetElement)) {
-    throw new Error(`金口诀四位五行无效：${sourceElement || '空'} -> ${targetElement || '空'}。`);
-  }
-  if (sourceElement === targetElement) return '比和';
-  if (isSheng(sourceElement, targetElement)) return '生';
-  if (isSheng(targetElement, sourceElement)) return '被生';
-  if (isKe(sourceElement, targetElement)) return '克';
-  if (isKe(targetElement, sourceElement)) return '被克';
-  return '无直接生克';
+  return getJinkoujueElementRelation(sourceElement, targetElement);
 }
 
 function buildPosition(params: {
@@ -484,6 +477,7 @@ export function generateJinkoujue(
   const relations = {
     guiToJiang: describeElementRelation(guiShen.element, jiangShen.element),
     guiToRen: describeElementRelation(guiShen.element, renYuan.element),
+    renToJiang: describeElementRelation(renYuan.element, jiangShen.element),
     jiangToDi: describeElementRelation(jiangShen.element, diFen.element),
     renToDi: describeElementRelation(renYuan.element, diFen.element),
     guiToDi: describeElementRelation(guiShen.element, diFen.element),
@@ -588,6 +582,7 @@ export function generateJinkoujue(
 }
 
 export { analyzeJinkoujueEvidence } from '../jinkoujue-evidence';
+export { getJinkoujueElementRelation } from '../jinkoujue-utils';
 export type {
   JinkoujueEvidenceAnalysis,
   JinkoujuePositionFact,

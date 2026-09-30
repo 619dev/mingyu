@@ -14,7 +14,7 @@ import { drawRandomSign, resolveSignByNumber } from './algorithms/ssgw';
 import { generateXiaoliuren } from './algorithms/xiaoliuren';
 import { formatTaiyiConditionSummary, formatTaiyiTacticBasis, generateTaiyi } from '../taiyi/index';
 import { calculateHuangjiJingshi, type HuangjiJingshiResult } from '../huangji-jingshi';
-import { calculateWuyunLiuqi } from '../wuyun-liuqi';
+import { calculateWuyunLiuqi, getWuyunLiuqiYearAt } from '../wuyun-liuqi';
 import { calculateZhugeNumber, castKongmingHexagram } from '../name-number/oracles';
 import { drawTarotSpread, type TarotDrawOptions, type TarotManualCardInput } from './tarot';
 import { isEarthlyBranch } from '../ganzhi';
@@ -120,7 +120,7 @@ export interface DivinationRequest {
   taiyi?: { year?: number; scope?: TaiyiScope };
   /** 皇极经世兼容值年输入；省略 year 时按 divinationTime（未填则当前时间）排年月日时卦。 */
   huangji?: { year?: number };
-  /** 五运六气年度输入；省略时按当前北京时间所在公历年计算。 */
+  /** 五运六气年度输入；省略时按起课时间所在的大寒运气年度计算。 */
   wuyun?: { year?: number; yearGanZhi?: string };
   prompt?: Omit<DivinationPromptOptions, 'method' | 'data' | 'question' | 'currentTime'>;
 }
@@ -483,20 +483,12 @@ export function validateDivinationRequest(request: DivinationRequest): void {
   }
 }
 
-function resolveCurrentCivilYear() {
-  return Number(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Shanghai',
-      year: 'numeric',
-    }).format(new Date()),
-  );
-}
-
 function generateData(
   request: DivinationRequest,
   method: DivinationSessionMethod,
   customDate: Date | undefined,
   selectionRandom: ReturnType<typeof createRandomContext> | undefined,
+  currentTime: Date,
 ): DivinationData {
   const randomOptions = withSessionRandom(request.random, selectionRandom);
   switch (method) {
@@ -594,7 +586,7 @@ function generateData(
         request.wuyun &&
           (request.wuyun.year !== undefined || request.wuyun.yearGanZhi !== undefined)
           ? request.wuyun
-          : { year: resolveCurrentCivilYear() },
+          : { year: getWuyunLiuqiYearAt(customDate ?? currentTime) },
       );
   }
 }
@@ -604,9 +596,9 @@ export function generateDivinationSession(request: DivinationRequest): Divinatio
   validateDivinationRequest(request);
   const { method, random: selectionRandom } = resolveMethod(request);
   const customDate = normalizeDate(request.divinationTime, '起课时间');
-  const data = generateData(request, method, customDate, selectionRandom);
-  const question = buildQuestion(method, request.question, data);
   const currentTime = normalizeCurrentTime(request.currentTime) ?? new Date();
+  const data = generateData(request, method, customDate, selectionRandom, currentTime);
+  const question = buildQuestion(method, request.question, data);
   const promptOptions: DivinationPromptOptions = {
     method,
     data,

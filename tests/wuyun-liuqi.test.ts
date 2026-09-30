@@ -8,6 +8,7 @@ import {
   MOVEMENT_STEP_BOUNDARIES,
   QI_STEP_SOLAR_TERMS,
   calculateWuyunLiuqi,
+  getWuyunLiuqiYearAt,
   getWuyunLiuqiYearGanZhi,
 } from '@core/wuyun-liuqi';
 import { SIXTY_CYCLE } from '@core/ganzhi';
@@ -295,6 +296,15 @@ test('公历年换算应采用稳定年中口径，并校验显式干支一致�
   );
   assert.throws(() => calculateWuyunLiuqi({}), /必须提供 year 或 yearGanZhi/);
   assert.throws(() => calculateWuyunLiuqi({ yearGanZhi: '甲丑' }), /年干支组合无效/);
+});
+
+test('运气年度在北京时间大寒交节瞬时切换', () => {
+  const boundary = calculateWuyunLiuqi({ year: 2026 }).qiSteps[0].boundaryTime?.startTimestamp;
+  assert.ok(boundary);
+  assert.equal(getWuyunLiuqiYearAt(new Date(boundary - 1)), 2025);
+  assert.equal(getWuyunLiuqiYearAt(new Date(boundary)), 2026);
+  assert.equal(getWuyunLiuqiYearAt(new Date('2026-01-01T12:00:00+08:00')), 2025);
+  assert.equal(getWuyunLiuqiYearAt(new Date('2026-07-01T12:00:00+08:00')), 2026);
 });
 
 test('五运六气应修剪显式年干支首尾空白后再校验和计算', () => {

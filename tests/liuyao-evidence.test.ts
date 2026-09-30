@@ -7,6 +7,7 @@ import {
 import { isKe, isSheng } from 'mingyu-core/ganzhi';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
+import { formatLiuyaoSanxing } from '../packages/core/src/prompt/liuyao-facts.ts';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedYaos = [7, 8, 9, 6, 7, 8] as const;
@@ -26,6 +27,20 @@ test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
       /主卦、互卦或变卦与原始爻值不一致/u,
     );
   }
+});
+
+test('六爻提示词核对日干起六神与逐爻六神', () => {
+  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const changedList = structuredClone(source);
+  changedList.sixGods[0] = source.sixGods[0] === '玄武' ? '青龙' : '玄武';
+  assert.throws(() => analyzeLiuyaoEvidence(changedList), /六神顺序与日干不一致/u);
+
+  const changedLine = structuredClone(source);
+  changedLine.yaosDetail[0].sixGod = source.yaosDetail[0].sixGod === '玄武' ? '青龙' : '玄武';
+  assert.throws(
+    () => formatDetailedDivinationInfo('liuyao', changedLine),
+    /纳甲、世应、动变或月日空破与盘面不一致/u,
+  );
 });
 
 test('六爻证据拒绝被改写的本爻六亲、动变关系和进退神', () => {
@@ -639,8 +654,8 @@ test('六爻三刑须由本卦纳甲支复算后才进入提示词', () => {
     branches: ['丑', '未'],
     type: '恃势之刑',
   });
-  assert.match(formatEnhancedDivinationInfo('liuyao', source), /丑、未构成恃势之刑/u);
-  assert.match(formatDetailedDivinationInfo('liuyao', source), /丑、未为恃势之刑/u);
+  assert.match(formatEnhancedDivinationInfo('liuyao', source), /刑支关系：丑、未相刑（恃势之刑）/u);
+  assert.match(formatDetailedDivinationInfo('liuyao', source), /刑支关系：丑、未相刑（恃势之刑）/u);
 
   const changed = structuredClone(source);
   changed.sanxingInYaos = [{ branches: ['寅', '巳', '申'], type: '无恩之刑' }];
@@ -657,6 +672,17 @@ test('六爻三刑须由本卦纳甲支复算后才进入提示词', () => {
   const oldResult = structuredClone(source);
   delete oldResult.sanxingInYaos;
   assert.ok(analyzeLiuyaoEvidence(oldResult));
+});
+
+test('六爻刑支提示区分两支相刑、三支齐备与自刑', () => {
+  assert.equal(
+    formatLiuyaoSanxing([
+      { branches: ['寅', '巳'], type: '无恩之刑' },
+      { branches: ['寅', '巳', '申'], type: '无恩之刑' },
+      { branches: ['辰', '辰'], type: '自刑' },
+    ]),
+    '寅、巳相刑（无恩之刑）；寅、巳、申三刑齐备（无恩之刑）；辰自刑',
+  );
 });
 
 test('鬼神怪异主题必须保留现实解释限制', () => {

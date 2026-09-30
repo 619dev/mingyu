@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { generateJinkoujue } from '../packages/core/src/divination/algorithms/jinkoujue';
+import { analyzeJinkoujueEvidence } from '../packages/core/src/divination/jinkoujue-evidence';
 import { generateDivinationSession } from '../packages/core/src/divination/session';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 
@@ -81,6 +82,38 @@ test('金口诀发用位受克应列为盘内反证并标记主线受限', () =>
 
   const enhanced = formatEnhancedDivinationInfo('jinkoujue', data);
   assert.match(enhanced, /四位反证：[^\n]*将神受贵神克/u);
+});
+
+test('金口诀人元克发用将神时计入关系、反证与主线状态', () => {
+  const data = generateJinkoujue({
+    method: 'number',
+    number: 5,
+    customDate: new Date('2025-01-01T04:00:00+08:00'),
+  });
+  const evidence = data.evidenceAnalysis!;
+
+  assert.equal(data.ganzhi.day, '庚午');
+  assert.equal(data.yinYangUse.usePosition, '将神');
+  assert.equal(data.positions.renYuan.element, '金');
+  assert.equal(data.positions.jiangShen.element, '木');
+  assert.equal(data.relations.renToJiang, '克');
+  assert.ok(
+    evidence.relations.some(
+      (item) => item.key === 'jinkoujue:relation:ren-jiang' && item.relation === '克',
+    ),
+  );
+  assert.ok(evidence.counterEvidenceFacts.some((item) => item.detail === '将神受人元克'));
+  assert.equal(evidence.summaryFact.status, '主线受限');
+  assert.match(evidence.promptText, /人元庚辰对将神己卯为克/u);
+  assert.match(evidence.promptText, /将神受人元克/u);
+  assert.match(formatEnhancedDivinationInfo('jinkoujue', data), /人元金克将神木/u);
+
+  const legacyData = structuredClone(data);
+  delete legacyData.relations.renToJiang;
+  const legacyEvidence = analyzeJinkoujueEvidence(legacyData);
+  assert.equal(legacyEvidence.summaryFact.status, '主线受限');
+  assert.ok(legacyEvidence.counterEvidenceFacts.some((item) => item.detail === '将神受人元克'));
+  assert.match(formatEnhancedDivinationInfo('jinkoujue', legacyData), /人元金克将神木/u);
 });
 
 test('金口诀公元 1 年大寒前沿用上一冬至的丑将', () => {

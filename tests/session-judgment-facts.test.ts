@@ -5,6 +5,7 @@ import { generateDivinationSession } from '../packages/core/src/divination/sessi
 import { formatLiurenOrdinaryTransmissionAdjudication } from '../packages/core/src/prompt/liuren-facts';
 import { formatTaiyiConditionSummary } from '../packages/core/src/taiyi';
 import type { LiurenData, TaiyiResult } from '../packages/core/src/types/divination';
+import type { WuyunLiuqiResult } from '../packages/core/src/wuyun-liuqi';
 
 test('小六壬在线解读保留农历取数、口径与占得宫歌诀', () => {
   for (const rule of ['common', 'duoneng'] as const) {
@@ -158,4 +159,35 @@ test('五运六气 aiPrompt 保留岁运五音与年度阶段，不输出未具�
   }
   assert.doesNotMatch(session.aiPrompt, /平气参考条件：|年度符会：/);
   assert.match(session.aiPrompt, /岁运五音：/);
+});
+
+test('五运六气省略目标年份时按起课时间所在的大寒运气年度排盘', () => {
+  const beforeDahan = generateDivinationSession({
+    method: 'wuyun',
+    question: '核对当前运气年度',
+    currentTime: '2026-01-01T12:00:00+08:00',
+  });
+  const beforeChart = beforeDahan.data as WuyunLiuqiResult;
+  assert.equal(beforeChart.input.year, 2025);
+  assert.match(beforeDahan.aiPrompt, /2025年乙巳/);
+  assert.ok(
+    beforeDahan.aiPrompt.includes(
+      `运气年度：${beforeChart.qiSteps[0].boundaryTime?.startBeijing}大寒起，至${beforeChart.qiSteps[5].boundaryTime?.endBeijingExclusive}次年大寒前`,
+    ),
+  );
+
+  const afterDahan = generateDivinationSession({
+    method: 'wuyun',
+    question: '核对当前运气年度',
+    currentTime: '2026-02-01T12:00:00+08:00',
+  });
+  assert.equal((afterDahan.data as WuyunLiuqiResult).input.year, 2026);
+
+  const customTime = generateDivinationSession({
+    method: 'wuyun',
+    question: '核对指定起课时间',
+    divinationTime: '2026-01-01T12:00:00+08:00',
+    currentTime: '2026-02-01T12:00:00+08:00',
+  });
+  assert.equal((customTime.data as WuyunLiuqiResult).input.year, 2025);
 });

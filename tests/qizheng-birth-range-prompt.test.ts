@@ -24,6 +24,7 @@ test('七政本命区间资料保留月亮换宫两侧、整秒范围与完整�
     }
   }
   assert.match(text, /流年与行限属于另外的时段资料/);
+  assert.doesNotMatch(text, /罗睺\(火余\)[^。]*，—|计都\(土余\)[^。]*，—/);
   assert.doesNotMatch(text, /calculationContext|startTimestamp|sourceId|mingyu|API|MCP/);
   assert.doesNotMatch(
     text,

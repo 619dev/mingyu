@@ -183,6 +183,23 @@ test('普通格流派提示词只列一次取格依据', () => {
   }
 });
 
+test('新派流派任务引用格局成败，不预设额外格局条件段', () => {
+  for (const input of [
+    { year: 1990, month: 9, day: 5, timeIndex: 6 },
+    { year: 2023, month: 12, day: 3, timeIndex: 6 },
+  ]) {
+    const result = createBaziResult(input);
+    for (const prompt of [
+      formatBaziSchoolPrompt(result, 'xinpai'),
+      buildBaziPrompt({ result, school: 'xinpai' }),
+      buildBaziPrompt({ result, schools: ['ziping', 'xinpai'] }),
+    ]) {
+      assert.match(prompt, /流派任务：结合已给出的日主旺衰、扶抑取用、调候及格局成败/);
+      assert.doesNotMatch(prompt, /格局条件/);
+    }
+  }
+});
+
 test('本命流派提示词不附完整大运，完整命限仅在所选范围出现', () => {
   const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
   for (const school of ['ziping', 'mangpai', 'xinpai'] as const) {

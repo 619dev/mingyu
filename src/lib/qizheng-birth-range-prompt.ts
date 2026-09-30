@@ -28,7 +28,7 @@ function formatNatalFacts(data: QizhengResult): string[] {
     `十二宫：${data.twelvePalaces.map((item) => `${item.palace}在${item.signBranch}`).join('；')}。`,
     ...data.stars.map(
       (star) =>
-        `${star.name}：${star.xiu}宿，${star.signBranch}宫${star.palace}，${star.dignity || '无庙旺标记'}${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
+        `${star.name}：${star.xiu}宿，${star.signBranch}宫${star.palace}${star.dignity && star.dignity !== '—' ? `，${star.dignity}` : ''}${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
     ),
     `吊照：${data.aspects.length ? data.aspects.map((item) => `${item.star1}与${item.star2}${formatAspectType(item.type)}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
     `神煞：${data.shensha.map((item) => `${item.name}${item.value}`).join('；')}。`,

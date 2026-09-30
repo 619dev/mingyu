@@ -403,6 +403,17 @@ export function getWuyunLiuqiYearGanZhi(year: number): string {
   return ganZhi;
 }
 
+/** 按北京时间大寒交节瞬时确定当前运气年度的公历年份标签。 */
+export function getWuyunLiuqiYearAt(date: Date): number {
+  const timestamp = date.getTime();
+  if (!Number.isFinite(timestamp)) throw new Error('运气年度时间必须是有效日期。');
+  const year = beijingCivilDateAt(timestamp).year;
+  if (year < 1900 || year > 2200) {
+    throw new Error('按大寒交节确定运气年度仅支持北京时间 1900-2200 年。');
+  }
+  return timestamp < solarTermBoundary(year, '大寒').timestamp ? year - 1 : year;
+}
+
 function resolveYearInput(input: WuyunLiuqiInput): WuyunLiuqiCalculation['input'] {
   const hasYear = input.year !== undefined;
   const hasGanZhi = input.yearGanZhi !== undefined;
@@ -905,6 +916,7 @@ export const wuyunLiuqi = {
   ANNUAL_CONFORMITY_SOURCE_RECONCILIATION,
   WUYUN_LIUQI_SOURCES,
   getWuyunLiuqiYearGanZhi,
+  getWuyunLiuqiYearAt,
   calculateWuyunLiuqi,
   buildWuyunLiuqiPrompt,
 };

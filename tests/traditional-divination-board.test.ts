@@ -48,6 +48,23 @@ test('主要占卜传统盘应能使用当前核心数据直接渲染', () => {
   }
 });
 
+test('金口诀传统盘展示人元与将神之间的生克关系', () => {
+  const data = generateJinkoujue({
+    method: 'number',
+    number: 5,
+    customDate: new Date('2025-01-01T04:00:00+08:00'),
+  });
+
+  assert.equal(data.relations.renToJiang, '克');
+  const html = renderBoard('jinkoujue', data);
+  assert.match(html, /人→将 克/u);
+  assert.match(html, /贵→地 克/u);
+
+  const legacyData = structuredClone(data);
+  delete legacyData.relations.renToJiang;
+  assert.match(renderBoard('jinkoujue', legacyData), /人→将 克/u);
+});
+
 test('五运六气年度盘展示全年主客运气事实', () => {
   const html = renderBoard('wuyun', calculateWuyunLiuqi({ year: 2026 }));
   assert.match(html, /丙午/u);

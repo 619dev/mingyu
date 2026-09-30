@@ -40,6 +40,7 @@ import {
 import { HuangjiReferenceTable } from './HuangjiReferenceTable';
 import { TAIYI_PALACES } from 'mingyu-core/taiyi';
 import { getDunJiaStem } from 'mingyu-core/divination/qimen';
+import { getJinkoujueElementRelation } from 'mingyu-core/divination/jinkoujue';
 import { isSheng } from 'mingyu-core/wuxing';
 import type { WuyunLiuqiResult } from 'mingyu-core/wuyun-liuqi';
 import type { KongmingHexagramResult, ZhugeNumberResult } from 'mingyu-core/name-number';
@@ -1297,8 +1298,10 @@ function JinkoujueTraditionalBoard({
   const positionRelations = [
     `贵→将 ${data.relations.guiToJiang}`,
     `贵→人 ${data.relations.guiToRen}`,
+    `人→将 ${data.relations.renToJiang ?? getJinkoujueElementRelation(data.positions.renYuan.element, data.positions.jiangShen.element)}`,
     `将→地 ${data.relations.jiangToDi}`,
     `人→地 ${data.relations.renToDi}`,
+    `贵→地 ${data.relations.guiToDi}`,
   ].join('；');
   const movementText = data.movements
     .map((item) => `${item.category}·${item.name}（${item.from}${item.relation}${item.to}）`)
@@ -3191,19 +3194,19 @@ function TaiyiTraditionalBoard({
 
       {wenChangClassic ? (
         <ClassicalAnnotationCard
-          title={`文昌（主算先锋）· ${wenChangClassic.role}`}
+          title={`文昌（主目）· ${wenChangClassic.role}`}
           source={wenChangClassic.sourceBook}
           verse={wenChangClassic.verse}
-          modernAdvice={`【性情】${wenChangClassic.nature}\n【决策指引】${wenChangClassic.actionAdvice}`}
+          modernAdvice={`【典籍取象】${wenChangClassic.nature}\n【盘面参照】${wenChangClassic.actionAdvice}`}
         />
       ) : null}
 
       {shiJiClassic ? (
         <ClassicalAnnotationCard
-          title={`始击（客算突击）· ${shiJiClassic.role}`}
+          title={`始击（客目）· ${shiJiClassic.role}`}
           source={shiJiClassic.sourceBook}
           verse={shiJiClassic.verse}
-          modernAdvice={`【性情】${shiJiClassic.nature}\n【决策指引】${shiJiClassic.actionAdvice}`}
+          modernAdvice={`【典籍取象】${shiJiClassic.nature}\n【盘面参照】${shiJiClassic.actionAdvice}`}
         />
       ) : null}
     </TraditionalBoardShell>

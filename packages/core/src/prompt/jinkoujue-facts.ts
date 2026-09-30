@@ -1,6 +1,7 @@
 import type { JinkoujueData, JinkoujueFourPosition } from '../types/divination';
 import { evaluateJinkoujueBihePoems } from '../divination/algorithms/jinkoujue';
 import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
+import { getJinkoujueElementRelation } from '../divination/jinkoujue-utils';
 
 export function formatJinkoujueBihe(data: JinkoujueData): string {
   const facts = evaluateJinkoujueBihePoems(data.positions);
@@ -14,6 +15,12 @@ export function formatJinkoujueRelations(data: JinkoujueData): string {
   const pairs: Array<[JinkoujueFourPosition, JinkoujueFourPosition, string]> = [
     [p.guiShen, p.jiangShen, data.relations.guiToJiang],
     [p.guiShen, p.renYuan, data.relations.guiToRen],
+    [
+      p.renYuan,
+      p.jiangShen,
+      data.relations.renToJiang ??
+        getJinkoujueElementRelation(p.renYuan.element, p.jiangShen.element),
+    ],
     [p.jiangShen, p.diFen, data.relations.jiangToDi],
     [p.renYuan, p.diFen, data.relations.renToDi],
     [p.guiShen, p.diFen, data.relations.guiToDi],

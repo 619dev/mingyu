@@ -80,6 +80,7 @@ import {
   formatJinkoujueJudgmentFacts,
   formatJinkoujueBihe,
 } from './jinkoujue-facts';
+import { formatLiuyaoSanxing } from './liuyao-facts';
 
 function formatZhugeInfo(data: ZhugeNumberResult) {
   const interpretation = data.interpretation ?? getZhugeInterpretation(data.number);
@@ -474,7 +475,7 @@ function formatLiuyaoInfo(
   ].filter(Boolean);
   const sanheDetail = sanheParts.length ? `三合三支：${sanheParts.join('；')}` : null;
   const sanxingDetail = data.sanxingInYaos?.length
-    ? `三刑：${data.sanxingInYaos.map((s) => `${s.branches.join('、')}构成${s.type}`).join('；')}`
+    ? `刑支关系：${formatLiuyaoSanxing(data.sanxingInYaos)}`
     : null;
   return [
     '占法：六爻',

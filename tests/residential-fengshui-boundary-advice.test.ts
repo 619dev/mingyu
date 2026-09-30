@@ -30,3 +30,22 @@ test('候选宅卦改变命宅关系时建议复测坐向而非补充已提供�
   assert.ok(result.advice.some((item) => item.includes('复测坐向')));
   assert.ok(result.advice.every((item) => !item.includes('补山向或居住人信息')));
 });
+
+test('交运首年只给年份时，宅运摘要与提示词保持暂排口径', () => {
+  const result = generateResidentialFengshui({
+    year: 2024,
+    mingGua: '坎',
+    sitMountain: '子',
+  });
+
+  assert.equal(result.xuankong?.period.boundaryStatus, '待核定');
+  assert.match(result.agreements[0].detail, /玄空见暂按下元9运/);
+  assert.match(result.advice[0], /先看宅运：暂按下元9运/);
+  assert.match(result.advice[0], /需按建造或起运日期核定运期/);
+  assert.match(result.prompt, /运程：暂按下元9运/);
+  assert.match(result.evidencePromptText, /暂按下元9运/);
+
+  const settled = generateResidentialFengshui({ year: 2025, mingGua: '坎', sitMountain: '子' });
+  assert.equal(settled.xuankong?.period.boundaryStatus, undefined);
+  assert.doesNotMatch(settled.advice[0], /暂按|核定运期/);
+});

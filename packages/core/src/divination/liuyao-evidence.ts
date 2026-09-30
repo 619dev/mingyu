@@ -15,7 +15,7 @@ import {
   isSanxing,
   isSheng,
 } from '../ganzhi';
-import { getVoidBranches } from '../calendar/lunar';
+import { getSixAnimals, getVoidBranches } from '../calendar/lunar';
 import {
   hexagramNaJia,
   hexagramPalaceMap,
@@ -540,11 +540,20 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
     throw new Error('六爻主卦、互卦或变卦与原始爻值不一致，无法生成证据。');
   }
   const expectedVoids = getVoidBranches(data.ganzhi.day);
+  const expectedSixGods = getSixAnimals(data.ganzhi.day.charAt(0));
   if (
     data.voidBranches.length !== expectedVoids.length ||
     expectedVoids.some((branch) => !data.voidBranches.includes(branch))
   ) {
     throw new Error('六爻日柱旬空与盘面不一致，无法生成证据。');
+  }
+  if (
+    data.sixGods !== undefined &&
+    (!Array.isArray(data.sixGods) ||
+      data.sixGods.length !== expectedSixGods.length ||
+      expectedSixGods.some((god, index) => data.sixGods[index] !== god))
+  ) {
+    throw new Error('六爻六神顺序与日干不一致，无法生成证据。');
   }
 
   const mainNaJia = hexagramNaJia[data.originalName];
@@ -645,6 +654,7 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
         : undefined;
     if (
       yao.rawValue !== raw ||
+      yao.sixGod !== expectedSixGods[index] ||
       yao.yaoType !== (raw === 7 || raw === 9 ? '阳' : '阴') ||
       yao.isChanging !== changing ||
       (!changing && yao.changedYao != null) ||

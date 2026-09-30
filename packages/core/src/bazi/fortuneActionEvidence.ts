@@ -394,6 +394,7 @@ export function analyzeFortuneActionEvidence(params: {
           if (placement === '岁运透干') {
             return (
               r.stemRelation === 'clash' ||
+              r.stemRelation === 'overcome' ||
               r.stemRelation === 'combine' ||
               r.stemRelation === 'same'
             );

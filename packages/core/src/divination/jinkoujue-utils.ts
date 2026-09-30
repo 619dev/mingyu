@@ -1,4 +1,4 @@
-import { HEAVENLY_STEMS, getBranchIndex } from '../ganzhi';
+import { HEAVENLY_STEMS, getBranchIndex, isKe, isSheng } from '../ganzhi';
 import type {
   JinkoujueFourPosition,
   JinkoujuePositionName,
@@ -11,6 +11,22 @@ export const JINKOU_POSITION_ROLES: Record<JinkoujuePositionName, string> = {
   贵神: '四象中的主、臣、父与官禄位',
   人元: '四象中的客、天、君、祖与外位',
 };
+
+const VALID_WUXING = new Set(['木', '火', '土', '金', '水']);
+
+export function getJinkoujueElementRelation(
+  sourceElement: string,
+  targetElement: string,
+): '比和' | '生' | '被生' | '克' | '被克' {
+  if (!VALID_WUXING.has(sourceElement) || !VALID_WUXING.has(targetElement)) {
+    throw new Error(`金口诀四位五行无效：${sourceElement || '空'} -> ${targetElement || '空'}。`);
+  }
+  if (sourceElement === targetElement) return '比和';
+  if (isSheng(sourceElement, targetElement)) return '生';
+  if (isSheng(targetElement, sourceElement)) return '被生';
+  if (isKe(sourceElement, targetElement)) return '克';
+  return '被克';
+}
 
 const FORWARD_NOBLEMAN_BRANCHES = new Set(['亥', '子', '丑', '寅', '卯', '辰']);
 const NOBLEMAN_BRANCH_BY_STEM: Record<string, { day: string; night: string }> = {

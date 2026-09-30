@@ -267,6 +267,7 @@ function buildAgreements(
 
   if (bazhai && xuankong) {
     const xuankongBoundarySensitive = xuankong.measurement?.stability === '山向边界敏感';
+    const periodLabel = `${xuankong.period.boundaryStatus ? '暂按' : ''}${xuankong.period.label}`;
     const candidateDirections =
       'directionMeasurement' in bazhai ? bazhai.directionMeasurement.candidateDirections : [];
     const candidateMatches = new Set(candidateDirections.map((item) => item.match));
@@ -274,7 +275,7 @@ function buildAgreements(
     items.push({
       level: '可互补',
       title: '宅运与人宅分层并观',
-      detail: `玄空见${xuankong.period.label}、${xuankong.daoShanXiang.summary}${xuankongBoundarySensitive ? '（中心读数盘，待复测核定）' : ''}；八宅命卦${bazhai.mingGua}、${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
+      detail: `玄空见${periodLabel}、${xuankong.daoShanXiang.summary}${xuankongBoundarySensitive ? '（中心读数盘，待复测核定）' : ''}；八宅命卦${bazhai.mingGua}、${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
     });
 
     if (matchChangesWithOrientation) {
@@ -318,7 +319,7 @@ function buildAdvice(
   const advice: string[] = [];
   if (xuankong) {
     advice.push(
-      `先看宅运：${xuankong.period.label}，坐${xuankong.sitMountain}向${xuankong.facingMountain}，${xuankong.guaType}，${xuankong.daoShanXiang.summary}${xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}。`,
+      `先看宅运：${xuankong.period.boundaryStatus ? '暂按' : ''}${xuankong.period.label}，坐${xuankong.sitMountain}向${xuankong.facingMountain}，${xuankong.guaType}，${xuankong.daoShanXiang.summary}${xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}${xuankong.period.boundaryStatus ? '；需按建造或起运日期核定运期' : ''}。`,
     );
   }
   if (bazhai) {
@@ -369,7 +370,7 @@ function buildEvidencePrompt(params: {
     items.push({
       level: '主证',
       title: '玄空宅运层',
-      detail: `${params.xuankong.period.label}；坐${params.xuankong.sitMountain}向${params.xuankong.facingMountain}；${params.xuankong.guaType}；${params.xuankong.daoShanXiang.summary}${params.xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}`,
+      detail: `${params.xuankong.period.boundaryStatus ? '暂按' : ''}${params.xuankong.period.label}；坐${params.xuankong.sitMountain}向${params.xuankong.facingMountain}；${params.xuankong.guaType}；${params.xuankong.daoShanXiang.summary}${params.xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}${params.xuankong.period.boundaryNote ? `；${params.xuankong.period.boundaryNote}` : ''}`,
       source: '玄空飞星 v1',
     });
   }
