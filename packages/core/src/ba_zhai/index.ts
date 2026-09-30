@@ -42,9 +42,10 @@ export interface BaZhaiInput {
   /** 出生公历月日，用于准确处理立春换年。 */
   birthMonth?: number;
   birthDay?: number;
-  /** 出生地民用时分；立春当天可据此核定命卦年界。 */
+  /** 出生地民用时分秒；缺失分钟或秒数时按已知精度核对立春年界。 */
   birthHour?: number;
   birthMinute?: number;
+  birthSecond?: number;
   /** 出生地相对 UTC 的小时偏移；未提供时按北京时间 UTC+8。 */
   birthTimezone?: number;
   /** 出生地 IANA 历史时区，例如 Asia/Shanghai。 */
@@ -71,6 +72,7 @@ export interface BaZhaiResult {
     birthDay?: number;
     birthHour?: number;
     birthMinute?: number;
+    birthSecond?: number;
     birthTimezone?: number;
     birthTimeZoneId?: string;
     gender?: 'male' | 'female';
@@ -79,6 +81,7 @@ export interface BaZhaiResult {
   };
   mingGua: string;
   effectiveBirthYear: number | null;
+  birthYearBoundaryStatus: '已核定' | '待复核' | '直接命卦';
   birthYearBoundaryNote: string;
   mingGroup: '东四命' | '西四命';
   houseGua: string | null;
@@ -257,6 +260,7 @@ function resolveDoorMeasurement(input: BaZhaiDoorDegreeInput) {
 function resolveEffectiveBirthYear(input: BaZhaiInput): {
   year: number;
   note: string;
+  status: '已核定' | '待复核';
 } {
   if (!Number.isSafeInteger(input.birthYear) || input.birthYear! < 1 || input.birthYear! > 9999) {
     throw new Error('出生年份必须是 1-9999 之间的整数。');
@@ -267,6 +271,12 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
   if (hasMonth !== hasDay) throw new Error('八宅立春换年需同时提供出生月和出生日。');
   if (input.birthHour === undefined && input.birthMinute !== undefined) {
     throw new Error('提供出生分钟时需同时提供出生小时。');
+  }
+  if (
+    input.birthSecond !== undefined &&
+    (input.birthHour === undefined || input.birthMinute === undefined)
+  ) {
+    throw new Error('提供出生秒数时需同时提供出生小时和分钟。');
   }
   if (input.birthHour === undefined && input.birthTimezone !== undefined) {
     throw new Error('提供出生时区时需同时提供出生小时。');
@@ -287,6 +297,12 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
     throw new Error('出生分钟需在 0-59 之间。');
   }
   if (
+    input.birthSecond !== undefined &&
+    (!Number.isInteger(input.birthSecond) || input.birthSecond < 0 || input.birthSecond > 59)
+  ) {
+    throw new Error('出生秒数需在 0-59 之间。');
+  }
+  if (
     input.birthTimezone !== undefined &&
     (!Number.isFinite(input.birthTimezone) || input.birthTimezone < -12 || input.birthTimezone > 14)
   ) {
@@ -304,6 +320,7 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
     return {
       year,
       note: `出生年份：${year}年，未提供月日，按 ${year} 年推命卦。`,
+      status: '待复核',
     };
   }
   const month = input.birthMonth!;
@@ -315,23 +332,25 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
   if (!Number.isInteger(day) || day < 1 || day > maxDay) {
     throw new Error(`出生日期需在 1-${maxDay} 之间。`);
   }
-  // 缺少时分时沿用北京时间正午口径；已知时分则按指定时区转换真实瞬时。
+  // 完全缺少时刻时沿用北京时间正午口径；部分时刻按其可能区间核对立春。
   const lichun = SolarTerm.fromIndex(year, 3).getJulianDay().getSolarTime();
   const hasBirthTime = input.birthHour !== undefined;
+  const resolveBirthTime = (minute: number, second: number) =>
+    resolveCivilTime(
+      {
+        year,
+        month,
+        day,
+        hour: input.birthHour!,
+        minute,
+        second,
+        ...(input.birthTimezone !== undefined ? { timezone: input.birthTimezone } : {}),
+        ...(input.birthTimeZoneId ? { timeZoneId: input.birthTimeZoneId } : {}),
+      },
+      { defaultTimezone: 8 },
+    );
   const birthTime = hasBirthTime
-    ? resolveCivilTime(
-        {
-          year,
-          month,
-          day,
-          hour: input.birthHour!,
-          minute: input.birthMinute ?? 0,
-          second: 0,
-          ...(input.birthTimezone !== undefined ? { timezone: input.birthTimezone } : {}),
-          ...(input.birthTimeZoneId ? { timeZoneId: input.birthTimeZoneId } : {}),
-        },
-        { defaultTimezone: 8 },
-      )
+    ? resolveBirthTime(input.birthMinute ?? 0, input.birthSecond ?? 0)
     : null;
   const birthCivil =
     birthTime?.utcTimestamp ?? createUtcTimestamp(year, month - 1, day, 12) - 8 * 3_600_000;
@@ -348,33 +367,59 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
   const effectiveYear = birthCivil >= lichunCivil ? year : year - 1;
   const isLichunDate =
     year === lichun.getYear() && month === lichun.getMonth() && day === lichun.getDay();
+  const possibleIntervalMillis = (input.birthMinute === undefined ? 3600 : 60) * 1000;
+  const birthCivilLatest =
+    hasBirthTime &&
+    input.birthSecond === undefined &&
+    birthCivil < lichunCivil &&
+    lichunCivil - birthCivil < possibleIntervalMillis
+      ? resolveBirthTime(input.birthMinute ?? 59, 59).utcTimestamp
+      : null;
+  const precisionCrossesLichun =
+    birthCivilLatest !== null && birthCivil < lichunCivil && birthCivilLatest >= lichunCivil;
   return {
     year: effectiveYear,
     note:
       isLichunDate && !hasBirthTime
-        ? `出生日期与 ${year} 年立春同日，未提供出生时刻；现按当日正午与立春时刻比较，命卦暂按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算，请按准确出生时刻复核。`
-        : isLichunDate
-          ? `出生日期与 ${year} 年立春同日，已按出生时分（${birthTime?.timeZoneId ? `${birthTime.timeZoneId}，` : ''}UTC${formatFixedTimezoneOffset(birthTime!.timezone)}）与立春瞬时核定命卦年份为 ${effectiveYear} 年。`
-          : effectiveYear === year
-            ? `${hasBirthTime ? '出生时刻' : '出生日期'}已过 ${year} 年立春，命卦按 ${year} 年计算。`
-            : `${hasBirthTime ? '出生时刻' : '出生日期'}在 ${year} 年立春前，命卦按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算。`,
+        ? `出生日期与 ${year} 年立春同日，未提供出生时刻；按当日正午与立春时刻比较，命卦暂按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算，年界待复核。`
+        : precisionCrossesLichun
+          ? `出生时刻精度不足：${input.birthMinute === undefined ? '仅提供出生小时' : '未提供出生秒数'}，该时段跨越 ${year} 年立春瞬时；命卦暂按时段起点所属的 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算，年界待复核。`
+          : isLichunDate
+            ? `出生日期与 ${year} 年立春同日，已按出生${input.birthMinute === undefined ? '小时' : input.birthSecond === undefined ? '时分' : '时分秒'}（${birthTime?.timeZoneId ? `${birthTime.timeZoneId}，` : ''}UTC${formatFixedTimezoneOffset(birthTime!.timezone)}）与立春瞬时核定命卦年份为 ${effectiveYear} 年。`
+            : effectiveYear === year
+              ? `${hasBirthTime ? '出生时刻' : '出生日期'}已过 ${year} 年立春，命卦按 ${year} 年计算。`
+              : `${hasBirthTime ? '出生时刻' : '出生日期'}在 ${year} 年立春前，命卦按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算。`,
+    status: (isLichunDate && !hasBirthTime) || precisionCrossesLichun ? '待复核' : '已核定',
   };
 }
 
 function resolveMingGua(input: BaZhaiInput): {
   gua: string;
   effectiveBirthYear: number | null;
+  status: BaZhaiResult['birthYearBoundaryStatus'];
   note: string;
 } {
   if (input.mingGua !== undefined) {
-    return { gua: input.mingGua, effectiveBirthYear: null, note: '本次直接使用已给定的命卦。' };
+    return {
+      gua: input.mingGua,
+      effectiveBirthYear: null,
+      status: '直接命卦',
+      note: '本次直接使用已给定的命卦。',
+    };
   }
   if (input.birthYear != null && input.gender) {
     const resolved = resolveEffectiveBirthYear(input);
+    const candidateYears = [input.birthYear - 1, input.birthYear];
+    const candidateGuas = candidateYears.map((year) => calculateMingGua(year, input.gender!).gua);
+    const candidateNote =
+      resolved.status === '待复核'
+        ? `候选命卦：${candidateYears.map((year, index) => `${year === 0 ? '公元前1年' : `${year}年`}${candidateGuas[index]}命`).join('、')}。`
+        : '';
     return {
       gua: calculateMingGua(resolved.year, input.gender).gua,
       effectiveBirthYear: resolved.year,
-      note: resolved.note,
+      status: resolved.status,
+      note: `${resolved.note}${candidateNote}`,
     };
   }
   throw new Error('需提供 birthYear+gender 或直接给定 mingGua。');
@@ -411,7 +456,9 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
       );
     }
   }
-  lines.push(`命卦：${r.mingGua}（${r.mingGroup}）`);
+  lines.push(
+    `命卦：${r.mingGua}（${r.mingGroup}${r.birthYearBoundaryStatus === '待复核' ? '，暂按' : ''}）`,
+  );
   lines.push(`立春年界：${r.birthYearBoundaryNote}`);
   if (measurement?.stability === '宅卦不稳定') {
     lines.push(
@@ -420,10 +467,12 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
   }
   if (r.houseGua) {
     lines.push(`宅卦：${r.houseGua}（${r.houseGroup}${houseUnstable ? '，中心读数' : ''}）`);
-    lines.push(`命宅配合：${r.match}${houseUnstable ? '（中心读数）' : ''}`);
+    lines.push(
+      `命宅配合：${r.match}${r.birthYearBoundaryStatus === '待复核' ? '（暂按命卦）' : ''}${houseUnstable ? '（中心读数）' : ''}`,
+    );
   }
   if (r.mingPalace?.length) {
-    lines.push('命卦八方：');
+    lines.push(`命卦八方${r.birthYearBoundaryStatus === '待复核' ? '（暂按）' : ''}：`);
     for (const palace of r.mingPalace) {
       lines.push(`  ${palace.direction}${palace.label}（${palace.luck}，约${palace.degree}°）`);
     }
@@ -484,6 +533,7 @@ export function analyzeBaZhai(input: BaZhaiInput): BaZhaiResult {
       match = '相冲';
       matchAdvice = `命卦属${mingGroup}、宅卦属${houseGroup}，命宅不同组（东四命住西四宅或反之），应以命卦吉方为主、宅卦为辅调和。`;
     }
+    if (resolvedMingGua.status === '待复核') matchAdvice = `暂按命卦推得：${matchAdvice}`;
   }
 
   const resultBase: Omit<BaZhaiResult, 'prompt' | 'evidenceAnalysis'> = {
@@ -494,6 +544,7 @@ export function analyzeBaZhai(input: BaZhaiInput): BaZhaiResult {
       ...(input.birthDay !== undefined ? { birthDay: input.birthDay } : {}),
       ...(input.birthHour !== undefined ? { birthHour: input.birthHour } : {}),
       ...(input.birthMinute !== undefined ? { birthMinute: input.birthMinute } : {}),
+      ...(input.birthSecond !== undefined ? { birthSecond: input.birthSecond } : {}),
       ...(input.birthTimezone !== undefined ? { birthTimezone: input.birthTimezone } : {}),
       ...(input.birthTimeZoneId !== undefined ? { birthTimeZoneId: input.birthTimeZoneId } : {}),
       ...(input.gender ? { gender: input.gender } : {}),
@@ -502,6 +553,7 @@ export function analyzeBaZhai(input: BaZhaiInput): BaZhaiResult {
     },
     mingGua,
     effectiveBirthYear: resolvedMingGua.effectiveBirthYear,
+    birthYearBoundaryStatus: resolvedMingGua.status,
     birthYearBoundaryNote: resolvedMingGua.note,
     mingGroup,
     houseGua,

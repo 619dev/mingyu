@@ -71,7 +71,7 @@ export function formatQizhengFlowRangeFacts(
       ? period.events.length
         ? period.events.map(
             (event, index) =>
-              `事件${index + 1}：${event.movingStar}${event.kind}${event.targetStar ? `本命${event.targetStar}` : ''}${event.aspectType || ''}${event.aspectDirection ? `（黄经差${event.aspectDirection}）` : ''}${event.signBranch ? `，${event.signBranch}宫` : ''}${event.palace || ''}${event.stationDirection ? `，转${event.stationDirection}` : ''}；${formatValue(event.minUtcMs, '毫秒时间戳')}${event.minUtcMs === event.maxUtcMs ? '' : ` 至 ${formatValue(event.maxUtcMs, '毫秒时间戳')}`}；覆盖本段${event.sampleCount}个出生秒。`,
+              `事件${index + 1}：${event.movingStar}${event.kind}${event.targetStar ? `本命${event.targetStar}` : ''}${event.aspectType ? formatAspectType(event.aspectType) : ''}${event.aspectDirection ? `（黄经差${event.aspectDirection}）` : ''}${event.signBranch ? `，${event.signBranch}宫` : ''}${event.palace || ''}${event.stationDirection ? `，转${event.stationDirection}` : ''}；${formatValue(event.minUtcMs, '毫秒时间戳')}${event.minUtcMs === event.maxUtcMs ? '' : ` 至 ${formatValue(event.maxUtcMs, '毫秒时间戳')}`}；覆盖本段${event.sampleCount}个出生秒。`,
           )
         : ['本段出生时刻对应的目标周期内未见上述事件。']
       : []),

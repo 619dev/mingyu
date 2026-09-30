@@ -21,6 +21,7 @@ export type ResidentialChartInput = {
   day?: number;
   hour?: number;
   minute?: number;
+  second?: number;
   timezone?: number;
   timeZoneId?: string;
   gender?: 'male' | 'female';
@@ -42,13 +43,13 @@ export type ResidentialChartInput = {
 
 export type ResidentialBirthData = Pick<
   ResidentialChartInput,
-  'year' | 'month' | 'day' | 'hour' | 'minute' | 'timezone' | 'timeZoneId' | 'gender'
+  'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'timezone' | 'timeZoneId' | 'gender'
 >;
 
 type CompleteResidentialBirthDate = Required<
   Pick<ResidentialBirthData, 'year' | 'month' | 'day' | 'gender'>
 > &
-  Pick<ResidentialBirthData, 'hour' | 'minute' | 'timezone' | 'timeZoneId'>;
+  Pick<ResidentialBirthData, 'hour' | 'minute' | 'second' | 'timezone' | 'timeZoneId'>;
 
 export function resolveResidentialBirthDate(
   birth: CompleteResidentialBirthDate,
@@ -68,6 +69,7 @@ export function resolveResidentialBirthDate(
     gender: birth.gender,
     ...(birth.hour != null ? { hour: birth.hour } : {}),
     ...(birth.minute != null ? { minute: birth.minute } : {}),
+    ...(birth.second != null ? { second: birth.second } : {}),
     ...(birth.timezone != null ? { timezone: birth.timezone } : {}),
     ...(birth.timeZoneId ? { timeZoneId: birth.timeZoneId } : {}),
   };
@@ -133,6 +135,7 @@ function toCoreInput(input: ResidentialChartInput): ResidentialFengshuiInput {
     ...(input.day != null ? { birthDay: input.day } : {}),
     ...(input.hour != null ? { birthHour: input.hour } : {}),
     ...(input.minute != null ? { birthMinute: input.minute } : {}),
+    ...(input.second != null ? { birthSecond: input.second } : {}),
     ...(input.timezone != null ? { birthTimezone: input.timezone } : {}),
     ...(input.timeZoneId ? { birthTimeZoneId: input.timeZoneId } : {}),
     ...(input.gender ? { gender: input.gender } : {}),

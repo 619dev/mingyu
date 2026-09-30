@@ -180,6 +180,23 @@ test('六爻旧盘缺少变卦别名时仍核验变爻六亲', () => {
   );
 });
 
+test('六爻动爻清单须与原始爻值的动静及阴阳一致', () => {
+  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const wrongMotion = structuredClone(source);
+  wrongMotion.changingYaos[0].isChanging = false;
+  wrongMotion.evidenceAnalysis = undefined;
+  assert.throws(() => analyzeLiuyaoEvidence(wrongMotion), /动爻位置、阴阳或动静记录不一致/u);
+  assert.throws(
+    () => formatEnhancedDivinationInfo('liuyao', wrongMotion),
+    /动爻位置、阴阳或动静记录不一致/u,
+  );
+
+  const wrongType = structuredClone(source);
+  wrongType.changingYaos[0].type = wrongType.changingYaos[0].type === '老阴' ? '老阳' : '老阴';
+  wrongType.evidenceAnalysis = undefined;
+  assert.throws(() => analyzeLiuyaoEvidence(wrongType), /动爻位置、阴阳或动静记录不一致/u);
+});
+
 test('六爻三钱来源须同时吻合铜钱合计与原始爻值', () => {
   const coinThrows = Array.from({ length: 6 }, () => ({
     coins: [2, 2, 3] as const,

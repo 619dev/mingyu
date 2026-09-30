@@ -74,3 +74,43 @@ test('交运首年只给年份时，宅运摘要与提示词保持暂排口径',
   assert.equal(settled.xuankong?.period.boundaryStatus, undefined);
   assert.doesNotMatch(settled.advice[0], /暂按|核定运期/);
 });
+
+test('立春同小时出生时刻不完整时，住宅合参不把命卦写成已核定', () => {
+  const result = generateResidentialFengshui({
+    year: 2024,
+    birthYear: 2024,
+    birthMonth: 2,
+    birthDay: 4,
+    birthHour: 16,
+    gender: 'male',
+    sitMountain: '子',
+  });
+
+  assert.equal(result.bazhai?.birthYearBoundaryStatus, '待复核');
+  assert.match(result.agreements[0].detail, /八宅暂按命卦巽/);
+  assert.match(result.advice[1], /暂按命卦巽/);
+  assert.match(result.evidencePromptText, /暂按命卦巽/);
+  assert.match(result.prompt, /候选命卦：2023年巽命、2024年震命/);
+});
+
+test('住宅合参按缺失的出生日期或秒数提出复核资料', () => {
+  const onlyYear = generateResidentialFengshui({ birthYear: 1990, gender: 'male' });
+  assert.equal(onlyYear.bazhai?.birthYearBoundaryStatus, '待复核');
+  assert.match(onlyYear.advice.join(' '), /补充出生月日后复核/);
+  assert.doesNotMatch(onlyYear.advice.join(' '), /补充准确出生时刻/);
+
+  const birth = {
+    birthYear: 2024,
+    birthMonth: 2,
+    birthDay: 4,
+    birthHour: 16,
+    birthMinute: 27,
+    gender: 'male' as const,
+  };
+  const partial = generateResidentialFengshui(birth);
+  const settled = generateResidentialFengshui({ ...birth, birthSecond: 8 });
+  assert.match(partial.advice.join(' '), /补充出生秒数后复核/);
+  assert.equal(settled.bazhai?.birthYearBoundaryStatus, '已核定');
+  assert.equal(settled.bazhai?.calculationInput.birthSecond, 8);
+  assert.doesNotMatch(settled.advice.join(' '), /补充出生秒数/);
+});

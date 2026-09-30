@@ -650,10 +650,16 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
   if (
     movingPositions.length !== data.changingYaos.length ||
     movingPositions.some(
-      (position) => !data.changingYaos.some((item) => item.position === position),
+      (position) =>
+        !data.changingYaos.some(
+          (item) =>
+            item.position === position &&
+            item.isChanging === true &&
+            item.type === (data.yaoArray[position - 1] === 6 ? '老阴' : '老阳'),
+        ),
     )
   ) {
-    throw new Error('六爻原始爻值与动爻清单不一致，无法生成证据。');
+    throw new Error('六爻原始爻值与动爻位置、阴阳或动静记录不一致，无法生成证据。');
   }
 
   for (const yao of data.yaosDetail) {

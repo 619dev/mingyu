@@ -192,6 +192,7 @@ function buildResidentialInputs(input: QueryInputState, prompt: QueryPromptState
               ? {
                   hour: Number(input.birthHour),
                   minute: input.birthMinute === '' ? 0 : Number(input.birthMinute),
+                  ...(input.birthSecond === '' ? {} : { second: Number(input.birthSecond) }),
                   ...getFrontendBirthTimeZone(input.birthReverseSource),
                 }
               : {}),

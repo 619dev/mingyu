@@ -720,6 +720,9 @@ export function calculateChart(
     minimumAspectStrength?: number;
   } = {},
 ) {
+  if (options.houseSystem !== undefined && options.houseSystem !== 'placidus') {
+    throw new Error('本命宫位制不受支持。');
+  }
   const utc = toUtc(input);
   const { latitude, longitude } = requireChartCoordinates(input);
   const aspectTypes = options.aspectTypes ?? Object.values(AspectType);
@@ -883,6 +886,9 @@ export function calculatePlanets(
     includeNodes?: boolean;
   } = {},
 ): ChartPlanet[] {
+  if (options.includeLots) {
+    throw new Error('福点与精神点需要完整星盘的四轴和宫位，请调用 calculateChart。');
+  }
   const utc = toUtc(input);
   validateOptionalCoordinates(input);
   const jd = julianDateOfUtc(utc);

@@ -146,6 +146,25 @@ test('星盘底层入口拒绝无效地理坐标', () => {
   }
 });
 
+test('星盘入口拒绝无法兑现的宫位制和位置计算中的福点请求', () => {
+  const input = {
+    year: 2026,
+    month: 1,
+    day: 1,
+    hour: 12,
+    minute: 0,
+    timezone: 8,
+    latitude: 39.9,
+    longitude: 116.4,
+  };
+  assert.throws(
+    () => calculateChart(input, { houseSystem: 'whole_sign' as 'placidus' }),
+    /宫位制不受支持/u,
+  );
+  assert.throws(() => calculatePlanets(input, { includeLots: true }), /福点与精神点/u);
+  assert.equal(calculateChart(input, { includeLots: true }).lots.length, 2);
+});
+
 test('地理极点不生成任意上升点与宫位，高纬度仍可用整宫制', () => {
   const input = {
     year: 2026,

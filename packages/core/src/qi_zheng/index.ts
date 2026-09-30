@@ -1605,7 +1605,7 @@ function buildQizhengEvidence(
     })),
     ...aspectFacts.slice(0, 12).map((aspect): PromptEvidenceItem => ({
       level: '辅证',
-      title: `${aspect.star1}与${aspect.star2}${aspect.type}`,
+      title: `${aspect.star1}与${aspect.star2}${aspect.type === '同宫' ? '合相' : aspect.type}`,
       detail: `${aspect.promptText}；边界：${aspect.limitation}`,
       source: aspect.sources.join('；'),
       tags: ['吊照', aspect.type, aspect.closeness],

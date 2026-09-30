@@ -352,7 +352,7 @@ const promptToolCalls: Array<[string, Record<string, unknown>, RegExp]> = [
       measurementUncertaintyDegrees: 3,
       question: '办公桌朝向怎么选？',
     },
-    /【盘面资料】[\s\S]*命卦：[\s\S]*命卦八方：[\s\S]*【问题】\n办公桌朝向怎么选？/,
+    /【盘面资料】[\s\S]*命卦：[\s\S]*命卦八方（暂按）：[\s\S]*【问题】\n办公桌朝向怎么选？/,
   ],
   [
     'residential_prompt',
@@ -1714,6 +1714,21 @@ test('MCP 排盘工具默认保留盘面并省略冗长证据', async () => {
 
 test('八宅与住宅 MCP 计算及提示词入口传递出生时分和历史时区', async () => {
   await withMcpClient(async (client) => {
+    const { tools } = await client.listTools();
+    for (const name of [
+      'metaphysics_bazhai',
+      'bazhai_prompt',
+      'metaphysics_residential',
+      'residential_prompt',
+    ]) {
+      const schema = tools.find((tool) => tool.name === name)?.inputSchema;
+      assert.equal(schema?.properties?.birthSecond?.type, 'integer', name);
+      assert.match(
+        String(schema?.properties?.birthSecond?.description),
+        /省略时立春年界按整个分钟核对/,
+        name,
+      );
+    }
     const birth = { birthYear: 2024, birthMonth: 2, birthDay: 4, gender: 'male' };
     for (const [name, input, expectedYear] of [
       [
@@ -1774,6 +1789,34 @@ test('八宅与住宅 MCP 计算及提示词入口传递出生时分和历史时
     for (const name of ['metaphysics_bazhai', 'metaphysics_residential'] as const) {
       const oldRequest = await client.callTool({ name, arguments: birth });
       assert.notEqual(oldRequest.isError, true, name);
+    }
+
+    for (const name of [
+      'metaphysics_bazhai',
+      'bazhai_prompt',
+      'metaphysics_residential',
+      'residential_prompt',
+    ] as const) {
+      const response = await client.callTool({
+        name,
+        arguments: { ...birth, birthHour: 16, birthMinute: 27, birthSecond: 8 },
+      });
+      assert.notEqual(response.isError, true, name);
+      const result = (
+        response.structuredContent as {
+          result: {
+            bazhai?: {
+              birthYearBoundaryStatus: string;
+              calculationInput: { birthSecond?: number };
+            };
+            birthYearBoundaryStatus?: string;
+            calculationInput?: { birthSecond?: number };
+          };
+        }
+      ).result;
+      const bazhai = result.bazhai ?? result;
+      assert.equal(bazhai.birthYearBoundaryStatus, '已核定', name);
+      assert.equal(bazhai.calculationInput?.birthSecond, 8, name);
     }
   });
 });

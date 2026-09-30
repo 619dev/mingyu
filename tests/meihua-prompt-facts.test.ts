@@ -408,7 +408,7 @@ test('梅花旧盘缺少互变与应期时不输出空内容行', () => {
       ...complete.analysis,
       tiYongSeasonEvaluation: undefined,
       timelineTrend: undefined,
-      yingQi: [],
+      yingQi: undefined,
     },
   };
   const prompt = buildDivinationPrompt('meihua', '请分析当前情境。', data);
@@ -426,19 +426,25 @@ test('梅花旧盘缺少互变与应期时不输出空内容行', () => {
   assert.doesNotMatch(nameOnly, /^互卦：|^变卦：/mu);
 });
 
-test('梅花旧盘应期为空数组时视作缺失而不生成应期条件', () => {
+test('梅花旧盘应期为空数组时拒绝把缺失记录当作完整盘面', () => {
   const data = generateMeihua(new Date('2025-06-18T10:30:00+08:00'), {
     method: 'number',
     number: 1,
   });
   data.analysis.yingQi = [];
-  const prompt = buildCoreDivinationPrompt({
-    method: 'meihua',
-    data,
-    question: '请分析当前情境。',
-  });
-  assert.doesNotMatch(prompt, /应期条件：/u);
-  assert.doesNotThrow(() => getDivinationSummaryBlocks('meihua', data));
+  assert.throws(
+    () =>
+      buildCoreDivinationPrompt({
+        method: 'meihua',
+        data,
+        question: '请分析当前情境。',
+      }),
+    /原应期条件与动爻、体用和月令重算结果不一致/u,
+  );
+  assert.throws(
+    () => getDivinationSummaryBlocks('meihua', data),
+    /原应期条件与动爻、体用和月令重算结果不一致/u,
+  );
 });
 
 test('梅花物象锚点只由完整方位起卦资料形成', () => {

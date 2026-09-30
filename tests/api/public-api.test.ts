@@ -6243,6 +6243,32 @@ test('八宅与住宅公开接口贯通出生时分和出生地时区，旧请�
     'Asia/Shanghai',
   );
 
+  const partialClock = await callApi(
+    'metaphysics/residential/prompt',
+    post({ ...birth, birthHour: 16, responseMode: 'full', question: '命宅关系如何判断？' }),
+  );
+  assert.equal(partialClock.response.status, 200);
+  assert.equal(partialClock.body.data.result.bazhai.birthYearBoundaryStatus, '待复核');
+  assert.match(partialClock.body.data.result.prompt, /候选命卦：2023年巽命、2024年震命/);
+  assert.match(partialClock.body.data.result.evidencePromptText, /暂按命卦巽/);
+
+  for (const path of ['metaphysics/bazhai/calculate', 'metaphysics/residential/calculate']) {
+    const precise = await callApi(
+      path,
+      post({ ...birth, birthHour: 16, birthMinute: 27, birthSecond: 8 }),
+    );
+    assert.equal(precise.response.status, 200);
+    const result = path.includes('/bazhai/') ? precise.body.data : precise.body.data.bazhai;
+    assert.equal(result.birthYearBoundaryStatus, '已核定');
+    assert.equal(result.effectiveBirthYear, 2024);
+    assert.equal(result.calculationInput.birthSecond, 8);
+    const invalidSecond = await callApi(
+      path,
+      post({ ...birth, birthHour: 16, birthMinute: 27, birthSecond: 60 }),
+    );
+    assert.equal(invalidSecond.response.status, 400);
+  }
+
   for (const path of ['metaphysics/bazhai/calculate', 'metaphysics/residential/calculate']) {
     const oldRequest = await callApi(path, post(birth));
     assert.equal(oldRequest.response.status, 200);
@@ -6255,11 +6281,13 @@ test('八宅与住宅公开接口贯通出生时分和出生地时区，旧请�
   for (const schemaName of ['MetaphysicsRequest', 'ResidentialFengshuiRequest']) {
     const properties = openapi.body.data.components.schemas[schemaName].properties;
     assert.deepEqual(
-      ['birthHour', 'birthMinute', 'birthTimezone', 'birthTimeZoneId'].map(
+      ['birthHour', 'birthMinute', 'birthSecond', 'birthTimezone', 'birthTimeZoneId'].map(
         (key) => properties[key]?.type,
       ),
-      ['integer', 'integer', 'number', 'string'],
+      ['integer', 'integer', 'integer', 'number', 'string'],
     );
+    assert.match(properties.birthMinute.description, /省略时立春年界按整个小时核对/);
+    assert.match(properties.birthSecond.description, /省略时立春年界按整个分钟核对/);
   }
 });
 

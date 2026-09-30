@@ -161,6 +161,32 @@ test('日期线两侧的真太阳时保留完整日期，并与同一瞬时的�
   assert.deepEqual(westernDateLine.correctedTime, sameWesternInstant.correctedTime);
 });
 
+test('真太阳时输入年份边界跨年后仍计算均时差并传递唯一校正日期', () => {
+  const first = convertTrueSolarTime({
+    localDateTime: '1900-01-01T00:00:00',
+    longitude: -180,
+    timezone: 8,
+  });
+  assert.equal(first.correctedTime.year, 1899);
+  assert.equal(first.correctedTime.month, 12);
+  assert.equal(first.correctedTime.day, 31);
+  assert.equal(first.crossesDate, true);
+  assert.ok(Number.isFinite(first.equationOfTimeMinutes));
+  assert.match(first.promptText, /1899-12-31/);
+
+  const last = convertTrueSolarTime({
+    localDateTime: '2100-12-31T23:00:00',
+    longitude: 180,
+    timezone: -12,
+  });
+  assert.equal(last.correctedTime.year, 2101);
+  assert.equal(last.correctedTime.month, 1);
+  assert.equal(last.correctedTime.day, 1);
+  assert.equal(last.crossesDate, true);
+  assert.ok(Number.isFinite(last.equationOfTimeMinutes));
+  assert.match(last.promptText, /2101-01-01/);
+});
+
 test('真太阳时应按 IANA 历史时区解析偏移并保留证据', () => {
   const result = convertTrueSolarTime({
     localDateTime: '2024-07-01T12:00:00',

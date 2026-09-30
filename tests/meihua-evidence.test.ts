@@ -227,6 +227,20 @@ test('梅花旧盘派生应期或互卦关系被改写时不得作为已核验�
     oldEvidence.timingFacts.some((item) => item.type === '原应期条件'),
     false,
   );
+
+  const emptyTiming = structuredClone(generateMeihua(fixedDate, { method: 'number', number: 123 }));
+  emptyTiming.analysis.yingQi = [];
+  emptyTiming.evidenceAnalysis = undefined;
+  const emptyEvidence = analyzeMeihuaEvidence(emptyTiming);
+  assert.equal(emptyEvidence.calculationFact.status, '计算不一致');
+  assert.equal(
+    emptyEvidence.timingFacts.some((item) => item.type === '原应期条件'),
+    false,
+  );
+  assert.match(
+    emptyEvidence.calculationFact.promptText,
+    /原应期条件与动爻、体用和月令重算结果不一致/u,
+  );
 });
 
 test('梅花体互用互应沿用原体所在方位，不得上下颠倒', () => {

@@ -733,6 +733,7 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
           ? {
               hour: Number(inputState.birthHour),
               minute: inputState.birthMinute === '' ? 0 : Number(inputState.birthMinute),
+              ...(inputState.birthSecond === '' ? {} : { second: Number(inputState.birthSecond) }),
               ...getFrontendBirthTimeZone(inputState.birthReverseSource),
             }
           : {}),

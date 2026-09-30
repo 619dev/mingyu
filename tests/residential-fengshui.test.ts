@@ -77,6 +77,17 @@ test('住宅统一入口把已知出生时分传给八宅立春年界', () => {
   assert.doesNotMatch(result.prompt, /未提供出生时刻/);
 });
 
+test('住宅网页输入把已知出生秒数传给八宅立春年界', () => {
+  const input = buildResidentialCoreInput({
+    birthData: { year: 2024, month: 2, day: 4, hour: 16, minute: 27, second: 8, gender: 'male' },
+  });
+  const result = generateResidentialFengshui(input);
+  assert.equal(input.birthSecond, 8);
+  assert.equal(result.bazhai?.birthYearBoundaryStatus, '已核定');
+  assert.equal(result.bazhai?.mingGua, '震');
+  assert.match(result.prompt, /已按出生时分秒/);
+});
+
 test('住宅门向与额外坐向必须描述同一住宅，不能分别用于八宅和玄空', () => {
   for (const mingGua of [undefined, '坎']) {
     for (const extra of [

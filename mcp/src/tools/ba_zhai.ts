@@ -16,7 +16,20 @@ const baZhaiSchema = z.object({
   birthMonth: z.number().int().min(1).max(12).optional().describe('出生公历月份（用于立春换年）'),
   birthDay: z.number().int().min(1).max(31).optional().describe('出生公历日期（用于立春换年）'),
   birthHour: z.number().int().min(0).max(23).optional().describe('出生地民用小时（用于立春换年）'),
-  birthMinute: z.number().int().min(0).max(59).optional().describe('出生地民用分钟；省略按 0 分'),
+  birthMinute: z
+    .number()
+    .int()
+    .min(0)
+    .max(59)
+    .optional()
+    .describe('出生地民用分钟；省略时立春年界按整个小时核对'),
+  birthSecond: z
+    .number()
+    .int()
+    .min(0)
+    .max(59)
+    .optional()
+    .describe('出生地民用秒数；省略时立春年界按整个分钟核对'),
   birthTimezone: z
     .number()
     .min(-12)
@@ -73,6 +86,7 @@ function calculateBaZhai(args: z.infer<typeof baZhaiSchema>) {
     birthDay: args.birthDay,
     birthHour: args.birthHour,
     birthMinute: args.birthMinute,
+    birthSecond: args.birthSecond,
     birthTimezone: args.birthTimezone,
     birthTimeZoneId: args.birthTimeZoneId,
     gender: args.gender,

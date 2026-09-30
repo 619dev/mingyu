@@ -265,7 +265,7 @@ export function scanQizhengPeriodEvents(params: {
               ? currentUtc
               : refineCrossing(previousUtc, currentUtc, (value) => {
                   const sample = mapByName(params.sampleLongitudes(value)).get(name);
-                  if (sample === undefined) return 0;
+                  if (sample === undefined) throw new Error(`换宫求根缺少${name}的黄经采样。`);
                   return signIndexOf(sample) === beforeSign ? -1 : 1;
                 });
           const palace = palaceBySign.get(afterSign);
@@ -345,7 +345,8 @@ export function scanQizhengPeriodEvents(params: {
                 ? currentUtc
                 : refineCrossing(previousUtc, currentUtc, (value) => {
                     const sample = mapByName(params.sampleLongitudes(value)).get(name);
-                    if (sample === undefined) return 0;
+                    if (sample === undefined)
+                      throw new Error(`精确吊照求根缺少${name}的黄经采样。`);
                     return wrap180(wrap180(sample - natal.longitude) - target);
                   });
             if (isWithinHalfOpenWindow(crossing, params.startUtcMs, params.endUtcMs)) {
@@ -392,7 +393,7 @@ export function scanQizhengPeriodEvents(params: {
   const axisSummary = formatAxisSummary(priorityEvents, ordered.length);
   const promptText = [
     `范围：${startDateTime} 至 ${endDateTime}`,
-    `周期事件参考：流曜${bodies.join('、')}；吊照本命${natalTargets.map((star) => star.name).join('、') || '星曜未列'}；角度关系${aspectKinds.map((aspect) => aspect.type).join('、')}`,
+    `周期事件参考：流曜${bodies.join('、')}；吊照本命${natalTargets.map((star) => star.name).join('、') || '星曜未列'}；角度关系${aspectKinds.map((aspect) => (aspect.type === '同宫' ? '合相' : aspect.type)).join('、')}`,
     axisSummary
       ? `周期主轴：${axisSummary}`
       : '周期主轴：所列流曜未见停逆、换入重点宫或精确合相对照三方',
@@ -455,7 +456,7 @@ function formatAxisSummary(events: QizhengPeriodEvent[], total: number) {
       if (item.kind === '换宫') {
         return `${item.dateTime}换宫${item.movingStar}入${item.signBranch ?? ''}宫${item.palace ?? '宫位未记录'}`;
       }
-      return `${item.dateTime}吊照${item.movingStar}与${item.targetStar ?? '本命目标'}${item.aspectType ? `成${item.aspectType}` : ''}${item.aspectDirection ? `（${item.aspectDirection}）` : ''}`;
+      return `${item.dateTime}吊照${item.movingStar}与${item.targetStar ?? '本命目标'}${item.aspectType ? `成${item.aspectType === '同宫' ? '合相' : item.aspectType}` : ''}${item.aspectDirection ? `（${item.aspectDirection}）` : ''}`;
     });
   const suffix =
     labels.length < unique.length

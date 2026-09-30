@@ -32,6 +32,7 @@ export interface ResidentialFengshuiInput {
   birthDay?: number;
   birthHour?: number;
   birthMinute?: number;
+  birthSecond?: number;
   birthTimezone?: number;
   birthTimeZoneId?: string;
   gender?: 'male' | 'female';
@@ -175,6 +176,7 @@ function buildBazhai(
     ...(input.birthDay != null ? { birthDay: input.birthDay } : {}),
     ...(input.birthHour != null ? { birthHour: input.birthHour } : {}),
     ...(input.birthMinute != null ? { birthMinute: input.birthMinute } : {}),
+    ...(input.birthSecond != null ? { birthSecond: input.birthSecond } : {}),
     ...(input.birthTimezone != null ? { birthTimezone: input.birthTimezone } : {}),
     ...(input.birthTimeZoneId ? { birthTimeZoneId: input.birthTimeZoneId } : {}),
     ...(input.gender ? { gender: input.gender } : {}),
@@ -275,7 +277,7 @@ function buildAgreements(
     items.push({
       level: '可互补',
       title: '宅运与人宅分层并观',
-      detail: `玄空见${periodLabel}、${xuankong.daoShanXiang.summary}${xuankongBoundarySensitive ? '（中心读数盘，待复测核定）' : ''}；八宅命卦${bazhai.mingGua}、${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
+      detail: `玄空见${periodLabel}、${xuankong.daoShanXiang.summary}${xuankongBoundarySensitive ? '（中心读数盘，待复测核定）' : ''}；八宅${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${bazhai.mingGua}、${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
     });
 
     if (matchChangesWithOrientation) {
@@ -284,13 +286,21 @@ function buildAgreements(
         title: '命宅关系随候选坐向变化',
         detail: `测量误差范围内，${candidateDirections.map((item) => `${item.label}命宅${item.match}`).join('、')}；需复测坐向后确定命宅关系。`,
       });
-    } else if (bazhai.match === '相合' && !xuankongBoundarySensitive) {
+    } else if (
+      bazhai.match === '相合' &&
+      !xuankongBoundarySensitive &&
+      bazhai.birthYearBoundaryStatus !== '待复核'
+    ) {
       items.push({
         level: '一致关注',
         title: '命宅相合可提高关注优先级',
         detail: '八宅显示命宅同组，与玄空中的山向、当运结构并列作为关注资料。',
       });
-    } else if (bazhai.match === '相冲' && !xuankongBoundarySensitive) {
+    } else if (
+      bazhai.match === '相冲' &&
+      !xuankongBoundarySensitive &&
+      bazhai.birthYearBoundaryStatus !== '待复核'
+    ) {
       items.push({
         level: '口径不同需分述',
         title: '命宅不同组需分开说明',
@@ -335,10 +345,22 @@ function buildAdvice(
       .map((item) => `${item.direction}${item.label}`)
       .join('、');
     advice.push(
-      `再看人宅：命卦${bazhai.mingGua}（${bazhai.mingGroup}），${matchText}${
+      `再看人宅：${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${bazhai.mingGua}（${bazhai.mingGroup}），${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}${matchText}${
         lucky ? `；命卦较利方位可参考 ${lucky}` : ''
       }。`,
     );
+    if (bazhai.birthYearBoundaryStatus === '待复核') {
+      const birth = bazhai.calculationInput;
+      advice.push(
+        birth.birthMonth === undefined
+          ? '补充出生月日后复核命卦与个人方位。'
+          : birth.birthHour === undefined
+            ? '补充出生时刻后复核命卦与个人方位。'
+            : birth.birthMinute === undefined
+              ? '补充出生分钟后复核命卦与个人方位。'
+              : '补充出生秒数后复核命卦与个人方位。',
+      );
+    }
   }
   if (agreements.some((item) => item.level === '口径不同需分述')) {
     advice.push('两边有分歧时，分别保留宅运结构与个人方位依据，不硬统一成一个总分。');
@@ -393,7 +415,7 @@ function buildEvidencePrompt(params: {
     items.push({
       level: '主证',
       title: '八宅人宅层',
-      detail: `命卦${params.bazhai.mingGua}，宅卦${params.bazhai.houseGua ?? '未定'}${houseUnstable ? `（中心读数；候选${candidateHouseGuas.map((gua) => `${gua}宅`).join('、')}）` : ''}，${candidateMatches.size > 1 ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${params.bazhai.match}`}`,
+      detail: `${params.bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${params.bazhai.mingGua}，宅卦${params.bazhai.houseGua ?? '未定'}${houseUnstable ? `（中心读数；候选${candidateHouseGuas.map((gua) => `${gua}宅`).join('、')}）` : ''}，${params.bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}${candidateMatches.size > 1 ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${params.bazhai.match}`}`,
       source: '八宅大游年',
     });
   }
@@ -490,6 +512,7 @@ export function generateResidentialFengshui(
     input.birthDay,
     input.birthHour,
     input.birthMinute,
+    input.birthSecond,
     input.birthTimezone,
     input.birthTimeZoneId,
     input.gender,

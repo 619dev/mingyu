@@ -34,7 +34,20 @@ const residentialSchema = z.object({
     .max(23)
     .optional()
     .describe('出生地民用小时（用于八宅立春换年）'),
-  birthMinute: z.number().int().min(0).max(59).optional().describe('出生地民用分钟；省略按 0 分'),
+  birthMinute: z
+    .number()
+    .int()
+    .min(0)
+    .max(59)
+    .optional()
+    .describe('出生地民用分钟；省略时立春年界按整个小时核对'),
+  birthSecond: z
+    .number()
+    .int()
+    .min(0)
+    .max(59)
+    .optional()
+    .describe('出生地民用秒数；省略时立春年界按整个分钟核对'),
   birthTimezone: z
     .number()
     .min(-12)
@@ -103,6 +116,7 @@ function calculateResidential(args: z.infer<typeof residentialSchema>) {
     ...(args.birthDay !== undefined ? { birthDay: args.birthDay } : {}),
     ...(args.birthHour !== undefined ? { birthHour: args.birthHour } : {}),
     ...(args.birthMinute !== undefined ? { birthMinute: args.birthMinute } : {}),
+    ...(args.birthSecond !== undefined ? { birthSecond: args.birthSecond } : {}),
     ...(args.birthTimezone !== undefined ? { birthTimezone: args.birthTimezone } : {}),
     ...(args.birthTimeZoneId !== undefined ? { birthTimeZoneId: args.birthTimeZoneId } : {}),
     ...(args.gender ? { gender: args.gender } : {}),

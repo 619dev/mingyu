@@ -618,6 +618,10 @@ export function parseLocalDateTime(value: string): SolarDateTimeParts {
 
 export function calculateEquationOfTimeMinutes(year: number, month: number, day: number): number {
   validateSolarDate(year, month, day);
+  return equationOfTimeMinutesForDate(year, month, day);
+}
+
+function equationOfTimeMinutesForDate(year: number, month: number, day: number): number {
   const dayOfYear = getDayOfYear(year, month, day);
   const angle = (2 * Math.PI * (dayOfYear - 81)) / 364;
   return 9.87 * Math.sin(2 * angle) - 7.53 * Math.cos(angle) - 1.5 * Math.sin(angle);
@@ -650,7 +654,8 @@ export function calculateTrueSolarTime(
     ) +
       longitudeCorrectionMinutes * 60000,
   );
-  const equationOfTimeMinutes = calculateEquationOfTimeMinutes(
+  // 合法输入经经度换算后可落在 1899 或 2101 年，边界日仍须计算均时差。
+  const equationOfTimeMinutes = equationOfTimeMinutesForDate(
     meanSolarDate.getUTCFullYear(),
     meanSolarDate.getUTCMonth() + 1,
     meanSolarDate.getUTCDate(),

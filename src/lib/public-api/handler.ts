@@ -1944,7 +1944,13 @@ export function getPublicApiOpenApiDocument(
               type: 'integer',
               minimum: 0,
               maximum: 59,
-              description: '出生地民用分钟；省略按 0 分（八宅）',
+              description: '出生地民用分钟；省略时立春年界按整个小时核对（八宅）',
+            },
+            birthSecond: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 59,
+              description: '出生地民用秒数；省略时立春年界按整个分钟核对（八宅）',
             },
             birthTimezone: {
               type: 'number',
@@ -2102,7 +2108,13 @@ export function getPublicApiOpenApiDocument(
               type: 'integer',
               minimum: 0,
               maximum: 59,
-              description: '居住人出生地民用分钟；省略按 0 分。',
+              description: '居住人出生地民用分钟；省略时立春年界按整个小时核对。',
+            },
+            birthSecond: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 59,
+              description: '居住人出生地民用秒数；省略时立春年界按整个分钟核对。',
             },
             birthTimezone: {
               type: 'number',
@@ -4193,6 +4205,7 @@ function calculateBaZhaiApi(input: JsonRecord) {
   const birthDay = optInt(input, 'birthDay', 1, 31);
   const birthHour = optInt(input, 'birthHour', 0, 23);
   const birthMinute = optInt(input, 'birthMinute', 0, 59);
+  const birthSecond = optInt(input, 'birthSecond', 0, 59);
   const birthTimezone = optNumber(input, 'birthTimezone', -12, 14);
   const birthTimeZoneId =
     input.birthTimeZoneId === undefined ? undefined : readRequiredString(input, 'birthTimeZoneId');
@@ -4231,6 +4244,7 @@ function calculateBaZhaiApi(input: JsonRecord) {
     birthDay?: number;
     birthHour?: number;
     birthMinute?: number;
+    birthSecond?: number;
     birthTimezone?: number;
     birthTimeZoneId?: string;
     gender?: 'male' | 'female';
@@ -4244,6 +4258,7 @@ function calculateBaZhaiApi(input: JsonRecord) {
           birthDay,
           birthHour,
           birthMinute,
+          birthSecond,
           birthTimezone,
           birthTimeZoneId,
         }
@@ -4746,6 +4761,7 @@ function calculateResidentialApi(input: JsonRecord) {
   const birthDay = optInt(input, 'birthDay', 1, 31);
   const birthHour = optInt(input, 'birthHour', 0, 23);
   const birthMinute = optInt(input, 'birthMinute', 0, 59);
+  const birthSecond = optInt(input, 'birthSecond', 0, 59);
   const birthTimezone = optNumber(input, 'birthTimezone', -12, 14);
   const birthTimeZoneId =
     input.birthTimeZoneId === undefined ? undefined : readRequiredString(input, 'birthTimeZoneId');
@@ -4803,6 +4819,7 @@ function calculateResidentialApi(input: JsonRecord) {
       ...(birthDay !== undefined ? { birthDay } : {}),
       ...(birthHour !== undefined ? { birthHour } : {}),
       ...(birthMinute !== undefined ? { birthMinute } : {}),
+      ...(birthSecond !== undefined ? { birthSecond } : {}),
       ...(birthTimezone !== undefined ? { birthTimezone } : {}),
       ...(birthTimeZoneId !== undefined ? { birthTimeZoneId } : {}),
       ...(gender ? { gender } : {}),

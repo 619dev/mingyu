@@ -7,6 +7,7 @@ import {
   getBaZhaiSitFacingFromDoorDegree,
 } from 'mingyu-core/bazhai';
 import { TWENTY_FOUR_MOUNTAINS } from '../packages/core/src/direction/index.ts';
+import { assertPromptIsPortableTaskText } from './prompt-assertions.ts';
 
 const TRIGRAMS = ['坎', '坤', '震', '巽', '乾', '兑', '艮', '离'];
 const EAST_TRIGRAMS = new Set(['坎', '震', '巽', '离']);
@@ -115,7 +116,8 @@ test('八宅出生日期落在立春当天且缺少时刻时应标为待复核',
   assert.match(result.birthYearBoundaryNote, /按当日正午与立春时刻比较/);
   assert.match(result.prompt, /立春同日，未提供出生时刻/);
   assert.equal(result.evidenceAnalysis.calculationFact.yearBoundaryStatus, '待复核');
-  assert.match(result.evidenceAnalysis.calculationFact.promptText, /请按准确出生时刻复核/);
+  assert.match(result.evidenceAnalysis.calculationFact.promptText, /年界待复核/);
+  assertPromptIsPortableTaskText(result.prompt);
   assert.match(
     result.evidenceAnalysis.counterEvidenceFacts.find((item) => item.type === '命卦年界')
       ?.promptText ?? '',
@@ -152,6 +154,77 @@ test('八宅立春当天已知出生时分按真实瞬时核定命卦', () => {
   assert.equal(after.evidenceAnalysis.calculationFact.yearBoundaryStatus, '已核定');
   assert.match(after.prompt, /已按出生时分（UTC\+08:00）与立春瞬时核定/);
   assert.doesNotMatch(after.prompt, /未提供出生时刻/);
+});
+
+test('八宅立春同小时或同分钟的缺失精度保留候选命卦', () => {
+  const base = { birthYear: 2024, birthMonth: 2, birthDay: 4, gender: 'male' as const };
+  for (const input of [{ birthHour: 16 }, { birthHour: 16, birthMinute: 27 }]) {
+    const result = analyzeBaZhai({ ...base, ...input });
+    assert.equal(result.effectiveBirthYear, 2023);
+    assert.equal(result.birthYearBoundaryStatus, '待复核');
+    assert.equal(result.evidenceAnalysis.calculationFact.yearBoundaryStatus, '待复核');
+    assert.equal(
+      result.evidenceAnalysis.calculationFact.steps.find((step) => step.stage === '命卦计算')
+        ?.status,
+      '待复核',
+    );
+    assert.equal(result.evidenceAnalysis.summaryFact.status, '证据链有缺口');
+    assert.match(result.birthYearBoundaryNote, /候选命卦：2023年巽命、2024年震命/);
+    assert.match(result.prompt, /命卦：巽（东四命，暂按）/);
+    assertPromptIsPortableTaskText(result.prompt);
+    assert.match(
+      result.evidenceAnalysis.counterEvidenceFacts.find((item) => item.type === '命卦年界')
+        ?.promptText ?? '',
+      /时刻精度不足/,
+    );
+  }
+
+  const before = analyzeBaZhai({ ...base, birthHour: 16, birthMinute: 26 });
+  const after = analyzeBaZhai({ ...base, birthHour: 16, birthMinute: 28 });
+  assert.equal(before.birthYearBoundaryStatus, '已核定');
+  assert.equal(after.birthYearBoundaryStatus, '已核定');
+  assert.equal(after.mingGua, '震');
+
+  const overseas = analyzeBaZhai({
+    ...base,
+    birthHour: 3,
+    birthMinute: 27,
+    birthTimezone: -5,
+  });
+  assert.equal(overseas.birthYearBoundaryStatus, '待复核');
+});
+
+test('八宅立春同分钟以出生秒数核定年界并校验秒数输入', () => {
+  const birth = {
+    birthYear: 2024,
+    birthMonth: 2,
+    birthDay: 4,
+    birthHour: 16,
+    birthMinute: 27,
+    gender: 'male' as const,
+  };
+  const before = analyzeBaZhai({ ...birth, birthSecond: 6 });
+  const atBoundary = analyzeBaZhai({ ...birth, birthSecond: 7 });
+  const after = analyzeBaZhai({ ...birth, birthSecond: 8 });
+  assert.equal(before.effectiveBirthYear, 2023);
+  assert.equal(atBoundary.effectiveBirthYear, 2024);
+  assert.equal(after.effectiveBirthYear, 2024);
+  assert.equal(before.birthYearBoundaryStatus, '已核定');
+  assert.equal(atBoundary.birthYearBoundaryStatus, '已核定');
+  assert.equal(after.birthYearBoundaryStatus, '已核定');
+  assert.equal(after.calculationInput.birthSecond, 8);
+  assert.equal(
+    after.evidenceAnalysis.calculationFact.steps.find((step) => step.stage === '命卦年界')?.inputs
+      .birthSecond,
+    8,
+  );
+  assert.match(after.birthYearBoundaryNote, /出生时分秒/);
+  assertPromptIsPortableTaskText(after.prompt);
+  assert.throws(() => analyzeBaZhai({ ...birth, birthSecond: 60 }), /出生秒数需在 0-59/);
+  assert.throws(
+    () => analyzeBaZhai({ ...birth, birthMinute: undefined, birthSecond: 8 }),
+    /需同时提供出生小时和分钟/,
+  );
 });
 
 test('八宅立春年界按上海历史时区复核出生时分', () => {

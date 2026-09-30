@@ -25,6 +25,60 @@ test('流曜周期空结果注明已覆盖星曜及吊照对象范围', () => {
   assert.doesNotMatch(result.promptText, /周期事件参考：[^\n]*辰星\(水\)/);
   assert.match(result.promptText, /所列流曜未见换宫、停逆或精确吊照/);
   assert.doesNotMatch(result.promptText, /本窗口未见/);
+  assert.match(result.promptText, /角度关系合相、三方、对照/u);
+  assert.doesNotMatch(result.promptText, /角度关系同宫/u);
+});
+
+test('七政周期求根缺少中间黄经样本时直接报错', () => {
+  const base = {
+    natalStars: [{ name: '本命星', longitude: 5 }],
+    twelvePalaces: boundaryPalaces,
+    startUtcMs: boundaryStart,
+    endUtcMs: boundaryStart + boundaryHour,
+    timezone: 0,
+    mode: 'daily' as const,
+  };
+  const missingMiddle = (utcMs: number, from: number, to: number) =>
+    utcMs === boundaryStart || utcMs === boundaryStart + boundaryHour
+      ? [{ name: '太阳', longitude: utcMs === boundaryStart ? from : to }]
+      : [];
+  assert.throws(
+    () =>
+      scanQizhengPeriodEvents({
+        ...base,
+        natalStars: [],
+        sampleLongitudes: (utcMs) => missingMiddle(utcMs, 29, 31),
+      }),
+    /换宫求根缺少太阳的黄经采样/u,
+  );
+  assert.throws(
+    () =>
+      scanQizhengPeriodEvents({
+        ...base,
+        sampleLongitudes: (utcMs) => missingMiddle(utcMs, 4, 6),
+      }),
+    /精确吊照求根缺少太阳的黄经采样/u,
+  );
+});
+
+test('七政周期主轴把零度角关系写为合相', () => {
+  const result = scanQizhengPeriodEvents({
+    natalStars: [{ name: '本命星', longitude: 5 }],
+    twelvePalaces: [],
+    startUtcMs: boundaryStart,
+    endUtcMs: boundaryStart + boundaryHour,
+    timezone: 0,
+    mode: 'daily',
+    sampleLongitudes: (utcMs) => [
+      { name: '太阳', longitude: 4 + ((utcMs - boundaryStart) / boundaryHour) * 2 },
+    ],
+  });
+  assert.ok(
+    result.events.some((event) => event.kind === '精确吊照' && event.aspectType === '同宫'),
+  );
+  assert.ok(result.axis.some((line) => line.includes('合相')));
+  assert.match(result.promptText, /周期主轴：[^\n]*成合相/u);
+  assert.doesNotMatch(result.promptText, /周期主轴：[^\n]*成同宫/u);
 });
 
 for (const direction of [1, -1]) {
@@ -188,6 +242,7 @@ test('七政周期扫描包含起点换宫与正向夹角，不把方向写成�
   assert.equal(aspect.aspectDirection, '正向');
   assert.match(aspect.promptText, /（正向）/u);
   assert.ok(result.axis.some((item) => item.includes('（正向）')));
+  assert.ok(result.promptText.includes('成对照'));
   assert.doesNotMatch(aspect.promptText, /顺行|逆行/u);
 
   const forward = scanBoundaryTrack(1, (hours) => 30 + hours, 210);

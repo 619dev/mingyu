@@ -61,6 +61,18 @@ test('七政完整提示词逐类写明四余位置口径', () => {
   assert.doesNotMatch(chart.prompt, /月孛按星历位置/);
 });
 
+test('七政证据标题将零度吊照写成合相，避免暗示实际同宫', () => {
+  const chart = generateQizheng({ year: 2024, month: 6, day: 20, hour: 12, timezone: 8 });
+  const conjunctions = chart.aspects.filter((aspect) => aspect.type === '同宫');
+  assert.ok(conjunctions.length > 0);
+  for (const aspect of conjunctions) {
+    const item = chart.evidenceAnalysis.evidence.items.find(
+      (candidate) => candidate.title === `${aspect.star1}与${aspect.star2}合相`,
+    );
+    assert.ok(item, `${aspect.star1}与${aspect.star2}证据标题应明确为合相`);
+  }
+});
+
 test('宫支按太阳宫顺数见卯安命，十二宫地支逆布', () => {
   // 《张果星宗》例：太阳子宫，酉时生，午宫安命。
   const chart = generateQizheng({ year: 2025, month: 2, day: 3, hour: 18, timezone: 8 });

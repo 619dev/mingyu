@@ -67,6 +67,28 @@ test('黄道宫界两侧的零度吊照在出生区间资料中称为合相', ()
   const flowText = formatQizhengBirthRangePrompt(flow);
   assert.match(flowText, /流曜太阳与本命太阳合相/);
   assert.doesNotMatch(flowText, /流曜太阳与本命太阳同宫/);
+
+  const period = flow.branches[0].periodEvents;
+  period.events = [
+    {
+      identity: '太阳:太阳:零度角',
+      kind: '精确吊照',
+      movingStar: '太阳',
+      targetStar: '太阳',
+      aspectType: '同宫',
+      aspectDirection: '正向',
+      firstUtcMs: startTimestamp,
+      lastUtcMs: startTimestamp,
+      minUtcMs: startTimestamp,
+      maxUtcMs: startTimestamp,
+      sampleCount: 1,
+      firstDateTime: period.startDateTime,
+      lastDateTime: period.startDateTime,
+    },
+  ];
+  const periodText = formatQizhengBirthRangePrompt(flow);
+  assert.match(periodText, /事件1：太阳精确吊照本命太阳合相/u);
+  assert.doesNotMatch(periodText, /事件1：太阳精确吊照本命太阳同宫/u);
 });
 
 test('七政流曜区间资料保留目标窗口、所有分段、行限与事件连续量', () => {

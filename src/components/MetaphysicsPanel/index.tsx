@@ -20,6 +20,7 @@ interface MetaphysicsPanelProps {
     day: number;
     hour?: number;
     minute?: number;
+    second?: number;
     gender: 'male' | 'female';
     latitude?: number;
     longitude?: number;
@@ -125,7 +126,9 @@ function BaZhaiCompass({
           : result.mingGroup}
       </text>
       <text x="200" y="224" className="bazhai-core-subtitle">
-        {measurement ? `命卦 ${result.mingGua}` : '个人八方盘'}
+        {measurement
+          ? `命卦 ${result.mingGua}${result.birthYearBoundaryStatus === '待复核' ? '（暂按）' : ''}`
+          : `个人八方盘${result.birthYearBoundaryStatus === '待复核' ? '（暂按）' : ''}`}
       </text>
     </svg>
   );
@@ -377,6 +380,14 @@ export function MetaphysicsPanel({
 
   const bazhai = result?.bazhai ?? null;
   const xuankong = result?.xuankong ?? null;
+  const mingGuaTentative = bazhai?.birthYearBoundaryStatus === '待复核';
+  const birthBoundaryHint = !bazhai?.calculationInput.birthMonth
+    ? '待核对出生日期。'
+    : bazhai.calculationInput.birthHour === undefined
+      ? '待核对出生时刻。'
+      : bazhai.calculationInput.birthMinute === undefined
+        ? '待核对出生分钟。'
+        : '待核对出生秒数。';
   const matchVariesWithOrientation =
     measurement && new Set(measurement.candidateDirections.map((item) => item.match)).size > 1;
 
@@ -398,7 +409,11 @@ export function MetaphysicsPanel({
             </h2>
           </div>
           <div className="result-chip-row">
-            {bazhai ? <span className="result-chip">命卦 {bazhai.mingGua}</span> : null}
+            {bazhai ? (
+              <span className="result-chip">
+                {mingGuaTentative ? '暂按' : ''}命卦 {bazhai.mingGua}
+              </span>
+            ) : null}
             {bazhai?.houseGua ? <span className="result-chip">宅卦 {bazhai.houseGua}</span> : null}
             {xuankong ? (
               <span className="result-chip">
@@ -414,7 +429,9 @@ export function MetaphysicsPanel({
         <div className="result-summary-grid">
           <div className="result-stat-card result-stat-card-accent">
             <span>人宅层</span>
-            <strong>{bazhai ? bazhai.mingGua : '待补出生'}</strong>
+            <strong>
+              {bazhai ? `${bazhai.mingGua}${mingGuaTentative ? '（暂按）' : ''}` : '待补出生'}
+            </strong>
             <small>{bazhai ? bazhai.mingGroup : '年月日+性别即可'}</small>
           </div>
           <div className="result-stat-card">
@@ -434,7 +451,9 @@ export function MetaphysicsPanel({
               {bazhai && measurement
                 ? matchVariesWithOrientation
                   ? '待复测'
-                  : bazhai.match
+                  : mingGuaTentative
+                    ? `${bazhai.match}（暂按）`
+                    : bazhai.match
                 : bazhai
                   ? '待合参'
                   : xuankong
@@ -499,6 +518,7 @@ export function MetaphysicsPanel({
                     <span>命卦分组</span>
                     <strong>
                       {bazhai.mingGua}命 · {bazhai.mingGroup}
+                      {mingGuaTentative ? '（暂按）' : ''}
                     </strong>
                   </div>
                 ) : null}
@@ -657,7 +677,11 @@ export function MetaphysicsPanel({
             <div className="result-side-card">
               <div className="result-side-head">
                 <h3>四吉方</h3>
-                <p>个人命卦可优先利用的方向。</p>
+                <p>
+                  {mingGuaTentative
+                    ? `按当前命卦暂列，${birthBoundaryHint}`
+                    : '个人命卦可优先利用的方向。'}
+                </p>
               </div>
               <div className="result-tag-cloud">
                 {bazhai.luckyDirections.map((item) => (
@@ -673,7 +697,11 @@ export function MetaphysicsPanel({
             <div className="result-side-card">
               <div className="result-side-head">
                 <h3>四凶方</h3>
-                <p>个人命卦中布置时需要谨慎权衡的方向。</p>
+                <p>
+                  {mingGuaTentative
+                    ? `按当前命卦暂列，${birthBoundaryHint}`
+                    : '个人命卦中布置时需要谨慎权衡的方向。'}
+                </p>
               </div>
               <div className="result-tag-cloud">
                 {bazhai.unluckyDirections.map((item) => (

@@ -341,7 +341,10 @@ export function calculateSeasonContext(solarTime: SolarTimeInstance, monthBranch
 function buildSeasonInfo(solarTime: SolarTimeInstance, scanTerms: SeasonTermFact[]): SeasonInfo {
   const currentYear = solarTime.getSolarDay().getYear();
   const birthJulianDay = solarTime.getJulianDay();
-  const solarTerms = scanTerms.filter((term) => term.year === currentYear);
+  // SolarTerm 的年度索引从上一年冬至开始；全年公历节气应按实际落日筛选。
+  const solarTerms = scanTerms
+    .filter((term) => Number(term.date.slice(0, 4)) === currentYear)
+    .sort((left, right) => left.jd - right.jd);
 
   const orderedTerms = Array.from(
     new Map(

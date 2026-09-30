@@ -230,12 +230,7 @@ function buildCalculationFact(
   data: Omit<BaZhaiResult, 'prompt' | 'evidenceAnalysis'>,
 ): BaZhaiCalculationFact {
   const yearBoundaryStatus: BaZhaiCalculationFact['yearBoundaryStatus'] =
-    data.effectiveBirthYear === null
-      ? '直接命卦'
-      : data.birthYearBoundaryNote.includes('未提供月日') ||
-          data.birthYearBoundaryNote.includes('未提供出生时刻')
-        ? '待复核'
-        : '已核定';
+    data.birthYearBoundaryStatus;
   const steps: BaZhaiCalculationStep[] = [
     {
       key: 'bazhai:calculation:year-boundary',
@@ -257,6 +252,9 @@ function buildCalculationFact(
           : {}),
         ...(data.calculationInput.birthMinute !== undefined
           ? { birthMinute: data.calculationInput.birthMinute }
+          : {}),
+        ...(data.calculationInput.birthSecond !== undefined
+          ? { birthSecond: data.calculationInput.birthSecond }
           : {}),
         ...(data.calculationInput.birthTimezone !== undefined
           ? { birthTimezone: data.calculationInput.birthTimezone }
@@ -284,7 +282,7 @@ function buildCalculationFact(
     {
       key: 'bazhai:calculation:ming-gua',
       stage: '命卦计算',
-      status: '完整',
+      status: yearBoundaryStatus === '待复核' ? '待复核' : '完整',
       inputs: {
         mingGuaSource: data.calculationInput.mingGuaSource,
         ...(data.calculationInput.gender ? { gender: data.calculationInput.gender } : {}),
@@ -294,7 +292,7 @@ function buildCalculationFact(
       },
       result: { mingGua: data.mingGua, mingGroup: data.mingGroup },
       dependsOnStepKeys: ['bazhai:calculation:year-boundary'],
-      promptText: `计算命卦${data.mingGua}与${data.mingGroup}`,
+      promptText: `${yearBoundaryStatus === '待复核' ? '暂按' : '计算'}命卦${data.mingGua}与${data.mingGroup}`,
       sources: ['命卦计算规则或明确给定的命卦', '东四命与西四命分组表'],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -318,7 +316,7 @@ function buildCalculationFact(
     {
       key: 'bazhai:calculation:eight-directions',
       stage: '八宫排布',
-      status: '完整',
+      status: yearBoundaryStatus === '待复核' ? '待复核' : '完整',
       inputs: {
         mingGua: data.mingGua,
         ...(data.houseGua ? { houseGua: data.houseGua } : {}),
@@ -331,14 +329,14 @@ function buildCalculationFact(
         'bazhai:calculation:ming-gua',
         ...(data.houseGua ? ['bazhai:calculation:house-gua'] : []),
       ],
-      promptText: '按大游年表分别生成命卦八宫与可用的宅卦八宫',
+      promptText: `${yearBoundaryStatus === '待复核' ? '暂按当前命卦，' : ''}按大游年表分别生成命卦八宫与可用的宅卦八宫`,
       sources: ['《八宅明镜》《阳宅十书》大游年八宫表'],
       limitation: CALCULATION_STEP_LIMITATION,
     },
     {
       key: 'bazhai:calculation:comparison',
       stage: '逐方比较',
-      status: data.houseGua ? '完整' : '未提供',
+      status: data.houseGua ? (yearBoundaryStatus === '待复核' ? '待复核' : '完整') : '未提供',
       inputs: {
         mingDirectionCount: data.mingPalace.length,
         houseDirectionCount: data.housePalace?.length ?? 0,
@@ -349,7 +347,7 @@ function buildCalculationFact(
       },
       dependsOnStepKeys: ['bazhai:calculation:eight-directions'],
       promptText: data.houseGua
-        ? '逐方比较命卦与宅卦的重合、同凶与异判关系'
+        ? `${yearBoundaryStatus === '待复核' ? '暂按命卦' : '逐方'}比较命卦与宅卦的重合、同凶与异判关系`
         : '未提供宅卦，不执行命宅逐方比较',
       sources: ['当前命卦八宫与宅卦八宫逐宫对照'],
       limitation: CALCULATION_STEP_LIMITATION,
@@ -475,7 +473,7 @@ function buildCounterEvidenceFacts(
         calculationFact.yearBoundaryStatus === '直接命卦'
           ? '命卦已明确给定，不再反推出生年界'
           : calculationFact.yearBoundaryStatus === '待复核'
-            ? data.birthYearBoundaryNote.includes('未提供出生时刻')
+            ? data.calculationInput.birthMonth !== undefined
               ? data.birthYearBoundaryNote
               : '只提供出生年份，立春前后的命卦年界仍需按完整出生日期复核'
             : `出生日期已按立春年界核定，有效命卦年份为${data.effectiveBirthYear}`,

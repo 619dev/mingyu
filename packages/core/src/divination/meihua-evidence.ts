@@ -1055,10 +1055,7 @@ function validateMeihuaCalculation(data: MeihuaData): {
         ) {
           mismatches.push('体用月令旺衰记录与月建及主卦不一致');
         }
-        if (
-          data.analysis.yingQi !== undefined &&
-          (!Array.isArray(data.analysis.yingQi) || data.analysis.yingQi.length > 0)
-        ) {
+        if (data.analysis.yingQi !== undefined) {
           const expected = estimateYingQi({
             movingYaoIndex: moving,
             tiElement: ti.element,
