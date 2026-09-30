@@ -1744,6 +1744,9 @@ export function analyzeLiuyaoEvidence(
   options: LiuyaoEvidenceOptions = {},
 ): LiuyaoEvidenceAnalysis {
   if (!data?.yaosDetail?.length) throw new Error('六爻证据分析缺少完整爻位资料。');
+  if (data.meta && Date.parse(data.meta.calculatedAt) !== data.timestamp) {
+    throw new Error('六爻起卦时间戳与结果元数据不一致，无法生成证据。');
+  }
   const topic = options.topic ?? 'general';
   const monthBranch = branchOf(data.ganzhi.month);
   const dayBranch = branchOf(data.ganzhi.day);

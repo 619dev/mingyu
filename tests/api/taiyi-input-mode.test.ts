@@ -25,3 +25,11 @@ test('太乙公开接口年计不静默忽略月日时字段', async () => {
     }
   }
 });
+
+test('太乙公开接口显式提供空干支时应拒绝而不是静默按省略处理', async () => {
+  for (const path of ['calculate', 'prompt'] as const) {
+    const invalid = await callTaiyi(path, { scope: 'year', year: 2026, ganZhi: '' });
+    assert.equal(invalid.status, 400, `${path} 显式提供空干支应被拒绝`);
+    assert.match(String(invalid.body.error?.message), /ganZhi 不是有效的六十甲子/u);
+  }
+});

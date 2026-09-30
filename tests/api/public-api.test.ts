@@ -6888,6 +6888,7 @@ test('公开 API 新增术数应拒绝缺失组合和无效日期坐标', async 
     ['metaphysics/bazhai/calculate', { birthYear: 1990 }],
     ['metaphysics/bazhai/calculate', { mingGua: '未知卦' }],
     ['metaphysics/bazhai/calculate', { mingGua: '坎', sitMountain: '未知山' }],
+    ['metaphysics/bazhai/calculate', { mingGua: '坎', gender: 'unknown' }],
     ['metaphysics/bazhai/calculate', { birthYear: 1990, gender: 'male', mingGua: '' }],
     ['metaphysics/bazhai/calculate', { mingGua: '坎', sitMountain: '' }],
     [
@@ -6895,6 +6896,7 @@ test('公开 API 新增术数应拒绝缺失组合和无效日期坐标', async 
       { birthYear: 1990, gender: 'male', doorToInteriorDegree: 0, northReference: '' },
     ],
     ['metaphysics/residential/calculate', { birthYear: 1990, gender: 'male', mingGua: '' }],
+    ['metaphysics/residential/calculate', { mingGua: '坎', gender: 'unknown' }],
     [
       'metaphysics/residential/calculate',
       { birthYear: 1990, gender: 'male', year: 2024, doorToInteriorDegree: 0, northReference: '' },
@@ -6907,6 +6909,7 @@ test('公开 API 新增术数应拒绝缺失组合和无效日期坐标', async 
       'metaphysics/residential/calculate',
       { year: 2024, mingGua: '坎', sitMountain: '子', facingMountain: '' },
     ],
+    ['metaphysics/zodiac/calculate', { zodiac: '鼠', year: 2026, yearGanZhi: '' }],
     ['metaphysics/taiyi/calculate', { scope: 'year' }],
     ['metaphysics/taiyi/calculate', { year: 2004, scope: 'month' }],
     ['metaphysics/taiyi/calculate', { year: 2026, scope: 'hour', month: 7, day: 11 }],
@@ -6914,6 +6917,7 @@ test('公开 API 新增术数应拒绝缺失组合和无效日期坐标', async 
     ['metaphysics/wuyun-liuqi/calculate', {}],
     ['metaphysics/wuyun-liuqi/calculate', { yearGanZhi: '甲丑' }],
     ['metaphysics/wuyun-liuqi/calculate', { year: 2026, yearGanZhi: '乙巳' }],
+    ['metaphysics/wuyun-liuqi/calculate', { year: 2026, yearGanZhi: '' }],
     ['metaphysics/huangji-jingshi/calculate', { elapsedYears: 1026 }],
     ['metaphysics/huangji-jingshi/calculate', { year: 0 }],
     ['metaphysics/huangji-jingshi/calculate', { year: 2026, elapsedYears: 1026 }],

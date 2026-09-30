@@ -264,6 +264,16 @@ function getNextSolarBirthDate(input: ChartInput): string {
   return formatSolarDateKey(nextDay.getYear(), nextDay.getMonth(), nextDay.getDay());
 }
 
+/** 运限沿用安星实际出生日；晚子跨日时展示日期仍为原始出生日期。 */
+export function getZiweiFortuneBirthSolarDate(
+  astrolabe: IFunctionalAstrolabe,
+  input: ChartInput,
+): string {
+  return (input.dayDivide ?? 'forward') === 'forward' && input.birthTimeIndex === 12
+    ? getNextSolarBirthDate(input)
+    : astrolabe.solarDate;
+}
+
 function assertValidChartInput(input: ChartInput) {
   if (input.isLeapMonth !== undefined && typeof input.isLeapMonth !== 'boolean') {
     throw new Error('闰月标志必须是布尔值。');
@@ -396,7 +406,7 @@ export async function buildHoroscopeFromInput(
   astro.config(buildIztroConfig(normalized));
   const horoscope = astrolabe.horoscope(dateStr, hourIndex) as FunctionalHoroscope;
   return birthdayTools
-    ? applyBirthdayAgeBoundary(astrolabe, horoscope, dateStr, birthdayTools)
+    ? applyBirthdayAgeBoundary(astrolabe, horoscope, dateStr, normalized, birthdayTools)
     : horoscope;
 }
 
@@ -446,9 +456,10 @@ function applyBirthdayAgeBoundary(
   astrolabe: IFunctionalAstrolabe,
   horoscope: FunctionalHoroscope,
   targetDateStr: string,
+  input: ChartInput,
   [{ getPalaceNames }, { getHoroscopeStar }, { getMutagensByHeavenlyStem }]: BirthdayTools,
 ): FunctionalHoroscope {
-  const birthDateStr = normalizeSolarDateKey(astrolabe.solarDate);
+  const birthDateStr = normalizeSolarDateKey(getZiweiFortuneBirthSolarDate(astrolabe, input));
   const birth = getLunarBirthdayParts(birthDateStr);
   const target = getLunarBirthdayParts(targetDateStr);
   const birthdayComparison = compareLunarBirthday(

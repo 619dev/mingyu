@@ -201,6 +201,9 @@ function expectedRelation(from: string, to: string) {
 }
 
 export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidenceAnalysis {
+  if (data.meta && Date.parse(data.meta.calculatedAt) !== data.timestamp) {
+    throw new Error('金口诀起课时间戳与结果元数据不一致，无法生成证据。');
+  }
   const { diFen, jiangShen, guiShen, renYuan } = data.positions;
   if (
     diFen.branch !== data.diFenBranch ||

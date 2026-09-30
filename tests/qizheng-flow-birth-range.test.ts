@@ -8,7 +8,7 @@ import {
   generateQizhengFlowBirthRange,
   type QizhengFlowBirthRangeSource,
   type QizhengInput,
-} from 'mingyu-core/qizheng';
+} from '../packages/core/src/qi_zheng/index.ts';
 
 const OFFSET_HOURS = 8;
 const SECOND = 1_000;
@@ -329,6 +329,30 @@ test('七政流曜范围计算器锁定流曜目标上下文', () => {
   );
   assert.throws(
     () => calculator.generate({ ...DAILY_INPUT, longitude: DAILY_INPUT.longitude! + 1 }),
+    /只允许改变出生年月日时分秒/u,
+  );
+});
+
+test('七政坐标来源区分省略、明确提供与显式空值', () => {
+  const omitted: QizhengInput = {
+    ...DAILY_INPUT,
+    latitude: undefined,
+    longitude: undefined,
+  };
+  assert.equal(generateQizheng(omitted).calculationContext.locationSource, '默认北京坐标');
+  assert.equal(generateQizheng(DAILY_INPUT).calculationContext.locationSource, '用户提供');
+  assert.throws(
+    () => generateQizheng({ ...omitted, latitude: null } as unknown as QizhengInput),
+    /纬度需在/u,
+  );
+  assert.throws(
+    () => generateQizheng({ ...omitted, longitude: null } as unknown as QizhengInput),
+    /经度需在/u,
+  );
+
+  const calculator = createQizhengFlowRangeCalculator(omitted);
+  assert.throws(
+    () => calculator.generate({ ...omitted, latitude: 39.9, longitude: 116.4 }),
     /只允许改变出生年月日时分秒/u,
   );
 });

@@ -123,10 +123,32 @@ test('梅花以时支取数时应核对起卦记录与盘面时柱', () => {
     data.ganzhi.hour = `甲${data.calculation?.timeZhi === '巳' ? '午' : '巳'}`;
     data.evidenceAnalysis = undefined;
 
-    const rebuilt = analyzeMeihuaEvidence(data);
-    assert.equal(rebuilt.calculationFact.status, '计算不一致', setting.method);
-    assert.match(rebuilt.calculationFact.promptText, /起卦时支与盘面时柱不一致/u);
-    assert.deepEqual(rebuilt.calculationFact.steps, []);
+    assert.throws(
+      () => analyzeMeihuaEvidence(data),
+      /盘面时柱与时间戳重算结果不一致/u,
+      setting.method,
+    );
+  }
+});
+
+test('梅花时间起卦应核对时间戳元数据和盘面完整四柱', () => {
+  const source = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  assert.equal(Date.parse(source.meta!.calculatedAt), source.timestamp);
+
+  const staleTimestamp = structuredClone(source);
+  staleTimestamp.timestamp += 24 * 60 * 60 * 1000;
+  staleTimestamp.evidenceAnalysis = undefined;
+  assert.throws(() => analyzeMeihuaEvidence(staleTimestamp), /起卦时间戳与结果元数据不一致/u);
+
+  for (const pillar of ['year', 'day'] as const) {
+    const inconsistent = structuredClone(source);
+    inconsistent.ganzhi[pillar] = '甲子';
+    inconsistent.evidenceAnalysis = undefined;
+    assert.throws(
+      () => analyzeMeihuaEvidence(inconsistent),
+      new RegExp(`盘面${pillar === 'year' ? '年' : '日'}柱与时间戳重算结果不一致`, 'u'),
+      `${pillar}柱不应脱离已记录起卦时间戳`,
+    );
   }
 });
 

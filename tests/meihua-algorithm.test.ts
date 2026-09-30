@@ -333,7 +333,7 @@ test('梅花公元1年时间卦应记录真实时区偏移并完成来源复核'
   assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
 });
 
-test('梅花数字、声音、方位仅以占时复核时支，字占和随机不以时间入数', () => {
+test('梅花起卦时间须与结果元数据一致，字占和随机仍不以时间入数', () => {
   const date = new Date('2025-01-01T08:00:00+08:00');
   const clockMethods = [
     { method: 'number' as const, number: 123 },
@@ -345,21 +345,26 @@ test('梅花数字、声音、方位仅以占时复核时支，字占和随机�
     assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
     const changedTime = structuredClone(data);
     changedTime.timestamp += 2 * 60 * 60 * 1000;
-    assert.equal(analyzeMeihuaEvidence(changedTime).calculationFact.status, '计算不一致');
+    assert.throws(() => analyzeMeihuaEvidence(changedTime), /起卦时间戳与结果元数据不一致/u);
   }
 
-  const withoutTimeNumber = [
-    generateMeihua(date, {
-      method: 'character',
-      characterText: '西林',
-      characterStrokeCounts: [7, 8],
-    }),
-    generateMeihua(date, { method: 'random', seed: '梅花时间非取数' }),
+  const withoutTimeSettings = [
+    { method: 'character' as const, characterText: '西林', characterStrokeCounts: [7, 8] },
+    { method: 'random' as const, seed: '梅花时间非取数' },
   ];
-  for (const data of withoutTimeNumber) {
+  for (const settings of withoutTimeSettings) {
+    const data = generateMeihua(date, settings);
+    assert.equal(data.calculation.timezoneOffsetMinutes, 480);
+    assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
     const changedTime = structuredClone(data);
     changedTime.timestamp += 2 * 60 * 60 * 1000;
-    assert.equal(analyzeMeihuaEvidence(changedTime).calculationFact.status, '完整');
+    assert.throws(() => analyzeMeihuaEvidence(changedTime), /起卦时间戳与结果元数据不一致/u);
+
+    const laterData = generateMeihua(new Date(date.getTime() + 2 * 60 * 60 * 1000), settings);
+    assert.equal(laterData.evidenceAnalysis?.calculationFact.status, '完整');
+    assert.equal(laterData.calculation.upperTrigramIndex, data.calculation.upperTrigramIndex);
+    assert.equal(laterData.calculation.lowerTrigramIndex, data.calculation.lowerTrigramIndex);
+    assert.equal(laterData.calculation.movingYaoIndex, data.calculation.movingYaoIndex);
   }
 });
 

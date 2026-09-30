@@ -12,6 +12,20 @@ import { formatLiuyaoSanxing } from '../packages/core/src/prompt/liuyao-facts.ts
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedYaos = [7, 8, 9, 6, 7, 8] as const;
 
+test('六爻证据与提示词拒绝和结果元数据不一致的起卦时间戳', () => {
+  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  assert.equal(Date.parse(source.meta!.calculatedAt), source.timestamp);
+
+  const stale = structuredClone(source);
+  stale.timestamp += 24 * 60 * 60 * 1000;
+
+  assert.throws(() => analyzeLiuyaoEvidence(stale), /起卦时间戳与结果元数据不一致/u);
+  assert.throws(
+    () => formatEnhancedDivinationInfo('liuyao', stale),
+    /起卦时间戳与结果元数据不一致/u,
+  );
+});
+
 test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
   const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
   for (const field of ['originalName', 'interName', 'changedName'] as const) {

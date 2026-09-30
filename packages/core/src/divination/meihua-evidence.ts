@@ -803,13 +803,13 @@ function validateMeihuaCalculation(data: MeihuaData): {
         missing.push('可识别的梅花起卦方式');
     }
 
-    if (
+    const usesClockInCalculation =
       calculation.methodKey === 'time' ||
       calculation.methodKey === 'timeTrigram' ||
       calculation.methodKey === 'number' ||
       calculation.methodKey === 'sound' ||
-      calculation.methodKey === 'direction'
-    ) {
+      calculation.methodKey === 'direction';
+    if (usesClockInCalculation || calculation.timezoneOffsetMinutes !== undefined) {
       const offset = calculation.timezoneOffsetMinutes;
       if (
         typeof offset !== 'number' ||
@@ -835,11 +835,19 @@ function validateMeihuaCalculation(data: MeihuaData): {
               : new Date(data.termReferenceTimestamp),
           );
           const sourceHourBranch = sourceTime.ganzhi.hour.slice(-1);
-          if (calculation.timeZhi !== sourceHourBranch) {
-            mismatches.push('起卦时支与时间戳重算结果不一致');
+          const pillarLabels = {
+            year: '年柱',
+            month: '月柱',
+            day: '日柱',
+            hour: '时柱',
+          } as const;
+          for (const pillar of Object.keys(pillarLabels) as Array<keyof typeof pillarLabels>) {
+            if (data.ganzhi[pillar] !== sourceTime.ganzhi[pillar]) {
+              mismatches.push(`盘面${pillarLabels[pillar]}与时间戳重算结果不一致`);
+            }
           }
-          if (data.ganzhi.hour.slice(-1) !== sourceHourBranch) {
-            mismatches.push('盘面时支与时间戳重算结果不一致');
+          if (usesClockInCalculation && calculation.timeZhi !== sourceHourBranch) {
+            mismatches.push('起卦时支与时间戳重算结果不一致');
           }
           if (calculation.methodKey === 'time' || calculation.methodKey === 'timeTrigram') {
             const sourceLunar = sourceTime.timeInfo.lunar;
@@ -856,9 +864,11 @@ function validateMeihuaCalculation(data: MeihuaData): {
           missing.push('可重算的起卦时间资料');
         }
       }
-      const chartHourBranch = data.ganzhi.hour.slice(-1);
-      if (!dizhi.includes(chartHourBranch) || calculation.timeZhi !== chartHourBranch) {
-        mismatches.push('起卦时支与盘面时柱不一致');
+      if (usesClockInCalculation) {
+        const chartHourBranch = data.ganzhi.hour.slice(-1);
+        if (!dizhi.includes(chartHourBranch) || calculation.timeZhi !== chartHourBranch) {
+          mismatches.push('起卦时支与盘面时柱不一致');
+        }
       }
     }
 
@@ -1286,7 +1296,10 @@ function buildCalculationFacts(data: MeihuaData): string[] {
   return facts;
 }
 
-function buildMeihuaCalculationFact(data: MeihuaData): MeihuaCalculationFact {
+function buildMeihuaCalculationFact(
+  data: MeihuaData,
+  validation = validateMeihuaCalculation(data),
+): MeihuaCalculationFact {
   const calculation = data.calculation;
   const methodKey = calculation?.methodKey ?? '未记录';
   const inputs: Record<string, string | number> = {};
@@ -1664,7 +1677,6 @@ function buildMeihuaCalculationFact(data: MeihuaData): MeihuaCalculationFact {
       );
     }
   }
-  const validation = validateMeihuaCalculation(data);
   const status = validation.mismatches.length
     ? '计算不一致'
     : steps.length === 3 && validation.missing.length === 0
@@ -2278,8 +2290,18 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
   if (!data?.tiGua || !data?.yongGua || !data?.movingYao) {
     throw new Error('梅花体用推进证据缺少完整体用或动爻资料。');
   }
+  if (data.meta && Date.parse(data.meta.calculatedAt) !== data.timestamp) {
+    throw new Error('梅花起卦时间戳与结果元数据不一致，无法生成证据。');
+  }
+  const calculationValidation = validateMeihuaCalculation(data);
+  const timePillarMismatches = calculationValidation.mismatches.filter((item) =>
+    /^盘面(?:年|月|日|时)柱与时间戳重算结果不一致$/u.test(item),
+  );
+  if (timePillarMismatches.length) {
+    throw new Error(`梅花盘面干支与起卦时间不一致：${timePillarMismatches.join('；')}。`);
+  }
   const monthBranch = data.ganzhi.month.slice(-1);
-  const calculationFact = buildMeihuaCalculationFact(data);
+  const calculationFact = buildMeihuaCalculationFact(data, calculationValidation);
   const calculationFacts = buildCalculationFacts(data);
   const hexagramStructureFacts = buildHexagramStructureFacts(data);
   const hexagramFacts = hexagramStructureFacts.map((item) => item.promptText);

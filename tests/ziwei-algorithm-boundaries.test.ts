@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildAstrolabeFromInput, buildHoroscope } from '../packages/core/src/ziwei/iztro';
+import {
+  buildAstrolabeFromInput,
+  buildHoroscope,
+  buildHoroscopeFromInput,
+} from '../packages/core/src/ziwei/iztro';
+import { calculateZiweiChart } from '../packages/core/src/ziwei/runtime';
+import { buildZiweiFortuneOptions } from '../packages/core/src/ziwei/fortune-options';
 import { calculateNormalZiweiNominalAge } from '../packages/core/src/ziwei/iztro/decadal';
 import type { ChartInput } from '../packages/core/src/types/chart';
 
@@ -142,6 +148,72 @@ test('紫微农历年末晚子时按次日计算四化与运限，同时保留�
   assert.equal(calculateNormalZiweiNominalAge(nextNewYearMorning, '2024-02-10', 0), 1);
   assert.equal(buildHoroscope(lateZi, '2024-02-10', 0).age.nominalAge, 1);
   assert.equal(buildHoroscope(nextNewYearMorning, '2024-02-10', 0).age.nominalAge, 1);
+});
+
+test('春节前晚子跨年盘的完整运限与生日分界沿用次日安星日期', async () => {
+  const lateZiInput: ChartInput = {
+    name: '春节晚子',
+    dateType: 'solar',
+    birthDate: '2024-02-09',
+    birthTimeIndex: 12,
+    gender: '男',
+    dayDivide: 'forward',
+    ageDivide: 'normal',
+  };
+  const nextMorningInput: ChartInput = {
+    ...lateZiInput,
+    birthDate: '2024-02-10',
+    birthTimeIndex: 0,
+  };
+  const context = { dateStr: '2025-01-28', hourIndex: 0 };
+  const lateZi = await calculateZiweiChart(lateZiInput, {
+    scopes: ['origin'],
+    skipAnalysis: true,
+    horoscopeContext: context,
+    fortuneRange: { scope: 'year', ...context },
+  });
+  const nextMorning = await calculateZiweiChart(nextMorningInput, {
+    scopes: ['origin'],
+    skipAnalysis: true,
+    horoscopeContext: context,
+    fortuneRange: { scope: 'year', ...context },
+  });
+  assert.equal(lateZi.astrolabe.solarDate, '2024-02-09');
+  assert.deepEqual(lateZi.decadalTimeline, nextMorning.decadalTimeline);
+  assert.equal(lateZi.decadalTimeline[0]?.dateStr, '2024-02-10');
+  assert.deepEqual(lateZi.fortuneTimeline?.periods, nextMorning.fortuneTimeline?.periods);
+
+  const options = await buildZiweiFortuneOptions(lateZiInput, { startAge: 1, endAge: 2 });
+  assert.deepEqual(
+    options.yearOptions.map(({ age, dateStr }) => ({ age, dateStr })),
+    [
+      { age: 1, dateStr: '2024-02-10' },
+      { age: 2, dateStr: '2025-01-29' },
+    ],
+  );
+
+  const birthdayInput = { ...lateZiInput, ageDivide: 'birthday' as const };
+  const birthdayAstrolabe = await buildAstrolabeFromInput(birthdayInput);
+  const dayBefore = await buildHoroscopeFromInput(
+    birthdayAstrolabe,
+    birthdayInput,
+    '2025-01-28',
+    0,
+  );
+  const birthday = await buildHoroscopeFromInput(birthdayAstrolabe, birthdayInput, '2025-01-29', 0);
+  assert.equal(dayBefore.age.nominalAge, 1);
+  assert.equal(birthday.age.nominalAge, 2);
+  const birthdayOptions = await buildZiweiFortuneOptions(birthdayInput, {
+    startAge: 1,
+    endAge: 2,
+  });
+  assert.deepEqual(
+    birthdayOptions.yearOptions.map(({ age, dateStr }) => ({ age, dateStr })),
+    [
+      { age: 1, dateStr: '2024-02-10' },
+      { age: 2, dateStr: '2025-01-29' },
+    ],
+  );
 });
 
 test('紫微出生日期校验范围不接受公元 0099 年输入', async () => {

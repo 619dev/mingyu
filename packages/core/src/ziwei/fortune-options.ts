@@ -1,7 +1,7 @@
 import { SolarDay } from 'tyme4ts';
 import type { ChartInput } from '../types/chart';
 import type { DecadalTimelineOption } from './iztro/decadal';
-import { buildAstrolabeFromInput } from './iztro/runtime-helpers';
+import { buildAstrolabeFromInput, getZiweiFortuneBirthSolarDate } from './iztro/runtime-helpers';
 import { createZiweiHoroscopeResolver } from './iztro/decadal';
 import { buildYearDate, buildZiweiFlowMonths, collectYearBoundaryDates } from './fortune-timeline';
 
@@ -92,6 +92,7 @@ export async function buildZiweiFortuneOptions(
   if (birthSolarDate !== formatSolarDay(toSolarDay(astrolabe.solarDate))) {
     throw new Error('紫微运限出生公历日期与当前命盘不一致。');
   }
+  const fortuneBirthSolarDate = getZiweiFortuneBirthSolarDate(astrolabe, input);
   const hourIndex = options.hourIndex ?? input.birthTimeIndex;
   if (!Number.isInteger(hourIndex) || hourIndex < 0 || hourIndex > 12) {
     throw new Error('紫微运限时辰索引需在 0-12 之间。');
@@ -106,7 +107,7 @@ export async function buildZiweiFortuneOptions(
       age,
       hourIndex,
       resolveHoroscope,
-      birthSolarDate,
+      fortuneBirthSolarDate,
     );
     const nextAgeDateStr = await buildYearDate(
       astrolabe,
@@ -114,7 +115,7 @@ export async function buildZiweiFortuneOptions(
       age + 1,
       hourIndex,
       resolveHoroscope,
-      birthSolarDate,
+      fortuneBirthSolarDate,
     );
     const ageEndDateStr = formatSolarDay(toSolarDay(nextAgeDateStr).next(-1));
     const yearBoundaries = await collectYearBoundaryDates(

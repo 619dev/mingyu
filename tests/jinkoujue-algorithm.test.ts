@@ -24,6 +24,24 @@ test('金口诀判断依据不读取旧反证缓存', () => {
   assert.doesNotMatch(formatJinkoujueJudgmentFacts(data).join('\n'), /伪造的旧反证/u);
 });
 
+test('金口诀旧盘证据拒绝与结果时间元数据矛盾的起课时刻', () => {
+  const data = generateJinkoujue({
+    method: 'branch',
+    branch: '申',
+    customDate: SAMPLE_DATE,
+  });
+  const stale = structuredClone(data);
+  stale.timestamp += 24 * 60 * 60 * 1000;
+
+  assert.equal(data.meta?.calculatedAt, new Date(data.timestamp).toISOString());
+  assert.equal(stale.monthLeader, data.monthLeader);
+  assert.throws(() => analyzeJinkoujueEvidence(stale), /起课时间戳与结果元数据不一致/u);
+  assert.throws(
+    () => buildDivinationPrompt({ method: 'jinkoujue', data: stale, question: '核对旧盘' }),
+    /起课时间戳与结果元数据不一致/u,
+  );
+});
+
 test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () => {
   const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
   const wrongRelation = structuredClone(source);

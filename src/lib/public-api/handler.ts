@@ -2011,7 +2011,12 @@ export function getPublicApiOpenApiDocument(
               maximum: 2200,
               description: '公元年；生肖运程与 yearGanZhi 至少提供一项',
             },
-            yearGanZhi: { type: 'string', description: '直接给定流年干支，如「甲辰」（生肖运程）' },
+            yearGanZhi: {
+              type: 'string',
+              minLength: 2,
+              maxLength: 2,
+              description: '直接给定流年干支，如「甲辰」（生肖运程）',
+            },
             scope: {
               enum: ['year', 'month', 'day', 'hour'],
               description: '太乙计式：年计、月计、日计或时计',
@@ -4182,8 +4187,7 @@ function toBaziFortuneScope(scope: string | undefined) {
 }
 
 function calculateBaZhaiApi(input: JsonRecord) {
-  const gender =
-    input.gender === 'female' ? 'female' : input.gender === 'male' ? 'male' : undefined;
+  const gender = readOptionalEnum(input, 'gender', ['male', 'female'] as const);
   const birthYear = optInt(input, 'birthYear', 1900, 2100);
   const birthMonth = optInt(input, 'birthMonth', 1, 12);
   const birthDay = optInt(input, 'birthDay', 1, 31);
@@ -4295,19 +4299,20 @@ function buildBaZhaiPrompt(input: JsonRecord) {
 function calculateZodiacApi(input: JsonRecord) {
   const zodiacName = readString(input, 'zodiac', '');
   if (!zodiacName) throw new ApiError(400, 'BAD_REQUEST', 'zodiac 必须是生肖或地支。');
-  const yearGanZhi = readString(input, 'yearGanZhi', '');
-  if (yearGanZhi && !isValidGanZhi(yearGanZhi)) {
+  const yearGanZhi =
+    input.yearGanZhi === undefined ? undefined : readString(input, 'yearGanZhi', '');
+  if (yearGanZhi !== undefined && !isValidGanZhi(yearGanZhi)) {
     throw new ApiError(400, 'BAD_REQUEST', `yearGanZhi 不是有效的六十甲子：${yearGanZhi}。`);
   }
   const year = optInt(input, 'year', 1900, 2200);
-  if (year === undefined && !yearGanZhi) {
+  if (year === undefined && yearGanZhi === undefined) {
     throw new ApiError(400, 'BAD_REQUEST', 'year 与 yearGanZhi 至少提供一个。');
   }
   try {
     return zodiac.calculateZodiacYearFortune({
       zodiac: zodiacName,
       ...(year !== undefined ? { year } : {}),
-      ...(yearGanZhi ? { yearGanZhi } : {}),
+      ...(yearGanZhi !== undefined ? { yearGanZhi } : {}),
     });
   } catch (error) {
     throw new ApiError(
@@ -4342,8 +4347,8 @@ function calculateTaiyiApi(input: JsonRecord) {
       '太乙年计只接受 year；月、日、时字段仅用于月计、日计和时计。',
     );
   }
-  const ganZhi = readString(input, 'ganZhi', '');
-  if (ganZhi && !isValidGanZhi(ganZhi)) {
+  const ganZhi = Object.hasOwn(input, 'ganZhi') ? readString(input, 'ganZhi', '') : undefined;
+  if (ganZhi !== undefined && !isValidGanZhi(ganZhi)) {
     throw new ApiError(400, 'BAD_REQUEST', `ganZhi 不是有效的六十甲子：${ganZhi}。`);
   }
   try {
@@ -4363,7 +4368,7 @@ function calculateTaiyiApi(input: JsonRecord) {
       scope,
       year,
       ...(date ? { date } : {}),
-      ...(ganZhi ? { ganZhi } : {}),
+      ...(ganZhi !== undefined ? { ganZhi } : {}),
     });
   } catch (error) {
     throw new ApiError(
@@ -4387,18 +4392,19 @@ function buildTaiyiPrompt(input: JsonRecord) {
 
 function calculateWuyunLiuqiApi(input: JsonRecord) {
   const year = optInt(input, 'year', 1, 9999);
-  const yearGanZhi = readString(input, 'yearGanZhi', '').trim();
+  const yearGanZhi =
+    input.yearGanZhi === undefined ? undefined : readString(input, 'yearGanZhi', '').trim();
   const question = readString(input, 'question', '').trim();
-  if (year === undefined && !yearGanZhi) {
+  if (year === undefined && yearGanZhi === undefined) {
     throw new ApiError(400, 'BAD_REQUEST', 'year 与 yearGanZhi 至少提供一个。');
   }
-  if (yearGanZhi && !isValidGanZhi(yearGanZhi)) {
+  if (yearGanZhi !== undefined && !isValidGanZhi(yearGanZhi)) {
     throw new ApiError(400, 'BAD_REQUEST', `yearGanZhi 不是有效的六十甲子：${yearGanZhi}。`);
   }
   try {
     return wuyunLiuqi.calculateWuyunLiuqi({
       ...(year !== undefined ? { year } : {}),
-      ...(yearGanZhi ? { yearGanZhi } : {}),
+      ...(yearGanZhi !== undefined ? { yearGanZhi } : {}),
       ...(question ? { question } : {}),
     });
   } catch (error) {
@@ -4743,8 +4749,7 @@ function calculateResidentialApi(input: JsonRecord) {
   const birthTimezone = optNumber(input, 'birthTimezone', -12, 14);
   const birthTimeZoneId =
     input.birthTimeZoneId === undefined ? undefined : readRequiredString(input, 'birthTimeZoneId');
-  const gender =
-    input.gender === 'female' ? 'female' : input.gender === 'male' ? 'male' : undefined;
+  const gender = readOptionalEnum(input, 'gender', ['male', 'female'] as const);
   const mingGua = input.mingGua === undefined ? undefined : readString(input, 'mingGua', '');
   const sitMountain =
     input.sitMountain === undefined ? undefined : readString(input, 'sitMountain', '');

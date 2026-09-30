@@ -811,8 +811,8 @@ function validateQizhengInput(input: QizhengInput, includeLocation: boolean): vo
     throw new Error('IANA 时区名不能为空。');
   }
   if (includeLocation) {
-    assertNumberRange(input.latitude ?? 39.9, '纬度', -90, 90);
-    assertNumberRange(input.longitude ?? 116.4, '经度', -180, 180);
+    if (input.latitude !== undefined) assertNumberRange(input.latitude, '纬度', -90, 90);
+    if (input.longitude !== undefined) assertNumberRange(input.longitude, '经度', -180, 180);
   }
   if (input.gender !== undefined && input.gender !== 'male' && input.gender !== 'female') {
     throw new Error('gender 只能是 male 或 female。');
@@ -1986,8 +1986,8 @@ const MAX_FLOW_RANGE_TARGET_SAMPLES = 100_000;
 
 function getQizhengFlowRangeInvariant(input: QizhengInput): string {
   return JSON.stringify({
-    latitude: input.latitude ?? 39.9,
-    longitude: input.longitude ?? 116.4,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
     timezone: input.timezone ?? null,
     timeZoneId: input.timeZoneId ?? null,
     useTrueSolarTime: input.useTrueSolarTime ?? false,

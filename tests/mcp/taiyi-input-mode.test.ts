@@ -31,6 +31,12 @@ test('太乙 MCP 年计和时间计不静默忽略另一模式的时间字段', 
         String((hourWithYear.structuredContent as { error?: string } | undefined)?.error),
         /不得提供 year/,
       );
+
+      const emptyGanZhi = await client.callTool({
+        name: tool,
+        arguments: { scope: 'year', year: 2026, ganZhi: '' },
+      });
+      assert.equal(emptyGanZhi.isError, true);
     }
   } finally {
     await client.close();

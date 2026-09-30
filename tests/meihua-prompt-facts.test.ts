@@ -82,6 +82,30 @@ test('梅花盘面时柱与取数时支不一致时不输出旧取数算式', ()
   assert.doesNotMatch(formatMeihuaFacts(data).join('\n'), /起卦取数：/u);
 });
 
+test('梅花最终提示词拒绝与时间戳冲突的结果时间和年日柱', () => {
+  const date = new Date('2026-05-19T10:30:00+08:00');
+  const makeChart = () => generateMeihua(date, { method: 'number', number: 42 });
+
+  const staleTimestamp = makeChart();
+  staleTimestamp.timestamp += 24 * 60 * 60 * 1000;
+  assert.throws(
+    () =>
+      buildCoreDivinationPrompt({ method: 'meihua', data: staleTimestamp, question: '请核验。' }),
+    /起卦时间戳与结果元数据不一致/u,
+  );
+
+  for (const pillar of ['year', 'day'] as const) {
+    const inconsistent = makeChart();
+    inconsistent.ganzhi[pillar] = '甲子';
+    assert.throws(
+      () =>
+        buildCoreDivinationPrompt({ method: 'meihua', data: inconsistent, question: '请核验。' }),
+      /盘面(?:年|日)柱与时间戳重算结果不一致/u,
+      `${pillar}柱与原始起卦时间冲突时不得生成最终提示词`,
+    );
+  }
+});
+
 test('梅花提示词重新核验逐爻、关系和卦爻辞，不采信旧证据缓存', () => {
   const makeChart = () =>
     generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {

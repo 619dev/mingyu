@@ -2,8 +2,12 @@ import type { ChartInput } from '../types/chart';
 import type { IztroAstrolabe, IztroHoroscope } from '../types/iztro';
 import { LunarDay, SolarDay } from 'tyme4ts';
 import { SHICHEN_PERIODS } from '../calendar/dateUtils';
-import { getDefaultHoroscopeContext } from './iztro/runtime-helpers';
-import { buildAstrolabeFromInput, shiftLunarYear } from './iztro/runtime-helpers';
+import {
+  buildAstrolabeFromInput,
+  getDefaultHoroscopeContext,
+  getZiweiFortuneBirthSolarDate,
+  shiftLunarYear,
+} from './iztro/runtime-helpers';
 import {
   buildVerifiedDecadalTimelineOptions,
   createZiweiHoroscopeResolver,
@@ -283,7 +287,7 @@ export async function buildYearDate(
   age: number,
   hourIndex: number,
   resolveHoroscope: ZiweiHoroscopeResolver,
-  birthSolarDate = astrolabe.solarDate,
+  birthSolarDate = getZiweiFortuneBirthSolarDate(astrolabe, input),
 ) {
   if (age === 1) {
     return formatSolarDay(
