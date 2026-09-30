@@ -39,7 +39,7 @@ test('住宅事实审查从输入摘要读取坐向与宅运年份', () => {
   ]);
 });
 
-test('梅花事实审查在结果阶段核对变后体用与生克归属', () => {
+test('梅花事实审查在变卦阶段核对变后体用与生克归属', () => {
   const changedFacts = extractDivinationPromptFacts('meihua', {
     changedName: '天火同人',
     changedTiGua: { name: '乾', element: '金' },
@@ -48,10 +48,10 @@ test('梅花事实审查在结果阶段核对变后体用与生克归属', () =>
     evidenceAnalysis: { stages: [{ stage: 'result', status: '已计算' }] },
   }).filter((item) => item.id === 'meihua.changed');
   assert.equal(changedFacts.length, 1);
-  const resultLine = '结果天火同人：体卦乾金（月令死），用卦离火（月令旺），关系用克体';
+  const resultLine = '变卦天火同人：体卦乾金（月令死），用卦离火（月令旺），关系用克体';
   assert.equal(auditPromptFacts(resultLine, changedFacts).present, 1);
   assert.equal(auditPromptFacts(resultLine.replace('用克体', '用生体'), changedFacts).present, 0);
-  assert.equal(auditPromptFacts(resultLine.replace('结果', '过程'), changedFacts).present, 0);
+  assert.equal(auditPromptFacts(resultLine.replace('变卦', '互卦'), changedFacts).present, 0);
 });
 
 test('事实覆盖核验归属及值，交换柱位仍有相同关键词时应检出错绑', () => {
