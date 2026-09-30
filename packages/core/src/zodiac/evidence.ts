@@ -121,9 +121,62 @@ const SUMMARY_FACT_LIMITATION =
 
 function sameTextList(actual: string[], expected: string[]) {
   return (
-    actual.length === expected.length && actual.every((value, index) => value === expected[index])
+    Array.isArray(actual) &&
+    actual.length === expected.length &&
+    actual.every((value, index) => typeof value === 'string' && value === expected[index])
   );
 }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function sameConflictList(actual: unknown, expected: TaiSuiConflict[]): boolean {
+  return (
+    Array.isArray(actual) &&
+    actual.length === expected.length &&
+    expected.every((conflict, index) => {
+      const incoming = actual[index];
+      return (
+        isRecord(incoming) &&
+        incoming.type === conflict.type &&
+        incoming.with === conflict.with &&
+        incoming.desc === conflict.desc
+      );
+    })
+  );
+}
+
+function hasExactKeyCoverage(items: Array<{ key: string }>, expectedKeys: string[]): boolean {
+  const actualKeys = items.map((item) => item.key);
+  const actual = new Set(actualKeys);
+  const expected = new Set(expectedKeys);
+  return (
+    actual.size === actualKeys.length &&
+    expected.size === expectedKeys.length &&
+    actual.size === expected.size &&
+    [...expected].every((key) => actual.has(key))
+  );
+}
+
+const REQUIRED_CALCULATION_STEP_KEYS = [
+  'zodiac:calculation:branch',
+  'zodiac:calculation:year',
+  'zodiac:calculation:branch-relations',
+  'zodiac:calculation:stem-element',
+];
+const REQUIRED_COUNTER_EVIDENCE_KEYS = [
+  'zodiac:counter:tai-sui-relations',
+  'zodiac:counter:noble-relations',
+  'zodiac:counter:information-scope',
+];
+const REQUIRED_LIMITATION_FACT_KEYS = [
+  'zodiac:limitation:information-scope',
+  'zodiac:limitation:relation-tables',
+  'zodiac:limitation:stem-element',
+  'zodiac:limitation:high-risk-output',
+  'zodiac:limitation:reality-check',
+];
 
 function conflictEvidence(conflict: TaiSuiConflict, zodiacBranch: string): ZodiacRelationEvidence {
   const rule =
@@ -284,6 +337,7 @@ function buildLimitationFacts(
 function buildSummaryFact(args: {
   calculationSteps: ZodiacCalculationStep[];
   relations: ZodiacRelationEvidence[];
+  expectedRelationKeys: string[];
   primaryEvidence: ZodiacRelationEvidence[];
   supportingEvidence: ZodiacRelationEvidence[];
   counterEvidenceFacts: ZodiacCounterEvidenceFact[];
@@ -293,10 +347,10 @@ function buildSummaryFact(args: {
   consistencyGap: string | null;
 }): ZodiacSummaryFact {
   const status =
-    args.calculationSteps.length === 4 &&
-    args.relations.length > 0 &&
-    args.counterEvidenceFacts.length === 3 &&
-    args.limitationFacts.length === 5 &&
+    hasExactKeyCoverage(args.calculationSteps, REQUIRED_CALCULATION_STEP_KEYS) &&
+    hasExactKeyCoverage(args.relations, args.expectedRelationKeys) &&
+    hasExactKeyCoverage(args.counterEvidenceFacts, REQUIRED_COUNTER_EVIDENCE_KEYS) &&
+    hasExactKeyCoverage(args.limitationFacts, REQUIRED_LIMITATION_FACT_KEYS) &&
     !args.consistencyGap
       ? '证据链完整'
       : '证据链有缺口';
@@ -380,24 +434,35 @@ export function analyzeZodiacEvidence(
       : '',
     expectedNoble && !hasSanheMemberRelation ? '出现合作或求助机会时核对具体条件与对方可靠性' : '',
   ].filter(Boolean);
-  const incomingConflicts = data.conflicts;
-  const conflictsConsistent =
-    recomputedConflicts.length === incomingConflicts.length &&
-    recomputedConflicts.every(
-      (conflict, index) =>
-        conflict.type === incomingConflicts[index]?.type &&
-        conflict.with === incomingConflicts[index]?.with &&
-        conflict.desc === incomingConflicts[index]?.desc,
-    );
+  const incomingConflicts: unknown = data.conflicts;
+  const incomingElementRelation: unknown = data.elementRelation;
+  const hasDefinedInput = (key: string) =>
+    Object.prototype.hasOwnProperty.call(data, key) &&
+    (data as unknown as Record<string, unknown>)[key] !== undefined;
+  const missingRelationInputs = [
+    !Array.isArray(incomingConflicts) ? '犯太岁关系' : '',
+    !hasDefinedInput('noble') ? '六合、三合与贵人关系' : '',
+    !hasDefinedInput('meeting') ? '三会关系' : '',
+    !Array.isArray(data.favorableRelations) ? '有利关系列表' : '',
+    !Array.isArray(data.riskRelations) ? '风险关系列表' : '',
+    !Array.isArray(data.actionSignals) ? '行动提示列表' : '',
+    !isRecord(incomingElementRelation) || typeof data.relation !== 'string'
+      ? '年干五行辅助关系'
+      : '',
+  ].filter(Boolean);
+  const conflictsConsistent = sameConflictList(incomingConflicts, recomputedConflicts);
   const elementConsistent =
-    data.elementRelation.kind === expectedElementRelation.kind &&
-    data.elementRelation.label === expectedElementRelation.label &&
-    data.elementRelation.classification === expectedElementRelation.classification &&
-    data.elementRelation.yearStemWuxing === yearStemWuxing &&
-    data.elementRelation.zodiacWuxing === zodiacWuxing &&
+    isRecord(incomingElementRelation) &&
+    incomingElementRelation.kind === expectedElementRelation.kind &&
+    incomingElementRelation.label === expectedElementRelation.label &&
+    incomingElementRelation.classification === expectedElementRelation.classification &&
+    incomingElementRelation.yearStemWuxing === yearStemWuxing &&
+    incomingElementRelation.zodiacWuxing === zodiacWuxing &&
     data.relation === expectedElementRelation.label;
   let consistencyGap: string | null = null;
-  if (normalizedZodiac !== data.zodiac) {
+  if (missingRelationInputs.length) {
+    consistencyGap = `关系输入资料缺失或格式无效（${missingRelationInputs.join('、')}），不能按“未命中”处理`;
+  } else if (normalizedZodiac !== data.zodiac) {
     consistencyGap = '生肖名称与出生年支不一致';
   } else if (data.yearBranch !== normalizedYearBranch) {
     consistencyGap = '流年干支与流年年支不一致';
@@ -405,9 +470,9 @@ export function analyzeZodiacEvidence(
     consistencyGap = '年干与生肖五行关系重算结果与传入资料不一致';
   } else if (!conflictsConsistent) {
     consistencyGap = '犯太岁关系重算结果与传入资料不一致';
-  } else if ((data.noble ?? null) !== expectedNoble) {
+  } else if (data.noble !== expectedNoble) {
     consistencyGap = '六合及三合成员关系重算结果与传入资料不一致';
-  } else if ((data.meeting ?? null) !== expectedMeeting) {
+  } else if (data.meeting !== expectedMeeting) {
     consistencyGap = '三会组成员关系重算结果与传入资料不一致';
   } else if (!sameTextList(data.favorableRelations, expectedFavorableRelations)) {
     consistencyGap = '有利关系列表重算结果与传入资料不一致';
@@ -579,9 +644,22 @@ export function analyzeZodiacEvidence(
     .map((fact) => fact.promptText);
   const limitationFacts = buildLimitationFacts(calculationSteps, relations);
   const limitations = limitationFacts.map((fact) => fact.promptText);
+  const expectedRelationKeys = [
+    ...recomputedConflicts.map(
+      (conflict) => `关系:${conflict.type}:${data.zodiacBranch}:${conflict.with}`,
+    ),
+    ...(expectedNoble
+      ? [`关系:${expectedNoble}:${data.zodiacBranch}:${normalizedYearBranch}`]
+      : []),
+    ...(expectedMeeting
+      ? [`关系:${expectedMeeting}:${data.zodiacBranch}:${normalizedYearBranch}`]
+      : []),
+    `关系:年干五行:${data.yearGanZhi[0]}:${data.zodiacBranch}`,
+  ];
   const summaryFact = buildSummaryFact({
     calculationSteps,
     relations,
+    expectedRelationKeys,
     primaryEvidence,
     supportingEvidence,
     counterEvidenceFacts,

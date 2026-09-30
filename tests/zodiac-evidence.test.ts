@@ -33,6 +33,54 @@ test('生肖证据复验应校验犯太岁关系的流年地支', () => {
   assert.match(analysis.summaryFact.promptText, /犯太岁关系重算结果与传入资料不一致/);
 });
 
+test('生肖证据缺少无命中关系字段时应标明资料不足', () => {
+  const complete = getZodiacYearFortune('子', '丙寅');
+  const cases = [
+    { field: 'conflicts', reason: /犯太岁关系/ },
+    { field: 'noble', reason: /六合、三合与贵人关系/ },
+    { field: 'meeting', reason: /三会关系/ },
+  ];
+
+  for (const { field, reason } of cases) {
+    const incomplete = { ...complete } as unknown as Record<string, unknown>;
+    delete incomplete[field];
+    const analysis = analyzeZodiacEvidence(
+      incomplete as Parameters<typeof analyzeZodiacEvidence>[0],
+    );
+
+    assert.equal(analysis.summaryFact.status, '证据链有缺口', field);
+    assert.match(analysis.summaryFact.promptText, reason);
+    assert.match(analysis.summaryFact.promptText, /不能按“未命中”处理/);
+  }
+});
+
+test('生肖证据缺少已命中的合或三会资料时仍按地支重算并标记缺口', () => {
+  const cases = [
+    {
+      result: getZodiacYearFortune('寅', '丙午'),
+      field: 'noble',
+      expected: '三合组成员关系（火局）',
+    },
+    {
+      result: getZodiacYearFortune('巳', '丁未'),
+      field: 'meeting',
+      expected: '三会组成员关系（南方火）',
+    },
+  ];
+
+  for (const { result, field, expected } of cases) {
+    const incomplete = { ...result } as unknown as Record<string, unknown>;
+    delete incomplete[field];
+    const analysis = analyzeZodiacEvidence(
+      incomplete as Parameters<typeof analyzeZodiacEvidence>[0],
+    );
+
+    assert.equal(analysis.summaryFact.status, '证据链有缺口', field);
+    assert.ok(analysis.relations.some((relation) => relation.relation === expected));
+    assert.match(analysis.summaryFact.promptText, /资料缺失/);
+  }
+});
+
 test('生肖证据复验应校验说明与派生关系列表', () => {
   const complete = getZodiacYearFortune('子', '丙午');
   const cases = [
