@@ -1943,7 +1943,7 @@ function buildSolarReturnChartFact(
   );
   const formatPoint = (point: AstrolabeAdvancedMovingPointFact) =>
     `${point.label}${point.signLabel}${point.degree}°${String(point.minute).padStart(2, '0')}′${point.house ? `第${point.house}宫` : ''}`;
-  const promptText = `返照盘（出生地${data.birth.location}，纬度${coordinates.latitude}°、经度${coordinates.longitude}°）：行星${planets.map(formatPoint).join('、')}；四轴${angles.map(formatPoint).join('、')}；十二宫宫头${houses.map((house) => `第${house.house}宫${house.signLabel}${house.degree}°${String(house.minute).padStart(2, '0')}′`).join('、')}；盘内主要相位${internalAspectFacts.map((fact) => fact.promptText).join('、') || '未见'}；对本命主要相位${aspectFactSet.all.map((fact) => `${fact.movingPoint}${fact.aspectName}${fact.natalPoint}（偏差${fact.deviation.toFixed(2)}°）`).join('、') || '未见'}。`;
+  const promptText = `太阳返照盘（出生地${data.birth.location}，纬度${coordinates.latitude}°、经度${coordinates.longitude}°）：行星${planets.map(formatPoint).join('、')}；四轴${angles.map(formatPoint).join('、')}；十二宫宫头${houses.map((house) => `第${house.house}宫${house.signLabel}${house.degree}°${String(house.minute).padStart(2, '0')}′`).join('、')}；盘内主要相位${internalAspectFacts.map((fact) => fact.promptText).join('、') || '未见'}；对本命主要相位${aspectFactSet.all.map((fact) => `${fact.movingPoint}${fact.aspectName}${fact.natalPoint}（偏差${fact.deviation.toFixed(2)}°，${fact.closeness}）`).join('、') || '未见'}。`;
   return {
     aspectFactSet,
     returnChart: {
@@ -2576,13 +2576,13 @@ function formatAdvancedScopeFacts(params: {
     for (const period of returnPeriods) {
       const evidence = period.evidence;
       lines.push(
-        `太阳返照有效期${period.startsAt}至${period.endsAt}（结束时刻不含）${period.isReferencePeriod ? '，覆盖本次参考日期' : ''}：返照时刻${evidence.dateTime}；${formatAspectFacts(evidence.aspectFacts) || '未见主要对本命相位'}。`,
+        `太阳返照有效期${period.startsAt}至${period.endsAt}（结束时刻不含）${period.isReferencePeriod ? '，覆盖本次参考日期' : ''}：返照时刻${evidence.dateTime}${evidence.returnChart ? '' : `；${formatAspectFacts(evidence.aspectFacts) || '未见主要对本命相位'}`}。`,
       );
       if (evidence.returnChart) lines.push(evidence.returnChart.promptText);
     }
   } else if (solarReturn) {
     lines.push(
-      `太阳返照${solarReturn.dateTime ? `（${solarReturn.dateTime}）` : ''}：${formatAspectFacts(solarReturn.aspectFacts) || '暂无'}。`,
+      `太阳返照${solarReturn.dateTime ? `（${solarReturn.dateTime}）` : ''}${solarReturn.returnChart ? '。' : `：${formatAspectFacts(solarReturn.aspectFacts) || '暂无'}。`}`,
     );
     if (solarReturn.returnChart) lines.push(solarReturn.returnChart.promptText);
   }

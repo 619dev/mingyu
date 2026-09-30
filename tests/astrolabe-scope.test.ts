@@ -408,6 +408,15 @@ test('太阳返照应返回出生地完整返照盘及两层主要相位', () =>
   }).promptText;
   assert.ok(prompt.includes(returnChart.promptText));
   assert.match(prompt, /返照盘（出生地/);
+  const firstAspect = evidence.aspectFacts[0];
+  assert.ok(firstAspect);
+  const firstAspectText = `${firstAspect.movingPoint}${firstAspect.aspectName}${firstAspect.natalPoint}（偏差${firstAspect.deviation.toFixed(2)}°，${firstAspect.closeness}）`;
+  assert.ok(returnChart.promptText.includes(firstAspectText));
+  const periodLine = prompt
+    .split('\n')
+    .find((line) => line.includes(`返照时刻${evidence.dateTime}`));
+  assert.ok(periodLine);
+  assert.ok(!periodLine.includes(firstAspectText));
   assert.doesNotThrow(() => JSON.parse(JSON.stringify(returnChart)));
 });
 

@@ -156,11 +156,34 @@ test('大六壬旧盘天地盘缺口时不把未核验课体判据送入在线�
   assert.ok(data.guaTiFacts?.length);
   data.heavenlyPlate = [];
 
+  const analysis = analyzeLiurenEvidence(data);
+  assert.equal(analysis.calculationFact.noblemanGroundBranch, undefined);
+  assert.doesNotMatch(analysis.calculationFact.promptText, /临地盘/u);
   const prompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
+  assert.match(prompt, new RegExp(`月将${data.monthLeader}加占时${data.divinationBranch}`));
+  assert.match(prompt, new RegExp(`${data.dayNight}，日干贵人${data.noblemanBranch}`));
+  assert.match(prompt, new RegExp(`日柱旬空${data.xunKong?.join('、')}`));
+  assert.match(prompt, /天地盘资料：当前结果仅保留0\/12位天地盘资料/u);
+  assert.doesNotMatch(
+    prompt,
+    /课传主线：|取传法：|初传取法：|四课：|三传：|神煞：|课体|取用定位：|应期依据：|课传反证：/u,
+  );
   assert.doesNotMatch(prompt, /课体判据：|课体条件：|取传条件：/);
   for (const fact of data.guaTiFacts ?? []) {
     assert.ok(!prompt.includes(`${fact.name}：${fact.matchedConditions.join('；')}`));
   }
+});
+
+test('大六壬旧盘天地盘缺口时不把未核验的昼夜与贵人写入在线提示词', () => {
+  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  data.heavenlyPlate = [];
+  data.dayNight = data.dayNight === '昼占' ? '夜占' : '昼占';
+  data.noblemanBranch = data.noblemanBranch === '子' ? '丑' : '子';
+
+  const prompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
+  assert.match(prompt, /未列，日干贵人未列/u);
+  assert.doesNotMatch(prompt, /昼占，日干贵人/u);
+  assert.doesNotMatch(prompt, /夜占，日干贵人/u);
 });
 
 test('大六壬真实旬空状态在三传与应期提示词中一致', () => {

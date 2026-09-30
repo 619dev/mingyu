@@ -71,6 +71,7 @@ import {
 } from './formatters';
 import { buildTaskText } from 'mingyu-core/divination/engine/method-text';
 import { buildLiurenTemplateText } from 'mingyu-core/divination/engine/liuren-template';
+import { analyzeLiurenEvidence } from 'mingyu-core/divination/liuren';
 import { buildLiuyaoTemplateText } from 'mingyu-core/divination/engine/liuyao-template';
 import { buildPromptGuidanceSections, buildPromptTask } from '../../prompt-guidance';
 import { tarotSpreads } from 'mingyu-core/divination/tarot';
@@ -344,6 +345,10 @@ export function buildDivinationPrompt(
   const liurenRangeText = conditionalLiurenRange
     ? formatLiurenRangeFacts(conditionalLiurenRange)
     : undefined;
+  const liurenPlateComplete =
+    method !== 'liuren' ||
+    Boolean(liurenRangeText) ||
+    analyzeLiurenEvidence(data as LiurenData).plateFact.status === '完整';
   const conditionalJinkoujueRange =
     options.jinkoujueRange?.status === 'conditional' ? options.jinkoujueRange : undefined;
   const jinkoujueRangeText = conditionalJinkoujueRange
@@ -401,7 +406,14 @@ export function buildDivinationPrompt(
                     `分支${index + 1}：${formatLiurenRangeInterval(branch.startTimestamp, branch.endTimestamp)}\n${buildLiurenTemplateText(liurenTemplate, branch.data)}`,
                 )
                 .join('\n')
-            : buildLiurenTemplateText(liurenTemplate, data as LiurenData),
+            : liurenPlateComplete
+              ? buildLiurenTemplateText(liurenTemplate, data as LiurenData)
+              : ({
+                  general: '通用',
+                  ganqing: '感情关系',
+                  shiye: '事业工作',
+                  caifu: '财富财运',
+                }[liurenTemplate] ?? '通用'),
         )
       : '';
   const liuyaoTemplateSection =
@@ -450,19 +462,23 @@ export function buildDivinationPrompt(
                       '依据各时间段的月将、四课、三传与时令判断事实，比较分支条件后回答【问题】。',
                       'liuren',
                     )
-                  : method === 'jinkoujue' && jinkoujueRangeText
+                  : method === 'liuren' && !liurenPlateComplete
                     ? buildPromptTask(
-                        '依据各时间段的月将、四位、阴阳发用与五动三动，比较分支条件后回答【问题】。',
-                        'jinkoujue',
+                        '依据本次起课四柱、月将、占时及可核对的时间资料回答【问题】。',
                       )
-                    : method === 'tarot'
-                      ? buildTarotSpreadTask(data as TarotData)
-                      : method === 'lenormand' && (data as LenormandData).cards.length === 1
-                        ? buildPromptTask(
-                            '依据唯一牌位与基础牌义回答【问题】。',
-                            'lenormand-single',
-                          )
-                        : buildTaskText(method, data);
+                    : method === 'jinkoujue' && jinkoujueRangeText
+                      ? buildPromptTask(
+                          '依据各时间段的月将、四位、阴阳发用与五动三动，比较分支条件后回答【问题】。',
+                          'jinkoujue',
+                        )
+                      : method === 'tarot'
+                        ? buildTarotSpreadTask(data as TarotData)
+                        : method === 'lenormand' && (data as LenormandData).cards.length === 1
+                          ? buildPromptTask(
+                              '依据唯一牌位与基础牌义回答【问题】。',
+                              'lenormand-single',
+                            )
+                          : buildTaskText(method, data);
   const taskText = isSignPrompt
     ? buildPromptTask('', method)
     : selection
@@ -491,7 +507,9 @@ export function buildDivinationPrompt(
 
   if (method === 'liuren') {
     return [
-      buildPromptGuidanceSections(method),
+      liurenPlateComplete
+        ? buildPromptGuidanceSections(method)
+        : buildSection('【传统依据】', '大六壬以月将加临占时定天地盘。'),
       currentTimeSection,
       options.timeContextText ? buildSection('【起局时间口径】', options.timeContextText) : '',
       supplementarySection ? buildSection('【补充信息】', supplementarySection) : '',

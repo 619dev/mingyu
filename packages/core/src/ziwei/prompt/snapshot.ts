@@ -164,6 +164,28 @@ export function buildPromptContextSnapshot(params: {
   };
 }
 
+function getClassifiedBirthMutagens(palace: PalaceFact) {
+  return new Set(
+    [...palace.major_stars, ...palace.minor_stars].flatMap((star) =>
+      star.birth_mutagen ? [`${star.name}化${star.birth_mutagen}`] : [],
+    ),
+  );
+}
+
+function filterRepeatedBirthMutagens<T extends { 生年四化?: string[] }>(
+  summary: T,
+  palace: PalaceFact,
+) {
+  const birthMutagens = summary.生年四化;
+  if (!birthMutagens?.length) return summary;
+
+  const classifiedBirthMutagens = getClassifiedBirthMutagens(palace);
+  const remainingBirthMutagens = birthMutagens.filter((item) => !classifiedBirthMutagens.has(item));
+  return remainingBirthMutagens.length === birthMutagens.length
+    ? summary
+    : { ...summary, 生年四化: remainingBirthMutagens };
+}
+
 export function buildZiweiReadableSnapshot(params: {
   payload: AnalysisPayloadV1;
   reportContext: ZiweiPromptContext;
@@ -181,7 +203,11 @@ export function buildZiweiReadableSnapshot(params: {
   const evidenceBody = formatObjectList(
     buildEvidenceSummary(params.payload, focusPalaces, params.reportContext),
   );
-  const focusBody = formatObjectList(snapshot.重点宫位摘要);
+  const focusBody = formatObjectList(
+    snapshot.重点宫位摘要.map((summary, index) =>
+      filterRepeatedBirthMutagens(summary, focusPalaces[index]),
+    ),
+  );
   const focusPalaceNames = new Set(focusPalaces.map((palace) => formatPalaceName(palace.name)));
   const palaceBody = formatObjectList(
     snapshot.全盘宫位索引.map((palace) =>
@@ -225,8 +251,9 @@ export function buildZiweiTaskBookSnapshot(params: {
   const yunxianFocus = buildScopeHitSummary(payload);
   const focusBody = `宫位：${focusPalaces.map((item) => formatPalaceName(item.name)).join('、')}`;
   const palaceBody = payload.palaces
-    .map((palace) =>
-      Object.entries(buildPalaceSummary(payload, palace))
+    .map((palace) => {
+      const summary = filterRepeatedBirthMutagens(buildPalaceSummary(payload, palace), palace);
+      return Object.entries(summary)
         .filter(
           ([key, value]) =>
             !['对宫', '三方四正'].includes(key) &&
@@ -235,8 +262,8 @@ export function buildZiweiTaskBookSnapshot(params: {
             (!Array.isArray(value) || value.length),
         )
         .map(([key, value]) => `${key}：${Array.isArray(value) ? value.join('、') : value}`)
-        .join('｜'),
-    )
+        .join('｜');
+    })
     .join('\n');
   const evidenceBody = buildEvidenceSummary(payload, focusPalaces, reportContext)
     .map((item) => `${item.适用范围}｜${item.判断线索}`)

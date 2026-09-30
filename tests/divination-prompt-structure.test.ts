@@ -473,7 +473,7 @@ test('各类占卜提示词都使用统一的角色加信息加问题结构', as
     {
       method: 'liuren',
       question: '这件事接下来该怎么推进？',
-      data: createData('liuren'),
+      data: generateLiuren(new Date('2025-06-18T10:30:00+08:00')),
       structure: 'liuren',
     },
     {
@@ -1076,19 +1076,20 @@ test('大六壬模板只写入简短问题范围', () => {
 });
 
 test('大六壬提示词会给出精简课传资料，避免重复堆叠', () => {
+  const data = generateLiuren(new Date('2025-06-18T10:30:00+08:00'));
   const prompt = buildDivinationPrompt(
     'liuren',
     '这件事接下来该怎么推进？',
-    createData('liuren'),
+    data,
     createSupplementaryInfo(),
   );
 
   assert.match(prompt, /【排盘信息】/);
-  assert.match(prompt, /核心结构：月将亥；占时卯；昼占；贵人亥临卯；旬空戌、亥（命中初传亥）/);
-  assert.match(prompt, /课传主线：取传比用法；传态递传/);
+  assert.match(prompt, /核心结构：月将.+；占时.+；(?:昼占|夜占)；贵人.+；旬空/);
+  assert.match(prompt, /课传主线：传态/);
   assert.doesNotMatch(prompt, /取传依据：/);
-  assert.match(prompt, /四课：\n  一课亥临卯乘贵人，水生木/);
-  assert.match(prompt, /三传：\n  初传亥乘贵人，生扶/);
+  assert.match(prompt, /四课：\n  一课/);
+  assert.match(prompt, /三传：\n  初传/);
   assert.doesNotMatch(prompt, /课传主线：.*发用|课传主线：.*末传/);
   assert.doesNotMatch(prompt, /主虚而不实/);
   assert.doesNotMatch(prompt, /断课抓手：/);
@@ -1096,7 +1097,7 @@ test('大六壬提示词会给出精简课传资料，避免重复堆叠', () =>
   assert.doesNotMatch(prompt, /天将属性：|取传规则全文/);
 });
 
-test('大六壬提示词使用简短任务', () => {
+test('大六壬旧盘缺天地盘时任务只引用可核对的起课资料', () => {
   const prompt = buildDivinationPrompt(
     'liuren',
     '这件事接下来该怎么推进？',
@@ -1104,7 +1105,9 @@ test('大六壬提示词使用简短任务', () => {
     createSupplementaryInfo(),
   );
 
-  assert.match(prompt, /【任务】\n依据月将、四课、三传、天将与课体回答【问题】。/);
+  assert.match(prompt, /【传统依据】\n大六壬以月将加临占时定天地盘。/);
+  assert.match(prompt, /【任务】\n依据本次起课四柱、月将、占时及可核对的时间资料回答【问题】。/);
+  assert.doesNotMatch(prompt, /四课：|三传：|课体：|神煞：/);
   assert.doesNotMatch(prompt, /【输出要求】/);
   assert.doesNotMatch(prompt, /反证限制|证据不足|不硬给日期|取证顺序|回答口径/);
 });
@@ -1307,7 +1310,7 @@ test('星盘提示词应直接给出太阳月亮上升和主要相位资料', ()
   assert.match(prompt, /上升：狮子座 12°/);
   assert.match(prompt, /太阳金牛座 29°，第10宫/);
   assert.match(prompt, /月亮处女座 08°，第2宫/);
-  assert.match(prompt, /核心位置：太阳金牛座 29°；月亮处女座 08°；上升狮子座 12°/);
+  assert.doesNotMatch(prompt, /核心位置：/);
   assert.doesNotMatch(prompt, /格局：土象偏强|十大星体格局：/);
   assert.doesNotMatch(prompt, /逆行星体无/);
   assert.match(prompt, /相位明细：/);

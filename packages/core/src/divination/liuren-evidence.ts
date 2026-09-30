@@ -854,20 +854,43 @@ function buildFocusFacts(data: LiurenData): LiurenFocusFact[] {
   }));
 }
 
-function buildCalculationFact(data: LiurenData, xunKong: string[]): LiurenCalculationFact {
+function buildCalculationFact(
+  data: LiurenData,
+  xunKong: string[],
+  plateVerified: boolean,
+): LiurenCalculationFact {
   const dayStem = data.ganzhi.day.charAt(0);
+  const hourBranch = data.ganzhi.hour.charAt(1);
+  const expectedDayNight =
+    hourBranch === data.divinationBranch
+      ? DAYTIME_BRANCHES.has(data.divinationBranch)
+        ? '昼占'
+        : '夜占'
+      : undefined;
+  const dayNight =
+    expectedDayNight && data.dayNight === expectedDayNight ? expectedDayNight : '未列';
+  const expectedNoblemanBranch =
+    dayNight !== '未列' ? getNoblemanBranch(dayStem, dayNight) : undefined;
+  const noblemanBranch =
+    expectedNoblemanBranch && data.noblemanBranch === expectedNoblemanBranch
+      ? expectedNoblemanBranch
+      : undefined;
+  const expectedDayStemResidence = getDayStemResidence(dayStem);
+  const dayStemResidence =
+    data.dayStemResidence === expectedDayStemResidence ? expectedDayStemResidence : undefined;
+  const noblemanGroundBranch = plateVerified ? data.noblemanGroundBranch : undefined;
   return {
     key: `liuren:calculation:${data.timestamp}`,
     ganzhi: { ...data.ganzhi },
     monthLeader: data.monthLeader,
     divinationBranch: data.divinationBranch,
-    dayNight: data.dayNight ?? '未列',
-    noblemanBranch: data.noblemanBranch,
-    noblemanGroundBranch: data.noblemanGroundBranch,
+    dayNight,
+    noblemanBranch,
+    noblemanGroundBranch,
     dayStem,
-    dayStemResidence: data.dayStemResidence,
+    dayStemResidence,
     xunKong: [...xunKong],
-    promptText: `四柱干支为年${data.ganzhi.year}、月${data.ganzhi.month}、日${data.ganzhi.day}、时${data.ganzhi.hour}；月将${data.monthLeader}加占时${data.divinationBranch}；${data.dayNight ?? '昼夜未列'}，日干贵人${data.noblemanBranch ?? '未列'}${data.noblemanGroundBranch ? `临地盘${data.noblemanGroundBranch}` : ''}；日干${dayStem}寄${data.dayStemResidence ?? '未列'}；日柱旬空${xunKong.join('、') || '未列'}`,
+    promptText: `四柱干支为年${data.ganzhi.year}、月${data.ganzhi.month}、日${data.ganzhi.day}、时${data.ganzhi.hour}；月将${data.monthLeader}加占时${data.divinationBranch}；${dayNight}，日干贵人${noblemanBranch ?? '未列'}${noblemanGroundBranch ? `临地盘${noblemanGroundBranch}` : ''}；日干${dayStem}寄${dayStemResidence ?? '未列'}；日柱旬空${xunKong.join('、') || '未列'}`,
     sources: [
       '占时四柱与月将中气切换计算',
       '月将加时天地盘规则',
@@ -1417,7 +1440,9 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
   }
   const initial = data.threeTransmissions[0];
   const xunKong = expectedXunKong;
-  const calculationFact = buildCalculationFact(data, xunKong);
+  const platePositionFacts = buildPlatePositionFacts(data);
+  const plateFact = buildPlateCoverageFact(data, platePositionFacts);
+  const calculationFact = buildCalculationFact(data, xunKong, plateFact.status === '完整');
   const calculationFacts = [
     `四柱干支：年${calculationFact.ganzhi.year}、月${calculationFact.ganzhi.month}、日${calculationFact.ganzhi.day}、时${calculationFact.ganzhi.hour}`,
     `月将加时：月将${calculationFact.monthLeader}加占时${calculationFact.divinationBranch}`,
@@ -1425,8 +1450,6 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
     `日干寄宫：${calculationFact.dayStem}寄${calculationFact.dayStemResidence ?? '未列'}`,
     `日柱旬空：${calculationFact.xunKong.join('、') || '未列'}`,
   ];
-  const platePositionFacts = buildPlatePositionFacts(data);
-  const plateFact = buildPlateCoverageFact(data, platePositionFacts);
   if (plateFact.status !== '完整') {
     data = {
       ...data,

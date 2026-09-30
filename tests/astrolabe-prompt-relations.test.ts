@@ -29,6 +29,7 @@ test('倍五分相在普通、双盘与即时提示词中只呈现中文关系�
   assert.ok(aspect);
   assert.equal(aspect.type, '倍五分相');
   const line = formatAstrolabeAspectLine(aspect, [...chart.planets, ...chart.angles]);
+  const compactLine = formatAstrolabeAspectLine(aspect, [...chart.planets, ...chart.angles], false);
   assert.match(line, /：倍五分相，目标角144°，实际角距/);
   assert.doesNotMatch(line, /bQ/);
 
@@ -38,7 +39,8 @@ test('倍五分相在普通、双盘与即时提示词中只呈现中文关系�
     buildAstrolabeSynastryPrompt({ chart1: chart, chart2: chart, synastry }),
     buildInstantAstrolabePrompt(chart, '请解读当前情况', '当地钟表时间'),
   ]) {
-    assert.ok(prompt.includes(line));
+    assert.ok(prompt.includes(compactLine));
+    assert.ok(!prompt.includes(line));
     assert.doesNotMatch(prompt, /bQ/);
   }
 
@@ -88,15 +90,19 @@ test('真实星盘相位将跨星座合相的位置与角距偏差分别给出',
   assert.ok(Math.abs(angle - aspect.actualAngle!) < 0.01);
   assert.ok(Math.abs(angle - aspect.orb) < 0.01);
   const line = formatAstrolabeAspectLine(aspect, points);
+  const compactLine = formatAstrolabeAspectLine(aspect, points, false);
   assert.ok(line.includes(sun.formatted));
   assert.ok(line.includes(mercury.formatted));
+  assert.doesNotMatch(compactLine, new RegExp(`${sun.formatted}|${mercury.formatted}`));
   assert.match(line, /跨星座/);
   assert.match(line, /目标角0°，实际角距[\d.]+°，偏差[\d.]+°，容许偏差上限/);
-  assert.ok(formatAstrolabeForPrompt(chart).includes(line));
+  assert.ok(formatAstrolabeForPrompt(chart).includes(compactLine));
+  assert.ok(formatAstrolabeForPrompt(chart).includes(`  ${sun.label}${sun.formatted}`));
+  assert.ok(formatAstrolabeForPrompt(chart).includes(`  ${mercury.label}${mercury.formatted}`));
   for (const point of chart.angles) {
     assert.ok(formatAstrolabeForPrompt(chart).includes(`${point.label}：${point.formatted}`));
   }
-  assert.ok(formatAstrolabeAspectSections(chart.aspects, points).join('\n').includes(line));
+  assert.ok(formatAstrolabeAspectSections(chart.aspects, points).join('\n').includes(compactLine));
   const prompts = [
     [formatAstrolabeForPrompt(chart), 1],
     [
@@ -116,7 +122,8 @@ test('真实星盘相位将跨星座合相的位置与角距偏差分别给出',
       assert.match(headline, /日月参与\d+项，四轴参与\d+项，紧密\d+项/);
       assert.doesNotMatch(headline, /太阳与水星：合相/);
     }
-    assert.equal(prompt.split(line).length - 1, natalChartCount);
+    assert.equal(prompt.split(compactLine).length - 1, natalChartCount);
+    assert.ok(!prompt.includes(line));
     for (const headline of headlines) {
       assert.doesNotMatch(headline, /实际角距|容许偏差上限|第\d+宫/);
     }

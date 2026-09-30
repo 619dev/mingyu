@@ -77,7 +77,8 @@ import { getKongmingInterpretation } from '../name-number/kongming-interpretatio
 import { getZhugeInterpretation } from '../name-number/zhuge-interpretations';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
 import { resolveSsgwStoryContent } from '../divination/ssgw-content';
-import { formatTaiyiConditionSummary, formatTaiyiTacticBasis } from '../taiyi';
+import { evaluateTaiyiConditions, formatTaiyiTacticBasis } from '../taiyi';
+import { getTaiyiCountNature } from '../taiyi/evidence';
 import {
   formatJinkoujueRelations,
   formatJinkoujueJudgmentFacts,
@@ -967,9 +968,7 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
       return `${name}：${compactedSummary}`;
     });
   const palaceLines = data.jiuGongGe.map((palace) => {
-    const voidMark = data.voidPalaces?.some((item) => item.palace === palace.gong) ? '，逢空' : '';
-    const horseMark = data.horseStar?.palace === palace.gong ? '，马星' : '';
-    return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}，地盘${palace.diPan.stem || '无'}${voidMark}${horseMark}`;
+    return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}，地盘${palace.diPan.stem || '无'}`;
   });
   const isYearOrMonth = scopePresentation.scope === 'year' || scopePresentation.scope === 'month';
   const seasonalitySummary =
@@ -1036,6 +1035,16 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
 function formatLiurenInfo(data: LiurenData) {
   const analysis = analyzeLiurenEvidence(data);
   const plateVerified = analysis.plateFact.status === '完整';
+  if (!plateVerified) {
+    const calculation = analysis.calculationFact;
+    return [
+      '占法：大六壬',
+      `起课四柱：年${calculation.ganzhi.year}、月${calculation.ganzhi.month}、日${calculation.ganzhi.day}、时${calculation.ganzhi.hour}`,
+      `月将${calculation.monthLeader}加占时${calculation.divinationBranch}`,
+      `${calculation.dayNight}，日干贵人${calculation.noblemanBranch ?? '未列'}；日柱旬空${calculation.xunKong.join('、') || '未列'}`,
+      `天地盘资料：${analysis.plateFact.promptText}`,
+    ].join('\n');
+  }
   const ridingFacts = analysis.traditionalFacts
     .filter((item) => item.kind === '天将乘神')
     .map((item) => ({
@@ -1480,21 +1489,40 @@ export function formatTaiyiTradition(data: TaiyiResult) {
 
 export function formatTaiyiInfo(data: TaiyiResult) {
   const scopeLabel = { year: '年计', month: '月计', day: '日计', hour: '时计' }[data.scope];
-  const conditionSummary = data.conditions ? formatTaiyiConditionSummary(data.conditions) : '';
-  const repeatedCountJudgments = new Set(
-    [
-      data.countNatures?.lord ? `主算 ${data.lordCount} 为${data.countNatures.lord}。` : '',
-      data.countNatures?.guest ? `客算 ${data.guestCount} 为${data.countNatures.guest}。` : '',
-      data.countNatures?.set ? `定算 ${data.setCount} 为${data.countNatures.set}。` : '',
-    ].filter(Boolean),
-  );
-  const specialJudgments = data.judgments.filter(
-    (item) => !repeatedCountJudgments.has(item) && item !== conditionSummary,
-  );
+  const conditions = evaluateTaiyiConditions({
+    accumulatedValue: data.accumulatedValue,
+    taiyiPosition: data.taiyiPosition,
+    taiyiPalace: data.taiyiPalace,
+    wenChangPosition: data.wenChangPosition,
+    wenChangPalace: data.wenChangPalace,
+    shiJiPosition: data.shiJiPosition,
+    shiJiPalace: data.shiJiPalace,
+    lordCount: data.lordCount,
+    guestCount: data.guestCount,
+    lordGeneral: data.lordGeneral,
+    lordAssistant: data.lordAssistant,
+    guestGeneral: data.guestGeneral,
+    guestAssistant: data.guestAssistant,
+  });
+  const lordNature = getTaiyiCountNature(data.lordCount);
+  const guestNature = getTaiyiCountNature(data.guestCount);
+  const setNature = getTaiyiCountNature(data.setCount);
+  const imprisonedRoles = [
+    data.wenChangPosition === data.taiyiPosition ? '文昌' : undefined,
+    data.lordGeneral === data.taiyiPalace ? '主大将' : undefined,
+    data.lordAssistant === data.taiyiPalace ? '主参将' : undefined,
+    data.guestGeneral === data.taiyiPalace ? '客大将' : undefined,
+    data.guestAssistant === data.taiyiPalace ? '客参将' : undefined,
+  ].filter((item): item is string => item !== undefined);
+  const specialJudgments = [
+    data.shiJiPosition === data.taiyiPosition ? '掩：始击与太乙同宫，传统称客目掩太乙。' : '',
+    imprisonedRoles.length ? `囚：${imprisonedRoles.join('、')}与太乙同宫。` : '',
+    data.lordGeneral === 5 || data.lordAssistant === 5 ? '主将参中宫。' : '',
+    data.guestGeneral === 5 || data.guestAssistant === 5 ? '客将参中宫。' : '',
+  ].filter(Boolean);
   const sixteenGods = data.sixteenGods?.length
     ? `十六神：${data.sixteenGods.map((item) => `${item.branch}${item.god}`).join('、')}`
     : '';
-  const conditions = data.conditions;
   const mainGateRoles = conditions?.threeGates.roles.filter((item) => item.usedForThreeGate) ?? [];
   const mismatchedPairs =
     conditions?.yinYangHarmony.pairFacts.filter((item) => !item.matched) ?? [];
@@ -1531,8 +1559,8 @@ export function formatTaiyiInfo(data: TaiyiResult) {
       : []),
     `太乙：${data.taiyiPosition}（第${data.taiyiPalace}宫，${data.taiyiGua}卦，${data.taiyiDir}）`,
     `文昌（主目）：${data.wenChangPosition}；始击（客目）：${data.shiJiPosition}；计神：${data.jiShenPosition}`,
-    `主客定算：主算${data.lordCount}；客算${data.guestCount}；定算${data.setCount}${data.countNatures?.set ? `（${data.countNatures.set}）` : ''}`,
-    `大局攻守：${formatTaiyiTacticBasis({ lordCount: data.lordCount, guestCount: data.guestCount, lordNature: data.countNatures?.lord, guestNature: data.countNatures?.guest })}`,
+    `主客定算：主算${data.lordCount}${lordNature ? `（${lordNature}）` : ''}；客算${data.guestCount}${guestNature ? `（${guestNature}）` : ''}；定算${data.setCount}${setNature ? `（${setNature}）` : ''}`,
+    `大局攻守：${formatTaiyiTacticBasis({ lordCount: data.lordCount, guestCount: data.guestCount })}`,
     `将参：主大${data.lordGeneral}、主参${data.lordAssistant}；客大${data.guestGeneral}、客参${data.guestAssistant}；定大${data.setGeneral}、定参${data.setAssistant}`,
     sixteenGods,
     ...conditionLines,

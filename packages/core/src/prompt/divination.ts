@@ -22,6 +22,7 @@ import {
 import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
 import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
 import { getQimenActiveSpecialConditionText } from '../divination/qimen-evidence';
+import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -376,7 +377,9 @@ export function getDivinationSummaryBlocks(
         lines: [
           wrapMainEvidence(evidence.primaryFact.promptText),
           `顺数轨迹：月宫${item.sequence.month.name}；日宫${item.sequence.day.name}；时宫${item.sequence.hour.name}`,
-          `历法口径：${[item.calculation.dayBoundary, item.calculation.leapMonthRule, formatXiaoliurenCalendarBoundary(item)].filter(Boolean).join('；')}`,
+          item.calculation
+            ? `历法口径：${[item.calculation.dayBoundary, item.calculation.leapMonthRule, formatXiaoliurenCalendarBoundary(item)].filter(Boolean).join('；')}`
+            : '',
         ].filter(Boolean),
       };
     }
@@ -836,6 +839,9 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
   const question = options.question?.trim() || '请依据占卜资料分析当前问题。';
   const liuyaoTemplate = options.liuyaoTemplate ?? 'general';
   const liurenTemplate = options.liurenTemplate ?? 'general';
+  const liurenPlateComplete =
+    options.method !== 'liuren' ||
+    analyzeLiurenEvidence(options.data as LiurenData).plateFact.status === '完整';
   const astrolabeTopic = options.astrolabeTopic ?? 'life';
   const isSignPrompt = options.method === 'zhuge' || options.method === 'kongming';
   const hasAstrolabePeriod = Boolean(
@@ -848,18 +854,20 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
   );
   const baseTask = isSignPrompt
     ? buildPromptTask('', options.method)
-    : options.method === 'astrolabe' && !options.isCustomQuestion
-      ? buildPromptTask(
-          hasAstrolabeAdvancedTiming
-            ? `请分别判断普通行运、太阳返照、次限推进和太阳弧，再依据四类证据的共同主题、时间触发与分歧，重点分析${ASTROLABE_TOPIC_LABELS[astrolabeTopic]}并回答【问题】。`
-            : `请依据星体、宫位、相位和盘面证据，重点分析${ASTROLABE_TOPIC_LABELS[astrolabeTopic]}并回答【问题】。`,
-          hasAstrolabePeriod ? 'astrolabe' : 'astrolabe-natal',
-        )
-      : options.method === 'tarot'
-        ? buildTarotSpreadTask(options.data as TarotData)
-        : options.method === 'lenormand' && (options.data as LenormandData).cards.length === 1
-          ? buildPromptTask('依据唯一牌位与基础牌义回答【问题】。', 'lenormand-single')
-          : buildTaskText(options.method, options.data);
+    : options.method === 'liuren' && !liurenPlateComplete
+      ? buildPromptTask('依据本次起课四柱、月将、占时以及可复核的时间资料回答【问题】。')
+      : options.method === 'astrolabe' && !options.isCustomQuestion
+        ? buildPromptTask(
+            hasAstrolabeAdvancedTiming
+              ? `请分别判断普通行运、太阳返照、次限推进和太阳弧，再依据四类证据的共同主题、时间触发与分歧，重点分析${ASTROLABE_TOPIC_LABELS[astrolabeTopic]}并回答【问题】。`
+              : `请依据星体、宫位、相位和盘面证据，重点分析${ASTROLABE_TOPIC_LABELS[astrolabeTopic]}并回答【问题】。`,
+            hasAstrolabePeriod ? 'astrolabe' : 'astrolabe-natal',
+          )
+        : options.method === 'tarot'
+          ? buildTarotSpreadTask(options.data as TarotData)
+          : options.method === 'lenormand' && (options.data as LenormandData).cards.length === 1
+            ? buildPromptTask('依据唯一牌位与基础牌义回答【问题】。', 'lenormand-single')
+            : buildTaskText(options.method, options.data);
   const task = isSignPrompt
     ? baseTask
     : selection
@@ -869,7 +877,9 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
     options.method === 'liuyao'
       ? buildLiuyaoTemplateText(liuyaoTemplate)
       : options.method === 'liuren'
-        ? buildLiurenTemplateText(liurenTemplate, options.data as LiurenData)
+        ? liurenPlateComplete
+          ? buildLiurenTemplateText(liurenTemplate, options.data as LiurenData)
+          : ''
         : '';
   const supplementaryText = formatSupplementaryInfo(options.supplementaryInfo, options.method);
   const currentTime = options.currentTime ?? new Date();
@@ -895,8 +905,13 @@ export function buildDivinationPromptDocument(options: DivinationPromptOptions):
       : options.method === 'lenormand' && (options.data as LenormandData).cards.length === 1
         ? buildPromptSection('传统依据', '雷诺曼单牌以当前牌位、基础牌义和问题语境为主要资料。')
         : '';
+  const liurenGuidance =
+    options.method === 'liuren' && !liurenPlateComplete
+      ? buildPromptSection('传统依据', '大六壬以月将加临占时定天地盘。')
+      : '';
   const user = joinPromptSections([
     singleCardGuidance ||
+      liurenGuidance ||
       (options.method === 'taiyi'
         ? buildPromptSection('传统依据', formatTaiyiTradition(options.data as TaiyiResult))
         : buildPromptGuidance(options.method)),

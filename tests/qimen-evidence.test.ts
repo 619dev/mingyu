@@ -416,7 +416,7 @@ test('奇门同宫空迫按宫汇总，门迫格局不重复列为自身条件',
   assert.doesNotMatch(formatEnhancedDivinationInfo('qimen', data), /格局条件：/);
 });
 
-test('奇门格局空亡事实由九宫简表承载，应期来源不重复触发条件', () => {
+test('奇门格局空亡事实由旬空位置映射承载，应期来源不重复触发条件', () => {
   const data = generateQimen(fixedDate);
   const palace = data.jiuGongGe[0];
   data.classicPatterns = [
@@ -430,10 +430,11 @@ test('奇门格局空亡事实由九宫简表承载，应期来源不重复触�
   data.yingQi.triggerConditions.push(trigger);
   const prompt = formatEnhancedDivinationInfo('qimen', data);
   assert.doesNotMatch(prompt, /格局条件：/);
+  assert.match(prompt, /旬空与马星：旬空子空落坎一宫/u);
   const palaceLine = prompt
     .split('\n')
     .find((line) => line.trimStart().startsWith(`${palace.name}（`));
-  assert.match(palaceLine ?? '', /逢空/);
+  assert.doesNotMatch(palaceLine ?? '', /逢空/u);
   assert.ok(prompt.includes(`空亡核验（吉格，${palace.name}）：盘面事实`));
   assert.doesNotMatch(prompt, /结合本次用神与宫门星神，分别核对结果、程度和落实迟速/);
   assert.equal(prompt.split(trigger).length - 1, 1);
@@ -447,7 +448,9 @@ test('奇门提示词按问题展示专项复合格局，结构化盘面仍保�
   assert.ok(data.patternCombos?.some((item) => item.name === '星宫主客'));
 
   const ordinary = formatEnhancedDivinationInfo('qimen', data, '工作进展如何？');
-  assert.match(ordinary, /坎一宫（正北，水）：[^\n]*逢空/);
+  assert.match(ordinary, /旬空与马星：旬空子空落坎一宫、丑空落艮八宫/u);
+  const ordinaryPalaceTable = ordinary.split('九宫简表：\n')[1]?.split('\n同干定位：')[0] ?? '';
+  assert.doesNotMatch(ordinaryPalaceTable, /逢空|马星/u);
   assert.match(ordinary, /门迫（凶格）：惊门（金）克巽四宫（木）/);
   assert.doesNotMatch(ordinary, /^候选宫.+(?:盘面洞察|经典格局)/m);
   assert.doesNotMatch(ordinary, /格局条件：/);

@@ -325,7 +325,7 @@ export function generateJinkoujue(
 
   let randomTrace: RandomTrace | undefined;
 
-  const { ganzhi, timestamp } = getDivinationTime(
+  const { ganzhi, timestamp, timezoneOffsetMinutes } = getDivinationTime(
     params?.customDate,
     undefined,
     params?.termReferenceDate,
@@ -444,6 +444,7 @@ export function generateJinkoujue(
     methodLabel: METHOD_LABELS[method],
     ganzhi,
     timestamp,
+    timezoneOffsetMinutes,
     dayNight,
     monthLeader,
     divinationBranch: hourBranch,

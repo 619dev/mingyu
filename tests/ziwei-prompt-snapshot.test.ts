@@ -446,6 +446,51 @@ test('紫微重点宫位资料展示三方四正时应排除本宫', () => {
   assert.deepEqual(summary.三方四正, ['迁移宫', '财帛宫', '官禄宫']);
 });
 
+test('紫微提示词仅省略已在主辅曜注记中表达的生年四化项目', () => {
+  const payload = createPayload();
+  const palace = payload.palaces[0];
+  palace.major_stars = [{ name: '紫微', kind: 'major', birth_mutagen: '禄' }];
+  palace.minor_stars = [{ name: '文昌', kind: 'minor', birth_mutagen: '科' }];
+
+  const coveredPrompt = buildZiweiTaskBookSnapshot({
+    payload,
+    reportContext: createReportContext(),
+  });
+  const coveredPalaceLine = coveredPrompt
+    .split('\n')
+    .find((line) => line.startsWith('宫位：命宫｜'));
+  assert.ok(coveredPalaceLine);
+  assert.match(coveredPalaceLine, /主星：紫微\(生年化禄\)/);
+  assert.match(coveredPalaceLine, /辅星：文昌\(生年化科\)/);
+  assert.doesNotMatch(coveredPalaceLine, /生年四化：/);
+  const coveredReadableSnapshot = buildZiweiReadableSnapshot({
+    payload,
+    reportContext: createReportContext(),
+  });
+  assert.doesNotMatch(coveredReadableSnapshot, /生年四化：紫微化禄|生年四化：文昌化科/);
+
+  palace.other_stars = [{ name: '天巫', kind: 'other', birth_mutagen: '忌' }];
+  const retainedPrompt = buildZiweiTaskBookSnapshot({
+    payload,
+    reportContext: createReportContext(),
+  });
+  const retainedPalaceLine = retainedPrompt
+    .split('\n')
+    .find((line) => line.startsWith('宫位：命宫｜'));
+  assert.ok(retainedPalaceLine);
+  assert.match(retainedPalaceLine, /主星：紫微\(生年化禄\)/);
+  assert.match(retainedPalaceLine, /辅星：文昌\(生年化科\)/);
+  assert.match(retainedPalaceLine, /杂曜：天巫\(生年化忌\)/);
+  assert.match(retainedPalaceLine, /生年四化：天巫化忌/);
+  assert.doesNotMatch(retainedPalaceLine, /生年四化：[^｜]*(?:紫微化禄|文昌化科)/);
+  const retainedReadableSnapshot = buildZiweiReadableSnapshot({
+    payload,
+    reportContext: createReportContext(),
+  });
+  assert.match(retainedReadableSnapshot, /生年四化：天巫化忌/);
+  assert.doesNotMatch(retainedReadableSnapshot, /生年四化：[^\n]*(?:紫微化禄|文昌化科)/);
+});
+
 test('紫微输出提示词应是可复制给在线 AI 的独立任务书，不暴露工程提示词', () => {
   const prompt = buildCombinedZiweiPrompt(createPayload(), 'destiny', '请分析命局主线。');
 

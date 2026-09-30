@@ -167,4 +167,7 @@ test('七政在线任务书省去恒定罗计对照和重复星曜名单，完�
       .filter((fact) => fact.id.includes('.natal.aspect.'))
       .every((fact) => !fact.values.includes('计都(土余)') || fact.owner !== '罗睺(火余)'),
   );
+  assert.match(result.prompt, /命主：月（水）；命主恩星：太白\(金\)/u);
+  assert.equal(result.prompt.match(/太阴与太白\(金\)：合相/gu)?.length, 1);
+  assert.doesNotMatch(result.prompt, /恩星太白\(金\)与命主形成合相吊照/u);
 });

@@ -465,6 +465,9 @@ export function formatInstantQizhengPrompt(result: QizhengResult): string {
     )
     .replace(/昼生/g, '昼盘')
     .replace(/夜生/g, '夜盘')
+    .replace(/命主恩星：/g, '恩星：')
+    .replace(/命主难星：/g, '难星：')
+    .replace(/命主：/g, '命宫主宰星：')
     .replace(/命主/g, '命宫主宰星');
 }
 

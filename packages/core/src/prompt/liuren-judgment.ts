@@ -13,6 +13,7 @@ export function formatLiurenJudgmentFacts(
   const lines: string[] = [];
   const analysis = analyzeLiurenEvidence(data);
   const plateVerified = analysis.plateFact.status === '完整';
+  if (!plateVerified) return lines;
   if (plateVerified && !options.chartFactsIncluded && data.transmissionDetail) {
     const sourceMarker = '；古籍依据依次为：';
     const sourceIndex = data.transmissionDetail.indexOf(sourceMarker);

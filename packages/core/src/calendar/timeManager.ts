@@ -18,6 +18,8 @@ export interface DivinationTime {
   ganzhi: GanZhiInfo;
   /** 时间戳 */
   timestamp: number;
+  /** 本次四柱计算采用的当地时区偏移，单位分钟。 */
+  timezoneOffsetMinutes: number;
 }
 
 /**
@@ -148,7 +150,7 @@ export class TimeManager {
     const ganzhi = this.getGanZhi(targetTime, offsetMinutes, termSolarTime);
     const timestamp = targetTime.getTime();
 
-    return { timeInfo, ganzhi, timestamp };
+    return { timeInfo, ganzhi, timestamp, timezoneOffsetMinutes: offsetMinutes };
   }
 
   /**

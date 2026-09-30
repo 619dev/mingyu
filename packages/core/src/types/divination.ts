@@ -152,6 +152,8 @@ export interface JinkoujueData {
   method: JinkoujueDivinationMethod;
   methodLabel: string;
   timestamp: number;
+  /** 新盘记录四柱计算的当地时区偏移；旧盘可能没有此字段。 */
+  timezoneOffsetMinutes?: number;
   /** 真太阳时模式下用于节气、月建与月将的实际占时戳（毫秒）。 */
   termReferenceTimestamp?: number;
   ganzhi: BaseGanZhi;

@@ -10,6 +10,7 @@ import {
 import type { JinkoujueData, JinkoujueFourPosition, JinkoujueMovement } from '../types/divination';
 import { MingyuCoreError } from '../shared/result';
 import { getVoidBranches } from '../calendar/lunar';
+import { getDivinationTime } from '../calendar/timeManager';
 import { getJinkoujueMonthLeader } from './jinkoujue-month-leader';
 import {
   EARTHLY_BRANCHES,
@@ -203,6 +204,28 @@ function expectedRelation(from: string, to: string) {
 export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidenceAnalysis {
   if (data.meta && Date.parse(data.meta.calculatedAt) !== data.timestamp) {
     throw new Error('金口诀起课时间戳与结果元数据不一致，无法生成证据。');
+  }
+  if (data.timezoneOffsetMinutes !== undefined) {
+    if (
+      !Number.isInteger(data.timezoneOffsetMinutes) ||
+      data.timezoneOffsetMinutes < -720 ||
+      data.timezoneOffsetMinutes > 840
+    ) {
+      throw new Error('金口诀四柱时区偏移无效，无法生成证据。');
+    }
+    const expectedGanzhi = getDivinationTime(
+      new Date(data.timestamp),
+      data.timezoneOffsetMinutes,
+      data.termReferenceTimestamp === undefined ? undefined : new Date(data.termReferenceTimestamp),
+    ).ganzhi;
+    if (
+      data.ganzhi.year !== expectedGanzhi.year ||
+      data.ganzhi.month !== expectedGanzhi.month ||
+      data.ganzhi.day !== expectedGanzhi.day ||
+      data.ganzhi.hour !== expectedGanzhi.hour
+    ) {
+      throw new Error('金口诀起课时刻与四柱不一致，无法生成证据。');
+    }
   }
   const { diFen, jiangShen, guiShen, renYuan } = data.positions;
   if (

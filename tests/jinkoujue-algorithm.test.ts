@@ -42,6 +42,43 @@ test('金口诀旧盘证据拒绝与结果时间元数据矛盾的起课时刻',
   );
 });
 
+test('金口诀新盘去掉结果元数据后仍按保存的时区复核起课时刻与四柱', () => {
+  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const stale = structuredClone(source);
+  delete stale.meta;
+  stale.timestamp += 24 * 60 * 60 * 1000;
+
+  assert.equal(source.timezoneOffsetMinutes, 480);
+  assert.throws(() => analyzeJinkoujueEvidence(stale), /起课时刻与四柱不一致/u);
+  assert.throws(
+    () => buildDivinationPrompt({ method: 'jinkoujue', data: stale, question: '核对课盘' }),
+    /起课时刻与四柱不一致/u,
+  );
+
+  const legacy = structuredClone(source);
+  delete legacy.meta;
+  delete legacy.timezoneOffsetMinutes;
+  assert.equal(analyzeJinkoujueEvidence(legacy).calculationFact.status, '完整');
+});
+
+test('金口诀四柱复核沿用生成时的时区与节气参考时刻', () => {
+  const corrected = new Date('2024-02-19T11:30:00+08:00');
+  const actual = new Date('2024-02-19T12:40:00+08:00');
+  try {
+    TimeManager.setTimezoneOffsetMinutesOverride(-300);
+    const source = generateJinkoujue({ customDate: corrected, termReferenceDate: actual });
+    assert.equal(source.timezoneOffsetMinutes, -300);
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+    assert.equal(analyzeJinkoujueEvidence(source).calculationFact.status, '完整');
+
+    const stale = structuredClone(source);
+    stale.ganzhi.day = '甲子';
+    assert.throws(() => analyzeJinkoujueEvidence(stale), /起课时刻与四柱不一致/u);
+  } finally {
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+  }
+});
+
 test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () => {
   const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
   const wrongRelation = structuredClone(source);

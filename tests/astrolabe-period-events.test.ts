@@ -530,9 +530,11 @@ test('核心提示词与占问提示词应使用同一套本命相位主线和�
     const second = points.find((point) => point.label === aspect.body2)!;
     assert.ok(first);
     assert.ok(second);
-    const line = `${aspect.body1}（${first.formatted}，第${first.house}宫）与${aspect.body2}（${second.formatted}，第${second.house}宫）：${aspect.type}`;
-    assert.match(natal, new RegExp(line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.match(divination, new RegExp(line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const line = `${aspect.body1}与${aspect.body2}：${aspect.type}`;
+    assert.ok(natal.includes(line));
+    assert.ok(divination.includes(line));
+    assert.ok(natal.includes(`${first.label}${first.formatted}`));
+    assert.ok(natal.includes(`${second.label}${second.formatted}`));
   }
 });
 

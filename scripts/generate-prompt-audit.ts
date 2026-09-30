@@ -742,8 +742,11 @@ function assertSamplePromptsAreClean(samples: PromptSample[]) {
   } else {
     const palaceText = qimenSample.prompt.split('九宫简表：')[1]?.split('同干定位：')[0] ?? '';
     const patternText = qimenSample.prompt.split('盘面命中格局：')[1]?.split('复合格局：')[0] ?? '';
-    if (!qimenSample.prompt.includes('旬空与马星：') || !palaceText.includes('逢空')) {
-      leakedMessages.push('奇门遁甲样本缺少旬空与九宫空亡事实');
+    if (!/旬空与马星：旬空[^\n]*空落[^\n]*；马星/u.test(qimenSample.prompt)) {
+      leakedMessages.push('奇门遁甲样本缺少旬空与宫位映射事实');
+    }
+    if (/逢空|马星/u.test(palaceText)) {
+      leakedMessages.push('奇门遁甲样本在九宫简表重复列出旬空或马星');
     }
     if (!patternText.includes('门迫（凶格）')) {
       leakedMessages.push('奇门遁甲样本缺少门迫格局事实');

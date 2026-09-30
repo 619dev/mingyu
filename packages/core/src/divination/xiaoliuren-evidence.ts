@@ -228,6 +228,9 @@ export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvide
   const hourIndex = (dayIndex + (data.hourIndex % 12)) % 6;
   if (
     !matchesSourceTimeAndCalendar(data) ||
+    data.method !== 'time' ||
+    data.methodLabel !== '时间起课' ||
+    (data.ruleLabel !== undefined && data.ruleLabel !== rule.label) ||
     !Number.isInteger(data.lunarMonth) ||
     data.lunarMonth < 1 ||
     data.lunarMonth > 12 ||
@@ -241,6 +244,8 @@ export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvide
     (calculation !== undefined &&
       (calculation.lunarMonth !== data.lunarMonth ||
         calculation.lunarDay !== data.lunarDay ||
+        calculation.dayBoundary !== '东八区民用日零点换日' ||
+        calculation.leapMonthRule !== '闰月沿用同名月序' ||
         calculation.hourNumber !== (data.hourIndex % 12) + 1 ||
         calculation.monthSeed !== data.lunarMonth ||
         calculation.daySeed !== data.lunarMonth + data.lunarDay - 1 + rule.dayStartOffset ||

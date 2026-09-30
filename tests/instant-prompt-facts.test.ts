@@ -51,7 +51,7 @@ test('即时八字按日旬核对落空，并区分藏干与明透柱位', () =>
       assert.doesNotMatch(prompt, /\n水火分布参考：|\n调候：/);
     }
     for (const relation of Object.values(chart.pillarRelations).flat()) {
-      assert.ok(prompt.includes(relation));
+      assert.ok(prompt.includes(relation.replace(/干支同为.+$/u, '干支相同')));
     }
     const decade = Math.floor(cycle.indexOf(chart.pillars.day.ganZhi) / 10);
     const empty = emptyByDecade[decade];
@@ -124,6 +124,20 @@ test('紫微即时盘与合参区分命主身主和命身宫内主星', async ()
     isLeapMonth: false,
     useTrueSolarTime: false,
   });
+  assert.equal(bazi.pillars.month.ganZhi, bazi.pillars.day.ganZhi);
+  const baziPrompts = [
+    buildInstantBaziPrompt(bazi, '请解读当前事件。', '2026年5月19日10:30'),
+    buildInstantBaziZiweiPrompt(bazi, payload, '请解读当前事件。', '2026年5月19日10:30'),
+  ];
+  const compactFuxin = bazi.pillarRelations.fuxin.map((relation) =>
+    relation.replace(/干支同为.+$/u, '干支相同'),
+  );
+  for (const prompt of baziPrompts) {
+    assert.ok(prompt.includes(`月柱：${bazi.pillars.month.ganZhi}；`));
+    assert.ok(prompt.includes(`日柱：${bazi.pillars.day.ganZhi}；`));
+    assert.ok(prompt.includes(`伏吟：${compactFuxin.join('、')}`));
+    for (const relation of bazi.pillarRelations.fuxin) assert.ok(!prompt.includes(relation));
+  }
   const prompts = [
     buildInstantZiweiPrompt(payload, '请解读当前事件。', '2026年5月19日10:30'),
     buildInstantBaziZiweiPrompt(bazi, payload, '请解读当前事件。', '2026年5月19日10:30'),

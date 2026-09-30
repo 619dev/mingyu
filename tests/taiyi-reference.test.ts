@@ -6,6 +6,7 @@ import {
   generateTaiyi,
 } from '../packages/core/src/taiyi/index.ts';
 import { formatTaiyiInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 
 test('太乙在线任务书合并三门、五将与阴阳判断，省略未命中条件', () => {
   const result = generateTaiyi({ year: 2004, scope: 'year' });
@@ -19,6 +20,39 @@ test('太乙在线任务书合并三门、五将与阴阳判断，省略未命�
   assert.doesNotMatch(text, /taiyi:|usedFor|complete:|step\.key|三门三门/);
   const legacy = formatTaiyiInfo({ ...result, tacticGuidance: '' });
   assert.doesNotMatch(legacy, /利主不利客|利客不利主/);
+});
+
+test('太乙在线任务书按盘面重算条件并忽略旧盘缓存判断', () => {
+  const data = generateTaiyi({ year: 2004, scope: 'year' });
+  const expected = evaluateTaiyiConditions({
+    accumulatedValue: data.accumulatedValue,
+    taiyiPosition: data.taiyiPosition,
+    taiyiPalace: data.taiyiPalace,
+    wenChangPosition: data.wenChangPosition,
+    wenChangPalace: data.wenChangPalace,
+    shiJiPosition: data.shiJiPosition,
+    shiJiPalace: data.shiJiPalace,
+    lordCount: data.lordCount,
+    guestCount: data.guestCount,
+    lordGeneral: data.lordGeneral,
+    lordAssistant: data.lordAssistant,
+    guestGeneral: data.guestGeneral,
+    guestAssistant: data.guestAssistant,
+  });
+  data.conditions.fiveGenerals.launched = !expected.fiveGenerals.launched;
+  data.judgments.push('旧盘缓存：此占必胜。');
+
+  for (const prompt of [
+    formatTaiyiInfo(data),
+    buildDivinationPrompt({
+      method: 'taiyi',
+      data,
+      question: '请分析当前问题。',
+    }),
+  ]) {
+    assert.match(prompt, new RegExp(`五将：${expected.fiveGenerals.launched ? '发' : '不发'}`));
+    assert.doesNotMatch(prompt, /此占必胜/u);
+  }
 });
 
 test('太乙巽位十六神名称传入盘面证据与任务书', () => {
@@ -174,10 +208,12 @@ test('太乙任务书的门将条件只呈现一次并保留独立判断', () =>
       assert.ok(result.prompt.includes(role));
     }
     const withoutNatures = formatTaiyiInfo({ ...result, countNatures: undefined });
+    const countNatureLine = `主客定算：主算${result.lordCount}${result.countNatures?.lord ? `（${result.countNatures.lord}）` : ''}；客算${result.guestCount}${result.countNatures?.guest ? `（${result.countNatures.guest}）` : ''}；定算${result.setCount}${result.countNatures?.set ? `（${result.countNatures.set}）` : ''}`;
+    assert.ok(withoutNatures.includes(countNatureLine));
     for (const judgment of result.judgments.filter((item) =>
       /^(主算|客算|定算)\s*\d+\s*为/u.test(item),
     )) {
-      assert.ok(withoutNatures.includes(judgment));
+      assert.equal(enhanced.includes(judgment), false);
     }
     if (result.countNatures?.set) {
       assert.ok(enhanced.includes(`定算${result.setCount}（${result.countNatures.set}）`));

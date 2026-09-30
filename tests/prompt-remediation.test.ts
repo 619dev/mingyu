@@ -90,7 +90,8 @@ test('奇门提示资料保留完整格局索引，空亡事实不重复列出',
   const palaceLine = text
     .split('\n')
     .find((line) => line.trimStart().startsWith(`${anchor.name}（`));
-  assert.match(palaceLine ?? '', /逢空/);
+  assert.match(text, new RegExp(`旬空子空落${escapeRegExp(anchor.name)}`));
+  assert.doesNotMatch(palaceLine ?? '', /逢空/);
   for (const pattern of expanded.classicPatterns) {
     assert.match(text, new RegExp(escapeRegExp(pattern.name)));
     assert.equal(text.split(pattern.name).length - 1, 1);

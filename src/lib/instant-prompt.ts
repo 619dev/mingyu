@@ -12,6 +12,10 @@ type ZiweiPayload = ZiweiRuntime['payloadByScope']['origin'];
 const PILLAR_KEYS = ['year', 'month', 'day', 'hour'] as const;
 const PILLAR_LABELS = ['年柱', '月柱', '日柱', '时柱'] as const;
 
+function formatInstantPillarRelation(label: string, relation: string) {
+  return label === '伏吟' ? relation.replace(/干支同为.+$/u, '干支相同') : relation;
+}
+
 function buildInstantTaskBook(options: {
   chartLabel: string;
   traditionalBasis: string;
@@ -43,7 +47,10 @@ function formatInstantBaziData(result: BaziChartResult) {
   ];
   const pillarRelations = pillarRelationGroups
     .filter(([, values]) => values.length)
-    .map(([label, values]) => `${label}：${values.join('、')}`);
+    .map(
+      ([label, values]) =>
+        `${label}：${values.map((value) => formatInstantPillarRelation(label, value)).join('、')}`,
+    );
   const pillarLines = PILLAR_KEYS.map((key, index) => {
     const hidden = result.hiddenStems[key]
       .map((stem, stemIndex) => {

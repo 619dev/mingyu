@@ -2,6 +2,43 @@ import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidenc
 import type { TaiyiModelInfo, TaiyiScope } from '../types/divination';
 import type { TaiyiRuleConditions } from './conditions';
 
+const TAIYI_COUNT_NATURES: Record<number, string> = {
+  1: '杂阴',
+  2: '纯阴',
+  3: '纯阳',
+  4: '杂阳',
+  6: '纯阴',
+  7: '杂阴',
+  8: '杂阳',
+  9: '纯阳',
+  11: '阴中重阳',
+  12: '下和',
+  13: '杂重阳',
+  14: '上和',
+  16: '下和',
+  17: '阴中重阳',
+  18: '上和',
+  19: '杂重阳',
+  22: '纯阴',
+  23: '次和',
+  24: '杂重阴',
+  26: '纯阴',
+  27: '下和',
+  28: '杂重阴',
+  29: '次和',
+  31: '杂重阳',
+  32: '次和',
+  33: '纯阳',
+  34: '下和',
+  37: '杂重阳',
+  38: '下和',
+  39: '纯阳',
+};
+
+export function getTaiyiCountNature(value: number): string | undefined {
+  return TAIYI_COUNT_NATURES[value];
+}
+
 export interface TaiyiEvidenceInput {
   scope: TaiyiScope;
   dateTime: string;

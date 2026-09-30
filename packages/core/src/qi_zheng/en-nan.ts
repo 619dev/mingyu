@@ -159,6 +159,7 @@ export function evaluateQizhengEnNan(params: {
   // 3. 扫描吊照中与命主星交会的相位
   // 相位星曜按同一别名表归一后再比对，避免单字命主与展示名互不匹配
   const aspectInteraction: string[] = [];
+  const interactionRoleFacts: string[] = [];
   const mingZhuAspects = aspects.filter((a) => {
     const s1 = resolveCanonicalStar(a.star1);
     const s2 = resolveCanonicalStar(a.star2);
@@ -174,17 +175,19 @@ export function evaluateQizhengEnNan(params: {
     const relation = aspect.type === '同宫' ? '合相' : aspect.type;
     if (counterpartElement === nanElement) {
       aspectInteraction.push(`难星${counterpart}与命主形成${relation}吊照`);
+      interactionRoleFacts.push(`命主难星：${counterpart}`);
     } else if (counterpartElement === enElement) {
       aspectInteraction.push(`恩星${counterpart}与命主形成${relation}吊照`);
+      interactionRoleFacts.push(`命主恩星：${counterpart}`);
     }
   }
 
   // 无命主相位时不得径直给出拱护、受约等结论
-  const interactionDesc = aspectInteraction.length
-    ? aspectInteraction.slice(0, 2).join('；')
+  const interactionDesc = interactionRoleFacts.length
+    ? [...new Set(interactionRoleFacts)].slice(0, 2).join('；')
     : '命主未见恩难星曜直接交会相位，恩难实效待吊照与行运另行核对';
 
-  const summary = `【七政恩难】${sect}（${sectSummary}）；命主${mingZhu}（${mingElement}），${interactionDesc}；按出生时刻与当地日出日落星历交点划分昼夜（太阳上缘阈值-0.833°，${sunriseSunset.status}）`;
+  const summary = `【七政恩难】${sect}（${sectSummary}）；命主：${mingZhu}（${mingElement}）；${interactionDesc}；按出生时刻与当地日出日落星历交点划分昼夜（太阳上缘阈值-0.833°，${sunriseSunset.status}）`;
 
   return {
     sect,

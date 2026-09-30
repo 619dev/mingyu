@@ -8,6 +8,8 @@ import {
 import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
 import { buildTimeInfoText } from '../packages/core/src/prompt/formatters.ts';
 import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
+import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination.ts';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const PALACE_NAMES = ['大安', '留连', '速喜', '赤口', '小吉', '空亡'] as const;
@@ -403,4 +405,30 @@ test('小六壬：缺少计算参数时证据不得伪装成可复核', () => {
   assert.equal(evidence.calculationSteps.length, 0);
   assert.equal(evidence.summaryFact.status, '证据链有缺口');
   assert.match(evidence.calculationFact.promptText, /不能复核落宫/);
+
+  assert.doesNotThrow(() => getDivinationSummaryBlocks('xiaoliuren', incomplete));
+  assert.doesNotThrow(() => formatDetailedDivinationInfo('xiaoliuren', incomplete));
+  assert.doesNotThrow(() =>
+    buildDivinationPrompt({ method: 'xiaoliuren', data: incomplete, question: '请核对这课。' }),
+  );
+});
+
+test('小六壬旧盘的历法说明与起课方式必须和当前采用口径一致', () => {
+  const source = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const wrongBoundary = structuredClone(source);
+  wrongBoundary.calculation.dayBoundary = '子初换日' as typeof source.calculation.dayBoundary;
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongBoundary), /顺数或占得宫与盘面不一致/u);
+  assert.throws(
+    () =>
+      buildDivinationPrompt({
+        method: 'xiaoliuren',
+        data: wrongBoundary,
+        question: '请核对这课。',
+      }),
+    /顺数或占得宫与盘面不一致/u,
+  );
+
+  const wrongMethodLabel = structuredClone(source);
+  wrongMethodLabel.methodLabel = '数字起课';
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongMethodLabel), /顺数或占得宫与盘面不一致/u);
 });

@@ -20,7 +20,7 @@ import { getSixtyCycle, isValidGanZhi } from '../ganzhi';
 import type { TaiyiModelInfo, TaiyiResult, TaiyiScope } from '../types/divination';
 import { evaluateTaiyiConditions } from './conditions';
 import type { TaiyiRuleConditions } from './conditions';
-import { buildTaiyiEvidence } from './evidence';
+import { buildTaiyiEvidence, getTaiyiCountNature } from './evidence';
 
 export { evaluateTaiyiConditions, TAIYI_POINT_WUXING } from './conditions';
 
@@ -356,42 +356,6 @@ function pointToPalace(point: string): number {
   const palace = POINT_TO_PALACE[point];
   if (!palace) throw new Error(`太乙宫位数据缺失：${point}`);
   return palace;
-}
-
-function countNature(value: number): string | undefined {
-  const map: Record<number, string> = {
-    1: '杂阴',
-    2: '纯阴',
-    3: '纯阳',
-    4: '杂阳',
-    6: '纯阴',
-    7: '杂阴',
-    8: '杂阳',
-    9: '纯阳',
-    11: '阴中重阳',
-    12: '下和',
-    13: '杂重阳',
-    14: '上和',
-    16: '下和',
-    17: '阴中重阳',
-    18: '上和',
-    19: '杂重阳',
-    22: '纯阴',
-    23: '次和',
-    24: '杂重阴',
-    26: '纯阴',
-    27: '下和',
-    28: '杂重阴',
-    29: '次和',
-    31: '杂重阳',
-    32: '次和',
-    33: '纯阳',
-    34: '下和',
-    37: '杂重阳',
-    38: '下和',
-    39: '纯阳',
-  };
-  return map[value];
 }
 
 /** 《太乙统宗宝鉴》卷五的长短缓急与主客比较依据。 */
@@ -739,9 +703,9 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
     guestAssistant === taiyiPalace ? '客参将' : undefined,
   ].filter((item): item is string => item !== undefined);
   if (imprisonedRoles.length > 0) judgments.push(`囚：${imprisonedRoles.join('、')}与太乙同宫。`);
-  const lordNature = countNature(lordCount);
-  const guestNature = countNature(guestCount);
-  const setNature = countNature(setCount);
+  const lordNature = getTaiyiCountNature(lordCount);
+  const guestNature = getTaiyiCountNature(guestCount);
+  const setNature = getTaiyiCountNature(setCount);
   if (lordNature) judgments.push(`主算 ${lordCount} 为${lordNature}。`);
   if (guestNature) judgments.push(`客算 ${guestCount} 为${guestNature}。`);
   if (setNature) judgments.push(`定算 ${setCount} 为${setNature}。`);

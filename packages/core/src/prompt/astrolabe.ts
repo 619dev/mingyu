@@ -4,12 +4,7 @@ import { formatFixedTimezoneOffset } from '../calendar/civil-time';
 import { formatPromptCurrentTime } from './current-time';
 import { buildPromptGuidance, buildPromptTask } from './guidance';
 import { buildPromptSchoolSection } from './schools';
-import {
-  buildPromptDocument,
-  buildPromptSection,
-  formatStringList,
-  joinPromptSections,
-} from './sections';
+import { buildPromptDocument, buildPromptSection, joinPromptSections } from './sections';
 import type { PromptBuildOptions, PromptDocument } from './types';
 import {
   buildPromptSelectionTask,
@@ -124,9 +119,6 @@ function formatAstrolabePatterns(patterns: string[]) {
 }
 
 export function formatAstrolabeForPrompt(data: AstrolabeData) {
-  const sun = data.planets.find((item) => item.name === 'Sun');
-  const moon = data.planets.find((item) => item.name === 'Moon');
-  const ascendant = data.angles.find((item) => item.name === 'Ascendant');
   const gender = data.birth.gender ? `${data.birth.gender}；` : '';
   return [
     `出生信息：${data.birth.name}；${gender}${data.birth.dateTime}；位置${data.birth.location}；时区UTC${formatFixedTimezoneOffset(data.birth.timezone)}`,
@@ -144,7 +136,6 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
     data.birth.isTrueSolarTime && data.birth.trueSolarDateTime
       ? `出生时间校正：当地钟表时间${data.birth.standardDateTime || data.birth.dateTime}；真太阳时${data.birth.trueSolarDateTime}（传统时间参考）；星盘依据当地钟表时间对应的出生瞬间计算`
       : '',
-    `核心位置：太阳${sun?.formatted || '未列'}；月亮${moon?.formatted || '未列'}；上升${ascendant?.formatted || '未列'}`,
     `元素分布：${
       Object.entries(data.summary.elements)
         .map(([key, values]) => `${key}${values.join('、')}`)
@@ -155,7 +146,6 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
         .map(([key, values]) => `${key}${values.join('、')}`)
         .join('；') || '未记录'
     }`,
-    `逆行：${formatStringList(data.summary.retrograde, '无')}`,
     data.summary.patternBasis === 'ten-main-bodies-selected-aspects' && data.summary.patterns.length
       ? `十大星体格局：${formatAstrolabePatterns(data.summary.patterns).join('、')}`
       : '',

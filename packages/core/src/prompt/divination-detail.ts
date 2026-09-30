@@ -130,7 +130,9 @@ function formatMeihuaDetail(data: MeihuaData) {
 function formatXiaoliurenDetail(data: XiaoliurenData) {
   return [
     `顺数：月宫${data.sequence.month.name}→日宫${data.sequence.day.name}→时宫${data.sequence.hour.name}；占得宫歌诀：${data.primary.verse}`,
-    `历法：农历${data.lunarMonth}月${data.lunarDay}日，${data.isLeapMonth ? '闰月' : '平月'}，${data.calculation.dayBoundary}，${data.calculation.leapMonthRule}`,
+    data.calculation
+      ? `历法：农历${data.lunarMonth}月${data.lunarDay}日，${data.isLeapMonth ? '闰月' : '平月'}，${data.calculation.dayBoundary}，${data.calculation.leapMonthRule}`
+      : `历法：农历${data.lunarMonth}月${data.lunarDay}日，${data.isLeapMonth ? '闰月' : '平月'}`,
   ];
 }
 
