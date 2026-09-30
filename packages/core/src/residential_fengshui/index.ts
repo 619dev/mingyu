@@ -271,6 +271,8 @@ function buildAgreements(
     const xuankongBoundarySensitive = xuankong.measurement?.stability === '山向边界敏感';
     const mountainBoundarySensitive =
       xuankong.measurement?.boundaryReasons?.includes('二十四山分界') ?? false;
+    const centralNineBoundarySensitive =
+      xuankong.measurement?.boundaryReasons?.includes('中央九度分界') ?? false;
     const houseBoundarySensitive =
       'directionMeasurement' in bazhai && bazhai.directionMeasurement.stability === '宅卦不稳定';
     const periodLabel = `${xuankong.period.boundaryStatus ? '暂按' : ''}${xuankong.period.label}`;
@@ -315,16 +317,22 @@ function buildAgreements(
     if (xuankongBoundarySensitive || bazhai.match === '未知') {
       items.push({
         level: '资料不足',
-        title: mountainBoundarySensitive
-          ? houseBoundarySensitive
-            ? '山向与宅卦边界仍敏感'
-            : '山向边界仍敏感'
-          : '下卦与替卦起法待核定',
-        detail: mountainBoundarySensitive
-          ? houseBoundarySensitive
-            ? '测量误差范围内的候选山向与宅卦一并列出。'
-            : '测量误差范围内的候选山向已列出，宅卦仍属同一卦。'
-          : '坐向触及中央九度分界，需复测后核定下卦或替卦起法。',
+        title:
+          mountainBoundarySensitive && centralNineBoundarySensitive
+            ? `候选山向${houseBoundarySensitive ? '、宅卦' : ''}与下卦替卦起法待核定`
+            : mountainBoundarySensitive
+              ? houseBoundarySensitive
+                ? '山向与宅卦边界仍敏感'
+                : '山向边界仍敏感'
+              : '下卦与替卦起法待核定',
+        detail:
+          mountainBoundarySensitive && centralNineBoundarySensitive
+            ? `测量误差范围内的候选山向${houseBoundarySensitive ? '与宅卦一并' : '已'}列出；同时触及中央九度分界，需复测后核定下卦或替卦起法。`
+            : mountainBoundarySensitive
+              ? houseBoundarySensitive
+                ? '测量误差范围内的候选山向与宅卦一并列出。'
+                : '测量误差范围内的候选山向已列出，宅卦仍属同一卦。'
+              : '坐向触及中央九度分界，需复测后核定下卦或替卦起法。',
       });
     }
   }
@@ -380,6 +388,8 @@ function buildAdvice(
   if (agreements.some((item) => item.level === '资料不足')) {
     const mountainBoundarySensitive =
       xuankong?.measurement?.boundaryReasons?.includes('二十四山分界') ?? false;
+    const centralNineBoundarySensitive =
+      xuankong?.measurement?.boundaryReasons?.includes('中央九度分界') ?? false;
     const houseBoundarySensitive =
       bazhai &&
       'directionMeasurement' in bazhai &&
@@ -388,11 +398,13 @@ function buildAdvice(
       xuankongStatus === '缺少建造年或起运年'
         ? '请先补充住宅建造年或起运年，再排玄空宅运盘并讨论具体布局。'
         : bazhai && xuankong
-          ? mountainBoundarySensitive
-            ? houseBoundarySensitive
-              ? '请复测坐向，核定候选山向与宅卦后再讨论具体布局。'
-              : '请复测坐向，核定候选山向后再讨论具体布局。'
-            : '请复测坐向，核定下卦或替卦起法后再讨论具体布局。'
+          ? mountainBoundarySensitive && centralNineBoundarySensitive
+            ? `请复测坐向，核定候选山向${houseBoundarySensitive ? '与宅卦' : ''}、下卦或替卦起法后再讨论具体布局。`
+            : mountainBoundarySensitive
+              ? houseBoundarySensitive
+                ? '请复测坐向，核定候选山向与宅卦后再讨论具体布局。'
+                : '请复测坐向，核定候选山向后再讨论具体布局。'
+              : '请复测坐向，核定下卦或替卦起法后再讨论具体布局。'
           : '资料不足处先补山向或居住人信息，再做更细的布局讨论。',
     );
   }

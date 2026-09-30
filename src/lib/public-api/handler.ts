@@ -1865,7 +1865,7 @@ export function getPublicApiOpenApiDocument(
               minimum: -1,
               maximum: 12,
               description:
-                '时辰索引（0-12）；八字单盘传 -1 表示时辰未知，每次计算并返回一个候选，默认第一个。传入 birthSecond 并提供 birthHour/birthMinute 时可省略，将从精确标准北京时间推导；真太阳时同理。',
+                '时辰索引（0-12）；八字单盘传 -1 表示时辰未知，每次计算并返回一个候选，默认第一个。提供 birthHour/birthMinute 后从钟表时间推导时辰，可省略本字段；出生秒数省略时按 00 秒。',
             },
             unknownTimeBatch: {
               type: 'object',
@@ -1880,13 +1880,23 @@ export function getPublicApiOpenApiDocument(
             dateType: { enum: ['solar', 'lunar'] },
             isLeapMonth: { type: 'boolean' },
             useTrueSolarTime: { type: 'boolean' },
-            birthHour: { type: 'integer', minimum: 0, maximum: 23 },
-            birthMinute: { type: 'integer', minimum: 0, maximum: 59 },
-            birthSecond: {
-              type: 'integer',
+            birthHour: {
+              type: ['integer', 'string'],
+              minimum: 0,
+              maximum: 23,
+              description: '出生小时，整数或数字字符串；与 birthMinute 成对提供。',
+            },
+            birthMinute: {
+              type: ['integer', 'string'],
               minimum: 0,
               maximum: 59,
-              description: '出生秒数；与 birthHour/birthMinute 一起表示精确标准北京时间',
+              description: '出生分钟，整数或数字字符串；与 birthHour 成对提供。',
+            },
+            birthSecond: {
+              type: ['integer', 'string'],
+              minimum: 0,
+              maximum: 59,
+              description: '出生秒数；提供时分后可省略，省略按 00 秒计算。',
             },
             birthPlace: { type: 'string' },
             birthLongitude: { type: 'number', minimum: -180, maximum: 180 },
@@ -2676,7 +2686,12 @@ export function getPublicApiOpenApiDocument(
             year: { type: 'string' },
             month: { type: 'string' },
             day: { type: 'string' },
-            timeIndex: { type: 'integer', minimum: 0, maximum: 12 },
+            timeIndex: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 12,
+              description: '传统时辰索引；提供完整出生小时和分钟后从钟表时间推导，可省略本字段。',
+            },
             promptScope: {
               enum: [...ZIWEI_PROMPT_SCOPES],
               description:
@@ -2695,13 +2710,20 @@ export function getPublicApiOpenApiDocument(
             },
             isLeapMonth: { type: 'boolean' },
             useTrueSolarTime: { type: 'boolean' },
-            birthHour: { type: 'string' },
-            birthMinute: { type: 'string' },
+            birthHour: {
+              type: ['integer', 'string'],
+              description: '出生小时，整数或数字字符串；与 birthMinute 成对提供。',
+            },
+            birthMinute: {
+              type: ['integer', 'string'],
+              description: '出生分钟，整数或数字字符串；与 birthHour 成对提供。',
+            },
             birthSecond: {
-              type: 'integer',
+              type: ['integer', 'string'],
               minimum: 0,
               maximum: 59,
-              description: '范围模式的出生秒数；省略时按 00 秒校验起点。',
+              description:
+                '出生秒数；普通排盘提供时分后可省略，省略按 00 秒计算；出生区间模式需与起点时间一致。',
             },
             birthPlace: { type: 'string' },
             birthLongitude: { type: 'string' },
@@ -5401,17 +5423,27 @@ function calculateUnknownTimeBaziBatch(
   }
 }
 
+function hasBirthClockValue(value: unknown): boolean {
+  return value !== undefined && (typeof value !== 'string' || value.trim().length > 0);
+}
+
+function hasBirthClockInput(input: JsonRecord): boolean {
+  return ['birthHour', 'birthMinute', 'birthSecond'].some((key) => hasBirthClockValue(input[key]));
+}
+
+function readBirthClockSecond(input: JsonRecord): number {
+  return hasBirthClockValue(input.birthSecond) ? readIntegerLike(input, 'birthSecond', 0, 59) : 0;
+}
+
 function readBaziPerson(input: JsonRecord): Person {
   const gender = readEnum(input, 'gender', ['male', 'female']);
   const birthDate = readBirthDate(input);
   const { dateType } = birthDate;
   const useTrueSolarTime = readBoolean(input, 'useTrueSolarTime', false);
-  const hasPreciseStandardTime = !useTrueSolarTime && input.birthSecond !== undefined;
-  const hasPreciseClock = useTrueSolarTime || hasPreciseStandardTime;
-  const birthHour = hasPreciseClock ? readInteger(input, 'birthHour', 0, 23) : undefined;
-  const birthMinute = hasPreciseClock ? readInteger(input, 'birthMinute', 0, 59) : undefined;
-  const birthSecond =
-    input.birthSecond === undefined ? undefined : readInteger(input, 'birthSecond', 0, 59);
+  const hasPreciseClock = useTrueSolarTime || hasBirthClockInput(input);
+  const birthHour = hasPreciseClock ? readIntegerLike(input, 'birthHour', 0, 23) : undefined;
+  const birthMinute = hasPreciseClock ? readIntegerLike(input, 'birthMinute', 0, 59) : undefined;
+  const birthSecond = hasPreciseClock ? readBirthClockSecond(input) : undefined;
   const birthLongitude = useTrueSolarTime
     ? readNumber(input, 'birthLongitude', -180, 180)
     : undefined;
@@ -5420,20 +5452,11 @@ function readBaziPerson(input: JsonRecord): Person {
       ? getTimeIndexFromClock(birthHour, birthMinute)
       : -1;
 
-  // 精确标准北京时间和真太阳时都从时分推导时辰；普通时辰模式要求 timeIndex。
+  // 精确钟表时间和真太阳时都从时分推导时辰；普通时辰模式要求 timeIndex。
   let finalTimeIndex: number;
-  if (useTrueSolarTime) {
+  if (hasPreciseClock) {
     if (derivedTimeIndex < 0) {
       throw new ApiError(400, 'BAD_REQUEST', 'birthHour 和 birthMinute 无法换算为有效时辰。');
-    }
-    finalTimeIndex = derivedTimeIndex;
-  } else if (hasPreciseStandardTime) {
-    if (derivedTimeIndex < 0) {
-      throw new ApiError(
-        400,
-        'BAD_REQUEST',
-        '精确标准北京时间需要同时提供有效的 birthHour 和 birthMinute。',
-      );
     }
     finalTimeIndex = derivedTimeIndex;
   } else {
@@ -5441,7 +5464,7 @@ function readBaziPerson(input: JsonRecord): Person {
       throw new ApiError(
         400,
         'BAD_REQUEST',
-        '未启用真太阳时时 timeIndex 为必填项，或启用 useTrueSolarTime 并提供 birthHour/birthMinute。',
+        '请提供 timeIndex，或同时提供 birthHour 和 birthMinute。',
       );
     }
     finalTimeIndex = readInteger(input, 'timeIndex', -1, 12);
@@ -5607,7 +5630,7 @@ function buildBaziCalculationIdentity(
     birth.birthMinute = person.birthMinute;
     birth.birthLongitude = person.birthLongitude;
     if (person.birthSecond !== undefined) birth.birthSecond = person.birthSecond;
-  } else if (person.birthSecond !== undefined) {
+  } else if (person.birthHour !== undefined) {
     birth.birthHour = person.birthHour;
     birth.birthMinute = person.birthMinute;
     birth.birthSecond = person.birthSecond;
@@ -5863,27 +5886,22 @@ async function calculateZiweiRuntime(
   const birthDate = readBirthDate(input, { asString: true });
   const { dateType } = birthDate;
   const useTrueSolarTime = readBoolean(input, 'useTrueSolarTime', false);
-  const hasPreciseStandardTime = !useTrueSolarTime && input.birthSecond !== undefined;
+  const hasPreciseClock = useTrueSolarTime || hasBirthClockInput(input);
+  const birthHour = hasPreciseClock ? readIntegerLike(input, 'birthHour', 0, 23) : undefined;
+  const birthMinute = hasPreciseClock ? readIntegerLike(input, 'birthMinute', 0, 59) : undefined;
   const timeInput = useTrueSolarTime
     ? {
         timeIndex: '' as const,
-        birthHour: String(readIntegerLike(input, 'birthHour', 0, 23)),
-        birthMinute: String(readIntegerLike(input, 'birthMinute', 0, 59)),
+        birthHour: String(birthHour),
+        birthMinute: String(birthMinute),
         birthLongitude: String(readNumberLike(input, 'birthLongitude', -180, 180)),
       }
     : {
-        timeIndex: hasPreciseStandardTime
-          ? getTimeIndexFromClock(
-              readIntegerLike(input, 'birthHour', 0, 23),
-              readIntegerLike(input, 'birthMinute', 0, 59),
-            )
+        timeIndex: hasPreciseClock
+          ? getTimeIndexFromClock(birthHour!, birthMinute!)
           : readInteger(input, 'timeIndex', 0, 12),
-        birthHour: hasPreciseStandardTime
-          ? String(readIntegerLike(input, 'birthHour', 0, 23))
-          : readString(input, 'birthHour', ''),
-        birthMinute: hasPreciseStandardTime
-          ? String(readIntegerLike(input, 'birthMinute', 0, 59))
-          : readString(input, 'birthMinute', ''),
+        birthHour: hasPreciseClock ? String(birthHour) : '',
+        birthMinute: hasPreciseClock ? String(birthMinute) : '',
         birthLongitude: readString(input, 'birthLongitude', ''),
       };
   const chartInput = buildZiweiChartInput({
@@ -5898,10 +5916,7 @@ async function calculateZiweiRuntime(
     useTrueSolarTime,
     birthHour: timeInput.birthHour,
     birthMinute: timeInput.birthMinute,
-    birthSecond:
-      input.birthSecond === undefined
-        ? undefined
-        : String(readIntegerLike(input, 'birthSecond', 0, 59)),
+    birthSecond: hasPreciseClock ? String(readBirthClockSecond(input)) : undefined,
     birthLongitude: timeInput.birthLongitude,
     timezone: input.timezone === undefined ? undefined : readNumberLike(input, 'timezone', -12, 14),
     timeZoneId:
@@ -6055,11 +6070,10 @@ function buildZiweiCalculationIdentity(
     useTrueSolarTime,
     birthPlace: readString(input, 'birthPlace', ''),
   };
-  if (useTrueSolarTime || input.birthSecond !== undefined) {
+  if (useTrueSolarTime || hasBirthClockInput(input)) {
     birth.birthHour = readIntegerLike(input, 'birthHour', 0, 23);
     birth.birthMinute = readIntegerLike(input, 'birthMinute', 0, 59);
-    if (input.birthSecond !== undefined)
-      birth.birthSecond = readIntegerLike(input, 'birthSecond', 0, 59);
+    birth.birthSecond = readBirthClockSecond(input);
     if (useTrueSolarTime) birth.birthLongitude = readNumberLike(input, 'birthLongitude', -180, 180);
   } else {
     birth.timeIndex = readInteger(input, 'timeIndex', 0, 12);

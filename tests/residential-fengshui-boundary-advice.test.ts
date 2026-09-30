@@ -88,6 +88,25 @@ test('住宅合参按实际边界区分候选山向与下卦替卦起法', () =>
   assert.doesNotMatch(mountainOnly.advice.join('\n'), /核定候选山向与宅卦/);
 });
 
+test('测量范围同时触及山向与中央九度分界时合参列出两项待核定内容', () => {
+  const result = generateResidentialFengshui({
+    year: 2025,
+    mingGua: '坎',
+    sitDegree: 4.5,
+    northReference: 'true',
+    measurementUncertaintyDegrees: 3,
+  });
+
+  assert.deepEqual(result.xuankong?.measurement?.boundaryReasons, ['二十四山分界', '中央九度分界']);
+  assert.ok(result.bazhai && 'directionMeasurement' in result.bazhai);
+  assert.equal(result.bazhai.directionMeasurement.stability, '山向边界敏感');
+  const boundary = result.agreements.find((item) => item.level === '资料不足');
+  assert.equal(boundary?.title, '候选山向与下卦替卦起法待核定');
+  assert.match(boundary?.detail ?? '', /候选山向已列出；同时触及中央九度分界/);
+  assert.match(result.advice.join('\n'), /核定候选山向、下卦或替卦起法/);
+  assert.doesNotMatch(result.advice.join('\n'), /核定候选山向与宅卦/);
+});
+
 test('交运首年只给年份时，宅运摘要与提示词保持暂排口径', () => {
   const result = generateResidentialFengshui({
     year: 2024,
