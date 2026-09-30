@@ -4577,7 +4577,11 @@ test('MCP 梅花排盘与提示词应返回主互变体用推进证据', async (
     assert.match(promptText, /占法：梅花易数/);
     assert.match(promptText, /核心结构：主卦[\s\S]*体用：[\s\S]*互卦：[\s\S]*体用阶段：/);
     for (const stage of result.evidenceAnalysis.stages) {
-      assert.ok(promptText.includes(stage.promptText), `${stage.stage}阶段事实应进入提示词`);
+      const displayedStage =
+        stage.stage === 'origin' && stage.relation
+          ? stage.promptText.replace(`，关系${stage.relation}`, '')
+          : stage.promptText;
+      assert.ok(promptText.includes(displayedStage), `${stage.stage}阶段事实应进入提示词`);
     }
     assert.doesNotMatch(promptText, /结构明细：|静爻/);
     assert.doesNotMatch(promptText, /结构化证据|计算链|证据汇总|解释限制|解释边界/);

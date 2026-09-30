@@ -46,8 +46,17 @@ test('梅花五种主卦体用关系仅展示命中原文，并附本盘月令�
     }
 
     const prompt = buildDivinationPrompt('meihua', '后续进展如何？', data);
-    assert.ok(prompt.includes(data.analysis.tiYongSeasonEvaluation!), relation);
-    assert.ok(prompt.includes(data.evidenceAnalysis!.stages[0]!.promptText), relation);
+    const seasonEvaluation = data.analysis.tiYongSeasonEvaluation!;
+    const seasonPrefix = relation === '比和' ? '体用同五行，比和相应；' : `主卦${relation}，`;
+    const displayedSeasonEvaluation = seasonEvaluation.startsWith(seasonPrefix)
+      ? seasonEvaluation.slice(seasonPrefix.length)
+      : seasonEvaluation;
+    assert.ok(prompt.includes(`主卦体用月令条件：${displayedSeasonEvaluation}`), relation);
+    const originStage = data.evidenceAnalysis!.stages[0]!;
+    assert.ok(
+      prompt.includes(originStage.promptText.replace(`，关系${originStage.relation}`, '')),
+      relation,
+    );
     for (const judgement of Object.values(MEIHUA_RELATION_JUDGEMENTS)) {
       assert.ok(!prompt.includes(judgement.classicSummary), relation);
     }

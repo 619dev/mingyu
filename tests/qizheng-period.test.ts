@@ -83,8 +83,9 @@ test('给出性别与流年后应同时生成行限和流曜，并叠到本命�
   assert.match(result.prompt, /大限：命宫宿度、出童限岁数和当前大限宫位未定/);
   assert.match(result.prompt, /【流曜】/);
   assert.match(result.prompt, /【流曜周期】/);
-  assert.match(result.prompt, /流曜太阳（入本命[^）]+）与本命/u);
-  assert.doesNotMatch(result.prompt, /流曜太阳（本命[^）]+）与本命/u);
+  assert.match(result.prompt, /流曜太阳：在[^\n]*入本命/u);
+  assert.match(result.prompt, /流曜太阳与本命/u);
+  assert.doesNotMatch(result.prompt, /流曜太阳（入本命[^）]+）与本命/u);
   assert.equal(result.flowingStars?.periodEvents?.mode, 'daily');
   assert.equal(result.prompt.match(/当前大限宫位未定/g)?.length, 1);
   assert.doesNotMatch(result.prompt, /只解读根基、落宿、落宫和吊照/);

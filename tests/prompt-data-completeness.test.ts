@@ -95,11 +95,17 @@ test('梅花保留本互变卦辞与本次动爻辞', () => {
     assert.match(text, new RegExp(`主卦爻象：[^\\n]*第${yao.position}爻${yao.yaoType}`));
     assert.match(text, new RegExp(`逐爻体用：[^\\n]*第${yao.position}爻属${yao.tiYong}`));
   }
+  const originRelation = data.evidenceAnalysis?.stages.find(
+    (stage) => stage.stage === 'origin',
+  )?.relation;
   for (const condition of data.analysis.yingQi ?? []) {
-    const promptCondition = condition.replace(
+    const sourceCondition = condition.replace(
       '，只作取数来源旁证，不换算绝对日期',
       '；取数来源旁证',
     );
+    const promptCondition = originRelation
+      ? sourceCondition.replace(`${originRelation}，`, '')
+      : sourceCondition;
     assert.ok(text.includes(promptCondition), condition);
   }
   assert.doesNotMatch(text, /只作取数来源旁证，不换算绝对日期/);
