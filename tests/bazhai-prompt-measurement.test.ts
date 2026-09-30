@@ -26,7 +26,7 @@ test('八宅宅卦跨界时提示词并列候选并标明中心读数盘', () =>
     ],
   );
   assert.match(result.prompt, /候选坐向：寅山申向（艮宅、命宅相冲）、甲山庚向（震宅、命宅相合）/);
-  assert.match(result.prompt, /宅卦：艮（西四命，中心读数）/);
+  assert.match(result.prompt, /宅卦：艮（西四宅，中心读数）/);
   assert.match(result.prompt, /命宅配合：相冲（中心读数）/);
   assert.match(result.prompt, /宅卦八方（中心读数）：/);
   assert.match(result.prompt, /【任务】[\s\S]*【盘面资料】/);

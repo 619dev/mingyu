@@ -223,6 +223,34 @@ test('八宅大游年应符合八宅逐宫传统真值', () => {
   }
 });
 
+test('命卦与宅卦分组分别写作东四命和东四宅，并贯通候选与证据', () => {
+  const result = analyzeBaZhaiByDoorDegree({
+    mingGua: '坎',
+    doorToInteriorDegree: 65,
+    northReference: 'true',
+    measurementUncertaintyDegrees: 3,
+  });
+  assert.equal(result.mingGroup, '东四命');
+  assert.equal(result.houseGroup, '西四宅');
+  assert.equal(result.match, '相冲');
+  assert.deepEqual(
+    result.directionMeasurement.candidateDirections.map((item) => [item.houseGroup, item.match]),
+    [
+      ['西四宅', '相冲'],
+      ['东四宅', '相合'],
+    ],
+  );
+  assert.deepEqual(
+    result.evidenceAnalysis.measurementCandidates.map((item) => item.houseGroup),
+    ['西四宅', '东四宅'],
+  );
+  assert.match(result.prompt, /命卦：坎（东四命）/);
+  assert.match(result.prompt, /宅卦：艮（西四宅，中心读数）/);
+  assert.match(result.gasRegulation!.doorMasterSummary, /坎命属东四命，艮宅属西四宅；命宅异组/);
+  assert.match(result.evidenceAnalysis.promptText, /艮宅西四宅/);
+  assert.doesNotMatch(result.prompt, /艮宅属西四命|宅卦：艮（西四命/);
+});
+
 test('mingyu-core/bazhai 应公开入户度数便捷接口和完整类型结果', () => {
   const position = getBaZhaiSitFacingFromDoorDegree(90);
   assert.equal(position.sit.degree, 90);

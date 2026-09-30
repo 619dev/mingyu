@@ -6059,11 +6059,18 @@ test('公开 API 新增术数提示词应包含用户问题和统一章节', asy
   assert.match(body.data.prompt, /稳定性为宅卦不稳定/);
   assert.match(
     body.data.prompt,
-    /误差候选：寅山申向（艮宅、西四命、命宅相冲）、甲山庚向（震宅、东四命、命宅相合）/,
+    /误差候选：寅山申向（艮宅、西四宅、命宅相冲）、甲山庚向（震宅、东四宅、命宅相合）/,
   );
   assert.match(body.data.prompt, /候选寅山申向：艮宅八宫/);
   assert.match(body.data.prompt, /候选甲山庚向：震宅八宫/);
   assert.equal(body.data.result.directionMeasurement.stability, '宅卦不稳定');
+  assert.equal(body.data.result.houseGroup, '西四宅');
+  assert.deepEqual(
+    body.data.result.directionMeasurement.candidateDirections.map(
+      (item: { houseGroup: string }) => item.houseGroup,
+    ),
+    ['西四宅', '东四宅'],
+  );
   assert.equal(body.data.result.evidenceAnalysis.evidence.title, '八宅命宅方位与测量结构化证据');
   assert.equal(body.data.result.evidenceAnalysis.key, 'bazhai:evidence');
   assert.equal(body.data.result.evidenceAnalysis.status, '已计算');
@@ -7039,10 +7046,11 @@ test('公开住宅提示词保留八宅跨宅卦测量候选盘', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(body.data.result.bazhai.directionMeasurement.stability, '宅卦不稳定');
+  assert.equal(body.data.result.bazhai.houseGroup, '西四宅');
   assert.match(body.data.prompt, /八宅完整盘面：[\s\S]*?宅卦：艮/);
   assert.match(
     body.data.prompt,
-    /误差候选：寅山申向（艮宅、西四命、命宅相冲）、甲山庚向（震宅、东四命、命宅相合）/,
+    /误差候选：寅山申向（艮宅、西四宅、命宅相冲）、甲山庚向（震宅、东四宅、命宅相合）/,
   );
   assert.match(body.data.prompt, /候选寅山申向：艮宅八宫为/);
   assert.match(body.data.prompt, /候选甲山庚向：震宅八宫为/);

@@ -72,6 +72,41 @@ test('六爻证据拒绝被改写的本爻六亲、动变关系和进退神', ()
   }
 });
 
+test('六爻旧盘伏神须与本宫首卦纳甲、六亲差集、旬空及飞伏作用一致', () => {
+  const source = generateLiuyao(fixedDate, {
+    method: 'manual',
+    yaos: [7, 8, 8, 8, 7, 8],
+  });
+  assert.equal(source.hiddenSpirits?.length, 1);
+  const mutations: Array<(data: typeof source) => void> = [
+    (data) => {
+      data.hiddenSpirits![0].najiaDizhi = '子';
+    },
+    (data) => {
+      data.hiddenSpirits![0].isVoid = !data.hiddenSpirits![0].isVoid;
+    },
+    (data) => {
+      data.hiddenSpirits![0].underYao.position = 2;
+    },
+    (data) => {
+      data.hiddenSpirits![0].interactionEffect = '飞神月破，覆盖力减弱';
+    },
+    (data) => {
+      data.hiddenSpirits = [];
+    },
+  ];
+
+  for (const mutate of mutations) {
+    const changed = structuredClone(source);
+    mutate(changed);
+    assert.throws(() => analyzeLiuyaoEvidence(changed), /伏神与本宫首卦纳甲不一致/u);
+    assert.throws(
+      () => formatEnhancedDivinationInfo('liuyao', changed),
+      /伏神与本宫首卦纳甲不一致/u,
+    );
+  }
+});
+
 test('六爻证据与提示词拒绝可复算的纳甲世应、动变和月日空破错位', () => {
   const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
   const mutations: Array<(data: typeof source) => void> = [

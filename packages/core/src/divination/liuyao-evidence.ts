@@ -34,6 +34,7 @@ import { MingyuCoreError, stableStringify } from '../shared/result';
 import { generateYarrow } from './algorithms/yarrow';
 import {
   collectSanxingInBranches,
+  evaluateLiuyaoHiddenSpiritInteraction,
   getLiuyaoFanFuRelations,
   getLiuyaoHexagramRelations,
   getSpecialPattern,
@@ -581,6 +582,67 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
       ))
   ) {
     throw new Error('六爻纳甲与八宫资料不一致，无法生成证据。');
+  }
+  if (data.hiddenSpirits !== undefined) {
+    const homeName = palaceHexagrams[palaceName as keyof typeof palaceHexagrams]?.[0];
+    const homeNaJia = homeName ? hexagramNaJia[homeName] : undefined;
+    if (!homeNaJia || !Array.isArray(data.hiddenSpirits)) {
+      throw new Error('六爻伏神与本宫首卦纳甲不一致，无法生成证据。');
+    }
+    const relativeFor = (branch: string) =>
+      liuqinRelations[palace.wuxing as keyof typeof liuqinRelations][
+        getBranchWuxing(branch) as keyof (typeof liuqinRelations)[keyof typeof liuqinRelations]
+      ];
+    const appearedRelatives = new Set(mainNaJia.map(relativeFor));
+    const expectedHidden = homeNaJia.flatMap((branch, index) =>
+      appearedRelatives.has(relativeFor(branch))
+        ? []
+        : [
+            {
+              position: index + 1,
+              sixRelative: relativeFor(branch),
+              najiaDizhi: branch,
+              wuxing: getBranchWuxing(branch),
+              isVoid: expectedVoids.includes(branch),
+              underYao: {
+                position: index + 1,
+                sixRelative: relativeFor(mainNaJia[index]),
+                najiaDizhi: mainNaJia[index],
+                wuxing: getBranchWuxing(mainNaJia[index]),
+              },
+            },
+          ],
+    );
+    if (
+      data.hiddenSpirits.length !== expectedHidden.length ||
+      expectedHidden.some(
+        (expected) =>
+          !data.hiddenSpirits?.some(
+            (actual) =>
+              actual.position === expected.position &&
+              actual.sixRelative === expected.sixRelative &&
+              actual.najiaDizhi === expected.najiaDizhi &&
+              actual.wuxing === expected.wuxing &&
+              actual.isVoid === expected.isVoid &&
+              actual.underYao?.position === expected.underYao.position &&
+              actual.underYao.sixRelative === expected.underYao.sixRelative &&
+              actual.underYao.najiaDizhi === expected.underYao.najiaDizhi &&
+              actual.underYao.wuxing === expected.underYao.wuxing &&
+              (actual.interactionEffect === undefined ||
+                actual.interactionEffect ===
+                  evaluateLiuyaoHiddenSpiritInteraction({
+                    hiddenWuxing: expected.wuxing,
+                    hiddenVoid: expected.isVoid,
+                    flyingWuxing: expected.underYao.wuxing,
+                    flyingDizhi: expected.underYao.najiaDizhi,
+                    flyingVoid: expectedVoids.includes(expected.underYao.najiaDizhi),
+                    monthBranch,
+                  })),
+          ),
+      )
+    ) {
+      throw new Error('六爻伏神与本宫首卦纳甲不一致，无法生成证据。');
+    }
   }
   const movingPositions = data.yaoArray.flatMap((value, index) =>
     value === 6 || value === 9 ? [index + 1] : [],

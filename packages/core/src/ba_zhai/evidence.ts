@@ -1,6 +1,11 @@
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
-import type { BaZhaiDoorMeasurement, BaZhaiMeasurementStability, BaZhaiResult } from './index';
+import type {
+  BaZhaiDoorMeasurement,
+  BaZhaiHouseGroup,
+  BaZhaiMeasurementStability,
+  BaZhaiResult,
+} from './index';
 
 export interface BaZhaiDirectionComparison {
   direction: string;
@@ -55,7 +60,7 @@ export interface BaZhaiMeasurementCandidateFact {
   sitMountain: string;
   facingMountain: string;
   houseGua: string;
-  houseGroup: '东四命' | '西四命';
+  houseGroup: BaZhaiHouseGroup;
   match: '相合' | '相冲';
   measurementFactKey: 'measurement:bazhai:door';
   calculationStepKeys: string[];
@@ -177,7 +182,7 @@ export interface BaZhaiEvidenceAnalysis {
     sitMountain: string;
     facingMountain: string;
     houseGua: string;
-    houseGroup: '东四命' | '西四命';
+    houseGroup: BaZhaiHouseGroup;
     match: '相合' | '相冲';
   }>;
   counterEvidence: string[];
@@ -586,7 +591,7 @@ function buildLimitationFacts(
       type: '传统模型边界',
       ownerFactKeys: [calculationFact.key, ...directionFactKeys],
       promptText:
-        '八宅大游年、东四命与西四命属于传统空间分类模型，不是现代建筑性能或健康效果的实证模型',
+        '八宅大游年及东四命、西四命与东四宅、西四宅属于传统空间分类模型，不是现代建筑性能或健康效果的实证模型',
       sources: ['传统方位分类与现代建筑实证范围对照'],
     },
     {

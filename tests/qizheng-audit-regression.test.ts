@@ -14,6 +14,23 @@ import { auditPromptFacts } from '../scripts/prompt-audit/facts.ts';
 
 const branches = '子丑寅卯辰巳午未申酉戌亥';
 
+test('同一瞬时异地地心曜度与宿界一致，位置计算证据不列出生坐标', () => {
+  const input = { year: 2026, month: 5, day: 19, hour: 10, minute: 30, timezone: 8 };
+  const beijing = generateQizheng({ ...input, latitude: 39.9, longitude: 116.4 });
+  const greenwich = generateQizheng({ ...input, latitude: 0, longitude: 0 });
+  assert.deepEqual(
+    beijing.stars.map((star) => [star.name, star.longitude, star.xiu, star.xiuDegree]),
+    greenwich.stars.map((star) => [star.name, star.longitude, star.xiu, star.xiuDegree]),
+  );
+  assert.deepEqual(beijing.mansionBoundaries, greenwich.mansionBoundaries);
+  assert.notEqual(beijing.enNan?.sect, greenwich.enNan?.sect);
+  const positionStep = beijing.evidenceAnalysis.calculationFact.steps.find(
+    (step) => step.key === 'qizheng:calculation:modern-positions',
+  );
+  assert.deepEqual(positionStep?.inputs, { utcDateTime: beijing.calculationContext.utcDateTime });
+  assert.match(beijing.calculationContext.coordinatePipeline.join('；'), /出生坐标用于光照/);
+});
+
 test('同一瞬时点采用不同民用时区时，七政立春年干和年支神煞保持一致', () => {
   const common = {
     year: 2025,

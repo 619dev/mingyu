@@ -57,6 +57,12 @@ export interface BaZhaiInput {
   sitMountain?: string;
 }
 
+export type BaZhaiHouseGroup = '东四宅' | '西四宅';
+
+function getHouseGroup(gua: string): BaZhaiHouseGroup {
+  return getEastWestGroup(gua) === '东四命' ? '东四宅' : '西四宅';
+}
+
 export interface BaZhaiResult {
   calculationInput: {
     mingGuaSource: '出生年与性别计算' | '直接给定';
@@ -76,7 +82,7 @@ export interface BaZhaiResult {
   birthYearBoundaryNote: string;
   mingGroup: '东四命' | '西四命';
   houseGua: string | null;
-  houseGroup: '东四命' | '西四命' | null;
+  houseGroup: BaZhaiHouseGroup | null;
   /** 命卦大游年盘 */
   mingPalace: BaZhaiPalace[];
   /** 宅卦大游年盘（若有坐山） */
@@ -110,7 +116,7 @@ export interface BaZhaiDirectionCandidate {
   facingMountain: string;
   label: string;
   houseGua: string;
-  houseGroup: '东四命' | '西四命';
+  houseGroup: BaZhaiHouseGroup;
   match: '相合' | '相冲';
   housePalace: BaZhaiPalace[];
 }
@@ -462,18 +468,18 @@ export function analyzeBaZhai(input: BaZhaiInput): BaZhaiResult {
     .sort((a, b) => a.degree - b.degree);
 
   let houseGua: string | null = null;
-  let houseGroup: '东四命' | '西四命' | null = null;
+  let houseGroup: BaZhaiHouseGroup | null = null;
   let housePalace: BaZhaiPalace[] | null = null;
   let match: BaZhaiResult['match'] = '未知';
   let matchAdvice = '';
 
   if (input.sitMountain) {
     houseGua = getHouseTrigram(input.sitMountain);
-    houseGroup = getEastWestGroup(houseGua);
+    houseGroup = getHouseGroup(houseGua);
     housePalace = getBaZhaiPalace(houseGua);
-    if (houseGroup === mingGroup) {
+    if (getEastWestGroup(houseGua) === mingGroup) {
       match = '相合';
-      matchAdvice = `命卦与宅卦同属${mingGroup}，东四命配东四宅/西四命配西四宅为"命宅相合"，吉方可尽量重合利用。`;
+      matchAdvice = `命卦属${mingGroup}、宅卦属${houseGroup}，东四命配东四宅/西四命配西四宅为"命宅相合"，吉方可尽量重合利用。`;
     } else {
       match = '相冲';
       matchAdvice = `命卦属${mingGroup}、宅卦属${houseGroup}，命宅不同组（东四命住西四宅或反之），应以命卦吉方为主、宅卦为辅调和。`;
@@ -557,11 +563,11 @@ function analyzeBaZhaiByMeasurement(
   const result = analyzeBaZhai({ ...birthInput, sitMountain: sit.mountain });
   const candidateDirections: BaZhaiDirectionCandidate[] = measurement.candidateDirections.map(
     (item) => {
-      const houseGroup = getEastWestGroup(item.houseGua);
+      const houseGroup = getHouseGroup(item.houseGua);
       return {
         ...item,
         houseGroup,
-        match: houseGroup === result.mingGroup ? '相合' : '相冲',
+        match: getEastWestGroup(item.houseGua) === result.mingGroup ? '相合' : '相冲',
         housePalace: getBaZhaiPalace(item.houseGua),
       };
     },

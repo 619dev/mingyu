@@ -10,6 +10,7 @@ import {
 import type { JinkoujueData, JinkoujueFourPosition, JinkoujueMovement } from '../types/divination';
 import { MingyuCoreError } from '../shared/result';
 import { getVoidBranches } from '../calendar/lunar';
+import { getJinkoujueMonthLeader } from './jinkoujue-month-leader';
 import {
   EARTHLY_BRANCHES,
   getBranchWuxing,
@@ -282,6 +283,12 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
     )
   ) {
     throw new Error('金口诀四位遁干五行与结构化字段不一致，无法生成证据。');
+  }
+  const expectedMonthLeader = getJinkoujueMonthLeader(
+    data.termReferenceTimestamp ?? data.timestamp,
+  );
+  if (data.monthLeader !== expectedMonthLeader) {
+    throw new Error('金口诀月将与实际占时已交中气不一致，无法生成证据。');
   }
   const monthLeaderIndex = EARTHLY_BRANCHES.indexOf(
     data.monthLeader as (typeof EARTHLY_BRANCHES)[number],

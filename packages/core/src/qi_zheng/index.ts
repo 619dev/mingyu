@@ -1088,6 +1088,7 @@ function buildCalculationContext(
       '七政由Astronomy Engine按UTC时刻计算地心真黄经及逆行状态',
       '罗睺、计都由Astronomy Engine月球状态向量计算真交点，月孛按Moshier平均远地点计算',
       '紫炁按《七政算内篇》独立古法均速模型计算回归黄经',
+      '出生坐标用于光照；启用真太阳时时经度另用于命身宫时间校正，不参与地心星体位置',
       '二十八宿距星J2000坐标与自行由成熟天文库转换为目标日期真黄经',
       '各星目标日期黄经按相邻距星实际弧段换算宿度',
     ],
@@ -1372,17 +1373,12 @@ function buildQizhengEvidence(
       key: 'qizheng:calculation:modern-positions',
       stage: '现代位置计算',
       status: '已计算',
-      inputs: {
-        utcDateTime: context.utcDateTime,
-        latitude: context.latitude,
-        longitude: context.longitude,
-      },
+      inputs: { utcDateTime: context.utcDateTime },
       result: {
         modernObjectCount: stars.filter((item) => item.precisionClass === '现代天文计算').length,
       },
       dependsOnStepKeys: ['qizheng:calculation:time-scales'],
-      promptText:
-        '七政由Astronomy Engine、罗计由月球状态向量真交点、月孛按Moshier平均远地点计算回归黄经',
+      promptText: '七政、罗计与月孛按同一UTC瞬时计算地心黄经，出生坐标不参与星体位置',
       sources: [
         'astronomy-engine GeoVector/Ecliptic',
         'astronomy-engine GeoMoonState/ECT',

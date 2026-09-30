@@ -135,6 +135,35 @@ test('金口诀月将按节气真实瞬时切换，不随占卜时区覆盖延�
   }
 });
 
+test('金口诀旧盘月将与将神自洽时仍须按实际中气时刻复核', () => {
+  const before = new Date('2024-02-19T12:13:11+08:00');
+  const at = new Date('2024-02-19T12:13:12+08:00');
+  const source = generateJinkoujue({
+    method: 'branch',
+    branch: '申',
+    customDate: before,
+    termReferenceDate: at,
+  });
+  assert.equal(source.monthLeader, '亥');
+  assert.equal(analyzeJinkoujueEvidence(source).calculationFact.status, '完整');
+
+  const staleReference = structuredClone(source);
+  staleReference.termReferenceTimestamp = before.getTime();
+  assert.throws(() => analyzeJinkoujueEvidence(staleReference), /月将与实际占时已交中气不一致/u);
+  assert.throws(
+    () =>
+      buildDivinationPrompt({ method: 'jinkoujue', data: staleReference, question: '进展如何' }),
+    /月将与实际占时已交中气不一致/u,
+  );
+
+  const staleWithoutReference = structuredClone(source);
+  delete staleWithoutReference.termReferenceTimestamp;
+  assert.throws(
+    () => analyzeJinkoujueEvidence(staleWithoutReference),
+    /月将与实际占时已交中气不一致/u,
+  );
+});
+
 test('金口诀目标年末只查当前与下一轮冬至，避免预取越过历表上界', () => {
   const result = generateJinkoujue({ customDate: new Date('9999-12-31T00:00:00Z') });
   assert.equal(result.monthLeader, '丑');
