@@ -251,6 +251,14 @@ test('终身奇门公共接口拒绝无效或超过31年的目标区间', async 
     assert.equal(invalidDate.response.status, 400, path);
     const invalidDateError = invalidDate.body.error as Record<string, unknown> | undefined;
     assert.match(String(invalidDateError?.message), /startDate.*有效日期/u);
+
+    const unsupportedYear = await callLifetimeApi(path, {
+      ...baseRequest,
+      periodRange: { startDate: '0001-01-15', endDate: '0001-01-15' },
+    });
+    assert.equal(unsupportedYear.response.status, 400, path);
+    const unsupportedYearError = unsupportedYear.body.error as Record<string, unknown> | undefined;
+    assert.match(String(unsupportedYearError?.message), /上一干支年超出公历年份支持范围/u);
   }
 });
 
@@ -447,6 +455,29 @@ test('终身局补算拒绝公共 API 返回的错误目标区间', async () => 
     },
     { periodRange: { startDate: '2030-01-01', endDate: '2031-12-31' } },
   );
+});
+
+test('终身局补算不能用日级事件冒充年度片段', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (inputValue, init) => {
+    const request = new Request(new URL(String(inputValue), 'https://aov.cc'), init);
+    const response = await handlePublicApiRequest(request);
+    const body = (await response.json()) as Record<string, unknown>;
+    const payload = body.data as Record<string, unknown>;
+    const result = payload.result as Record<string, unknown>;
+    const clusters = result.eventClusters as Array<Record<string, unknown>>;
+    result.eventClusters = clusters.filter((cluster) => !String(cluster.key).includes('-lichun:'));
+    assert.ok((result.eventClusters as unknown[]).length > 0);
+    return Response.json(body, { status: response.status });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      executeReadingAction(action, undefined, subject),
+      /缺少奇门终身局2026年动态资料/u,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('终身奇门补算 schema 只暴露目标时段字段', async () => {

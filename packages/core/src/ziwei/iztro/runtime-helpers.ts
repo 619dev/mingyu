@@ -174,8 +174,9 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
   const normalized = normalizeChartInput(input);
   assertValidChartInput(normalized);
   const astro = await loadIztroAstro();
+  let effectiveBirthSolarDate: string | undefined;
 
-  const astrolabe = astro.withOptions({
+  const options = {
     type: normalized.dateType,
     dateStr: normalized.birthDate,
     timeIndex: normalized.birthTimeIndex,
@@ -184,7 +185,31 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
     fixLeap: normalized.fixLeap,
     language: 'zh-CN',
     config: buildIztroConfig(normalized),
-  }) as FunctionalAstrolabe;
+  };
+  let astrolabe = astro.withOptions(options) as FunctionalAstrolabe;
+
+  if (normalized.dayDivide === 'forward' && normalized.birthTimeIndex === 12) {
+    // iztro 只对晚子时部分日数计算做次日处理；改用次日早子时统一计算完整盘面，
+    // 否则闰月月序、宫位和依赖日期的星曜仍会落在原日口径。
+    const originalBirth = astrolabe;
+    const effectiveDate = getNextSolarBirthDate(normalized);
+    effectiveBirthSolarDate = effectiveDate;
+    const effectiveAstrolabe = astro.withOptions({
+      ...options,
+      type: 'solar',
+      dateStr: effectiveDate,
+      timeIndex: 0,
+    }) as FunctionalAstrolabe;
+
+    // rawDates 和盘面保留次日计算口径；展示字段仍保留实际出生日期、时刻与星座。
+    effectiveAstrolabe.solarDate = originalBirth.solarDate;
+    effectiveAstrolabe.lunarDate = originalBirth.lunarDate;
+    effectiveAstrolabe.time = originalBirth.time;
+    effectiveAstrolabe.timeRange = originalBirth.timeRange;
+    effectiveAstrolabe.sign = originalBirth.sign;
+    effectiveAstrolabe.zodiac = originalBirth.zodiac;
+    astrolabe = effectiveAstrolabe;
+  }
 
   // iztro 的运限计算读取全局配置；星盘构造后若又创建其他口径的盘，
   // 这张盘的同步 horoscope 调用也必须恢复自己的分界口径。
@@ -195,7 +220,17 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
     // iztro 2.5.8 的运限查询未使用 dayDivide；当天口径的晚子时须按当日早子时取干支。
     const effectiveHourIndex =
       normalized.dayDivide === 'current' && hourIndex === 12 ? 0 : hourIndex;
-    return calculateHoroscope(dateStr, effectiveHourIndex);
+    if (!effectiveBirthSolarDate) {
+      return calculateHoroscope(dateStr, effectiveHourIndex);
+    }
+
+    const displayBirthSolarDate = astrolabe.solarDate;
+    astrolabe.solarDate = effectiveBirthSolarDate;
+    try {
+      return calculateHoroscope(dateStr, effectiveHourIndex);
+    } finally {
+      astrolabe.solarDate = displayBirthSolarDate;
+    }
   };
 
   // 盘内星名已经按同一语言生成，精确名称无需逐星反查全部翻译词条。
@@ -217,6 +252,16 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
     return matched ?? findTranslatedStar(starName);
   };
   return astrolabe;
+}
+
+function getNextSolarBirthDate(input: ChartInput): string {
+  const { year, month, day } = parseBirthDateKey(input.birthDate);
+  const solarDay =
+    input.dateType === 'solar'
+      ? SolarDay.fromYmd(year, month, day)
+      : LunarDay.fromYmd(year, input.isLeapMonth ? -month : month, day).getSolarDay();
+  const nextDay = solarDay.next(1);
+  return formatSolarDateKey(nextDay.getYear(), nextDay.getMonth(), nextDay.getDay());
 }
 
 function assertValidChartInput(input: ChartInput) {

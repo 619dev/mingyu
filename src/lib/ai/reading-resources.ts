@@ -1264,6 +1264,9 @@ function assertQimenLifetimeResult(
         !clusters.some(
           (cluster) =>
             record(cluster) &&
+            typeof cluster.key === 'string' &&
+            cluster.key.startsWith(`cluster:${year}:`) &&
+            /:(?:before|after)-lichun:\d+$/u.test(cluster.key) &&
             typeof cluster.timeSpan === 'string' &&
             cluster.timeSpan.startsWith(`${year}年`),
         )

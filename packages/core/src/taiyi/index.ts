@@ -484,7 +484,11 @@ function withTaiyiCalendarSupport<T>(operation: () => T): T {
   try {
     return operation();
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('illegal solar year:')) {
+    if (
+      error instanceof Error &&
+      (error.message.startsWith('illegal solar year:') ||
+        error.message.startsWith('illegal solar day:'))
+    ) {
       throw new Error('太乙日期无法在当前历法库支持的范围内换算为干支或节气。', {
         cause: error,
       });

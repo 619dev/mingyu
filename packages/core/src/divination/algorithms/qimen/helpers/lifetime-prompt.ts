@@ -305,8 +305,24 @@ export function buildLifetimePrompt(
       const triggerDates = ec.triggerDates ?? [];
       const isDailyRelation = ec.key.includes(':day:') && triggerDates.length > 0;
       const isDailyVoidFill = isDailyRelation && ec.key.includes(':day:void-fill:');
+      const stageLabel =
+        ec.stageIndices?.length && (ec.stageIndices.length > 1 || ec.stageIndex === undefined)
+          ? `（涉及阶段${ec.stageIndices.map((index) => index + 1).join('、')}）`
+          : ec.stageIndex === undefined
+            ? '（阶段表范围外）'
+            : '';
+      if (ec.key.includes(':month-clash:')) {
+        lines.push(`${ec.triggerFact}${stageLabel}（节奏：${ec.rhythm}）`);
+        continue;
+      }
+      const annualLabel = /^(\d{4}年（[^）]+)）/u.exec(ec.timeSpan)?.[1];
+      const annualPrefix = annualLabel ? `${annualLabel}太岁）` : undefined;
+      const triggerFact =
+        annualPrefix && ec.triggerFact.startsWith(annualPrefix)
+          ? `太岁${ec.triggerFact.slice(annualPrefix.length)}`
+          : ec.triggerFact;
       lines.push(
-        `${ec.timeSpan}${ec.stageIndices?.length ? `（涉及阶段${ec.stageIndices.map((index) => index + 1).join('、')}）` : ec.stageIndex === undefined ? '（阶段表范围外）' : ''} ${isDailyRelation ? `共${triggerDates.length}个日辰` : ec.triggerFact}（节奏：${ec.rhythm}）`,
+        `${ec.timeSpan}${stageLabel} ${isDailyRelation ? `共${triggerDates.length}个日辰` : triggerFact}（节奏：${ec.rhythm}）`,
       );
       if (triggerDates.length > 0 && !isDailyVoidFill) {
         lines.push(
@@ -315,7 +331,12 @@ export function buildLifetimePrompt(
             : formatTriggerDates(triggerDates)),
         );
       }
-      if (!isDailyRelation) lines.push(`  动态交互：${ec.interactionAnalysis}`);
+      if (
+        !isDailyRelation &&
+        !/^cluster:\d{4}:[^:]+:(?:(?:before|after)-lichun:)?\d+$/u.test(ec.key)
+      ) {
+        lines.push(`  动态交互：${ec.interactionAnalysis}`);
+      }
       if (!isDailyRelation && ec.supportEvidence.length > 0) {
         lines.push(`  增益因素：${ec.supportEvidence.join('；')}`);
       }

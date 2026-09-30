@@ -459,7 +459,8 @@ test('奇门提示词按问题展示专项复合格局，结构化盘面仍保�
   assert.match(military, /星宫主客|飞鸟跌穴利客/);
   assert.match(military, /迷路法/);
   const militaryCombos = military.split('复合格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
-  assert.match(militaryCombos, /飞鸟跌穴利客（兑七宫）：该格局，合/);
+  assert.match(militaryCombos, /飞鸟跌穴利客（兑七宫）：合/);
+  assert.doesNotMatch(militaryCombos, /：该格局[，；]/);
   assert.doesNotMatch(militaryCombos, /兑七宫飞鸟跌穴，合/);
   const flyingBirdShengMen = militaryCombos
     .split('\n')

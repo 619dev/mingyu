@@ -571,7 +571,11 @@ test('奇门终身局日级关系应跨年裁切并保留当地日干支', () =>
   assert.ok(dates.length > 0);
   assert.ok(dates.some((date) => date.startsWith('2025-')));
   assert.ok(dates.some((date) => date.startsWith('2026-')));
-  assert.ok(result.eventClusters?.every((cluster) => !cluster.timeSpan.includes('至')));
+  assert.ok(
+    result.eventClusters
+      ?.filter((cluster) => cluster.key.includes(':day:'))
+      .every((cluster) => !cluster.timeSpan.includes('至')),
+  );
 });
 
 test('奇门终身局日级关系应按纽约夏令时读取当地日期', () => {
@@ -702,9 +706,7 @@ test('奇门终身局动态年盘应采用固定 UTC 偏移而非默认东八区
   });
   const annualCluster = result.eventClusters?.find(
     (cluster) =>
-      cluster.key.startsWith(`cluster:${year}:`) &&
-      !cluster.key.includes(':month-clash:') &&
-      !cluster.key.includes(':day-nodal'),
+      cluster.key.startsWith(`cluster:${year}:`) && cluster.key.includes(':after-lichun:'),
   );
   assert.ok(annualCluster, `应存在${year}年年度事件簇`);
 
@@ -787,9 +789,7 @@ test('奇门终身局动态年盘应按目标年度读取 IANA 夏令时偏移',
   });
   const annualCluster = result.eventClusters?.find(
     (cluster) =>
-      cluster.key.startsWith(`cluster:${year}:`) &&
-      !cluster.key.includes(':month-clash:') &&
-      !cluster.key.includes(':day-nodal'),
+      cluster.key.startsWith(`cluster:${year}:`) && cluster.key.includes(':after-lichun:'),
   );
   assert.ok(annualCluster, `应存在${year}年年度事件簇`);
 
@@ -841,6 +841,17 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
   assert.match(prompt, /【个人标记与主题宫】/);
   assert.match(prompt, /【人生阶段资料】/);
   assert.match(prompt, /【周期触发与事件簇】/);
+  const annualLine = prompt.split('\n').find((line) => line.startsWith('2027年（丁未）立春后'));
+  assert.ok(annualLine);
+  assert.match(annualLine, /太岁值临/u);
+  assert.equal(annualLine.match(/2027年/gu)?.length, 1);
+  assert.doesNotMatch(prompt, /动态交互：流年岁气与本命/u);
+  const monthClash = data.eventClusters?.find((cluster) => cluster.key.includes(':month-clash:'));
+  assert.ok(monthClash?.triggerDates?.length);
+  assert.ok(prompt.includes(monthClash.triggerFact));
+  assert.ok(prompt.includes(monthClash.triggerDates[0]!.dateTime!));
+  assert.doesNotMatch(prompt, /动态交互：月建[^\n]+构成相冲/u);
+  assert.doesNotMatch(prompt, /增益因素：[^\n]*月建交节日：/u);
   assert.match(prompt, /【传统依据】/);
   assert.doesNotMatch(prompt, /【输出要求】/);
 
@@ -950,7 +961,9 @@ test('奇门终身局提示词将年支空亡填实保留为事实并折叠日�
 
   const annualVoidFillClusters =
     data.eventClusters?.filter(
-      (cluster) => cluster.timeSpan === '2028年（戊申）' || cluster.timeSpan === '2029年（己酉）',
+      (cluster) =>
+        cluster.timeSpan.startsWith('2028年（戊申）立春后') ||
+        cluster.timeSpan.startsWith('2029年（己酉）立春后'),
     ) ?? [];
   assert.equal(annualVoidFillClusters.length, 2);
   assert.ok(

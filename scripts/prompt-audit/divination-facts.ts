@@ -365,12 +365,20 @@ function lifetimeEventHeader(cluster: AnyRecord): string | undefined {
     ? cluster.stageIndices.map(text).filter((item): item is string => Boolean(item))
     : [];
   const stageIndex = text(cluster.stageIndex);
-  const scopeText = stageIndices.length
-    ? `（涉及阶段${stageIndices.map((item) => String(Number(item) + 1)).join('、')}）`
-    : stageIndex === undefined
-      ? '（阶段表范围外）'
-      : '';
-  return `${timeSpan}${scopeText} ${dailyCount ? `共${dailyCount}个日辰` : triggerFact}`;
+  const scopeText =
+    stageIndices.length && (stageIndices.length > 1 || stageIndex === undefined)
+      ? `（涉及阶段${stageIndices.map((item) => String(Number(item) + 1)).join('、')}）`
+      : stageIndex === undefined
+        ? '（阶段表范围外）'
+        : '';
+  if (text(cluster.key)?.includes(':month-clash:')) return `${triggerFact}${scopeText}`;
+  const annualLabel = /^(\d{4}年（[^）]+)）/u.exec(timeSpan)?.[1];
+  const annualPrefix = annualLabel ? `${annualLabel}太岁）` : undefined;
+  const promptFact =
+    annualPrefix && triggerFact.startsWith(annualPrefix)
+      ? `太岁${triggerFact.slice(annualPrefix.length)}`
+      : triggerFact;
+  return `${timeSpan}${scopeText} ${dailyCount ? `共${dailyCount}个日辰` : promptFact}`;
 }
 
 function formatLifetimeTriggerDate(item: AnyRecord): string | undefined {
@@ -733,6 +741,10 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
         const header = eventHeaders[index];
         if (!header) return [];
         const dailyCount = lifetimeDailyRelationCount(event);
+        const isMonthClash = text(event.key)?.includes(':month-clash:');
+        const isAnnual = /^cluster:\d{4}:[^:]+:(?:(?:before|after)-lichun:)?\d+$/u.test(
+          text(event.key) ?? '',
+        );
         const nextHeader = eventHeaders[index + 1];
         const scope = {
           start: header,
@@ -744,15 +756,19 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
               .filter(Number.isFinite)
               .join('、')
           : '';
-        const stageFact = stageIndices ? `涉及阶段${stageIndices}` : undefined;
+        const stageFact =
+          stageIndices && (stageIndices.includes('、') || event.stageIndex === undefined)
+            ? `涉及阶段${stageIndices}`
+            : undefined;
         const triggerDates = records(event.triggerDates);
-        const triggerDateLines = text(event.key)?.includes(':day:void-fill:')
-          ? []
-          : formatLifetimeTriggerLines(triggerDates, dailyCount > 0);
+        const triggerDateLines =
+          isMonthClash || text(event.key)?.includes(':day:void-fill:')
+            ? []
+            : formatLifetimeTriggerLines(triggerDates, dailyCount > 0);
         return [
           fact(
             `qimen-lifetime.event.${index}.header`,
-            dailyCount ? `共${dailyCount}个日辰` : text(event.triggerFact) || '',
+            header,
             [text(event.rhythm) ? `节奏：${text(event.rhythm)}` : undefined, stageFact],
             { scope: eventSectionScope, unit: 'line' },
           ),
@@ -764,7 +780,17 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
               { scope, unit: 'line' },
             ),
           ),
-          dailyCount
+          ...(isMonthClash
+            ? triggerDates.map((date, dateIndex) =>
+                fact(
+                  `qimen-lifetime.event.${index}.date.${dateIndex}`,
+                  header,
+                  [firstText(date.dateTime, date.date)],
+                  { scope: eventSectionScope, unit: 'line' },
+                ),
+              )
+            : []),
+          dailyCount || isMonthClash || isAnnual
             ? null
             : fact(
                 `qimen-lifetime.event.${index}.interaction`,
@@ -772,7 +798,7 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
                 [event.interactionAnalysis],
                 { scope, unit: 'line' },
               ),
-          !dailyCount && texts(event.supportEvidence).length
+          !dailyCount && !isMonthClash && texts(event.supportEvidence).length
             ? fact(
                 `qimen-lifetime.event.${index}.support`,
                 '增益因素：',

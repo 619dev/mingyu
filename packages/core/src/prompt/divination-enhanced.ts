@@ -926,9 +926,20 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
         palaceName && summaryWithoutRepeatedPattern.startsWith(palaceName)
           ? summaryWithoutRepeatedPattern.slice(palaceName.length)
           : summaryWithoutRepeatedPattern;
-      const compactedSummary = item.key.startsWith('combo:flyingBirdShengMen:')
-        ? summary.replace(/^(?:该格局|飞鸟跌穴)同宫生门[，；]/u, '')
-        : summary;
+      const hostGuestInjuryBoundary = item.key.startsWith('combo:starDoorHostGuestInjury:')
+        ? summary.indexOf('宫为主，星门为客；')
+        : -1;
+      const involvedPalaces = [
+        ...new Set(item.sources.map((source) => source.split('：', 1)[0]).filter(Boolean)),
+      ];
+      const compactedHostGuestSummary =
+        hostGuestInjuryBoundary >= 0 && involvedPalaces.length
+          ? `同宫星门与宫各见一生一克：${involvedPalaces.join('、')}。${summary.slice(hostGuestInjuryBoundary)}`
+          : summary;
+      const compactedSummary = compactedHostGuestSummary.replace(
+        /^(?:该格局(?:同宫生门)?|飞鸟跌穴同宫生门)[，；]/u,
+        '',
+      );
       // 基础格局已逐条解释，复合格局只保留组合结论，避免再次罗列来源条件。
       return `${name}：${compactedSummary}`;
     });

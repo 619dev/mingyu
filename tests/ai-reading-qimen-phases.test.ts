@@ -75,7 +75,9 @@ function buildMultiPhaseQimenResource() {
   const clusters = data.eventClusters ?? [];
   const clusterIndex = clusters.findIndex(
     (cluster) =>
-      (cluster.triggerDates?.length ?? 0) > 0 && !cluster.key.includes(':day:void-fill:'),
+      (cluster.triggerDates?.length ?? 0) > 0 &&
+      cluster.key.includes(':day:') &&
+      !cluster.key.includes(':day:void-fill:'),
   );
   assert.ok(clusterIndex >= 0);
   const cluster = clusters[clusterIndex]!;
@@ -303,7 +305,12 @@ test('同一事件簇拆分到多个阶段时仍完整保留事件日期', async
   const baseResource = buildDetailedQimenResource();
   const data = JSON.parse(JSON.stringify(baseResource.structured)) as QimenLifetimeData;
   const clusters = data.eventClusters ?? [];
-  const clusterIndex = clusters.findIndex((cluster) => (cluster.triggerDates?.length ?? 0) > 0);
+  const clusterIndex = clusters.findIndex(
+    (cluster) =>
+      (cluster.triggerDates?.length ?? 0) > 0 &&
+      cluster.key.includes(':day:') &&
+      !cluster.key.includes(':day:void-fill:'),
+  );
   assert.ok(clusterIndex >= 0);
   const cluster = clusters[clusterIndex]!;
   const sourceDates = cluster.triggerDates!;

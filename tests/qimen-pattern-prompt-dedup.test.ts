@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 import { generateQimen } from '../packages/core/src/divination/algorithms/qimen';
 import { analyzeQimenEvidence } from '../packages/core/src/divination/qimen-evidence';
 
@@ -32,4 +33,20 @@ test('三奇入墓在固定盘与证据提示词中只保留三奇专名', () =>
   assert.match(patterns, /凶格：日奇入墓；乙奇入坤二宫/);
   assert.doesNotMatch(patterns, /凶格：乙入墓/);
   assert.match(patterns, /凶格：己入墓/);
+});
+
+test('复合格局引用同盘经典格局时省略占位复述并保留独有兵事依据', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const prompt = formatEnhancedDivinationInfo('qimen', data, '军事战术如何行动');
+  const combos = prompt.split('复合格局：\n')[1]?.split('\n值符宫应期参考')[0] ?? '';
+
+  assert.doesNotMatch(combos, /：该格局(?:同宫生门)?[，；]/);
+  assert.match(combos, /飞鸟跌穴利客（兑七宫）：合“丙加甲利为客”/);
+  assert.match(combos, /螣蛇夭矫宜守（巽四宫）：合“主军宜固守”/);
+  assert.match(combos, /螣蛇迁戊己（巽四宫）：古法急迁甲子戊、甲戌己两土宫/);
+
+  const hostGuestInjury = combos.split('星门主客互伤：')[1]?.split('\n八门余气')[0] ?? '';
+  assert.match(hostGuestInjury, /同宫星门与宫各见一生一克：坤二宫、艮八宫、离九宫/);
+  assert.doesNotMatch(hostGuestInjury, /天英火星生宫利主|休门水宫克门利主/);
+  assert.match(hostGuestInjury, /合“一克一生，主客互伤”/);
 });
