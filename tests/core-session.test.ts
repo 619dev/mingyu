@@ -148,6 +148,146 @@ test('统一占法会话应在计算前拒绝缺少占法问题', () => {
   assert.throws(() => validateDivinationRequest({ method: 'meihua' }), /需要提供问题/);
 });
 
+test('统一占法会话应拒绝无时区文本、不存在的日期及隐式转换的时间输入', () => {
+  const request = { method: 'meihua' as const, question: '核对起课时刻' };
+  for (const value of [
+    '2026-02-30T10:30:00+08:00',
+    '2026-02-01T10:30:00',
+    '2026-02-01',
+    true,
+    null,
+    [],
+    { valueOf: () => Date.parse('2026-02-01T10:30:00+08:00') },
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    new Date(Number.NaN),
+  ]) {
+    for (const field of ['divinationTime', 'currentTime'] as const) {
+      const input = { ...request, [field]: value } as Parameters<
+        typeof generateDivinationSession
+      >[0];
+      assert.throws(() => validateDivinationRequest(input), /有效日期|有效 ISO/);
+      assert.throws(() => generateDivinationSession(input), /有效日期|有效 ISO/);
+    }
+  }
+});
+
+test('统一占法会话的 ISO、Date 与毫秒时间戳应对应同一盘面与提示词', () => {
+  const iso = '2026-02-01T10:30:00+08:00';
+  const originalDate = new Date(iso);
+  const makeSession = (time: Date | string | number) =>
+    generateDivinationSession({
+      method: 'meihua',
+      question: '核对相同时刻',
+      divinationTime: time,
+      currentTime: time,
+    });
+  const reference = makeSession(iso);
+  for (const input of [originalDate, originalDate.getTime(), originalDate.toISOString()]) {
+    const result = makeSession(input);
+    assert.deepEqual(result.data, reference.data);
+    assert.equal(result.prompt, reference.prompt);
+    assert.equal(result.aiPrompt, reference.aiPrompt);
+  }
+  assert.equal(originalDate.toISOString(), '2026-02-01T02:30:00.000Z');
+});
+
+test('随机选择太乙时应根据起课时刻的北京时间年份生成年计盘', () => {
+  const session = generateDivinationSession({
+    method: 'random',
+    question: '核对跨年太乙盘',
+    divinationTime: '2024-12-31T18:00:00Z',
+    currentTime: '2026-09-30T00:00:00Z',
+    random: { replay: [0.65] },
+  });
+  assert.equal(session.requestedMethod, 'random');
+  assert.equal(session.method, 'taiyi');
+  const data = session.data as import('../packages/core/src/types/divination').TaiyiResult;
+  assert.equal(data.scope, 'year');
+  assert.equal(data.dateTime, '2025-07-01 12:00:00');
+  assert.match(session.aiPrompt, /2025年/);
+});
+
+test('太乙简版任务书应按计式保留目标时间且不输出代表时刻', () => {
+  for (const [scope, expectedTime] of [
+    ['year', '2025年'],
+    ['month', '2025-01月'],
+    ['day', '2025-01-01'],
+    ['hour', '2025-01-01 02:00:00'],
+  ] as const) {
+    const session = generateDivinationSession({
+      method: 'taiyi',
+      question: '核对太乙目标时间',
+      divinationTime: '2024-12-31T18:00:00Z',
+      currentTime: '2026-09-30T00:00:00Z',
+      taiyi: { scope, ...(scope === 'year' ? { year: 2025 } : {}) },
+    });
+    for (const text of [session.prompt, session.aiPrompt]) {
+      assert.ok(text.includes(`起局时间：${expectedTime}`), `${scope}计缺少目标时间`);
+      assert.equal((text.match(/起局时间：/g) ?? []).length, 1);
+      if (scope === 'year') assert.doesNotMatch(text, /2025-07-01 12:00:00/);
+    }
+  }
+});
+
+test('随机占法会话应完整消费重放记录并拒绝剩余样本', () => {
+  const request = {
+    method: 'random' as const,
+    question: '核对随机记录',
+    divinationTime: '2026-02-01T10:30:00+08:00',
+    currentTime: '2026-02-01T10:30:00+08:00',
+  };
+  assert.equal(
+    generateDivinationSession({ ...request, random: { replay: [0.25] } }).method,
+    'xiaoliuren',
+  );
+  assert.throws(
+    () => generateDivinationSession({ ...request, random: { replay: [0.25, 0.3] } }),
+    /随机重放样本有剩余/,
+  );
+});
+
+test('显式占法会话应拒绝未被起课过程使用的重放记录', () => {
+  const request = {
+    question: '核对随机记录',
+    divinationTime: '2026-02-01T10:30:00+08:00',
+    currentTime: '2026-02-01T10:30:00+08:00',
+    random: { replay: [0.25] },
+  };
+  for (const method of ['xiaoliuren', 'qimen', 'liuyao'] as const) {
+    assert.throws(() => generateDivinationSession({ ...request, method }), /随机重放样本有剩余/);
+  }
+  assert.throws(
+    () =>
+      generateDivinationSession({
+        ...request,
+        method: 'ssgw',
+        ssgw: { method: 'manual', number: 1 },
+      }),
+    /随机重放样本有剩余/,
+  );
+  const replay = Array(5).fill(0.25);
+  const kongming = generateDivinationSession({
+    ...request,
+    method: 'kongming',
+    random: { replay },
+  });
+  assert.deepEqual(
+    (kongming.data as import('../packages/core/src/name-number').KongmingHexagramResult).random
+      ?.samples,
+    replay,
+  );
+  assert.throws(
+    () =>
+      generateDivinationSession({
+        ...request,
+        method: 'kongming',
+        random: { replay: [...replay, 0.25] },
+      }),
+    /随机重放样本有剩余/,
+  );
+});
+
 test('统一占法会话应支持金口诀指定地分并在计算前校验输入', () => {
   const session = generateDivinationSession({
     method: 'jinkoujue',

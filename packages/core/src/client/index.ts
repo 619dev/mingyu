@@ -176,6 +176,9 @@ function normalizeUtcTimestamp(value: Date | string | number): number {
     }
     return date.getTime();
   }
+  if (!(value instanceof Date) && typeof value !== 'number') {
+    throw new TypeError('UTC 时刻必须是有效日期、毫秒时间戳或带时区的 ISO 日期时间。');
+  }
   const timestamp = value instanceof Date ? value.getTime() : new Date(value).getTime();
   if (!Number.isFinite(timestamp)) throw new TypeError('UTC 时刻必须是有效日期或时间戳。');
   return timestamp;

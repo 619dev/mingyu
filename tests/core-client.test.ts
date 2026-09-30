@@ -268,3 +268,12 @@ test('客户端默认设置可按单次调用覆盖且不会触发未请求的�
     tongZiScope: 'all-pillars',
   });
 });
+
+test('月相便捷入口应拒绝可被隐式转换成时间戳的非时间输入', () => {
+  const client = createMingyuClient();
+  for (const value of [true, null, [], { valueOf: () => Date.parse('2026-02-01T00:00:00Z') }]) {
+    const result = client.safe.moonPhase(value as never);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.error.category, 'validation');
+  }
+});

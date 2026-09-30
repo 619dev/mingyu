@@ -19,7 +19,9 @@ import { calculateZhugeNumber, castKongmingHexagram } from '../name-number/oracl
 import { drawTarotSpread, type TarotDrawOptions, type TarotManualCardInput } from './tarot';
 import { isEarthlyBranch } from '../ganzhi';
 import type { RandomOptions } from '../shared/random';
-import { createRandomContext, randomInt } from '../shared/random';
+import { assertReplaySamplesConsumed, createRandomContext, randomInt } from '../shared/random';
+import { getCivilDateTimeAtFixedOffset } from '../calendar/civil-time';
+import { isValidIsoDateTime } from '../calendar/date-validation';
 import { serializeCoreResult } from '../shared/result';
 import {
   buildDivinationPromptDocument,
@@ -75,9 +77,9 @@ export interface DivinationRequest {
   method: DivinationMethodId;
   question?: string;
   questionSource?: 'custom' | 'inspiration';
-  /** 起课时间；未提供时由各算法使用当前时间。 */
+  /** 起课时间；字符串使用带 Z 或明确偏移的 ISO 日期时间，数字为毫秒时间戳；未提供时使用当前时间。 */
   divinationTime?: Date | string | number;
-  /** 提示词中的当前时间；未提供时使用运行环境当前时间。 */
+  /** 提示词中的当前时间；字符串使用带 Z 或明确偏移的 ISO 日期时间；未提供时使用运行环境当前时间。 */
   currentTime?: Date | string | number;
   /** 随机占法的统一随机设置，支持 seed、replay 和自定义随机源。 */
   random?: RandomOptions;
@@ -215,7 +217,21 @@ function formatTaiyiJudgmentFacts(data: TaiyiResult): string[] {
   const specialJudgments = data.judgments.filter(
     (item) => item !== conditionSummary && !repeatedCountJudgments.has(item),
   );
+  const civilDate = data.dateTime.split(' ')[0];
+  const [civilYear, civilMonth] = civilDate.split('-');
+  const scopeTime =
+    data.scope === 'year'
+      ? `${civilYear}年`
+      : data.scope === 'month'
+        ? `${civilYear}-${civilMonth}月`
+        : data.scope === 'day'
+          ? civilDate
+          : data.dateTime;
   const lines = [
+    `起局时间：${scopeTime}`,
+    ...(data.termReferenceDateTime
+      ? [`节气与年月干支参照实际占时：${data.termReferenceDateTime}（东八区）`]
+      : []),
     `主客定算：主算${data.lordCount}${data.countNatures?.lord ? `（${data.countNatures.lord}）` : ''}；客算${data.guestCount}${data.countNatures?.guest ? `（${data.countNatures.guest}）` : ''}；定算${data.setCount}${data.countNatures?.set ? `（${data.countNatures.set}）` : ''}`,
     `文昌${data.wenChangPosition}；始击${data.shiJiPosition}；计神${data.jiShenPosition}`,
     `将参：主大将${data.lordGeneral}宫、主参将${data.lordAssistant}宫；客大将${data.guestGeneral}宫、客参将${data.guestAssistant}宫；定大将${data.setGeneral}宫、定参将${data.setAssistant}宫`,
@@ -360,8 +376,14 @@ function assertRequestRecord(request: DivinationRequest): void {
 
 function normalizeDate(value: Date | string | number | undefined, field: string): Date | undefined {
   if (value === undefined) return undefined;
+  if (!(value instanceof Date) && typeof value !== 'string' && typeof value !== 'number') {
+    throw new TypeError(`${field}必须是有效日期、毫秒时间戳或带时区的 ISO 日期时间。`);
+  }
   const date = value instanceof Date ? new Date(value.getTime()) : new Date(value);
   if (Number.isNaN(date.getTime())) throw new Error(`${field}必须是有效日期。`);
+  if (typeof value === 'string' && !isValidIsoDateTime(value, date)) {
+    throw new TypeError(`${field}文本必须是带 Z 或明确偏移的有效 ISO 日期时间。`);
+  }
   return date;
 }
 
@@ -560,15 +582,21 @@ function generateData(
     case 'astrolabe':
       if (!request.astrolabe) throw new Error('星盘需要提供 astrolabe 出生资料。');
       return generateAstrolabe(request.astrolabe);
-    case 'taiyi':
-      if (!request.taiyi) throw new Error('太乙需要提供 taiyi 参数。');
-      if ((request.taiyi.scope ?? 'year') === 'year') {
-        return generateTaiyi({ year: request.taiyi.year, scope: 'year' }) as TaiyiResult;
+    case 'taiyi': {
+      const taiyi: DivinationRequest['taiyi'] =
+        request.taiyi ??
+        (request.method === 'random'
+          ? { year: getCivilDateTimeAtFixedOffset(customDate ?? new Date()).year, scope: 'year' }
+          : undefined);
+      if (!taiyi) throw new Error('太乙需要提供 taiyi 参数。');
+      if ((taiyi.scope ?? 'year') === 'year') {
+        return generateTaiyi({ year: taiyi.year, scope: 'year' }) as TaiyiResult;
       }
       return generateTaiyi({
         date: customDate ?? new Date(),
-        scope: request.taiyi.scope,
+        scope: taiyi.scope,
       }) as TaiyiResult;
+    }
     case 'huangji':
       return calculateHuangjiJingshi(
         request.huangji?.year !== undefined
@@ -598,6 +626,15 @@ export function generateDivinationSession(request: DivinationRequest): Divinatio
   const customDate = normalizeDate(request.divinationTime, '起课时间');
   const currentTime = normalizeCurrentTime(request.currentTime) ?? new Date();
   const data = generateData(request, method, customDate, selectionRandom, currentTime);
+  if (selectionRandom) {
+    assertReplaySamplesConsumed(request.random, selectionRandom.getTrace());
+  } else if (request.random?.replay !== undefined) {
+    const trace = 'meta' in data ? data.meta?.random : 'random' in data ? data.random : undefined;
+    assertReplaySamplesConsumed(
+      request.random,
+      trace?.mode === 'replay' ? trace : createRandomContext(request.random).getTrace(),
+    );
+  }
   const question = buildQuestion(method, request.question, data);
   const promptOptions: DivinationPromptOptions = {
     method,
