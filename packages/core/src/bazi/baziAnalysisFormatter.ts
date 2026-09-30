@@ -347,14 +347,14 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
   if (!baziResult) return '无法获取八字数据。';
   if (baziResult.isThreePillars) {
     const { solarDate, unknownTimeAnalysis } = baziResult;
+    const knownPillarLines = (['year', 'month', 'day'] as const).flatMap((key, index) => {
+      const ganZhi = baziResult.pillars[key].ganZhi;
+      return ganZhi ? [`${['年柱', '月柱', '日柱'][index]}：${ganZhi}`] : [];
+    });
     return [
       '【命盘】',
       `公历${solarDate.year}年${solarDate.month}月${solarDate.day}日，${baziResult.gender === 'male' ? '男命' : '女命'}，出生时辰未知。`,
-      '【已确定的柱】',
-      ...(['year', 'month', 'day'] as const).map(
-        (key, index) =>
-          `${['年柱', '月柱', '日柱'][index]}：${baziResult.pillars[key].ganZhi || '待出生时分确定'}`,
-      ),
+      ...(knownPillarLines.length ? ['【已确定的柱】', ...knownPillarLines] : []),
       '【待补时判断】',
       unknownTimeAnalysis?.summary ?? '旺衰、格局与喜忌待出生时分确定后再判。',
       unknownTimeAnalysis?.batch

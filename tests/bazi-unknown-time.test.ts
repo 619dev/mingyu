@@ -34,6 +34,8 @@ test('缺时辰不把午时当成出生事实，完整判断只出现在候选�
   assert.doesNotMatch(result.evidenceAnalysis?.calculationChain.join('\n') ?? '', /明确选择的.*午/);
   const prompt = formatBaziForPrompt(result);
   assert.match(prompt, /时辰未知/);
+  assert.match(prompt, /【已确定的柱】\n年柱：己卯\n月柱：丁丑/u);
+  assert.doesNotMatch(prompt, /^日柱：/mu);
   assert.match(prompt, /丑时候选/);
   assert.doesNotMatch(prompt, /【核心判断】|【大运】|命宫:/);
   assert.throws(() => analyzeBaziCompatibility(result, result), /先补齐双方出生时分/);
@@ -82,6 +84,10 @@ test('未知时辰的晚子日柱与立春交界柱保留为待定', () => {
     result.unknownTimeAnalysis?.scenarios.map((scenario) => scenario.pillars.year.ganZhi),
   );
   assert.deepEqual([...years].sort(), ['甲辰', '癸卯'].sort());
+  const prompt = formatBaziForPrompt(result);
+  assert.doesNotMatch(prompt, /【已确定的柱】|^(?:年|月|日)柱：/mu);
+  assert.match(prompt, /【待补时判断】/u);
+  assert.equal(prompt.match(/候选喜用/g)?.length, result.unknownTimeAnalysis?.scenarios.length);
 });
 
 test('明确丑时仍返回唯一完整命盘，不产生缺时辰候选', () => {
