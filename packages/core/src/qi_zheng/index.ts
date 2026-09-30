@@ -2337,6 +2337,14 @@ function generateQizhengInternal(
     aspects,
   });
 
+  const promptAspects = aspects.filter(
+    (aspect) =>
+      !(
+        (aspect.star1 === '罗睺(火余)' && aspect.star2 === '计都(土余)') ||
+        (aspect.star1 === '计都(土余)' && aspect.star2 === '罗睺(火余)')
+      ),
+  );
+
   const locationSource = calculationContext.locationSource;
   const locationLabel =
     locationSource === '用户提供'
@@ -2353,15 +2361,14 @@ function generateQizhengInternal(
     `【七政四余 · 果老星宗】`,
     `出生时间：${input.year}年${input.month}月${input.day}日 ${String(input.hour).padStart(2, '0')}:${String(input.minute ?? 0).padStart(2, '0')}${input.second ? `:${String(input.second).padStart(2, '0')}` : ''}。`,
     `${locationLabel}：${locationText}；时区UTC${tz >= 0 ? '+' : ''}${tz}${input.timeZoneId ? `（${input.timeZoneId}）` : ''}；${calculationContext.palaceTimeNote}。`,
-    `七政：太阳、太阴、水、金、火、木、土；四余：罗睺、计都、月孛、紫炁。`,
     `十二宫：${twelvePalaces.map((item) => `${item.palace}在${item.signBranch}宫`).join('、')}；身宫落${getQizhengSignBranch(shenGong)}宫。`,
     ...stars.map(
       (s) =>
         `${s.kind} ${s.name}：在${s.xiu}宿${s.xiuDegree.toFixed(2)}度，落${s.signBranch}宫${s.palace}${s.dignity && s.dignity !== '—' ? '（' + s.dignity + '）' : ''}${s.retrograde ? '（逆）' : ''}`,
     ),
     `七政四余吊照：${
-      aspects.length
-        ? aspects
+      promptAspects.length
+        ? promptAspects
             .map((aspect) => {
               const first = stars.find((star) => star.name === aspect.star1)!;
               const second = stars.find((star) => star.name === aspect.star2)!;

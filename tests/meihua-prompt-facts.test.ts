@@ -252,7 +252,7 @@ test('梅花在线提示词对缺少卦象结构的阶段使用中性事实', ()
       .split('体用阶段：\n')[1]
       ?.split('\n起卦法：')[0]
       .split('\n')
-      .find((line) => line.startsWith('结果')) ?? '';
+      .find((line) => line.startsWith('变卦')) ?? '';
 
   assert.match(resultStage, /卦象结构资料未记录/u);
   assert.doesNotMatch(resultStage, /不得|禁止|不要|不能/u);
@@ -288,7 +288,8 @@ test('梅花主卦生体而变卦克体时保留条件，不把旺衰写成吉�
     assert.ok(data.analysis.tiYongSeasonEvaluation?.includes(`生体条件${strength}`));
     assert.ok(data.analysis.yingQi?.includes(`体卦月令${state}，可作应期${speed}的盘内参考`));
     assert.match(prompt, /主卦体用月令条件：主卦用生体/u);
-    assert.match(prompt, /结果泽火革：.*关系用克体/u);
+    assert.match(prompt, /变卦泽火革：.*关系用克体/u);
+    assert.doesNotMatch(prompt, /起因泽山咸|过程泽山咸|结果泽火革/u);
     assert.match(prompt, /盘内关系走势先顺后阻；体用强弱与应期合参主互变、所问事项及现实进展/u);
     assert.equal(prompt.split('体用强弱与应期合参主互变').length - 1, 1);
     assert.match(prompt, /起卦取数：数字42除8取余/u);

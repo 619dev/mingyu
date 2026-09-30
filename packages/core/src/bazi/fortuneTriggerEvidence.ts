@@ -1,6 +1,6 @@
 import { BASIC_MAPPINGS } from './baziMappingsData';
 import type { BaziChartResult } from './baziTypes';
-import { assertGanZhiPair, getWuxing } from './baziUtils';
+import { areHeavenlyStemsOvercoming, assertGanZhiPair } from './baziUtils';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import { SANHE_GROUPS, SANHUI_GROUPS } from '../ganzhi/relations';
@@ -228,11 +228,7 @@ function compareLayers(
   const prefix = `${source.label}${source.ganZhi}与${target.label}${target.ganZhi}`;
   const stemSame = sourceParts.gan === targetParts.gan;
   const stemClash = BASIC_MAPPINGS.TIAN_GAN_CHONG[sourceParts.gan] === targetParts.gan;
-  const sourceStemWuxing = getWuxing(sourceParts.gan);
-  const targetStemWuxing = getWuxing(targetParts.gan);
-  const stemOvercome =
-    BASIC_MAPPINGS.WUXING_KE[sourceStemWuxing] === targetStemWuxing ||
-    BASIC_MAPPINGS.WUXING_KE[targetStemWuxing] === sourceStemWuxing;
+  const stemOvercome = areHeavenlyStemsOvercoming(sourceParts.gan, targetParts.gan);
   const branchSame = sourceParts.zhi === targetParts.zhi;
   const branchClash = BASIC_MAPPINGS.DI_ZHI_CHONG[sourceParts.zhi] === targetParts.zhi;
 
@@ -918,7 +914,7 @@ export function analyzeFortuneTriggers(
     methodology: {
       notes: [
         '原局四柱与所选大运、流年、流月、流日逐层比对天干同干、五合、相冲及地支同支、六合、六冲、刑、害、破。',
-        '大运与流年干支完全相同时单列岁运并临；两层天干相冲且地支相冲时单列天克地冲。',
+        '大运与流年干支完全相同时单列岁运并临；两层天干五行相克且地支六冲时单列天克地冲。',
         '汇总原局与所选岁运层级的地支；仅在原局尚未完整、岁运补齐第三支时记录完整三合或三会结构，不据此断定成化。',
         '每个层级和关系均保留稳定键、计算步骤依赖及来源层级，未见主要关系时保留反证，不补造候选应期。',
         '关系成立与吉凶解释分离，不对不同关系设置命运总分，也不从单条关系直接推断事件。',

@@ -192,7 +192,10 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
   const calculationConfig = buildIztroConfig(normalized);
   astrolabe.horoscope = (dateStr, hourIndex) => {
     astro.config(calculationConfig);
-    return calculateHoroscope(dateStr, hourIndex);
+    // iztro 2.5.8 的运限查询未使用 dayDivide；当天口径的晚子时须按当日早子时取干支。
+    const effectiveHourIndex =
+      normalized.dayDivide === 'current' && hourIndex === 12 ? 0 : hourIndex;
+    return calculateHoroscope(dateStr, effectiveHourIndex);
   };
 
   // 盘内星名已经按同一语言生成，精确名称无需逐星反查全部翻译词条。

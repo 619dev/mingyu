@@ -8,6 +8,7 @@
 import {
   Engine,
   detectPatternsIn,
+  PATTERN_ORBS,
   isDayChart,
   lotFortune,
   lotSpirit,
@@ -535,15 +536,25 @@ const BODY_LABELS: Record<string, string> = {
 function findPatternsFromBodies(
   bodies: Array<AspectBody & { house: number }>,
   selectedAspects: Aspect[],
+  selectedTypes: AspectType[],
+  minimumStrength: number,
 ): AspectPattern[] {
   // 格局只使用十大星体；计算点与小行星仍保留在位置和相位明细中。
   const mainNames = new Set(getMainBodyNames({}));
   const patternBodies = bodies.filter((body) => mainNames.has(body.name));
+  const patternOrbs = Object.fromEntries(
+    Object.entries(PATTERN_ORBS).map(([type, orb]) => [
+      type,
+      selectedTypes.includes(type as AspectType)
+        ? Math.min(orb, DEFAULT_ORBS[type as AspectType] * (1 - minimumStrength / 100))
+        : -1,
+    ]),
+  );
   const detected = detectPatternsIn(
     Object.fromEntries(
       patternBodies.map((body) => [body.name, { lon: body.longitude, house: body.house }]),
     ),
-    { bodies: patternBodies.map((body) => body.name) },
+    { bodies: patternBodies.map((body) => body.name), orbs: patternOrbs },
   );
   const requiredAspects: Record<string, AspectType[]> = {
     t_square: [AspectType.Opposition, AspectType.Square, AspectType.Square],
@@ -802,7 +813,12 @@ export function calculateChart(
     minimumStrength: options.minimumAspectStrength,
   }).aspects.filter((aspect) => aspectTypes.includes(aspect.type));
   const distributions = calculateDistributions(planets);
-  const patterns = findPatternsFromBodies(aspectBodies, allAspects);
+  const patterns = findPatternsFromBodies(
+    aspectBodies,
+    allAspects,
+    aspectTypes,
+    options.minimumAspectStrength ?? 0,
+  );
   const angle = (name: string, longitude: number) => ({ name, ...positionFields(longitude) });
   return {
     planets,

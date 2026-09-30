@@ -4,6 +4,7 @@ import type { QimenJiuGongGe } from '../packages/core/src/types/divination';
 import { getClassicPatterns } from '../packages/core/src/divination/algorithms/qimen/helpers/classic-patterns';
 import { detectQimenPatternCombos } from '../packages/core/src/divination/algorithms/qimen/helpers/pattern-combos';
 import { getQimenPatternTags } from '../packages/core/src/divination/algorithms/qimen/helpers/patterns';
+import { generateQimen } from '../packages/core/src/divination/algorithms/qimen';
 
 function palace(heavenStem: string, earthStem: string, door: string, god = ''): QimenJiuGongGe {
   return {
@@ -129,4 +130,19 @@ test('丁奇升殿在兑金宫不误称为火的本气之地', () => {
   );
   assert.match(pattern?.summary ?? '', /火临兑金，升殿得位/);
   assert.doesNotMatch(pattern?.summary ?? '', /得本气之地/);
+});
+
+test('甲己日固定盘三奇常在，不据此生成额外的三奇会甲吉格', () => {
+  for (const date of ['2026-05-20T02:30:00Z', '2026-05-25T02:30:00Z']) {
+    for (const method of ['zhuanpan', 'feipan'] as const) {
+      const data = generateQimen(new Date(date), method);
+      assert.ok(['甲', '己'].includes(data.ganzhi.day.charAt(0)));
+      const heavenStems = data.jiuGongGe.flatMap((item) =>
+        [item.tianPan.stem, item.tianPan.companionStem].filter(Boolean),
+      );
+      assert.ok(['乙', '丙', '丁'].every((stem) => heavenStems.includes(stem)));
+      assert.ok(!data.classicPatterns?.some((pattern) => pattern.name === '三奇会甲'));
+      assert.doesNotMatch(data.evidenceAnalysis?.promptText ?? '', /三奇会甲/u);
+    }
+  }
 });

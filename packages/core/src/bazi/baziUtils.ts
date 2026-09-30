@@ -95,6 +95,18 @@ export function getWuxing(ganOrZhi: string): Wuxing | '未知' {
   return '未知';
 }
 
+/** 两天干的五行存在任一方向的相克关系。 */
+export function areHeavenlyStemsOvercoming(left: string, right: string): boolean {
+  assertHeavenlyStem(left, '左天干');
+  assertHeavenlyStem(right, '右天干');
+  const leftElement = getWuxing(left);
+  const rightElement = getWuxing(right);
+  return (
+    BASIC_MAPPINGS.WUXING_KE[leftElement] === rightElement ||
+    BASIC_MAPPINGS.WUXING_KE[rightElement] === leftElement
+  );
+}
+
 /**
  * 获取天干阴阳
  */

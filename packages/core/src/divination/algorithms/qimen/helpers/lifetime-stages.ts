@@ -20,6 +20,7 @@ import { getHistoricalTimezoneOffsetAt } from '../../../../calendar/historical-t
 import { toNativeDate, toSolarDateTimeInfo } from '../../../../bazi/luckTiming';
 import { diPanPalaces } from './_constants';
 import { getDunJiaStem } from './jushu';
+import { hasTianPanStar } from './palace-utils';
 import { LunarYear, SolarTerm } from 'tyme4ts';
 
 const CLOCKWISE_OUTER_PALACES = [1, 8, 3, 4, 9, 2, 7, 6];
@@ -386,7 +387,7 @@ export function buildLifetimeStages(
     // 模型三：符使交替十年分段（保留 fuShiHexagramOrbit 枚举兼容）
     // -------------------------------------------------------------
     const zhiFuPalace =
-      baseChart.jiuGongGe.find((p) => p.tianPan.star === baseChart.zhiFu)?.gong || 1;
+      baseChart.jiuGongGe.find((p) => hasTianPanStar(p, baseChart.zhiFu))?.gong || 1;
     const zhiShiPalace =
       baseChart.jiuGongGe.find((p) => p.renPan.door === baseChart.zhiShi)?.gong || 6;
 

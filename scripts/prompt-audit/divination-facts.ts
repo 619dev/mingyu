@@ -213,7 +213,7 @@ function extractMeihuaFacts(data: unknown): DivinationPromptFact[] {
       record(d.interTiGua) ? `体互${text(record(d.interTiGua)?.name)}` : undefined,
       record(d.interYongGua) ? `用互${text(record(d.interYongGua)?.name)}` : undefined,
     ]),
-    fact('meihua.changed', hasResultStage ? `结果${changedName}：` : '变卦：', [
+    fact('meihua.changed', hasResultStage ? `变卦${changedName}：` : '变卦：', [
       changedName,
       changedTi ? `${hasResultStage ? '' : '变后'}体卦${text(changedTi.name)}` : undefined,
       changedYong ? `${hasResultStage ? '' : '变后'}用卦${text(changedYong.name)}` : undefined,

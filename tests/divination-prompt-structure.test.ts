@@ -290,7 +290,7 @@ function createData(method: FixtureMethod): DivinationData {
     case 'liuren':
       return {
         ganzhi: { year: '甲子', month: '乙丑', day: '丙寅', hour: '丁卯' },
-        timestamp: Date.now(),
+        timestamp: new Date('2025-03-01T10:30:00+08:00').getTime(),
         dayNight: '昼占',
         monthLeader: '亥',
         divinationBranch: '卯',
@@ -1025,7 +1025,7 @@ test('梅花提示词会保留体用、互卦、变卦与起卦细节', () => {
   assert.match(prompt, /核心结构：主卦火风鼎；互卦泽天夬；变卦火山旅/);
   assert.match(prompt, /体用：体卦离（火）；用卦巽（木）；动爻第2爻；体用关系用生体/);
   assert.match(prompt, /互卦：泽天夬；体互兑（金）；用互乾（金）；原体克体互；原体克用互/);
-  assert.match(prompt, /结果火山旅：体卦离火，用卦艮土，关系体生用/);
+  assert.match(prompt, /变卦火山旅：体卦离火，用卦艮土，关系体生用/);
   assert.match(prompt, /月令作用：子月令水克变后体卦离火，变后体卦为死/);
   assert.match(prompt, /月令作用：变后用卦艮土克子月令水，卦气耗用，变后用卦为囚/);
   assert.match(prompt, /主卦体用月令条件：主卦用生体，体卦月令死、用卦月令相/);

@@ -31,6 +31,41 @@ test('小六壬证据与提示词拒绝时宫、占得宫及顺数索引错位',
   assert.throws(() => analyzeXiaoliurenEvidence(wrongHourLabel), /顺数或占得宫与盘面不一致/);
 });
 
+test('小六壬旧盘时支与农历取日必须和校正时刻及实际占时戳一致', () => {
+  const corrected = new Date('2025-06-29T21:15:00+08:00');
+  const actual = new Date('2025-06-30T00:20:00+08:00');
+  const source = generateXiaoliuren({ customDate: corrected, termReferenceDate: actual });
+  assert.equal(source.hourLabel, '亥时');
+  assert.equal(source.ganzhi.hour.slice(-1), '亥');
+  assert.equal(source.lunarDay, 6);
+
+  const wrongHourBranch = structuredClone(source);
+  wrongHourBranch.ganzhi.hour = '甲子';
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongHourBranch), /顺数或占得宫与盘面不一致/);
+  assert.throws(
+    () =>
+      buildDivinationPrompt({
+        method: 'xiaoliuren',
+        data: wrongHourBranch,
+        question: '请核对这课。',
+      }),
+    /顺数或占得宫与盘面不一致/,
+  );
+
+  const wrongCivilDate = structuredClone(source);
+  wrongCivilDate.termReferenceTimestamp = new Date('2025-06-29T23:20:00+08:00').getTime();
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongCivilDate), /顺数或占得宫与盘面不一致/);
+  assert.throws(
+    () =>
+      buildDivinationPrompt({
+        method: 'xiaoliuren',
+        data: wrongCivilDate,
+        question: '请核对这课。',
+      }),
+    /顺数或占得宫与盘面不一致/,
+  );
+});
+
 test('小六壬真太阳时跨民用零点时，农历日按实际东八区日期、时辰按校正钟表', () => {
   const actual = new Date('2025-06-30T00:20:00+08:00');
   const corrected = new Date('2025-06-29T21:15:00+08:00');

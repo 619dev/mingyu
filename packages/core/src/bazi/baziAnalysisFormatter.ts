@@ -1,5 +1,6 @@
 import type { BaziChartResult, PatternAnalysis, UsefulGodAnalysis } from './baziTypes';
 import { WUXING, isSheng, isKe } from '../wuxing';
+import { analyzePillarRelations } from './baziPromptEnhancement';
 
 interface FormatBaziOptions {
   includeRules?: boolean;
@@ -578,8 +579,8 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
     result += '\n';
   }
 
-  if (includeNatalDetails && baziResult.pillarRelations) {
-    const relations = Object.values(baziResult.pillarRelations).flat();
+  if (includeNatalDetails) {
+    const relations = Object.values(analyzePillarRelations(baziResult)).flat();
     if (relations.length) result += `\n【原局干支关系】\n${[...new Set(relations)].join('；')}\n`;
   }
 

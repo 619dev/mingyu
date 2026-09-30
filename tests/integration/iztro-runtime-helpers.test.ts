@@ -17,6 +17,7 @@ import {
 } from '@core/ziwei/iztro';
 import { buildPromptContextSnapshot } from '@core/ziwei/prompt';
 import { calculateZiweiDisplayPayload } from '@core/ziwei/runtime';
+import { formatZiweiTargetLowerScopeFacts } from '@core/prompt/ziwei';
 
 const DEFAULT_CHART_INPUT = {
   name: '测试',
@@ -401,6 +402,64 @@ test('紫微晚子时口径应同时影响日柱与按日安置的紫微星', as
       ?.earthlyBranch,
     '午',
   );
+});
+
+test('紫微晚子时运限按本次日期分界口径生成流日和流时干支', async () => {
+  const currentInput = { ...DEFAULT_CHART_INPUT, dayDivide: 'current' as const };
+  const forwardInput = { ...DEFAULT_CHART_INPUT, dayDivide: 'forward' as const };
+  const currentAstrolabe = await buildAstrolabeFromInput(currentInput);
+  const forwardAstrolabe = await buildAstrolabeFromInput(forwardInput);
+  const dateStr = '2026-02-03';
+
+  const current = await buildHoroscopeFromInput(currentAstrolabe, currentInput, dateStr, 12);
+  const forward = await buildHoroscopeFromInput(forwardAstrolabe, forwardInput, dateStr, 12);
+  const earlyZi = buildHoroscope(currentAstrolabe, dateStr, 0);
+  assert.deepEqual(
+    [
+      current.daily.heavenlyStem,
+      current.daily.earthlyBranch,
+      current.hourly.heavenlyStem,
+      current.hourly.earthlyBranch,
+    ],
+    ['戊', '申', '壬', '子'],
+  );
+  assert.deepEqual(
+    [
+      forward.daily.heavenlyStem,
+      forward.daily.earthlyBranch,
+      forward.hourly.heavenlyStem,
+      forward.hourly.earthlyBranch,
+    ],
+    ['己', '酉', '甲', '子'],
+  );
+  for (const scope of ['daily', 'hourly'] as const) {
+    assert.equal(current[scope].index, earlyZi[scope].index);
+    assert.equal(current[scope].heavenlyStem, earlyZi[scope].heavenlyStem);
+    assert.equal(current[scope].earthlyBranch, earlyZi[scope].earthlyBranch);
+    assert.deepEqual(current[scope].palaceNames, earlyZi[scope].palaceNames);
+  }
+
+  const payload = buildAnalysisPayloadV1({
+    astrolabe: currentAstrolabe,
+    horoscope: current,
+    currentScope: 'daily',
+    skipAnalysis: true,
+  });
+  assert.equal(
+    `${payload.active_scope.heavenly_stem}${payload.active_scope.earthly_branch}`,
+    '戊申',
+  );
+  const hourlyPayload = buildAnalysisPayloadV1({
+    astrolabe: currentAstrolabe,
+    horoscope: current,
+    currentScope: 'hourly',
+    skipAnalysis: true,
+  });
+  const promptFacts = formatZiweiTargetLowerScopeFacts({
+    payloadByScope: { daily: payload, hourly: hourlyPayload },
+  });
+  assert.match(promptFacts, /流日：2026-02-03；戊申/);
+  assert.match(promptFacts, /流时：2026-02-03；壬子/);
 });
 
 test('紫微闰月修正应以十五日与十六日为界且不得提前换月', async () => {

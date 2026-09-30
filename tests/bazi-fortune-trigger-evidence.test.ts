@@ -152,6 +152,7 @@ test('天克地冲按天干五行相克与地支六冲判定，不限于天干�
   assert.equal(relation.stemRelation, 'overcome');
   assert.equal(relation.branchRelation, 'clash');
   assert.match(relation.rule, /天干五行相克/);
+  assert.ok(overcome.methodology.notes.some((note) => note.includes('天干五行相克且地支六冲')));
 
   const generating = analyzeFortuneTriggers(createResult(), [
     { id: 'year', type: 'year', label: '丙午流年', ganZhi: '丙午' },

@@ -3,7 +3,12 @@ import { BASIC_MAPPINGS } from '../baziMappingsData';
 import type { BaziChartResult } from '../baziTypes';
 import type { LocalTimeRange } from '../baziTypes';
 import { createCivilDate, getLuckCycleTimeRange, intersectLocalTimeRanges } from '../luckTiming';
-import { getTenGod, getTenGodForBranch, isGanZhiPair } from '../baziUtils';
+import {
+  areHeavenlyStemsOvercoming,
+  getTenGod,
+  getTenGodForBranch,
+  isGanZhiPair,
+} from '../baziUtils';
 import { formatPromptEvidenceBundle } from '../../prompt-evidence/format';
 import type { PromptEvidenceItem } from '../../prompt-evidence/types';
 import {
@@ -148,9 +153,10 @@ function buildGanZhiTriggerSummary(
 
     const isStemClash = BASIC_MAPPINGS.TIAN_GAN_CHONG[parts.gan] === pillar.gan;
     const isBranchClash = BASIC_MAPPINGS.DI_ZHI_CHONG[parts.zhi] === pillar.zhi;
+    const isStemOvercome = areHeavenlyStemsOvercoming(parts.gan, pillar.gan);
     const isSamePillar = parts.gan === pillar.gan && parts.zhi === pillar.zhi;
 
-    if (isStemClash && isBranchClash) {
+    if (isStemOvercome && isBranchClash) {
       majorEvents.push(`与${pillarLabel}天克地冲`);
     } else if (isSamePillar) {
       triggers.push(`干支${parts.gan}${parts.zhi}与${pillarLabel}${pillar.ganZhi}同柱伏吟`);
@@ -202,10 +208,9 @@ function buildGanZhiTriggerSummary(
     const syParts = splitGanZhi(gz);
     if (!syParts) return;
 
-    const isStemClash = BASIC_MAPPINGS.TIAN_GAN_CHONG[parts.gan] === syParts.gan;
     const isBranchClash = BASIC_MAPPINGS.DI_ZHI_CHONG[parts.zhi] === syParts.zhi;
 
-    if (isStemClash && isBranchClash) {
+    if (areHeavenlyStemsOvercoming(parts.gan, syParts.gan) && isBranchClash) {
       supplementalFacts.push(`${scopeLabel}干支${parts.gan}${parts.zhi}与${label}${gz}天克地冲`);
     } else if (isBranchClash) {
       supplementalFacts.push(`${scopeLabel}地支${parts.zhi}冲${label}${syParts.zhi}`);

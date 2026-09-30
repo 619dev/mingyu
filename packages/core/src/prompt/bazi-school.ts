@@ -15,6 +15,7 @@ import {
   getWuxing,
   type BaziChartResult,
 } from '../bazi';
+import { analyzePillarRelations } from '../bazi/baziPromptEnhancement';
 
 export const BAZI_PROMPT_SCHOOLS = ['traditional', 'ziping', 'mangpai', 'xinpai'] as const;
 export const BAZI_PROMPT_MULTI_SCHOOLS = ['ziping', 'mangpai', 'xinpai'] as const;
@@ -105,7 +106,7 @@ function formatPillars(
 }
 
 function formatRelations(result: BaziChartResult) {
-  const relations = result.pillarRelations;
+  const relations = analyzePillarRelations(result);
   return joinFacts([
     relations.fuxin.length ? `同柱伏吟${relations.fuxin.join('、')}` : undefined,
     relations.fanyin.length ? `反吟与天克地冲${relations.fanyin.join('、')}` : undefined,

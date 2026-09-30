@@ -147,6 +147,18 @@ test('大六壬详细课体判据已含名称时省略重复摘要，旧数据�
   assert.match(legacyPrompt, /^课体：/m);
 });
 
+test('大六壬旧盘天地盘缺口时不把未核验课体判据送入在线提示词', () => {
+  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  assert.ok(data.guaTiFacts?.length);
+  data.heavenlyPlate = [];
+
+  const prompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
+  assert.doesNotMatch(prompt, /课体判据：|课体条件：|取传条件：/);
+  for (const fact of data.guaTiFacts ?? []) {
+    assert.ok(!prompt.includes(`${fact.name}：${fact.matchedConditions.join('；')}`));
+  }
+});
+
 test('大六壬真实旬空状态在三传与应期提示词中一致', () => {
   for (const [date, expectedVoid] of [
     ['2026-05-19T10:30:00+08:00', false],

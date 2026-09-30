@@ -1851,10 +1851,10 @@ function buildStageCoverageFact(stages: MeihuaStageEvidence[]): MeihuaStageCover
     stageFactKeys: stages.map((item) => item.key),
     promptText:
       status === '阶段缺失'
-        ? `主互变阶段资料缺少${missingStages.map((stage) => ({ origin: '主卦起因', process: '互卦过程', result: '变卦结果' })[stage]).join('、')}，不得反推缺失阶段体用关系`
+        ? `主互变阶段资料缺少${missingStages.map((stage) => ({ origin: '主卦阶段', process: '互卦阶段', result: '变卦阶段' })[stage]).join('、')}，不得反推缺失阶段体用关系`
         : status === '阶段资料不完整'
-          ? `${incompleteStages.map((stage) => ({ origin: '主卦起因', process: '互卦过程', result: '变卦结果' })[stage]).join('、')}缺少对应卦象结构资料，不得补造卦名、卦符或上下经卦`
-          : '主卦起因、互卦过程、变卦结果三阶段体用资料完整，可逐段核验',
+          ? `${incompleteStages.map((stage) => ({ origin: '主卦阶段', process: '互卦阶段', result: '变卦阶段' })[stage]).join('、')}缺少对应卦象结构资料，不得补造卦名、卦符或上下经卦`
+          : '主卦、互卦、变卦三阶段体用资料完整，可逐段核验',
     sources: ['主卦、互卦、变卦及其体用资料完整性核验'],
     limitation: STAGE_COVERAGE_LIMITATION,
   };
@@ -2263,7 +2263,7 @@ function buildLimitationFacts(params: {
       type: '传统文本与高风险输出边界',
       ownerFactKeys: [params.summaryFact.key, ...params.traditionalFacts.map((item) => item.key)],
       promptText:
-        '互卦用于过程、变卦用于结果，卦名与卦爻辞只能结合问题作辅助取象；不得按阶段、旺衰、传统吉凶词或卦数生成总分、成功率，也不得直接输出婚育、疾病、伤亡、诉讼、财物得失或人物意图结论',
+        '主卦、互卦、变卦按《梅花易数》“用为始、互为中、变为终”的次序记录；卦名与卦爻辞结合问题作辅助取象，不按阶段、旺衰、传统吉凶词或卦数生成总分、成功率，也不直接输出婚育、疾病、伤亡、诉讼、财物得失或人物意图结论',
       sources: ['传统卦爻辞条件化事实、证据汇总与高风险解释约束'],
     },
   ];
@@ -2290,7 +2290,7 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
   const stages: MeihuaStageEvidence[] = [
     createStage({
       stage: 'origin',
-      label: '起因',
+      label: '主卦',
       hexagram: data.originalName,
       hexagramFactKey: 'meihua:hexagram:origin',
       ti: data.tiGua,
@@ -2313,7 +2313,7 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
     stages.push(
       createStage({
         stage: 'process',
-        label: '过程',
+        label: '互卦',
         hexagram: data.interHexagram?.name || data.interName || '互卦',
         hexagramFactKey: 'meihua:hexagram:process',
         ti: interTi,
@@ -2330,7 +2330,7 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
     stages.push(
       createStage({
         stage: 'result',
-        label: '结果',
+        label: '变卦',
         hexagram: data.changedHexagram?.name || data.changedName || '变卦',
         hexagramFactKey: data.changedHexagram ? 'meihua:hexagram:result' : null,
         ti: data.changedTiGua,
@@ -2654,7 +2654,7 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
     evidence,
     promptText,
     methodology: [
-      '主卦定起因与当前体用，互卦定过程，变卦定变化后的结果关系。',
+      '主卦、互卦、变卦依《梅花易数》“用为始、互为中、变为终”的次序记录各阶段体用关系。',
       '起卦输入、取余算式、六爻阴阳、互卦构造和动爻翻转均作为可复核计算事实保留。',
       '每个阶段分别计算体用生克和月建旺衰，不把某一阶段扩大为全局结论。',
       '动爻只标记变化层位与触发顺序，卦数只保留原始计算资料，不机械换算绝对日期。',

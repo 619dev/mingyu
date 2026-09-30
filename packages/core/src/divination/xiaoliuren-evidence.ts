@@ -1,5 +1,7 @@
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
-import { getShichenByIndex } from '../calendar/dateUtils';
+import { DEFAULT_CHINA_TIMEZONE_HOURS } from '../calendar/civil-time';
+import { getShichenByIndex, getTimeIndexFromClock } from '../calendar/dateUtils';
+import { getDivinationTime } from '../calendar/timeManager';
 import type { XiaoliurenData, XiaoliurenPalaceDetail } from '../types/divination';
 
 import { resolveXiaoliurenRule } from './xiaoliuren-rules';
@@ -163,6 +165,50 @@ function buildPalaceFacts(data: XiaoliurenData): XiaoliurenPalaceFact[] {
   ];
 }
 
+function matchesSourceTimeAndCalendar(data: XiaoliurenData): boolean {
+  if (
+    !Number.isSafeInteger(data.timestamp) ||
+    (data.termReferenceTimestamp !== undefined &&
+      !Number.isSafeInteger(data.termReferenceTimestamp))
+  ) {
+    return false;
+  }
+
+  try {
+    const termReferenceDate =
+      data.termReferenceTimestamp === undefined ? undefined : new Date(data.termReferenceTimestamp);
+    const sourceTime = getDivinationTime(
+      new Date(data.timestamp),
+      DEFAULT_CHINA_TIMEZONE_HOURS * 60,
+      termReferenceDate,
+    );
+    const civilTime = termReferenceDate
+      ? getDivinationTime(termReferenceDate, DEFAULT_CHINA_TIMEZONE_HOURS * 60)
+      : sourceTime;
+    const sourceHourIndex = getTimeIndexFromClock(
+      sourceTime.timeInfo.solar.hour,
+      sourceTime.timeInfo.solar.minute,
+    );
+    const sourceShichen = getShichenByIndex(sourceHourIndex);
+    const civilLunar = civilTime.timeInfo.lunar;
+
+    return (
+      sourceShichen !== null &&
+      data.hourIndex === sourceHourIndex &&
+      data.hourLabel === sourceShichen.name &&
+      data.lunarMonth === civilLunar.monthNumber &&
+      data.lunarDay === civilLunar.dayNumber &&
+      data.isLeapMonth === civilLunar.isLeapMonth &&
+      data.ganzhi.year === sourceTime.ganzhi.year &&
+      data.ganzhi.month === sourceTime.ganzhi.month &&
+      data.ganzhi.day === sourceTime.ganzhi.day &&
+      data.ganzhi.hour === sourceTime.ganzhi.hour
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function formatXiaoliurenCalendarBoundary(data: XiaoliurenData): string {
   return [
     data.hourIndex === 12 ? '晚子时四柱日干支按子初换日，起课农历日到东八区零点才换日' : '',
@@ -181,6 +227,7 @@ export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvide
   const dayIndex = (data.lunarMonth + data.lunarDay - 2 + rule.dayStartOffset) % 6;
   const hourIndex = (dayIndex + (data.hourIndex % 12)) % 6;
   if (
+    !matchesSourceTimeAndCalendar(data) ||
     !Number.isInteger(data.lunarMonth) ||
     data.lunarMonth < 1 ||
     data.lunarMonth > 12 ||

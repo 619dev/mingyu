@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateQizheng } from '../packages/core/src/qi_zheng/index';
+import { extractQizhengFacts } from '../scripts/prompt-audit/natal-facts';
 
 test('未提供性别时流曜提示词只要求使用已生成的目标时段资料', () => {
   const result = generateQizheng({
@@ -100,6 +101,7 @@ test('七政正文区分跨宫合相与同宫位置，并保留角距和偏差�
     assert.ok(Math.abs(angle - aspect.actualAngle) < 0.0001);
     assert.ok(Math.abs(Math.abs(angle - aspect.exactAngle) - aspect.orb) < 0.0001);
     assert.ok(aspect.orb <= aspect.allowedOrb);
+    if (first.name === '罗睺(火余)' && second.name === '计都(土余)') continue;
     assert.ok(
       result.prompt.includes(
         `${first.name}（${first.signBranch}宫${first.palace}）与${second.name}（${second.signBranch}宫${second.palace}）`,
@@ -119,4 +121,32 @@ test('七政正文区分跨宫合相与同宫位置，并保留角距和偏差�
   const evidence = result.evidenceAnalysis;
   assert.equal(evidence.promptText.split(evidence.summaryFact.promptText).length - 1, 1);
   assert.equal(evidence.promptText.split(evidence.counterSummaryFact.promptText).length - 1, 1);
+});
+
+test('七政在线任务书省去恒定罗计对照和重复星曜名单，完整盘仍保留吊照事实', () => {
+  const result = generateQizheng({
+    year: 2026,
+    month: 5,
+    day: 19,
+    hour: 10,
+    minute: 30,
+    latitude: 39.9,
+    longitude: 116.4,
+    timezone: 8,
+  });
+  const nodalAspect = result.aspects.find(
+    (aspect) => aspect.star1 === '罗睺(火余)' && aspect.star2 === '计都(土余)',
+  );
+  assert.equal(nodalAspect?.type, '对照');
+  assert.equal(nodalAspect?.actualAngle, 180);
+  assert.match(result.prompt, /四余 罗睺\(火余\)：/);
+  assert.match(result.prompt, /四余 计都\(土余\)：/);
+  assert.match(result.prompt, /太白\(金\)（未宫命宫）与紫炁\(木余\)（寅宫奴仆）：对照/);
+  assert.doesNotMatch(result.prompt, /罗睺\(火余\)（亥宫迁移）与计都\(土余\)（巳宫兄弟）：对照/);
+  assert.doesNotMatch(result.prompt, /七政：太阳、太阴、水、金、火、木、土；四余：/);
+  assert.ok(
+    extractQizhengFacts(result)
+      .filter((fact) => fact.id.includes('.natal.aspect.'))
+      .every((fact) => !fact.values.includes('计都(土余)') || fact.owner !== '罗睺(火余)'),
+  );
 });

@@ -1036,37 +1036,6 @@ function getSanQiShouZhiPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[] 
   return out;
 }
 
-/**
- * 识别三奇会甲格局
- *
- * 《奇门遁甲秘籍大全》：甲日或己日盘中同时出现乙丙丁三奇，主贵人助力汇聚。
- *
- * @param jiuGongGe - 九宫格数据
- * @param dayStem - 日干
- * @returns 检测到的三奇会甲格局列表
- */
-function getSanQiHuiJiaPattern(jiuGongGe: QimenJiuGongGe[], dayStem: string): ClassicPattern[] {
-  const out: ClassicPattern[] = [];
-
-  if (dayStem !== '甲' && dayStem !== '己') return out;
-
-  const allQiPresent = sanQi.every((qi) => !!findStemPalace(jiuGongGe, qi, 'tianPan'));
-  if (allQiPresent) {
-    out.push({
-      key: 'pattern:sanQiHuiJia',
-      name: '三奇会甲',
-      tone: 'good',
-      score: 7,
-      summary: '甲（己）日三奇乙丙丁齐显，主贵人助力、机会汇聚。',
-      modern: '今天三奇都在盘上，主线很容易找到帮忙的人和机会，重要的事可以出手。',
-      manifestation: '贵人助力汇聚、主线方向有人支持',
-      tokens: ['甲', '乙', '丙', '丁'],
-    });
-  }
-
-  return out;
-}
-
 // ============================================================================
 // 3. 值符值使关系
 // ============================================================================
@@ -2068,7 +2037,6 @@ export function getClassicPatterns(ctx: PatternContext): ClassicPattern[] {
     ...getSanQiShengDianPatterns(jiuGongGe),
     ...getSanQiRuMuPatterns(jiuGongGe),
     ...getSanQiShouZhiPatterns(jiuGongGe),
-    ...(dayStem ? getSanQiHuiJiaPattern(jiuGongGe, dayStem) : []),
     // 3. 值符值使关系
     ...getZhiFuZhiShiPatterns(jiuGongGe, zhiFu, zhiShi),
     ...getXiangZuoPatterns(jiuGongGe, zhiFu),

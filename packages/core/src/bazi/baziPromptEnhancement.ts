@@ -8,6 +8,7 @@ import { BASIC_MAPPINGS, SAN_HE_MAP, SAN_HUI_MAP } from './baziMappingsData';
 import { identifyClassicPatternCandidates, getPeachBlossomDetail } from './baziEnhancement';
 import { collectEstablishedBranchFormations } from './baziFormationUtils';
 import { assessAllHarmonyTransforms } from './harmonyTransform';
+import { areHeavenlyStemsOvercoming } from './baziUtils';
 
 type PillarKey = 'year' | 'month' | 'day' | 'hour';
 
@@ -117,7 +118,7 @@ export function analyzePillarRelations(
       const stemChong = BASIC_MAPPINGS.TIAN_GAN_CHONG[left.gan] === right.gan;
       const branchChong = BASIC_MAPPINGS.DI_ZHI_CHONG[left.zhi] === right.zhi;
 
-      if (stemChong && branchChong) {
+      if (areHeavenlyStemsOvercoming(left.gan, right.gan) && branchChong) {
         fanyin.add(`${leftLabel}${left.ganZhi}与${rightLabel}${right.ganZhi}成天克地冲`);
       }
 

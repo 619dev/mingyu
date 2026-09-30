@@ -45,6 +45,7 @@ import type {
 import { analyzeQimenEvidence } from '../divination/algorithms/qimen';
 import {
   formatQimenClassicPatternBasisForPrompt,
+  getQimenActiveSpecialConditionText,
   selectQimenClassicPatternsForPrompt,
 } from '../divination/qimen-evidence';
 import { analyzeAlmanacEvidence, formatAlmanacGods } from '../divination/algorithms/almanac';
@@ -944,7 +945,7 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
           `日干${data.seasonality.dayStem}${data.seasonality.seasonRelation}`,
         ].join('；')
       : '';
-  const specialConditionsText = data.specialConditions?.description?.trim() || '';
+  const specialConditionsText = getQimenActiveSpecialConditionText(data);
   const juTerm = data.timeInfo?.juTerm || data.timeInfo?.solarTerm || '未列';
   const juMethodText = isYearOrMonth
     ? `《奇门遁甲统宗》${scopePresentation.scope === 'year' ? '年家一百八十年' : '月家五年'}三元阴遁定局`
@@ -1000,6 +1001,7 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
 
 function formatLiurenInfo(data: LiurenData) {
   const analysis = analyzeLiurenEvidence(data);
+  const plateVerified = analysis.plateFact.status === '完整';
   const ridingFacts = analysis.traditionalFacts.filter((item) => item.kind === '天将乘神');
   const lessonLines = data.fourLessons.map(formatLiurenLesson);
   const transmissionLines = data.threeTransmissions.map((_, index) =>
@@ -1029,12 +1031,13 @@ function formatLiurenInfo(data: LiurenData) {
       ? `旬空${data.xunKong.join('、')}${voidHits.length ? `（命中${voidHits.join('、')}）` : ''}`
       : '',
   ].filter(Boolean);
-  const guaTiText = data.guaTi?.length ? data.guaTi.join('、') : '';
-  const guaTiFacts = data.guaTiFacts?.length
-    ? data.guaTiFacts.map(
-        (item) => `${item.name}：${item.matchedConditions.join('；')}（${item.sourceTitle}）`,
-      )
-    : [];
+  const guaTiText = plateVerified && data.guaTi?.length ? data.guaTi.join('、') : '';
+  const guaTiFacts =
+    plateVerified && data.guaTiFacts?.length
+      ? data.guaTiFacts.map(
+          (item) => `${item.name}：${item.matchedConditions.join('；')}（${item.sourceTitle}）`,
+        )
+      : [];
   const guaTiSection = guaTiText && guaTiFacts.length === 0 ? `课体：${guaTiText}` : '';
   const shenShaAll = data.shenShaFacts?.length
     ? data.shenShaFacts.map((item) => `${item.name}在${item.target}`)

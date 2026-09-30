@@ -92,6 +92,36 @@ function formatCoordinateAccuracy(accuracy: string | undefined) {
   }
 }
 
+function formatAstrolabePatterns(patterns: string[]) {
+  const parsed = patterns.map((name) => {
+    const match = /^([^（]+)（([^，）]+)(?:，([^）]+))?）$/.exec(name);
+    return {
+      name,
+      kind: match?.[1],
+      members: match?.[2].split('、') ?? [],
+      detail: match?.[3],
+    };
+  });
+  const sameMembers = (first: string[], second: string[]) =>
+    first.length === second.length && first.every((member) => second.includes(member));
+  const signGroups = parsed.filter((item) => item.kind === '同星座星群');
+  return parsed
+    .filter(
+      (item) =>
+        item.kind !== '同星座星群' ||
+        !parsed.some(
+          (other) => other.kind === '同宫星群' && sameMembers(item.members, other.members),
+        ),
+    )
+    .map((item) => {
+      if (item.kind !== '同宫星群') return item.name;
+      const sign = signGroups.find((other) => sameMembers(item.members, other.members));
+      return sign?.detail && item.detail
+        ? `同宫同星座星群（${item.members.join('、')}，${sign.detail}，${item.detail}）`
+        : item.name;
+    });
+}
+
 export function formatAstrolabeForPrompt(data: AstrolabeData) {
   const sun = data.planets.find((item) => item.name === 'Sun');
   const moon = data.planets.find((item) => item.name === 'Moon');
@@ -125,7 +155,7 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
     }`,
     `逆行：${formatStringList(data.summary.retrograde, '无')}`,
     data.summary.patternBasis === 'ten-main-bodies-selected-aspects' && data.summary.patterns.length
-      ? `十大星体格局：${data.summary.patterns.join('、')}`
+      ? `十大星体格局：${formatAstrolabePatterns(data.summary.patterns).join('、')}`
       : '',
     ...data.angles.map((point) => `${point.label}：${point.formatted}`),
     data.houses?.length

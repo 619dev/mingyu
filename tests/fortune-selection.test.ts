@@ -126,6 +126,35 @@ test('运限选择器的当天快捷值会选择对应的大运、流月和流�
   });
 });
 
+test('岁运焦点与命宫同按天干相克、地支六冲识别天克地冲', () => {
+  const result = createMockResult();
+  result.pillars.year = { gan: '甲', zhi: '子', ganZhi: '甲子' };
+  result.mingGong = '甲子';
+  result.luckInfo.cycles[0].ganZhi = '戊午';
+
+  const context = buildFortuneSelectionContext(result, { scope: 'dayun', cycleIndex: 0 });
+  assert.ok(context);
+  assert.match(context.promptPayload.summaryLines.join('\n'), /与年柱天克地冲/);
+  assert.ok(
+    context.promptPayload.selectedFacts?.some((item) =>
+      item.includes('大运干支戊午与命宫甲子天克地冲'),
+    ),
+  );
+
+  result.luckInfo.cycles[0].ganZhi = '壬午';
+  const withoutStemOvercome = buildFortuneSelectionContext(result, {
+    scope: 'dayun',
+    cycleIndex: 0,
+  });
+  assert.ok(withoutStemOvercome);
+  assert.doesNotMatch(withoutStemOvercome.promptPayload.summaryLines.join('\n'), /与年柱天克地冲/);
+  assert.ok(
+    !withoutStemOvercome.promptPayload.selectedFacts?.some((item) =>
+      item.includes('与命宫甲子天克地冲'),
+    ),
+  );
+});
+
 test('近期年限预设会选择当前流月而不是锁定当天', () => {
   const result = createMockResult();
   const selection = buildRecentBaziFortuneSelection(result, new Date('2008-02-08T12:00:00+08:00'));
@@ -469,7 +498,8 @@ test('选择流年时会附带该流年下的全部流月', () => {
     /流年十神：天干戊为偏财，地支子主气为正印/,
   );
   assert.match(context.promptPayload.summaryLines.join('\n'), /流年触发：/);
-  assert.match(context.promptPayload.summaryLines.join('\n'), /地支子冲年柱午/);
+  assert.match(context.promptPayload.summaryLines.join('\n'), /与年柱天克地冲/);
+  assert.doesNotMatch(context.promptPayload.summaryLines.join('\n'), /地支子冲年柱午/);
   assert.match(context.promptPayload.summaryLines.join('\n'), /地支子合月柱丑/);
   assert.match(context.promptPayload.evidenceLines?.join('\n') ?? '', /【辅证】上层岁运背景/);
   assert.match(context.promptPayload.evidenceLines?.join('\n') ?? '', /【主证】流年干支与十神/);

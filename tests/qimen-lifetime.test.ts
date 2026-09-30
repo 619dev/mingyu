@@ -22,6 +22,29 @@ function verifiedChartSolar(chart: ReturnType<typeof generateQimen>, offset: num
 
 import { diPanPalaces } from '../packages/core/src/divination/algorithms/qimen/helpers/_constants';
 
+test('天禽为值符时终身局个人标记与符使阶段均采用实际寄宫', () => {
+  const lifetime = calculateQimenLifetime({
+    birthDateTime: '2026-01-01T08:00:00',
+    gender: 'male',
+    stagePolicy: { model: 'fuShiHexagramOrbit' },
+  });
+  const chart = lifetime.baseChart;
+  assert.equal(chart.zhiFu, '天禽');
+  const companionPalace = chart.jiuGongGe.find((palace) => palace.tianPan.companionStar === '天禽');
+  assert.equal(companionPalace?.gong, 6);
+  assert.deepEqual(
+    lifetime.personalMarkers
+      .filter((marker) => marker.markerType === 'zhiFuStar')
+      .map((marker) => marker.palace),
+    [6],
+  );
+  assert.equal(lifetime.stages[0].dominantPalaces[0].palace, 6);
+  assert.equal(lifetime.stages[2].dominantPalaces[0].palace, 6);
+  const prompt = buildLifetimePrompt(lifetime, undefined, { includeCurrentTime: false });
+  assert.match(prompt, /值符星落宫（天禽）：[^\n]*乾六宫/);
+  assert.match(prompt, /阶段1：[^\n]*\n  主导宫位：乾六宫/);
+});
+
 function annualPatternFacts(
   chart: ReturnType<typeof generateQimen>,
   taiSuiPalace: number,

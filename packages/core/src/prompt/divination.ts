@@ -21,6 +21,7 @@ import {
 } from '../divination/xiaoliuren-evidence';
 import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
 import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
+import { getQimenActiveSpecialConditionText } from '../divination/qimen-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -405,6 +406,7 @@ export function getDivinationSummaryBlocks(
       const item = data as QimenData;
       const qimenActive = getQimenActiveContext(item);
       const isYearOrMonth = qimenActive.scope === 'year' || qimenActive.scope === 'month';
+      const specialConditionText = getQimenActiveSpecialConditionText(item);
       const pillarLine =
         qimenActive.scope === 'year'
           ? `干支年：${item.ganzhi.year}`
@@ -430,8 +432,8 @@ export function getDivinationSummaryBlocks(
           `空亡：${item.voidBranches?.join('、') || '无'}`,
           formatQimenHorseSummary(item),
           formatQimenSeasonalitySummary(item),
-          item.specialConditions?.description
-            ? `${qimenActive.scope === 'hour' ? '时辰' : `${qimenActive.scopeLabel}特殊条件`}：${item.specialConditions.description}`
+          specialConditionText
+            ? `${qimenActive.scope === 'hour' ? '时辰' : `${qimenActive.scopeLabel}特殊条件`}：${specialConditionText}`
             : '',
         ].filter(Boolean),
       };

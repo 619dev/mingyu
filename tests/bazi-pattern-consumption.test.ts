@@ -5,6 +5,7 @@ import { formatBaziForPrompt } from '../packages/core/src/bazi/baziAnalysisForma
 import { analyzeBaziNatalEvidence } from '../packages/core/src/bazi/natalEvidence';
 import { buildBaziPrompt, formatBaziPatternConditions } from '../packages/core/src/prompt/bazi';
 import { formatBaziSchoolPrompt } from '../packages/core/src/prompt/bazi-school';
+import { analyzePillarRelations } from '../packages/core/src/bazi/baziPromptEnhancement';
 import type { PatternFulfillmentResult } from '../packages/core/src/bazi/baziPatternFulfillment';
 
 const seed = () =>
@@ -97,6 +98,34 @@ test('制化条件变化后所有消费者反映新状态而不是沿用成格�
   assert.match(text, /当前成败判定：破格/);
   assert.doesNotMatch(text, /当前成败判定：成格/);
   assert.match(formatBaziForPrompt(result), /当前成败判定：破格/);
+});
+
+test('在线提示词与本命证据从四柱重算关系，不沿用旧排盘的重复或错误关系', () => {
+  const result = seed();
+  const expected = analyzePillarRelations(result);
+  const relation = Object.values(expected).flat()[0];
+  assert.ok(relation);
+  result.pillarRelations = {
+    fuxin: ['伪造的原局关系', '伪造的原局关系'],
+    fanyin: [],
+    sameStem: [],
+    sameBranch: [],
+    xingChong: [],
+  };
+
+  const prompt = formatBaziForPrompt(result);
+  const schoolPrompt = formatBaziSchoolPrompt(result, 'mangpai');
+  const evidence = analyzeBaziNatalEvidence(result);
+  for (const text of [
+    prompt,
+    schoolPrompt,
+    ...evidence.relationFacts.map((fact) => fact.promptText),
+  ]) {
+    assert.doesNotMatch(text, /伪造的原局关系/);
+  }
+  assert.ok(prompt.includes(relation));
+  assert.ok(schoolPrompt.includes(relation));
+  assert.ok(evidence.relationFacts.some((fact) => fact.relation === relation));
 });
 
 test('本命格局提示证据省略已写入成败理由的重复条件并保留独立盘面依据', () => {

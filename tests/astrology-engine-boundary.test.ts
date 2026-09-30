@@ -337,11 +337,33 @@ test('交点与莉莉丝可参与相位但不将两颗行星误判为星群', ()
     ),
   );
   assert.ok(chart.summary.patterns.includes('同星座星群（火星、太阳、金星，摩羯座）'));
+  assert.ok(chart.summary.patterns.includes('同宫星群（火星、太阳、金星，第12宫）'));
   assert.ok(
     chart.summary.patterns
       .filter((pattern) => pattern.includes('星群'))
       .every((pattern) => !pattern.includes('北交点') && !pattern.includes('莉莉丝')),
   );
+});
+
+test('同一组星体同宫同星座时在线任务书只列一条完整格局', () => {
+  const chart = generateAstrolabe({
+    name: '星群样本',
+    gender: '女',
+    year: '2026',
+    month: '1',
+    day: '1',
+    hour: '12',
+    minute: '0',
+    timezone: '0',
+    latitude: '70',
+    longitude: '0',
+  });
+  const patternLine = formatAstrolabeForPrompt(chart)
+    .split('\n')
+    .find((line) => line.startsWith('十大星体格局：'));
+  assert.ok(patternLine);
+  assert.equal(patternLine.match(/火星、太阳、金星/g)?.length, 1);
+  assert.match(patternLine, /同宫同星座星群（火星、太阳、金星，摩羯座，第12宫）/);
 });
 
 test('小行星与凯龙星不将一两颗行星凑成星群，真实行星星群仍保留', () => {
@@ -628,4 +650,22 @@ test('风筝的对冲端不标为焦点，合相替代星体仍分别保留构�
   assert.match(patternLine, /风筝（火星、水星、海王星、冥王星）/);
   assert.match(patternLine, /风筝（火星、水星、冥王星、天王星）/);
   assert.doesNotMatch(patternLine, /风筝（[^）]*焦点/);
+});
+
+test('筛除风筝所需六合相位后保留仍成立的大三角', () => {
+  const chart = calculateChart(
+    {
+      year: 1993,
+      month: 4,
+      day: 8,
+      hour: 23,
+      minute: 34,
+      timezone: 8,
+      latitude: 1.3521,
+      longitude: 103.8198,
+    },
+    { aspectTypes: [AspectType.Trine] },
+  );
+  assert.ok(chart.summary.patterns.some((pattern) => pattern.startsWith('大三角（')));
+  assert.ok(chart.summary.patterns.every((pattern) => !pattern.startsWith('风筝（')));
 });

@@ -11,7 +11,9 @@ export function formatLiurenJudgmentFacts(
   options: { includeOrdinaryAdjudication?: boolean; chartFactsIncluded?: boolean } = {},
 ): string[] {
   const lines: string[] = [];
-  if (!options.chartFactsIncluded && data.transmissionDetail) {
+  const analysis = analyzeLiurenEvidence(data);
+  const plateVerified = analysis.plateFact.status === '完整';
+  if (plateVerified && !options.chartFactsIncluded && data.transmissionDetail) {
     const sourceMarker = '；古籍依据依次为：';
     const sourceIndex = data.transmissionDetail.indexOf(sourceMarker);
     const transmissionBasis =
@@ -19,7 +21,7 @@ export function formatLiurenJudgmentFacts(
     if (transmissionBasis) lines.push(`取传说明：${transmissionBasis}`);
   }
 
-  const classicalRules = (data.classicalRules ?? [])
+  const classicalRules = (plateVerified ? (data.classicalRules ?? []) : [])
     .map((item) => `${item.category}：${item.summary}`)
     .filter(Boolean);
   if (classicalRules.length) lines.push(`取传条件：${classicalRules.join('；')}`);
@@ -30,7 +32,7 @@ export function formatLiurenJudgmentFacts(
     ordinaryAdjudication
   )
     lines.push(ordinaryAdjudication);
-  const guaTiFacts = (data.guaTiFacts ?? [])
+  const guaTiFacts = (plateVerified ? (data.guaTiFacts ?? []) : [])
     .map((item) => `${item.name}（${item.matchedConditions.join('、')}）`)
     .filter(Boolean);
   if (!options.chartFactsIncluded && guaTiFacts.length)
@@ -45,7 +47,6 @@ export function formatLiurenJudgmentFacts(
   if (!options.chartFactsIncluded && focusEvidence.length)
     lines.push(`重点依据：${focusEvidence.join('；')}`);
 
-  const analysis = analyzeLiurenEvidence(data);
   const timingEvidence = analysis.timingFacts.map((item) => item.promptText);
   if (!options.chartFactsIncluded && timingEvidence.length)
     lines.push(`时令依据：${timingEvidence.join('；')}`);

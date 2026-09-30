@@ -8,7 +8,8 @@ import type {
 } from '../types/divination';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import { stableStringify } from '../shared/result';
-import { getBranchWuxing, getStemWuxing, isKe, isSheng } from '../ganzhi';
+import { getBranchWuxing, getSeasonState, getStemWuxing, isKe, isSheng } from '../ganzhi';
+import { getVoidBranches } from '../calendar/lunar';
 import {
   buildHeavenlyPlate,
   DAYTIME_BRANCHES,
@@ -25,6 +26,7 @@ import {
 } from './algorithms/liuren/helpers/plate';
 import { buildFourLessons, resolveInitialTransmission } from './algorithms/liuren/helpers/lessons';
 import { buildShenShaFacts } from './algorithms/liuren/helpers/shensha';
+import { getMonthLeaderByZhongqi } from './algorithms/liuren/helpers/month-leader';
 import { resolveLiurenClassicalRules } from './algorithms/liuren/helpers/classical-rules';
 import {
   buildLiurenFocusEvidence,
@@ -1374,6 +1376,29 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
   if (data.fourLessons.length !== 4 || data.threeTransmissions.length !== 3) {
     throw new Error('大六壬证据分析需要完整四课与三传。');
   }
+  const expectedMonthLeader = getMonthLeaderByZhongqi(
+    data.termReferenceTimestamp ?? data.timestamp,
+  );
+  if (data.monthLeader !== expectedMonthLeader) {
+    throw new Error('大六壬月将与实际占时中气不一致，无法生成证据。');
+  }
+  const expectedXunKong = getVoidBranches(data.ganzhi.day);
+  if (data.xunKong !== undefined && !hasSameStrings(data.xunKong, expectedXunKong)) {
+    throw new Error('大六壬旬空与日柱不一致，无法生成证据。');
+  }
+  const monthBranch = data.ganzhi.month.charAt(1);
+  const threeTransmissions = data.threeTransmissions.map((item) => {
+    const wuxing = getBranchWuxing(item.branch);
+    const seasonState = getSeasonState(wuxing, monthBranch);
+    if (
+      (item.wuxing !== undefined && item.wuxing !== wuxing) ||
+      (item.seasonState !== undefined && item.seasonState !== seasonState)
+    ) {
+      throw new Error('大六壬三传五行或月令旺衰与地支、月建不一致，无法生成证据。');
+    }
+    return { ...item, wuxing, seasonState, isVoid: expectedXunKong.includes(item.branch) };
+  });
+  data = { ...data, xunKong: expectedXunKong, threeTransmissions };
   const expectedShenShaFacts = buildShenShaFacts(
     data.ganzhi.month.charAt(1),
     data.ganzhi.day.charAt(1),
@@ -1391,7 +1416,7 @@ export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis 
     throw new Error('大六壬神煞与日月干支不一致，无法生成证据。');
   }
   const initial = data.threeTransmissions[0];
-  const xunKong = data.xunKong ?? [];
+  const xunKong = expectedXunKong;
   const calculationFact = buildCalculationFact(data, xunKong);
   const calculationFacts = [
     `四柱干支：年${calculationFact.ganzhi.year}、月${calculationFact.ganzhi.month}、日${calculationFact.ganzhi.day}、时${calculationFact.ganzhi.hour}`,

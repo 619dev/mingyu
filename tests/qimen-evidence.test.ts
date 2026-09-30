@@ -225,7 +225,7 @@ test('奇门全局特殊条件不重复记作每个候选宫反证', () => {
   const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
   const specialCondition = '当前时辰特殊条件仅供全局核验';
   data.specialConditions = {
-    isLiuJiaHour: false,
+    isLiuJiaHour: true,
     isLiuGuiHour: false,
     isShiGanRuMu: false,
     isWuBuYuShi: false,
@@ -241,6 +241,19 @@ test('奇门全局特殊条件不重复记作每个候选宫反证', () => {
     evidence.counterEvidenceFacts.filter((item) => item.detail === specialCondition).length,
     0,
   );
+});
+
+test('奇门全局特殊条件未命中时不把残留说明写入证据提示词', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  data.specialConditions = {
+    isLiuJiaHour: false,
+    isLiuGuiHour: false,
+    isShiGanRuMu: false,
+    isWuBuYuShi: false,
+    description: '五不遇时残留说明',
+  };
+
+  assert.doesNotMatch(analyzeQimenEvidence(data).promptText, /五不遇时残留说明/u);
 });
 
 test('Issue #204：结构化依据中的节令背景应采用正式定局三元', () => {

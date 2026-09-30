@@ -201,7 +201,7 @@ test('奇门年日月时摘要使用对应排盘范围的主动干支和驿马�
 
     const withSpecialCondition = structuredClone(data);
     withSpecialCondition.specialConditions = {
-      isLiuJiaHour: false,
+      isLiuJiaHour: true,
       isLiuGuiHour: false,
       isShiGanRuMu: false,
       isWuBuYuShi: false,
@@ -216,6 +216,24 @@ test('奇门年日月时摘要使用对应排盘范围的主动干支和驿马�
     );
     if (item.scope !== 'hour') assert.doesNotMatch(specialSummary, /时辰：测试特殊条件/);
   }
+});
+
+test('奇门特殊条件未命中时不把残留说明写入在线提示词或摘要', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const staleCondition = '五不遇时残留说明';
+  data.specialConditions = {
+    isLiuJiaHour: false,
+    isLiuGuiHour: false,
+    isShiGanRuMu: false,
+    isWuBuYuShi: false,
+    description: staleCondition,
+  };
+
+  assert.doesNotMatch(buildDivinationPrompt('qimen', '请做整体解读。', data), /五不遇时残留说明/u);
+  assert.doesNotMatch(
+    getDivinationSummaryBlocks('qimen', data).lines.join('\n'),
+    /五不遇时残留说明/u,
+  );
 });
 
 test('奇门同宫比和与寄干五合各自保持身份，五合不直接写成合化', () => {

@@ -8,6 +8,23 @@ import {
   hasTianPanStem,
 } from './algorithms/qimen/helpers/palace-utils';
 
+export function getQimenActiveSpecialConditionText(data: QimenData): string {
+  const conditions = data.specialConditions;
+  if (
+    !conditions ||
+    !(
+      conditions.isLiuJiaHour ||
+      conditions.isLiuGuiHour ||
+      conditions.isShiGanRuMu ||
+      conditions.isRiGanRuMu ||
+      conditions.isWuBuYuShi
+    )
+  ) {
+    return '';
+  }
+  return conditions.description.trim();
+}
+
 export type QimenCandidateSource =
   | '值符落宫'
   | '值使落宫'
@@ -1540,7 +1557,7 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
       const hasHorse = data.horseStar?.palace === palace.gong;
       return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}，地盘${palace.diPan.stem || '无'}${isVoid ? '，逢空' : ''}${hasHorse ? '，马星' : ''}`;
     });
-  const specialCondition = data.specialConditions?.description?.trim();
+  const specialCondition = getQimenActiveSpecialConditionText(data);
   const timingText = [
     data.yingQi?.rhythm ? `盘内相对节奏${data.yingQi.rhythm}` : '',
     ...(data.yingQi?.triggerConditions ?? []).filter(

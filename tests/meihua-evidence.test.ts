@@ -32,6 +32,10 @@ test('梅花排盘应内置主互变三阶段结构化证据', () => {
     evidence.stages.map((item) => item.stage),
     ['origin', 'process', 'result'],
   );
+  assert.deepEqual(
+    evidence.stages.map((item) => item.label),
+    ['主卦', '互卦', '变卦'],
+  );
   assert.equal(evidence.stageCoverageFact.status, '完整');
   assert.deepEqual(evidence.stageCoverageFact.actualStages, ['origin', 'process', 'result']);
   assert.equal(evidence.hexagramStructureFacts.length, 3);
@@ -70,7 +74,7 @@ test('梅花排盘应内置主互变三阶段结构化证据', () => {
   assert.match(evidence.promptText, /计算链：/);
   assert.match(evidence.promptText, /证据汇总：/);
   assert.match(evidence.promptText, /解释限制：/);
-  assert.match(evidence.promptText, /起因.*→.*过程.*；.*过程.*→.*结果/);
+  assert.match(evidence.promptText, /主卦.*→.*互卦.*；.*互卦.*→.*变卦/);
   assert.doesNotMatch(evidence.promptText, /权重[：=]?\d|总分[：=]?\d|成功率[：=]?\d/);
 });
 
@@ -341,6 +345,7 @@ test('梅花旧结果缺少逐爻或互卦阶段时应明确标记缺口且不�
     '资料不足',
   );
   assert.match(rebuilt.transitionFacts[0].promptText, /不补造过程/);
+  assert.match(rebuilt.stageCoverageFact.promptText, /缺少互卦阶段/);
   assert.match(rebuilt.promptText, /不得反推缺失阶段体用关系/);
 
   const incompleteResult = analyzeMeihuaEvidence({

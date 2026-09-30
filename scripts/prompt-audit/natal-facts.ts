@@ -866,6 +866,12 @@ export function extractQizhengFacts(
     );
   }
   for (const [index, aspect] of result.aspects.entries()) {
+    if (
+      (aspect.star1 === '罗睺(火余)' && aspect.star2 === '计都(土余)') ||
+      (aspect.star1 === '计都(土余)' && aspect.star2 === '罗睺(火余)')
+    ) {
+      continue;
+    }
     facts.push(
       ...collect([
         fact(

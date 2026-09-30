@@ -13,6 +13,7 @@ import {
   TWELVE_STAGES_MAP,
 } from './baziMappingsData';
 import { getGanYinYang, getTenGod, getWuxing } from './baziUtils';
+import { analyzePillarRelations } from './baziPromptEnhancement';
 import { calculateKongWangBranches } from './kongWang';
 
 type PillarKey = 'year' | 'month' | 'day' | 'hour';
@@ -501,6 +502,7 @@ function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
 }
 
 function buildRelationFacts(data: BaziChartResult): BaziNatalRelationFact[] {
+  const relations = analyzePillarRelations(data);
   const groups: Array<{
     type: BaziNatalRelationFact['type'];
     key: 'fuxin' | 'fanyin' | 'sameStem' | 'sameBranch' | 'xingChong';
@@ -513,7 +515,7 @@ function buildRelationFacts(data: BaziChartResult): BaziNatalRelationFact[] {
   ];
 
   return groups.flatMap((group) =>
-    data.pillarRelations[group.key].map((relation, index) => ({
+    relations[group.key].map((relation, index) => ({
       key: `bazi:natal:relation:${group.key}:${index + 1}`,
       status: '已命中' as const,
       type: group.type,

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { calculateSolarTermEvidence } from 'mingyu-core/calendar';
 import {
   analyzeLiurenEvidence,
   generateLiuren,
@@ -192,24 +193,44 @@ test('大六壬排盘应内置四课取传与三传推进结构化证据', () =>
 test('大六壬证据应以旬空地支复核三传空亡，避免冗余字段冲突', () => {
   const data = generateLiuren(fixedDate);
   const initialBranch = data.threeTransmissions[0].branch;
-  data.xunKong = Array.from(new Set([...(data.xunKong ?? []), initialBranch]));
-  data.threeTransmissions[0].isVoid = false;
+  const expectedVoid = data.xunKong?.includes(initialBranch) ?? false;
+  data.threeTransmissions[0].isVoid = !expectedVoid;
 
   const evidence = analyzeLiurenEvidence(data);
 
-  assert.equal(evidence.transmissions[0].isVoid, true);
+  assert.equal(evidence.transmissions[0].isVoid, expectedVoid);
   assert.equal(
     evidence.transmissions[0].relationFacts.find((item) => item.basis === '旬空')?.status,
-    '限制',
+    expectedVoid ? '限制' : '支持',
   );
-  assert.ok(
-    evidence.counterEvidenceFacts.some(
-      (item) => item.ownerKey === evidence.transmissions[0].key && item.basis === '旬空',
-    ),
+  assert.match(
+    evidence.timingFacts[0].promptText,
+    new RegExp(`初传${initialBranch}${expectedVoid ? '空亡' : '不空'}`),
   );
-  assert.match(evidence.timingFacts[0].promptText, new RegExp(`初传${initialBranch}空亡`));
-  assert.match(evidence.promptText, new RegExp(`初传${initialBranch}空亡`));
-  assert.doesNotMatch(evidence.promptText, new RegExp(`初传${initialBranch}不空`));
+});
+
+test('大六壬旧盘旬空与日柱冲突时不得据错误空亡生成证据', () => {
+  const data = generateLiuren(fixedDate);
+  data.xunKong = [data.threeTransmissions[0].branch];
+
+  assert.throws(() => analyzeLiurenEvidence(data), /旬空与日柱不一致/);
+});
+
+test('大六壬旧盘跨中气错配实际占时时不得沿用旧月将证据', () => {
+  const boundary = calculateSolarTermEvidence(2024, 4).utcTimestamp;
+  const data = generateLiuren(new Date(boundary - 1000));
+  assert.equal(data.monthLeader, '子');
+  data.timestamp = boundary;
+
+  assert.throws(() => analyzeLiurenEvidence(data), /月将与实际占时中气不一致/);
+});
+
+test('大六壬旧盘三传五行与月令冲突时不得生成错误旺衰证据', () => {
+  const data = generateLiuren(fixedDate);
+  data.threeTransmissions[0].seasonState =
+    data.threeTransmissions[0].seasonState === '旺' ? '死' : '旺';
+
+  assert.throws(() => analyzeLiurenEvidence(data), /三传五行或月令旺衰/);
 });
 
 test('大六壬旧结果缺少取传名、应期与焦点时应明确标记来源缺口', () => {
@@ -568,6 +589,8 @@ test('大六壬三传地支虽与天将关系自洽，仍须符合四课取传�
   assert.ok(alternative);
   middle.branch = alternative.branch;
   middle.god = alternative.god;
+  middle.wuxing = undefined;
+  middle.seasonState = undefined;
   middle.relation = describeRelation(middle.branch, data.threeTransmissions[0].branch);
   middle.dayRelation = describeRelation(middle.branch, data.ganzhi.day.charAt(1));
   data.threeTransmissions[2].relation = describeRelation(
