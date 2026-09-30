@@ -429,7 +429,7 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
         },
         {
           id: 'sub-astro-elements',
-          title: '元素形态能量分布',
+          title: '元素与形态星体统计',
           anchorId: 'astrolabe-elements-chart',
           level: 2,
         },
