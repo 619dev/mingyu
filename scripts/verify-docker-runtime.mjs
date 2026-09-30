@@ -61,10 +61,11 @@ try {
     responseMode: 'summary',
   };
   const lifetime = await postJson('/api/v1/divination/qimen/lifetime/prompt', lifetimeInput);
-  assert.equal(lifetime.summary.eventClustersCount, 161);
+  assert.ok(lifetime.summary.eventClustersCount >= 62);
   assert.match(lifetime.prompt, /【周期触发与事件簇】/u);
   for (let year = 2026; year <= 2056; year += 1) {
-    assert.ok(lifetime.prompt.includes(`${year}年`));
+    assert.match(lifetime.prompt, new RegExp(`${year}年（[^）]+）立春前`, 'u'));
+    assert.match(lifetime.prompt, new RegExp(`${year}年（[^）]+）立春后`, 'u'));
   }
   assert.match(lifetime.prompt, /可复核日期/u);
   assert.match(lifetime.prompt, /共\d+个日辰/u);

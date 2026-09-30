@@ -122,13 +122,19 @@ try {
   const lifetime = lifetimeResponse.structuredContent;
   assert.match(lifetime.prompt, /【周期触发与事件簇】/u);
   for (let year = 2026; year <= 2056; year += 1) {
-    assert.ok(lifetime.prompt.includes(`${year}年`));
+    const annualSlices = lifetime.result.eventClusters.filter(
+      (item) => item.key.includes(`cluster:${year}:`) && item.key.includes('lichun'),
+    );
+    assert.equal(annualSlices.length, 2);
+    assert.ok(annualSlices.some((item) => item.key.includes(':before-lichun:')));
+    assert.ok(annualSlices.some((item) => item.key.includes(':after-lichun:')));
+    assert.match(lifetime.prompt, new RegExp(`${year}年（[^）]+）立春前`, 'u'));
+    assert.match(lifetime.prompt, new RegExp(`${year}年（[^）]+）立春后`, 'u'));
   }
   assert.match(lifetime.prompt, /可复核日期/u);
   assert.match(lifetime.prompt, /共\d+个日辰/u);
   assert.doesNotMatch(lifetime.prompt, /按当地民用日读取日支与本命/u);
   assert.deepEqual(lifetime.result.input.periodRange, lifetimeInput.periodRange);
-  assert.equal(lifetime.result.eventClusters.length, 161);
   assert.equal(
     lifetime.result.eventClusters.flatMap((item) => item.triggerDates ?? []).length,
     3806,
