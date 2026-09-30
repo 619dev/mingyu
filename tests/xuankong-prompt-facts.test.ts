@@ -6,12 +6,15 @@ import { buildMetaphysicsPrompt } from '../packages/core/src/prompt/metaphysics.
 
 test('九运玄空正文明确星数五行与山向运的生克施受', () => {
   const result = generateXuanKong({ year: 2024, sitMountain: '午' });
-  assert.match(result.prompt, /运5（土，煞气） 山9（火，当运） 向9（火，当运）/);
+  assert.match(
+    result.prompt,
+    /运5（土，暂按9运煞气） 山9（火，暂按9运当运） 向9（火，暂按9运当运）/,
+  );
   assert.match(result.prompt, /山星9火生运星5土/);
   assert.match(result.prompt, /向星9火生运星5土/);
   assert.match(result.prompt, /山向生入：向星2土生山星7金/);
   assert.match(result.prompt, /山向克入：向星8土克山星1水/);
-  assert.match(result.prompt, /运8（土，退气）/);
+  assert.match(result.prompt, /运8（土，暂按9运退气）/);
   assert.match(result.prompt, /【任务】[\s\S]*【盘面资料】[\s\S]*【传统依据】/);
   assert.doesNotMatch(result.prompt, /流年|流月|五黄落宫：|本次资料层级：/);
 });
@@ -102,5 +105,5 @@ test('住宅合参保留玄空原生星性与关系而非另行补写', () => {
     assert.ok(result.prompt.includes(line.trim()), `住宅正文缺少玄空资料：${line}`);
   }
   assert.match(result.prompt, /山向克出：山星8土克向星1水/);
-  assert.match(result.prompt, /运8（土，退气）/);
+  assert.match(result.prompt, /运8（土，暂按9运退气）/);
 });

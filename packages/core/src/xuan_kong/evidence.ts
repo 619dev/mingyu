@@ -202,7 +202,7 @@ export function analyzeXuanKongEvidence(
       type: '宫位组合',
       promptText: `${palace.name}运${palace.yunStar}山${palace.shanStar}向${palace.xiangStar}${
         palace.yearStar !== undefined ? `年${palace.yearStar}` : ''
-      }${palace.monthStar !== undefined ? `月${palace.monthStar}` : ''}，山向${palace.shanXiangRelation}，运星${palace.yunStarState}`,
+      }${palace.monthStar !== undefined ? `月${palace.monthStar}` : ''}，山向${palace.shanXiangRelation}，运星按${result.period.boundaryStatus ? '暂列的' : ''}${result.period.yun}运宅盘为${palace.yunStarState}`,
       sources: ['三盘飞星与九星五行生克'],
       limitation: FACT_LIMIT,
     })),

@@ -671,8 +671,9 @@ function formatStarRelation(from: string, fromStar: number, to: string, toStar: 
 }
 
 function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>) {
+  const yunBasis = `${result.period.boundaryStatus ? '暂按' : ''}${result.period.yun}运`;
   const natalStar = (label: string, star: number) =>
-    `${label}${star}（${FLYING_STAR_WUXING[star]}，${resolveFlyingStarYunState(star, result.period.yun)}）`;
+    `${label}${star}（${FLYING_STAR_WUXING[star]}，${yunBasis}${resolveFlyingStarYunState(star, result.period.yun)}）`;
   const palaceLines = result.palaces
     .map((item) => {
       const yearText =
@@ -741,13 +742,39 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
     '三盘九宫：',
     palaceLines,
     '【传统依据】',
-    `三元九运以${result.period.yun}运为宅盘参照；运星入中顺飞，山向盘按同元龙阴阳定顺逆。星气按当运、后续两星生气、再后两星死气、后三星煞气、前一运星退气划分。${result.flowStars ? '流年' : ''}${result.flowStars?.monthPlate ? '流月' : ''}${result.flowStars ? '紫白入中顺飞。' : ''}`,
+    `三元九运以${result.period.boundaryStatus ? '暂列的' : ''}${result.period.yun}运为宅盘参照；运星入中顺飞，山向盘按同元龙阴阳定顺逆。星气按当运、后续两星生气、再后两星死气、后三星煞气、前一运星退气划分。${result.flowStars ? '流年' : ''}${result.flowStars?.monthPlate ? '流月' : ''}${result.flowStars ? '紫白入中顺飞。' : ''}`,
   ]
     .filter(Boolean)
     .join('\n');
 }
 
-function mapCombination(combination: Combination): XuanKongCombination {
+function describeCombination(combination: Combination): string {
+  switch (combination.name) {
+    case '父母三般卦':
+      return '九宫运、山、向三星各成一四七、二五八或三六九组；具体宫位的山水形势仍需核对。';
+    case '连珠三般卦':
+      return '九宫运、山、向三星各按九星循环连续；具体宫位的山水形势仍需核对。';
+    case '山星合十':
+      return '九宫山星与运星逐宫合十；作用须结合所问年份的运期与实际山势核对。';
+    case '向星合十':
+      return '九宫向星与运星逐宫合十；作用须结合所问年份的运期与实际水口、门路核对。';
+    case '山星入囚':
+      return '当运山星落中宫；中宫的开阔、动静及实际山势须另行核对。';
+    case '向星入囚':
+      return '当运向星落中宫；中宫的开阔、动静及实际水口须另行核对。';
+    case '七星真打劫':
+    case '七星假打劫':
+      return `${combination.name === '七星真打劫' ? '乾、震、离' : '坎、巽、兑'}三宫向星成一四七、二五八或三六九组；${combination.kind === 'inauspicious' ? '山盘全盘伏吟，此打劫结构不作可用条件；' : ''}实际水口、门路与通气条件须另行核对。`;
+    default:
+      if (/^(全盘|单宫)(伏吟|反吟)（(山星|向星)）$/.test(combination.name)) {
+        const relation = combination.name.includes('伏吟') ? '与元旦盘同星' : '与元旦盘合十';
+        return `${combination.name.includes('山星') ? '山星' : '向星'}${relation}；实际形势及引动条件须另行核对。`;
+      }
+      return `盘面检出${combination.name}结构；实际形势与运期须另行核对。`;
+  }
+}
+
+function mapCombination(combination: Combination, period: XuanKongPeriod): XuanKongCombination {
   const palaces = combination.palaces?.map((key) => {
     const gong = PALACE_KEY_TO_GONG[key];
     if (!gong) throw new Error(`玄空引擎返回未知宫位：${key}。`);
@@ -757,7 +784,7 @@ function mapCombination(combination: Combination): XuanKongCombination {
     name: combination.name,
     kind: combination.kind,
     ...(palaces?.length ? { palaces } : {}),
-    note: combination.note,
+    note: `${period.boundaryStatus ? `暂按${period.yun}运盘：` : ''}${describeCombination(combination)}`,
   };
 }
 
@@ -822,12 +849,12 @@ export function generateXuanKong(input: XuanKongInput): XuanKongResult {
     xiangToFacing: daoXiang,
     summary:
       daoShan && daoXiang
-        ? '当运星到山且到向'
+        ? '本宅运星到山且到向'
         : daoShan
-          ? '当运星到山，未同时到向'
+          ? '本宅运星到山，未同时到向'
           : daoXiang
-            ? '当运星到向，未同时到山'
-            : '当运星未同时形成到山到向',
+            ? '本宅运星到向，未同时到山'
+            : '本宅运星未同时形成到山到向',
   };
 
   const flowStars = resolveXuanKongFlowStars({
@@ -872,7 +899,7 @@ export function generateXuanKong(input: XuanKongInput): XuanKongResult {
             water: xiangPlate[palace.earth - 1],
           })),
         );
-  const combinations = combinationSource.map(mapCombination);
+  const combinations = combinationSource.map((combination) => mapCombination(combination, period));
   const castleGate = evaluateCastleGate({
     yun: period.yun,
     facingMountain,
