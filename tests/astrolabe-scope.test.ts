@@ -10,6 +10,7 @@ import {
   getDefaultAstrolabeScopeDate,
 } from 'mingyu-core/divination/astrolabe-scope';
 import { generateAstrolabe } from 'mingyu-core/divination/astrolabe';
+import { projectAstrolabeDynamicSample } from 'mingyu-core/divination/astrolabe-dynamic-range';
 import { calculateChart, calculatePlanets } from '../packages/core/src/astrology/engine';
 import type { AstrolabeData } from 'mingyu-core/types';
 
@@ -471,6 +472,49 @@ test('元旦附近生日的返照有效期完整覆盖目标日历年', () => {
   for (let index = 1; index < periods.length; index += 1) {
     assert.equal(periods[index - 1].endUtcDateTime, periods[index].startUtcDateTime);
   }
+});
+
+test('2200 年末已发生的次年返照应截断本年返照有效期', () => {
+  const januaryBirth = generateAstrolabe({
+    name: '返照年度上界',
+    gender: '女',
+    year: '2000',
+    month: '1',
+    day: '1',
+    hour: '0',
+    minute: '0',
+    latitude: '0',
+    longitude: '0',
+    timezone: '0',
+  });
+  const context = buildAstrolabeScopeContext(januaryBirth, 'yearly', '2200', {
+    includePeriodEvents: false,
+  });
+  const periods = context.solarReturnPeriods!;
+  assert.deepEqual(
+    periods.map((period) => period.evidence.targetYear),
+    [2200, 2201],
+  );
+  assert.equal(periods[0].startUtcDateTime, '2200-01-01T00:00:00.000Z');
+  assert.equal(periods[0].endUtcDateTime, periods[1].startUtcDateTime);
+  assert.equal(periods[1].endUtcDateTime, '2201-01-01T00:00:00.000Z');
+  assert.ok(
+    Math.abs(Date.parse(periods[1].startUtcDateTime) - Date.parse('2200-12-31T18:54:27Z')) <= 1000,
+  );
+  const natalSun = januaryBirth.planets.find((planet) => planet.name === 'Sun')!;
+  const returnSun = calculateIndependentPlanetsAtIso(
+    januaryBirth,
+    periods[1].startUtcDateTime,
+  ).find((planet) => planet.name === 'Sun')!;
+  assert.ok(longitudeDistance(returnSun.longitude, natalSun.longitude) < 0.00001);
+  assert.ok(context.promptText.includes('返照时刻2200-12-31 18:54:27'));
+  const projected = projectAstrolabeDynamicSample({ natal: januaryBirth, scopes: [context] });
+  assert.equal(
+    projected.samples.find((fact) => fact.path === 'dynamic.yearly.returnPeriods.2201.startUtc')
+      ?.value,
+    Date.parse(periods[1].startUtcDateTime),
+  );
+  assert.throws(() => calculateSolarReturnEvidence(januaryBirth, 2201), /1900-2200/u);
 });
 
 test('返照年度起点采用 IANA 当地公历日真实首瞬时点', () => {

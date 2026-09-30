@@ -12,6 +12,7 @@ import {
   type Transit,
 } from '../astrology/engine';
 import { formatFixedTimezoneOffset } from '../calendar/civil-time';
+import { daysInGregorianMonth } from '../calendar/date-validation';
 export type AstrolabeScopeMode = 'natal' | 'full' | 'yearly' | 'monthly' | 'daily';
 import type { AstrolabeData, AstrolabePoint } from '../types/divination';
 import {
@@ -1969,6 +1970,14 @@ export function calculateSolarReturnEvidence(
   targetYear: number,
 ): SolarReturnEvidence {
   assertAdvancedTargetYear(targetYear);
+  return calculateSolarReturnEvidenceForPeriod(data, targetYear);
+}
+
+/** 年度有效期的右边界可由次年返照落在本年末形成。 */
+function calculateSolarReturnEvidenceForPeriod(
+  data: AstrolabeData,
+  targetYear: number,
+): SolarReturnEvidence {
   const technique: AstrolabeAdvancedTechnique = '太阳返照';
   const techniqueKey = advancedTechniqueKey(technique);
   const birth = parseBirthDateTime(data);
@@ -2056,7 +2065,7 @@ export function calculateSolarReturnEvidence(
       '时间映射边界',
     );
   }
-  const maxDay = daysInAstrolabeScopeMonth(targetYear, birth.month);
+  const maxDay = daysInGregorianMonth(targetYear, birth.month);
   const centerDay = Math.min(birth.day, maxDay);
   const centerTimestamp =
     Date.UTC(targetYear, birth.month - 1, centerDay, birth.hour, birth.minute, birth.second ?? 0) -
@@ -2306,9 +2315,9 @@ function buildSolarReturnPeriods(
     ...timeZone,
   }).utcTimestamp;
   const returns = [targetYear - 1, targetYear, targetYear + 1]
-    .filter((year) => year >= 1900 && year <= 2200)
+    .filter((year) => year >= 1900 && year <= 2201)
     .map((year) =>
-      year === targetYear ? currentEvidence : calculateSolarReturnEvidence(data, year),
+      year === targetYear ? currentEvidence : calculateSolarReturnEvidenceForPeriod(data, year),
     )
     .filter(
       (evidence): evidence is SolarReturnEvidence & { timeScale: AstronomicalTimeEvidence } =>

@@ -647,12 +647,17 @@ function resolveExplicitEpoch(input: HuangjiSixDayExplicitDateInput, targetMilli
   if (actualElapsedDays < 0 || actualElapsedDays >= HUANGJI_LOGICAL_DAYS) {
     throw new Error('六日逐爻公历时间超出显式历元后0至359日的已定义坐标范围。');
   }
+  const targetTimestamp = target.utcTimestamp + targetMillisecond;
+  const epochTimestamp = epoch.utcTimestamp + epochParts.millisecond;
+  if (targetTimestamp < epochTimestamp) {
+    throw new Error('六日逐爻目标真实瞬时不能早于显式历元起点。');
+  }
   return {
     target,
     epoch,
     epochMillisecond: epochParts.millisecond,
-    targetTimestamp: target.utcTimestamp + targetMillisecond,
-    epochTimestamp: epoch.utcTimestamp + epochParts.millisecond,
+    targetTimestamp,
+    epochTimestamp,
     actualElapsedDays,
   };
 }

@@ -106,6 +106,35 @@ test('IANA 回拨重复小时以目标偏移消歧，显式历元保留自身历
   );
 });
 
+test('显式历元晚于同一当地日期的目标瞬时时拒绝，起点及之后仍按当地日序', () => {
+  const epoch = '2016-11-06T00:00:00-05:00';
+  const parseHavana = (target: string) => parseSixDay(target, epoch, undefined, 'America/Havana');
+
+  for (const target of ['2016-11-06T00:30:00-04:00', '2016-11-06T00:59:59.999-04:00']) {
+    assert.throws(
+      () => calculateHuangjiSixDayCycleFromDate(parseHavana(target)),
+      /目标真实瞬时不能早于显式历元起点/,
+    );
+  }
+
+  const atEpoch = calculateHuangjiSixDayCycleFromDate(parseHavana(epoch));
+  const firstMillisecond = calculateHuangjiSixDayCycleFromDate(
+    parseHavana('2016-11-06T00:00:00.001-05:00'),
+  );
+  const afterEpoch = calculateHuangjiSixDayCycleFromDate(parseHavana('2016-11-06T00:30:00-05:00'));
+
+  assert.equal(atEpoch.anchor.utcDateTime, '2016-11-06T05:00:00.000Z');
+  assert.equal(atEpoch.civilTime.utcDateTime, atEpoch.anchor.utcDateTime);
+  assert.equal(atEpoch.calendar.actualElapsedSeconds, 0);
+  assert.equal(firstMillisecond.civilTime.utcDateTime, '2016-11-06T05:00:00.001Z');
+  assert.equal(firstMillisecond.calendar.actualElapsedSeconds, 0);
+  assert.equal(afterEpoch.calendar.actualElapsedSeconds, 1800);
+  for (const result of [atEpoch, firstMillisecond, afterEpoch]) {
+    assert.equal(result.calendar.actualElapsedDays, 0);
+    assert.equal(result.calendar.cycleDay, 1);
+  }
+});
+
 test('IANA 回拨重复小时的比例模型也可用时间字符串偏移消歧', () => {
   const earlier = calculateHuangjiSixDayCycleFromDate(
     parseProportionalSixDay('2026-11-01T01:30:00-04:00', undefined, 'America/New_York'),

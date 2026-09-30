@@ -8,6 +8,79 @@ import {
 import { formatTaiyiInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 
+test('太乙阳遁十三、二十二、二十八局与金镜式经卷六局式一致', () => {
+  // 《太乙金鏡式經》卷六的三则日计古例只用于独立比对同局静态盘式；
+  // 此处以现代年计重现局号，不据此核验古日计积数或纪元。
+  // https://zh.wikisource.org/wiki/太乙金鏡式經_(四庫全書本)/卷06
+  const examples = [
+    {
+      year: 2056,
+      bureau: 13,
+      taiyiPalace: 6,
+      wenChangGod: '大炅',
+      shiJiGod: '太阳',
+      jiShenPosition: '寅',
+      lordCount: 18,
+      lordGeneral: 8,
+      lordAssistant: 4,
+      guestCount: 19,
+      guestGeneral: 9,
+      guestAssistant: 7,
+    },
+    {
+      year: 2065,
+      bureau: 22,
+      taiyiPalace: 9,
+      wenChangGod: '阴德',
+      shiJiGod: '天道',
+      jiShenPosition: '巳',
+      lordCount: 16,
+      lordGeneral: 6,
+      lordAssistant: 8,
+      guestCount: 30,
+      guestGeneral: 3,
+      guestAssistant: 9,
+    },
+    {
+      year: 2071,
+      bureau: 28,
+      taiyiPalace: 2,
+      wenChangGod: '吕申',
+      shiJiGod: '大炅',
+      jiShenPosition: '亥',
+      lordCount: 14,
+      lordGeneral: 4,
+      lordAssistant: 2,
+      guestCount: 9,
+      guestGeneral: 9,
+      guestAssistant: 7,
+    },
+  ] as const;
+
+  for (const { year, wenChangGod, shiJiGod, ...expected } of examples) {
+    const result = generateTaiyi({ scope: 'year', year });
+    const godAt = (position: string) =>
+      result.sixteenGods.find((item) => item.branch === position)?.god;
+    assert.deepEqual(
+      {
+        bureau: result.bureau,
+        taiyiPalace: result.taiyiPalace,
+        wenChangGod: godAt(result.wenChangPosition),
+        shiJiGod: godAt(result.shiJiPosition),
+        jiShenPosition: result.jiShenPosition,
+        lordCount: result.lordCount,
+        lordGeneral: result.lordGeneral,
+        lordAssistant: result.lordAssistant,
+        guestCount: result.guestCount,
+        guestGeneral: result.guestGeneral,
+        guestAssistant: result.guestAssistant,
+      },
+      { ...expected, wenChangGod, shiJiGod },
+      `卷六阳遁第${expected.bureau}局`,
+    );
+  }
+});
+
 test('太乙在线任务书合并三门、五将与阴阳判断，省略未命中条件', () => {
   const result = generateTaiyi({ year: 2004, scope: 'year' });
   const text = formatTaiyiInfo(result);

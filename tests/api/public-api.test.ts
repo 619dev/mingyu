@@ -4711,6 +4711,40 @@ test('公开 API 星盘提示词支持完整输出版行运资料', async () => 
   assert.doesNotMatch(withoutPeriodEvents.body.data.prompt, /周期关键星象/);
 });
 
+test('公开 API 的 2200 年返照期段保留年末实际进入的 2201 返照', async () => {
+  const { response, body } = await callApi('divination/astrolabe/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: '返照年度上界',
+      gender: '女',
+      year: 2000,
+      month: 1,
+      day: 1,
+      hour: 0,
+      minute: 0,
+      latitude: 0,
+      longitude: 0,
+      timezone: 0,
+      question: '请看 2200 年末的返照期段。',
+      astrolabeScope: 'yearly',
+      astrolabeScopeDate: '2200',
+      responseMode: 'full',
+    }),
+  });
+  assert.equal(response.status, 200);
+  const periods = body.data.result.scopeEvidence.solarReturnPeriods;
+  assert.deepEqual(
+    periods.map((period: { evidence: { targetYear: number } }) => period.evidence.targetYear),
+    [2200, 2201],
+  );
+  assert.equal(periods[0].endUtcDateTime, '2200-12-31T18:54:27.000Z');
+  assert.equal(periods[1].startUtcDateTime, periods[0].endUtcDateTime);
+  assert.equal(periods[1].endUtcDateTime, '2201-01-01T00:00:00.000Z');
+  assert.match(body.data.prompt, /太阳返照有效期[\s\S]*返照时刻2200-12-31 18:54:27/u);
+  assertPromptIsPortableTaskText(body.data.prompt);
+});
+
 test('公开 API 星盘范围事实在各 responseMode 中保持一致', async (context) => {
   context.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-16T04:00:00Z') });
   const base = {
