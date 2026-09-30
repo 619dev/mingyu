@@ -89,12 +89,14 @@ test('星盘流年提示词应列出高级时限的全部已筛选相位事实',
     assert.ok(item);
     const line = lines.find((value) => value.startsWith(label));
     assert.ok(line, `缺少高级时限提示词行：${label}`);
+    const detail = 'returnChart' in item && item.returnChart ? item.returnChart.promptText : line;
     for (const fact of item.aspectFacts) {
       assert.ok(
-        line!.includes(compactAdvancedAspect(fact)),
+        detail.includes(compactAdvancedAspect(fact)),
         `${label}缺少相位事实：${compactAdvancedAspect(fact)}`,
       );
-      assert.equal(line!.includes(fact.key), false, `${label}不应暴露事实内部键：${fact.key}`);
+      assert.equal(detail.includes(fact.key), false, `${label}不应暴露事实内部键：${fact.key}`);
+      if (detail !== line) assert.ok(!line.includes(compactAdvancedAspect(fact)));
     }
   }
 
