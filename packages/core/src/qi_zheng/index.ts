@@ -24,6 +24,7 @@ import { SevenStar, SolarTerm, SolarTime, TwentyEightStar } from 'tyme4ts';
 import {
   formatFixedTimezoneOffset,
   getCivilDateTimeAtFixedOffset,
+  resolveCivilDayEnd,
   resolveCivilDayStart,
 } from '../calendar/civil-time';
 import { createUtcTimestamp, daysInGregorianMonth } from '../calendar/date-validation';
@@ -1878,6 +1879,16 @@ function resolveQizhengDayStart(
   return resolveCivilDayStart({ ...parts, ...timezoneInput }).utcTimestamp;
 }
 
+function resolveQizhengDayEnd(
+  parts: Pick<QizhengCivilMinute, 'year' | 'month' | 'day'>,
+  natal: QizhengInput,
+): number {
+  const timezoneInput = natal.timeZoneId
+    ? { timeZoneId: natal.timeZoneId }
+    : { timezone: natal.timezone ?? 8 };
+  return resolveCivilDayEnd({ ...parts, ...timezoneInput }).utcTimestamp;
+}
+
 /**
  * 取得七政流年窗口的立春 UTC 时刻。
  *
@@ -1903,13 +1914,6 @@ function getQizhengLichunUtc(year: number): number {
   );
 }
 
-function nextQizhengCivilDate(year: number, month: number, day: number) {
-  const maxDay = daysInGregorianMonth(year, month);
-  if (day < maxDay) return { year, month, day: day + 1 };
-  if (month < 12) return { year, month: month + 1, day: 1 };
-  return { year: year + 1, month: 1, day: 1 };
-}
-
 function resolveQizhengPeriodWindow(natal: QizhengInput): {
   startUtcMs: number;
   endUtcMs: number;
@@ -1924,11 +1928,9 @@ function resolveQizhengPeriodWindow(natal: QizhengInput): {
       minute: 0,
       second: 0,
     };
-    const endDate = nextQizhengCivilDate(startParts.year, startParts.month, startParts.day);
-    const endParts: QizhengCivilMinute = { ...endDate, hour: 0, minute: 0, second: 0 };
     return {
       startUtcMs: resolveQizhengDayStart(startParts, natal),
-      endUtcMs: resolveQizhengDayStart(endParts, natal),
+      endUtcMs: resolveQizhengDayEnd(startParts, natal),
       mode: 'daily',
     };
   }

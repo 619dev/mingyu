@@ -65,6 +65,10 @@ function isUnknownTimeChart(baziResult: BaziChartResult) {
   return baziResult.isThreePillars === true;
 }
 
+function hasKnownPillar(baziResult: BaziChartResult) {
+  return PILLAR_KEYS.some((key) => Boolean(baziResult.pillars[key].ganZhi));
+}
+
 function unknownTimeSummary(baziResult: BaziChartResult) {
   return (
     baziResult.unknownTimeAnalysis?.summary ||
@@ -618,19 +622,18 @@ export function buildEnhancedFiveElementsSection(
       pillars.day.gan,
       pillars.day.zhi,
     ].filter(Boolean);
-    const knownCounts = tallyWuxing(knownItems, { weightHidden: true });
     const wuxingList: Wuxing[] = ['木', '火', '土', '金', '水'];
     return {
       elements: wuxingList.map((wuxing) => ({
         wuxing,
         count: knownItems.filter((item) => getWuxing(item) === wuxing).length,
-        // 三柱组成可保留为结构事实，但不能把原始计数冒充旺衰力量。
+        // 已确定柱的出现次数可保留为结构事实，不代表完整命盘的五行缺失或旺衰。
         score: 0,
         percentage: 0,
         seasonStatus: '待补时',
         isDominant: false,
         isWeakest: false,
-        isMissing: (knownCounts[wuxing] || 0) === 0,
+        isMissing: false,
       })),
       dayMasterStrength: {
         status: '未知（待补时）',
@@ -649,7 +652,7 @@ export function buildEnhancedFiveElementsSection(
           hasStrongRoot: false,
         },
         ruleBasis: [unknownTimeSummary(baziResult)],
-        judgmentSummary: `${unknownTimeSummary(baziResult)} 已确定的柱仅作结构记录，不据此断定旺衰。`,
+        judgmentSummary: `${unknownTimeSummary(baziResult)} ${hasKnownPillar(baziResult) ? '已确定的柱仅作结构记录' : '各柱仍须按候选场景定位'}，旺衰待出生时分确定后再判。`,
       },
     };
   }
@@ -767,7 +770,7 @@ export function buildEnhancedPatternUsefulGodSection(
         isSpecial: false,
         type: '出生时辰待补',
         basis: summary,
-        formationAnalysis: '已确定的柱仅作资料展示；出生时分确定后再判旺衰、格局成败与喜忌。',
+        formationAnalysis: `${hasKnownPillar(baziResult) ? '已确定的柱仅作资料展示' : '四柱须按候选场景定位'}；出生时分确定后再判旺衰、格局成败与喜忌。`,
       },
       usefulGods: {
         primaryUseful: '待补时',
@@ -1319,6 +1322,11 @@ export function buildEnhancedTenGodsSection(baziResult: BaziChartResult): Minglu
   const pillarNames = ['年柱', '月柱', '日柱', '时柱'];
 
   if (isUnknownTimeChart(baziResult)) {
+    const isKnownPillar = (key: (typeof PILLAR_KEYS)[number]) =>
+      Boolean(pillars[key].gan && pillars[key].zhi && pillars[key].ganZhi);
+    const dayMasterText = dayMasterGan
+      ? `日主${dayMasterGan}已确定，完整十神分布待出生时分确定后核验。`
+      : '日主待补时，十神定位随候选场景核验。';
     return {
       godsList: allGods.map((tenGod) => ({
         tenGod,
@@ -1326,7 +1334,7 @@ export function buildEnhancedTenGodsSection(baziResult: BaziChartResult): Minglu
         isExposed: false,
         isHidden: false,
         pillars: [],
-        psychology: `${tenGod}：日主未定，待出生时分确定后再作十神定位。`,
+        psychology: `${tenGod}：${dayMasterText}`,
         careerSymbol: '待补时',
         wealthSymbol: '待补时',
         relationshipSymbol: '待补时',
@@ -1338,10 +1346,11 @@ export function buildEnhancedTenGodsSection(baziResult: BaziChartResult): Minglu
       },
       housesSixKin: pillarNames.map((label, index) => ({
         pillar: PILLAR_KEYS[index],
-        pillarLabel: `${label}（${index === 3 ? '待补时' : '已确定柱'}）`,
+        pillarLabel: `${label}（${isKnownPillar(PILLAR_KEYS[index]!) ? '已确定柱' : '待补时'}）`,
         ageRange: ['早年取象', '青年取象', '中年取象', '晚年取象'][index]!,
-        sixKinSignificance:
-          index === 3 ? '时柱资料待补。' : '仅列已确定柱位，十神及六亲细断待补时。',
+        sixKinSignificance: isKnownPillar(PILLAR_KEYS[index]!)
+          ? '仅列已确定柱位，十神及六亲细断待补时。'
+          : '该柱资料待补时。',
         environmentSignificance: '待出生时分确定后再作完整推断。',
         actualTenGods: [],
       })),
@@ -1948,20 +1957,33 @@ export function buildEnhancedLuckChronicleSection(
 export function buildBeginnerGuide(baziResult: BaziChartResult): MingluBeginnerGuide {
   if (isUnknownTimeChart(baziResult)) {
     const summary = unknownTimeSummary(baziResult);
+    const anyKnownPillar = hasKnownPillar(baziResult);
+    const pillarMetaphor = (key: 'year' | 'month' | 'day', label: string, meaning: string) =>
+      baziResult.pillars[key].ganZhi
+        ? `【${label} ${baziResult.pillars[key].ganZhi}】：已确定资料，${meaning}`
+        : `【${label}】：出生时分待补，柱位未确定。`;
     return {
-      coreArchetype: '出生时辰待补 · 先看已确定柱资料',
-      natureAnalogy: '已确定的柱可以作为基础资料；其余柱位未定，完整人生结构暂不下结论。',
+      coreArchetype: anyKnownPillar
+        ? '出生时辰待补 · 先看已确定柱资料'
+        : '出生时辰待补 · 按候选场景定位四柱',
+      natureAnalogy: anyKnownPillar
+        ? '已确定的柱可以作为基础资料；其余柱位待核，完整人生结构暂不下结论。'
+        : '四柱仍须按候选场景定位，完整人生结构暂不下结论。',
       strengthPlain: `旺衰、格局与喜忌暂不判定：${summary}`,
       favorableHabitsPlain: [
         '待出生时分确定后，再结合日主根气与月令复核取用。',
         '候选场景仅用于比较时辰差异，不作为已经发生的定论。',
       ],
-      careerTalentsPlain: ['已确定的柱资料已保留，事业与性情细断待补时。'],
+      careerTalentsPlain: [
+        anyKnownPillar
+          ? '已确定的柱资料已保留，事业与性情细断待补时。'
+          : '四柱仍须按候选场景定位，事业与性情细断待补时。',
+      ],
       lifeAdvicePlain: '先补充出生时分，再展开命身、岁运与格局成败分析。',
       fourPillarsMetaphor: {
-        year: `【年柱 ${baziResult.pillars.year.ganZhi}】：已确定资料，代表早年根基。`,
-        month: `【月柱 ${baziResult.pillars.month.ganZhi}】：已确定资料，代表月令与成长环境。`,
-        day: `【日柱 ${baziResult.pillars.day.ganZhi}】：已确定资料，具体日主取象待补时复核。`,
+        year: pillarMetaphor('year', '年柱', '代表早年根基。'),
+        month: pillarMetaphor('month', '月柱', '代表月令与成长环境。'),
+        day: pillarMetaphor('day', '日柱', '具体日主取象待补时复核。'),
         hour: '【时柱】：出生时分待补，晚年、子女与完整岁运资料暂不展开。',
       },
     };

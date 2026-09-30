@@ -58,10 +58,10 @@ export interface Person {
   isLeapMonth?: boolean;
   useTrueSolarTime?: boolean;
   isThreePillars?: boolean;
+  /** 钟表小时与分钟同时提供时优先于 timeIndex，未提供秒数按零秒计算。 */
   birthHour?: number;
-
   birthMinute?: number;
-  /** 标准北京时间的秒数；提供时表示 birthHour/birthMinute 为精确标准时刻。 */
+  /** 钟表秒数；需同时提供 birthHour 与 birthMinute。 */
   birthSecond?: number;
   birthPlace?: string;
   birthLongitude?: number;

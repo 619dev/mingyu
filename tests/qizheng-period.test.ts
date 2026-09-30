@@ -494,3 +494,29 @@ test('圣地亚哥午夜跳时日从首个真实时刻扫描至次日零时', ()
   const endUtc = Date.UTC(2024, 8, 9, 3);
   assert.ok(period.events.every((event) => event.utcMs >= startUtc && event.utcMs < endUtc));
 });
+
+test('阿皮亚跳过下一名义日时流日扫描至下一个真实民用日', () => {
+  const input = {
+    year: 1990,
+    month: 6,
+    day: 15,
+    hour: 10,
+    minute: 30,
+    latitude: -13.8333,
+    longitude: -171.75,
+    timeZoneId: 'Pacific/Apia',
+    flowYear: 2011,
+    flowMonth: 12,
+    flowDay: 29,
+  } as const;
+  const period = generateQizheng(input).flowingStars?.periodEvents;
+  assert.ok(period);
+  assert.equal(period.mode, 'daily');
+  assert.equal(period.startDateTime, '2011-12-29 00:00 UTC-10:00');
+  assert.equal(period.endDateTime, '2011-12-31 00:00 UTC+14:00');
+  const startUtc = Date.parse('2011-12-29T10:00:00.000Z');
+  const endUtc = Date.parse('2011-12-30T10:00:00.000Z');
+  assert.ok(period.events.length > 0);
+  assert.ok(period.events.every((event) => event.utcMs >= startUtc && event.utcMs < endUtc));
+  assert.throws(() => generateQizheng({ ...input, flowDay: 30 }), /整日不存在|不存在/);
+});

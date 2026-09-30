@@ -16,6 +16,7 @@ import {
   buildEnhancedTenGodsSection,
 } from '../packages/core/src/minglu/bazi-enhancer.ts';
 import { MingluInteractionsSection } from '../src/pages/ResultPage/components/MingluWiki/MingluInteractionsSection';
+import { MingluFiveElementsSection } from '../src/pages/ResultPage/components/MingluWiki/MingluFiveElementsSection';
 
 test('命录五合六合依实盘条件展示合绊、争合与成化', () => {
   const samples = [
@@ -332,6 +333,114 @@ test('命录缺时辰只保留已确定柱与候选场景，不套用空日主�
   assert.ok(article.crossSynthesisSection?.every((theme) => theme.themeId !== 'timing-cycles'));
   assert.deepEqual(article.interactionsSection, []);
   assert.match(article.beginnerGuide?.strengthPlain ?? '', /旺衰、格局与喜忌暂不判定/);
+});
+
+test('命录未知时辰按各柱稳定状态展示事实，不把未见五行断为缺失', () => {
+  const boundary = baziCalculator.calculateBazi({
+    year: 2024,
+    month: 2,
+    day: 4,
+    gender: 'female',
+  });
+  assert.deepEqual(boundary.unknownTimeAnalysis?.uncertainPillars, ['year', 'month', 'day']);
+  const article = buildMingluArticle({
+    person: { name: '临界', gender: 'female' },
+    baziResult: boundary,
+  });
+  assert.deepEqual(Object.values(article.metadata.baziFourPillars), Array(4).fill('待补时'));
+  assert.equal(
+    article.patternUsefulGodSection.unknownTimeAnalysis?.scenarios.length,
+    boundary.unknownTimeAnalysis?.scenarios.length,
+  );
+  assert.ok(
+    article.tenGodsSection.housesSixKin.every((item) => item.pillarLabel.includes('待补时')),
+  );
+  assert.doesNotMatch(
+    Object.values(article.beginnerGuide!.fourPillarsMetaphor).join('；'),
+    /已确定资料/,
+  );
+  assert.ok(article.fiveElementsSection.elements.every((item) => !item.isMissing));
+  const fiveElementsMarkup = renderToStaticMarkup(
+    createElement(MingluFiveElementsSection, { data: article.fiveElementsSection }),
+  );
+  assert.doesNotMatch(
+    fiveElementsMarkup,
+    /缺此行|加权计数 \(0%\)|不得令|无明显根|无印生|透干无比劫|同类生扶 \(印比帮身\): 0分/,
+  );
+  assert.match(fiveElementsMarkup, /同类生扶：待补时/);
+  assert.match(fiveElementsMarkup, /异类耗泄：待补时/);
+  assert.doesNotMatch(article.crossSynthesisSection![0].focus, /已确定柱/);
+  assert.doesNotMatch(boundary.evidenceAnalysis!.calculationChain.join('；'), /已确定的柱/);
+  assert.doesNotMatch(
+    boundary.evidenceAnalysis!.calculationChain.join('；'),
+    /日主资料与日柱不一致|由四柱和日主推导|形成旺衰未知/,
+  );
+  assert.match(
+    boundary.evidenceAnalysis!.calculationChain.join('；'),
+    /年、月、日、时柱按出生时分候选定位；日主待补时/,
+  );
+  assert.match(
+    boundary.evidenceAnalysis!.counterEvidenceFacts.find((item) => item.type === '排盘边界覆盖')
+      ?.promptText ?? '',
+    /年柱、月柱、日柱按候选场景核对/,
+  );
+
+  const partlyKnown = baziCalculator.calculateBazi({
+    year: 2000,
+    month: 1,
+    day: 7,
+    gender: 'male',
+  });
+  const partialArticle = buildMingluArticle({
+    person: { name: '部分确定', gender: 'male' },
+    baziResult: partlyKnown,
+  });
+  assert.deepEqual(partlyKnown.unknownTimeAnalysis?.uncertainPillars, ['day']);
+  assert.equal(partialArticle.metadata.baziFourPillars.year, '己卯');
+  assert.equal(partialArticle.metadata.baziFourPillars.month, '丁丑');
+  assert.equal(partialArticle.metadata.baziFourPillars.day, '待补时');
+  assert.deepEqual(
+    partialArticle.pillarsSection.columns[0].hiddenStems.map((item) => item.stem),
+    ['乙'],
+  );
+  assert.deepEqual(
+    partialArticle.pillarsSection.columns[1].hiddenStems.map((item) => item.stem),
+    ['己', '癸', '辛'],
+  );
+  assert.deepEqual(
+    partlyKnown.evidenceAnalysis?.pillarFacts.find((item) => item.pillar === '年柱')?.hiddenStems,
+    ['乙'],
+  );
+  assert.doesNotMatch(
+    partlyKnown.evidenceAnalysis?.pillarFacts.find((item) => item.pillar === '日柱')?.promptText ??
+      '',
+    /藏干资料与地支不一致/,
+  );
+  assert.match(partialArticle.tenGodsSection.housesSixKin[0].pillarLabel, /年柱（已确定柱）/);
+  assert.match(partialArticle.tenGodsSection.housesSixKin[2].pillarLabel, /日柱（待补时）/);
+
+  const stableDay = baziCalculator.calculateBazi({
+    year: 2026,
+    month: 4,
+    day: 5,
+    gender: 'female',
+    timeZoneId: 'Pacific/Auckland',
+    timezone: 13,
+  });
+  assert.deepEqual(stableDay.unknownTimeAnalysis?.uncertainPillars, []);
+  const stableDayArticle = buildMingluArticle({
+    person: { name: '日柱确定', gender: 'female' },
+    baziResult: stableDay,
+  });
+  assert.equal(stableDayArticle.metadata.baziFourPillars.day, '己酉');
+  assert.match(
+    stableDay.evidenceAnalysis!.counterEvidenceFacts.find((item) => item.type === '排盘边界覆盖')
+      ?.promptText ?? '',
+    /年、月、日柱已确定；出生时分与时柱待补充/,
+  );
+  assert.match(stableDayArticle.tenGodsSection.godsList[0].psychology, /日主己已确定/);
+  assert.match(stableDayArticle.crossSynthesisSection![0].baziEvidence.join('；'), /日主己已确定/);
+  assert.doesNotMatch(stableDayArticle.tenGodsSection.godsList[0].psychology, /日主未定/);
 });
 
 test('命录岁运并临不应同时误判天地合或天克地冲，冲合判定须两字不同', () => {

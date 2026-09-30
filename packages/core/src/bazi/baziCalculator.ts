@@ -209,7 +209,15 @@ export class BaziCalculator {
     assertBaziGender(gender);
 
     const useTrueSolarTimeEnabled = useTrueSolarTime === true;
-    const hasPreciseStandardTime = !useTrueSolarTimeEnabled && birthSecond !== undefined;
+    const hasPreciseStandardTime =
+      !useTrueSolarTimeEnabled && birthHour !== undefined && birthMinute !== undefined;
+    if (
+      !useTrueSolarTimeEnabled &&
+      (birthHour !== undefined || birthMinute !== undefined || birthSecond !== undefined) &&
+      !hasPreciseStandardTime
+    ) {
+      throw new Error('标准北京时间缺少精准小时或分钟');
+    }
     const preciseStandardTimeIndex =
       hasPreciseStandardTime && Number.isInteger(birthHour) && Number.isInteger(birthMinute)
         ? getTimeIndexFromClock(birthHour!, birthMinute!)
@@ -727,7 +735,12 @@ export class BaziCalculator {
     if (request.contextKey !== undefined && typeof request.contextKey !== 'string') {
       throw new RangeError('未知时辰候选 contextKey 必须是字符串。');
     }
-    if (person.useTrueSolarTime === true || person.birthSecond !== undefined) {
+    if (
+      person.useTrueSolarTime === true ||
+      person.birthHour !== undefined ||
+      person.birthMinute !== undefined ||
+      person.birthSecond !== undefined
+    ) {
       throw new RangeError('已提供精确出生时刻，不能按未知时辰候选续取。');
     }
 

@@ -504,8 +504,8 @@ export function generateJinkoujue(
     algorithm: 'jinkoujue',
     input: {
       method,
-      branch: params?.branch ?? null,
-      number: params?.number ?? null,
+      ...(method === 'branch' ? { branch: params?.branch ?? null } : {}),
+      ...(method === 'number' ? { number: params?.number ?? null } : {}),
       timestamp,
       ...(params?.termReferenceDate
         ? { termReferenceTimestamp: params.termReferenceDate.getTime() }

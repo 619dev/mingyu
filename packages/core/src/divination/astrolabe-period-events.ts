@@ -11,6 +11,7 @@ import {
 import { daysInGregorianMonth } from '../calendar/date-validation';
 import {
   formatFixedTimezoneOffset,
+  resolveCivilDayEnd,
   resolveCivilDayStart,
   type CivilTimeZoneInput,
 } from '../calendar/civil-time';
@@ -473,6 +474,24 @@ function resolveLocalInstant(
   return resolveCivilDayStart({ ...date, ...getTimeZoneInput(source) });
 }
 
+function resolveLocalBoundary(source: AstrolabePeriodSource, date: AstrolabePeriodDate) {
+  try {
+    return resolveLocalInstant(source, date);
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes('整日不存在')) throw error;
+  }
+  for (let daysBack = 1; daysBack <= 7; daysBack += 1) {
+    const previous = addCalendarDays(date, -daysBack);
+    try {
+      const boundary = resolveCivilDayEnd({ ...previous, ...getTimeZoneInput(source) });
+      if (compareCalendarDates(dateParts(boundary.localTime), date) >= 0) return boundary;
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('整日不存在')) throw error;
+    }
+  }
+  throw new Error('无法定位星盘周期范围的真实民用日边界。');
+}
+
 function formatCivilStamp(value: {
   year: number;
   month: number;
@@ -520,12 +539,15 @@ export function resolveAstrolabePeriodWindow(
       : scope === 'monthly'
         ? addCalendarMonths(target.year, target.month, 1)
         : nextDate(target.year, target.month, target.day);
-  const scopeStart = resolveLocalInstant(source, scopeStartDate);
-  const scopeEnd = resolveLocalInstant(source, scopeEndDate);
+  const scopeStart =
+    scope === 'daily'
+      ? resolveLocalInstant(source, scopeStartDate)
+      : resolveLocalBoundary(source, scopeStartDate);
+  const scopeEnd = resolveLocalBoundary(source, scopeEndDate);
   const startDate = batch?.start ?? scopeStartDate;
   const endDate = batch?.endExclusive ?? scopeEndDate;
   const start = batch ? resolveLocalInstant(source, startDate) : scopeStart;
-  const end = batch ? resolveLocalInstant(source, endDate) : scopeEnd;
+  const end = batch ? resolveLocalBoundary(source, endDate) : scopeEnd;
   if (batch) {
     if (calendarDaySpan(startDate, endDate) <= 0) {
       throw new Error('星盘周期批次的 endDate 必须晚于 startDate。');

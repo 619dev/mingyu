@@ -462,6 +462,49 @@ test('金口诀：指定地分应直接采用所选地支并保留起课时间�
   );
 });
 
+test('金口诀：闲置起课字段不改变实际采用输入的结果身份', () => {
+  const cases = [
+    [
+      generateJinkoujue({ customDate: SAMPLE_DATE }),
+      generateJinkoujue({ branch: '子', number: 1, customDate: SAMPLE_DATE }),
+    ],
+    [
+      generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE }),
+      generateJinkoujue({
+        method: 'branch',
+        branch: '申',
+        number: 9,
+        customDate: SAMPLE_DATE,
+      }),
+    ],
+    [
+      generateJinkoujue({ method: 'number', number: 9, customDate: SAMPLE_DATE }),
+      generateJinkoujue({
+        method: 'number',
+        branch: '申',
+        number: 9,
+        customDate: SAMPLE_DATE,
+      }),
+    ],
+    [
+      generateJinkoujue({ method: 'random', seed: 'unused-fields', customDate: SAMPLE_DATE }),
+      generateJinkoujue({
+        method: 'random',
+        seed: 'unused-fields',
+        branch: '申',
+        number: 9,
+        customDate: SAMPLE_DATE,
+      }),
+    ],
+  ] as const;
+
+  for (const [usedInput, withUnusedFields] of cases) {
+    assert.equal(withUnusedFields.diFenBranch, usedInput.diFenBranch);
+    assert.equal(withUnusedFields.meta.inputHash, usedInput.meta.inputHash);
+    assert.equal(withUnusedFields.meta.resultId, usedInput.meta.resultId);
+  }
+});
+
 test('金口诀：古本二月戌将丙寅日午时申地原例应得子将、玄武与丙人元', () => {
   const data = generateJinkoujue({
     method: 'number',

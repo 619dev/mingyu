@@ -111,6 +111,48 @@ test('周期边界保留普通 IANA 日期与固定偏移，并明确拒绝整�
   );
 });
 
+test('阿皮亚跳过下一名义日时现存流日与批次延伸至首个真实日首', () => {
+  const context = { ...buildAstrolabePeriodContext(astrolabeData), timeZoneId: 'Pacific/Apia' };
+  const target = { year: 2011, month: 12, day: 29 };
+  const daily = resolveAstrolabePeriodWindow(context, 'daily', target);
+  const batch = resolveAstrolabePeriodWindow(context, 'monthly', target, {
+    start: target,
+    endExclusive: { year: 2011, month: 12, day: 30 },
+  });
+  const sameEnd = resolveAstrolabePeriodWindow(context, 'monthly', target, {
+    start: target,
+    endExclusive: { year: 2011, month: 12, day: 31 },
+  });
+
+  assert.equal(daily.start.utcDateTime, '2011-12-29T10:00:00.000Z');
+  assert.equal(daily.end.utcDateTime, '2011-12-30T10:00:00.000Z');
+  assert.equal(daily.endDateTime, '2011-12-31 00:00');
+  assert.equal(daily.end.utcTimestamp - daily.start.utcTimestamp, 24 * 3600000);
+  assert.equal(batch.end.utcTimestamp, daily.end.utcTimestamp);
+  assert.equal(sameEnd.end.utcTimestamp, daily.end.utcTimestamp);
+  assert.deepEqual(batch.batch?.range, {
+    startDate: '2011-12-29',
+    endDate: '2011-12-31',
+    endExclusive: true,
+  });
+  assert.deepEqual(batch.batch?.nextRange, {
+    startDate: '2011-12-31',
+    endDate: '2012-01-01',
+    endExclusive: true,
+  });
+  const events = buildAstrolabePeriodEventsFromContext(context, 'daily', target, {
+    batch: { start: target, endExclusive: { year: 2011, month: 12, day: 30 } },
+  });
+  assert.equal(events.startDateTime, '2011-12-29 00:00');
+  assert.equal(events.endDateTime, '2011-12-31 00:00');
+  assert.ok(events.events.length > 0);
+  assert.ok(events.events.every((event) => event.dateTime.startsWith('2011-12-29 ')));
+  assert.throws(
+    () => resolveAstrolabePeriodWindow(context, 'daily', { year: 2011, month: 12, day: 30 }),
+    /Pacific\/Apia.*2011-12-30.*整日不存在/u,
+  );
+});
+
 test('流年应列出周期内动态点的精准相位、停逆、换座、朔望或交食', () => {
   const collection = buildAstrolabePeriodEvents(astrolabeData, 'yearly', {
     year: 2028,

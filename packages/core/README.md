@@ -490,6 +490,8 @@ const result = baziCalculator.calculateBazi({
 
 ### 农历输入与真太阳时
 
+直接调用 `baziCalculator.calculateBazi(person)` 时，同时提供 `birthHour` 和 `birthMinute` 即按钟表时间计算，未提供 `birthSecond` 时采用零秒；完整钟表时间优先于 `timeIndex`。只有时辰资料时使用 `timeIndex`，只提供部分钟表字段会返回输入错误。
+
 ```typescript
 const result = baziCalculator.calculateBazi({
   year: 1990,

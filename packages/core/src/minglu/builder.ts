@@ -34,6 +34,13 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
   const unknownTimeNotice =
     baziResult.unknownTimeAnalysis?.summary ||
     '出生时辰待补充；旺衰、格局、喜忌与岁运须在出生时分确定后再判。';
+  const knownPillars = (['year', 'month', 'day'] as const)
+    .filter((key) => baziResult.pillars[key].ganZhi)
+    .map(
+      (key) =>
+        `${{ year: '年柱', month: '月柱', day: '日柱' }[key]}${baziResult.pillars[key].ganZhi}`,
+    );
+  const knownPillarFocus = knownPillars.length ? '八字已确定柱' : '八字候选柱';
   const transformation = baziResult.analysis.mingGe.transformation;
 
   // 1. 基础八字全量增强
@@ -112,9 +119,14 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
     {
       themeId: 'temperament',
       title: '本命盘面要素',
-      focus: `${[unknownTime ? '八字已确定柱' : '八字日主与格局', ...(ziweiSection ? ['紫微命身'] : []), ...(astrolabeSection ? ['占星日月上升'] : [])].join('、')}的本命资料。`,
+      focus: `${[unknownTime ? knownPillarFocus : '八字日主与格局', ...(ziweiSection ? ['紫微命身'] : []), ...(astrolabeSection ? ['占星日月上升'] : [])].join('、')}的本命资料。`,
       baziEvidence: unknownTime
-        ? [unknownTimeNotice, '已确定的柱保留为基础资料，日主十神与格局待补时。']
+        ? [
+            unknownTimeNotice,
+            knownPillars.length
+              ? `${knownPillars.join('、')}为已确定资料；${baziResult.dayMaster.gan ? `日主${baziResult.dayMaster.gan}已确定，` : '日主待补时，'}完整十神分布与格局待补时。`
+              : '年、月、日柱须按候选场景定位；日主十神与格局待补时。',
+          ]
         : [
             `日主${baziResult.dayMaster.gan}(${baziResult.dayMaster.element})，${baziResult.analysis.dayMasterStrength.status}`,
             `主格局为【${baziResult.analysis.mingGe.pattern}】`,
@@ -145,7 +157,7 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
     {
       themeId: 'career-wealth',
       title: '事业与财富相关盘面',
-      focus: `${[unknownTime ? '八字已确定柱' : '八字喜忌', ...(ziweiSection ? ['紫微官禄财帛宫'] : []), ...(careerAstrolabeEvidence.length ? ['占星本命资料'] : [])].join('、')}的本命资料。`,
+      focus: `${[unknownTime ? knownPillarFocus : '八字喜忌', ...(ziweiSection ? ['紫微官禄财帛宫'] : []), ...(careerAstrolabeEvidence.length ? ['占星本命资料'] : [])].join('、')}的本命资料。`,
       baziEvidence: unknownTime
         ? [unknownTimeNotice, '喜用五行与财官印食伤作用待出生时分确定后再核验。']
         : [
@@ -222,9 +234,9 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
         }`
       : undefined,
     baziFourPillars: {
-      year: baziResult.pillars.year.ganZhi,
-      month: baziResult.pillars.month.ganZhi,
-      day: baziResult.pillars.day.ganZhi,
+      year: baziResult.pillars.year.ganZhi || (unknownTime ? '待补时' : ''),
+      month: baziResult.pillars.month.ganZhi || (unknownTime ? '待补时' : ''),
+      day: baziResult.pillars.day.ganZhi || (unknownTime ? '待补时' : ''),
       hour: baziResult.pillars.hour.ganZhi || (unknownTime ? '待补时' : ''),
     },
     dayMaster: {
