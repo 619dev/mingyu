@@ -316,7 +316,7 @@ test('同一事件簇拆分到多个阶段时仍完整保留事件日期', async
   const sourceDates = cluster.triggerDates!;
   clusters[clusterIndex] = {
     ...cluster,
-    triggerDates: Array.from({ length: 4_000 }, (_, index) => ({
+    triggerDates: Array.from({ length: 5_000 }, (_, index) => ({
       ...sourceDates[index % sourceDates.length]!,
     })),
   };
