@@ -512,7 +512,16 @@ export class BaziCalculator {
 
     if (!useTrueSolarTimeEnabled) {
       // 日时保留当地钟表口径；年月节令沿真实瞬时投影到东八区历表。
-      termSolarTime = ianaTermSolarTime ?? getTermSolarTime(solarTime, undefined, person);
+      // 未知时辰的午时只是占位；跳时日给定的固定偏移可能只适用于当天部分时刻。
+      // 具体候选仍由出生钟表时刻逐一核验固定偏移。
+      const termPerson =
+        isThreePillars &&
+        !hasPreciseStandardTime &&
+        person.timeZoneId &&
+        person.timezone !== undefined
+          ? { ...person, timezone: undefined }
+          : person;
+      termSolarTime = ianaTermSolarTime ?? getTermSolarTime(solarTime, undefined, termPerson);
     }
 
     const pillarEightChar = lunarHour.getEightChar();
@@ -748,7 +757,7 @@ export class BaziCalculator {
     };
     pillarCache.set(toClockKey(candidate), candidateResult.pillars);
     const candidatePillars = [
-      baseResult.pillars,
+      candidateResult.pillars,
       ...selectUnknownTimePillarCheckCandidates(candidates).map((pillarCandidate) => {
         const clockKey = toClockKey(pillarCandidate);
         const cached = pillarCache.get(clockKey);
@@ -775,7 +784,7 @@ export class BaziCalculator {
     const scenario = buildUnknownTimeScenario(candidateResult, candidate);
     const result = finalizeUnknownBirthTime(candidateResult, [scenario], uncertainPillars, {
       batch,
-      baseResult,
+      inputResult: baseResult,
     });
     return { result, batch };
   }

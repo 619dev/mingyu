@@ -6888,6 +6888,25 @@ test('公开 API 新增术数应拒绝缺失组合和无效日期坐标', async 
     ['metaphysics/bazhai/calculate', { birthYear: 1990 }],
     ['metaphysics/bazhai/calculate', { mingGua: '未知卦' }],
     ['metaphysics/bazhai/calculate', { mingGua: '坎', sitMountain: '未知山' }],
+    ['metaphysics/bazhai/calculate', { birthYear: 1990, gender: 'male', mingGua: '' }],
+    ['metaphysics/bazhai/calculate', { mingGua: '坎', sitMountain: '' }],
+    [
+      'metaphysics/bazhai/calculate',
+      { birthYear: 1990, gender: 'male', doorToInteriorDegree: 0, northReference: '' },
+    ],
+    ['metaphysics/residential/calculate', { birthYear: 1990, gender: 'male', mingGua: '' }],
+    [
+      'metaphysics/residential/calculate',
+      { birthYear: 1990, gender: 'male', year: 2024, doorToInteriorDegree: 0, northReference: '' },
+    ],
+    [
+      'metaphysics/residential/calculate',
+      { year: 2024, mingGua: '坎', sitMountain: '', facingMountain: '午' },
+    ],
+    [
+      'metaphysics/residential/calculate',
+      { year: 2024, mingGua: '坎', sitMountain: '子', facingMountain: '' },
+    ],
     ['metaphysics/taiyi/calculate', { scope: 'year' }],
     ['metaphysics/taiyi/calculate', { year: 2004, scope: 'month' }],
     ['metaphysics/taiyi/calculate', { year: 2026, scope: 'hour', month: 7, day: 11 }],
@@ -6913,6 +6932,8 @@ test('公开 API 新增术数应拒绝缺失组合和无效日期坐标', async 
     ['metaphysics/qizheng/calculate', { year: 2026, month: 1, day: 1, hour: 12, latitude: 120 }],
     ['metaphysics/qizheng/calculate', { year: 2026, month: 1, day: 1, hour: 12, timezone: 15 }],
     ['metaphysics/xuankong/calculate', { sitMountain: '子' }],
+    ['metaphysics/xuankong/calculate', { year: 2024, sitMountain: '', facingMountain: '午' }],
+    ['metaphysics/xuankong/calculate', { year: 2024, sitMountain: '子', facingMountain: '' }],
   ] as const;
 
   for (const [path, payload] of cases) {

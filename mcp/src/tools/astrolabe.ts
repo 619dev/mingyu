@@ -158,6 +158,9 @@ function resolveAstrolabePromptScopeArgs(
   args: z.infer<typeof astrolabePromptSchema>,
   defaultScope: 'natal' | 'yearly' = 'yearly',
 ): z.infer<typeof astrolabePromptSchema> {
+  if (args.astrolabeScopeDate !== undefined && !args.astrolabeScopeDate.trim()) {
+    throw new Error('astrolabeScopeDate 不能为空。');
+  }
   if (args.astrolabeScope !== undefined) {
     return args;
   }
@@ -168,7 +171,9 @@ function resolveAstrolabePromptScopeArgs(
     astrolabeScopeDate:
       defaultScope === 'natal'
         ? undefined
-        : args.astrolabeScopeDate?.trim() || getDefaultAstrolabeScopeDate(defaultScope),
+        : args.astrolabeScopeDate === undefined
+          ? getDefaultAstrolabeScopeDate(defaultScope)
+          : args.astrolabeScopeDate.trim(),
   };
 }
 

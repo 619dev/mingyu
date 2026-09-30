@@ -248,6 +248,87 @@ test('IANA 跳时日未知时辰保留真实存在的丑时候选', () => {
   assert.deepEqual(batch.result.unknownTimeAnalysis?.scenarios[0]?.pillars, explicit.pillars);
 });
 
+test('未知时辰在 IANA 跳时和回拨日按给定历史偏移保留有效时辰', () => {
+  for (const { month, day, timezone, clock } of [
+    { month: 3, day: 10, timezone: -5, clock: '01:30:00' },
+    { month: 11, day: 3, timezone: -4, clock: '01:30:00' },
+  ]) {
+    const input = {
+      year: 2024,
+      month,
+      day,
+      gender: 'female' as const,
+      timeZoneId: 'America/New_York',
+      timezone,
+    };
+    const full = baziCalculator.calculateBazi(input);
+    const scenarios = full.unknownTimeAnalysis?.scenarios ?? [];
+    const index = scenarios.findIndex((scenario) => scenario.inputClockTime === clock);
+    assert.ok(index >= 0, `${month}-${day} UTC${timezone} 应保留有效的丑时`);
+    const scenario = scenarios[index]!;
+    assert.match(scenario.timeName, /丑时/);
+    const explicit = baziCalculator.calculateBazi({
+      ...input,
+      birthHour: 1,
+      birthMinute: 30,
+      birthSecond: 0,
+    });
+    assert.deepEqual(scenario.pillars, explicit.pillars);
+    const page = baziCalculator.calculateBaziUnknownTimeBatch(input, { startIndex: index });
+    assert.deepEqual(page.result.unknownTimeAnalysis?.scenarios[0], scenario);
+    assert.equal(page.batch.totalCandidates, scenarios.length);
+    for (const key of ['year', 'month', 'day'] as const) {
+      if (full.unknownTimeAnalysis?.uncertainPillars.includes(key)) continue;
+      assert.deepEqual(full.pillars[key], explicit.pillars[key]);
+      assert.deepEqual(page.result.pillars[key], explicit.pillars[key]);
+      assert.deepEqual(page.result.hiddenStems[key], full.hiddenStems[key]);
+    }
+  }
+});
+
+test('回拨日固定偏移仅覆盖交节前时段时不把正午占位月柱当成候选', () => {
+  const input = {
+    year: 2026,
+    month: 4,
+    day: 5,
+    gender: 'female' as const,
+    timeZoneId: 'Pacific/Auckland',
+    timezone: 13,
+  };
+  const full = baziCalculator.calculateBazi(input);
+  const scenarios = full.unknownTimeAnalysis?.scenarios ?? [];
+  const midnight = baziCalculator.calculateBazi({
+    ...input,
+    birthHour: 0,
+    birthMinute: 0,
+    birthSecond: 0,
+  });
+  const noon = baziCalculator.calculateBazi({
+    ...input,
+    timezone: 12,
+    birthHour: 12,
+    birthMinute: 0,
+    birthSecond: 0,
+  });
+  assert.notEqual(midnight.pillars.month.ganZhi, noon.pillars.month.ganZhi);
+  assert.ok(scenarios.length > 0);
+  assert.ok(
+    scenarios.every((scenario) => scenario.pillars.month.ganZhi === midnight.pillars.month.ganZhi),
+  );
+  assert.deepEqual(full.unknownTimeAnalysis?.uncertainPillars, []);
+  assert.deepEqual(full.pillars.month, midnight.pillars.month);
+  assert.deepEqual(full.hiddenStems.month, midnight.hiddenStems.month);
+  let cursor: { startIndex: number; contextKey?: string } = { startIndex: 0 };
+  for (const scenario of scenarios) {
+    const page = baziCalculator.calculateBaziUnknownTimeBatch(input, cursor);
+    assert.deepEqual(page.result.unknownTimeAnalysis?.scenarios[0], scenario);
+    assert.deepEqual(page.result.unknownTimeAnalysis?.uncertainPillars, []);
+    assert.deepEqual(page.result.pillars.month, midnight.pillars.month);
+    assert.deepEqual(page.result.hiddenStems.month, midnight.hiddenStems.month);
+    if (page.batch.next) cursor = page.batch.next;
+  }
+});
+
 test('农历未知时辰先沿用实际历法换算再检查同一公历日的交节边界', () => {
   const solar = baziCalculator.calculateBazi({
     year: 2024,

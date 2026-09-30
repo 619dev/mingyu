@@ -112,7 +112,7 @@ function resolveDoorNorth(input: ResidentialFengshuiInput): number {
 }
 
 function hasPersonInput(input: ResidentialFengshuiInput) {
-  return Boolean(input.mingGua || (input.birthYear != null && input.gender));
+  return input.mingGua !== undefined || Boolean(input.birthYear != null && input.gender);
 }
 
 function hasOrientationInput(input: ResidentialFengshuiInput) {
@@ -178,7 +178,7 @@ function buildBazhai(
     ...(input.birthTimezone != null ? { birthTimezone: input.birthTimezone } : {}),
     ...(input.birthTimeZoneId ? { birthTimeZoneId: input.birthTimeZoneId } : {}),
     ...(input.gender ? { gender: input.gender } : {}),
-    ...(input.mingGua ? { mingGua: input.mingGua } : {}),
+    ...(input.mingGua !== undefined ? { mingGua: input.mingGua } : {}),
   };
   const measurement = {
     northReference: input.northReference,

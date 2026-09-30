@@ -3130,6 +3130,31 @@ test('MCP 星盘未指定范围默认当前年度，显式本命仍只使用本�
   });
 });
 
+test('MCP 星盘保留零时区并拒绝显式空行运日期', async () => {
+  await withMcpClient(async (client) => {
+    const input = {
+      year: 2000,
+      month: 1,
+      day: 1,
+      hour: 12,
+      minute: 0,
+      latitude: 0,
+      longitude: 0,
+      timezone: 0,
+    };
+    const chart = await client.callTool({ name: 'divine_astrolabe', arguments: input });
+    assert.equal(chart.isError, undefined);
+    assert.equal(chart.structuredContent?.result?.birth?.timezone, 0);
+
+    const blankDate = await client.callTool({
+      name: 'astrolabe_prompt',
+      arguments: { ...input, question: '请看行运。', astrolabeScopeDate: ' ' },
+    });
+    assert.equal(blankDate.isError, true);
+    assert.match(JSON.stringify(blankDate.content), /astrolabeScopeDate 不能为空/);
+  });
+});
+
 test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () => {
   await withMcpClient(async (client) => {
     const result = await client.callTool({

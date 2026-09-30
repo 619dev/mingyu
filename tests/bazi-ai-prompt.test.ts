@@ -848,11 +848,53 @@ test('内嵌多派提示词共用通根事实，并省略排盘信息已有的�
   assert.match(prompt, /当前成败判定：成格/);
 });
 
-test('时辰未知的多派提示词保留候选资料', () => {
+test('子平内嵌流派资料不重复核心判断已列的喜忌取用', () => {
+  const result = createBaziResult({ year: 1993, month: 4, day: 8, timeIndex: 12 });
+  for (const schools of [['ziping'] as const, ['ziping', 'mangpai', 'xinpai'] as const]) {
+    const prompt = buildBaziPromptForResult({ result, schools });
+    assert.match(prompt, /^取用: 主用木，辅水、火（正财、偏财）；忌土，次忌金/m);
+    assert.equal(prompt.match(/^取用:/gm)?.length, 1);
+    assert.equal(prompt.match(/^月令旺相:/gm)?.length, 1);
+    assert.match(prompt, /^取用主线: 司令$/m);
+    assert.doesNotMatch(prompt, /调候与取用：|取用理由司令/);
+  }
+  assert.match(formatBaziSchoolPrompt(result, 'ziping'), /调候与取用：/);
+
+  const climateResult = createBaziResult({ year: 2012, month: 11, day: 15, timeIndex: 3 });
+  for (const schools of [['ziping'] as const, ['ziping', 'mangpai', 'xinpai'] as const]) {
+    const prompt = buildBaziPromptForResult({ result: climateResult, schools });
+    assert.equal(prompt.match(/^取用主线: 调候$/gm)?.length, 1);
+    assert.equal(prompt.match(/^取用:/gm)?.length, 1);
+    assert.equal(prompt.match(/^月令旺相:/gm)?.length, 1);
+  }
+});
+
+test('时辰未知的嵌入式单派和多派提示词共用一份候选资料', () => {
   const result = createBaziResult({ timeIndex: undefined, isThreePillars: true });
-  const prompt = buildBaziPromptForResult({ result, schools: ['ziping', 'mangpai'] });
-  assert.match(prompt, /出生时辰未知/);
-  assert.match(prompt, /时辰候选/);
+  const prompts = [
+    { prompt: buildBaziPromptForResult({ result, school: 'ziping' }), schoolCount: 1 },
+    { prompt: buildBaziPromptForResult({ result, schools: ['ziping'] }), schoolCount: 1 },
+    {
+      prompt: buildBaziPromptForResult({ result, schools: ['ziping', 'mangpai'] }),
+      schoolCount: 2,
+    },
+  ];
+  for (const { prompt, schoolCount } of prompts) {
+    assert.equal(prompt.match(/出生时辰未知/g)?.length, 1);
+    assert.equal(prompt.match(/^【时辰候选比较】$/gm)?.length, 1);
+    assert.equal(prompt.match(/^出生时辰资料：/gm)?.length ?? 0, 0);
+    assert.equal(prompt.match(/^已确定的柱作为基础资料/gm)?.length ?? 0, 0);
+    assert.equal(prompt.match(/^本派盘面资料：/gm)?.length ?? 0, 0);
+    assert.equal(
+      prompt.match(/候选喜用/g)?.length,
+      result.unknownTimeAnalysis?.scenarios.length ?? 0,
+    );
+    assert.equal(prompt.match(/^流派任务：/gm)?.length, schoolCount);
+  }
+  const standalonePrompt = formatBaziSchoolPrompt(result, 'ziping');
+  assert.match(standalonePrompt, /出生时辰资料：/);
+  assert.match(standalonePrompt, /候选场景（补时后复核）/);
+  assert.doesNotMatch(formatBaziSchoolPrompt(result, 'ziping', true), /^流派盘面资料：$/m);
 });
 
 test('八字单盘空问题补通用问题，分类不再塞本地固定问题', () => {

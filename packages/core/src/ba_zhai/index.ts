@@ -366,7 +366,7 @@ function resolveMingGua(input: BaZhaiInput): {
   effectiveBirthYear: number | null;
   note: string;
 } {
-  if (input.mingGua) {
+  if (input.mingGua !== undefined) {
     return { gua: input.mingGua, effectiveBirthYear: null, note: '本次直接使用已给定的命卦。' };
   }
   if (input.birthYear != null && input.gender) {
@@ -473,7 +473,7 @@ export function analyzeBaZhai(input: BaZhaiInput): BaZhaiResult {
   let match: BaZhaiResult['match'] = '未知';
   let matchAdvice = '';
 
-  if (input.sitMountain) {
+  if (input.sitMountain !== undefined) {
     houseGua = getHouseTrigram(input.sitMountain);
     houseGroup = getHouseGroup(houseGua);
     housePalace = getBaZhaiPalace(houseGua);

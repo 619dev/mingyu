@@ -11,6 +11,11 @@ import { TWENTY_FOUR_MOUNTAINS } from '../packages/core/src/direction/index.ts';
 const TRIGRAMS = ['坎', '坤', '震', '巽', '乾', '兑', '艮', '离'];
 const EAST_TRIGRAMS = new Set(['坎', '震', '巽', '离']);
 
+test('八宅显式空命卦与空坐山不能被出生资料或个人盘掩盖', () => {
+  assert.throws(() => analyzeBaZhai({ birthYear: 1990, gender: 'male', mingGua: '' }), /八卦无效/);
+  assert.throws(() => analyzeBaZhai({ mingGua: '坎', sitMountain: '' }), /坐山无效/);
+});
+
 test('八宅低年份立春换年保留原始公历年份', () => {
   for (const item of [
     { year: 20, beforeGua: '坎', afterGua: '离' },

@@ -531,7 +531,7 @@ export function resolveXuanKongOrientation(
     };
   }
 
-  if (input.sitMountain) {
+  if (input.sitMountain !== undefined) {
     assertMountain(input.sitMountain, 'sitMountain');
     const facing = input.facingMountain ?? oppositeMountain(input.sitMountain);
     assertMountain(facing, 'facingMountain');
@@ -542,7 +542,7 @@ export function resolveXuanKongOrientation(
     }
     return { sitMountain: input.sitMountain, facingMountain: facing };
   }
-  if (input.facingMountain) {
+  if (input.facingMountain !== undefined) {
     assertMountain(input.facingMountain, 'facingMountain');
     return {
       sitMountain: oppositeMountain(input.facingMountain),

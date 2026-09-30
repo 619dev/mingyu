@@ -7,6 +7,22 @@ import { generateResidentialFengshui } from '../packages/core/src/residential_fe
 import { buildResidentialCoreInput } from '../src/lib/residential-fengshui-chart.ts';
 import { assertPromptHasSingleRole, assertPromptIsPortableTaskText } from './prompt-assertions.ts';
 
+test('住宅合参显式空命卦与山向必须报错', () => {
+  assert.throws(
+    () => generateResidentialFengshui({ birthYear: 1990, gender: 'male', mingGua: '' }),
+    /八卦无效/,
+  );
+  for (const orientation of [
+    { sitMountain: '', facingMountain: '午' },
+    { sitMountain: '子', facingMountain: '' },
+  ]) {
+    assert.throws(
+      () => generateResidentialFengshui({ year: 2024, mingGua: '坎', ...orientation }),
+      /有效二十四山/,
+    );
+  }
+});
+
 test('八宅与住宅核心盘及在线包装各保留一份完整任务', () => {
   const measurement = {
     doorToInteriorDegree: 64,

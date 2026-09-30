@@ -380,15 +380,15 @@ function formatZipingFacts(
         )
       : []),
     ...(patternEvidence ? formatTransformationFacts(result, embedded) : []),
-    `调候与取用：${formatUsefulGod(result, embedded)}${
-      embedded
-        ? ''
-        : `；五行季节状态${
-            Object.entries(result.wuxingSeasonStatus)
-              .map(([element, status]) => `${element}${status}`)
-              .join('、') || '未记录'
-          }`
-    }`,
+    embedded
+      ? result.analysis.usefulGod.primaryReason
+        ? `取用主线: ${result.analysis.usefulGod.primaryReason}`
+        : ''
+      : `调候与取用：${formatUsefulGod(result)}；五行季节状态${
+          Object.entries(result.wuxingSeasonStatus)
+            .map(([element, status]) => `${element}${status}`)
+            .join('、') || '未记录'
+        }`,
     embedded ? '' : `岁运：${formatFortune(result)}`,
   ]
     .filter(Boolean)
@@ -491,7 +491,7 @@ export function formatBaziSchoolFacts(
   patternEvidence = true,
   chartShowsPatternBasis = false,
 ) {
-  if (result.isThreePillars) return formatUnknownTimeFacts(result);
+  if (result.isThreePillars) return embedded ? '' : formatUnknownTimeFacts(result);
   const normalized = normalizeBaziPromptSchool(school);
   if (normalized === 'ziping') {
     return formatZipingFacts(result, embedded, patternEvidence, chartShowsPatternBasis);
@@ -510,13 +510,16 @@ export function formatBaziSchoolPrompt(
 ) {
   const normalized = normalizeBaziPromptSchool(school);
   const profile = BAZI_SCHOOL_PROFILES[normalized];
+  const facts = formatBaziSchoolFacts(result, school, embedded, true, chartShowsPatternBasis);
   return [
     `八字流派：${profile.label}`,
     `流派任务：${profile.task}`,
     `流派依据：${profile.basis}`,
-    '流派盘面资料：',
-    formatBaziSchoolFacts(result, school, embedded, true, chartShowsPatternBasis),
-  ].join('\n');
+    facts ? '流派盘面资料：' : '',
+    facts,
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function buildBaziSchoolPromptSection(
@@ -569,16 +572,19 @@ export function formatBaziSchoolsPrompt(
       : [];
   const blocks = selected.map((school, index) => {
     const profile = BAZI_SCHOOL_PROFILES[school];
+    const facts = formatBaziSchoolFacts(result, school, embedded, selected.length === 1)
+      .split('\n')
+      .filter((line) => !(embedded && selected.length > 1 && line.startsWith('透干通根：')))
+      .join('\n');
     return [
       `派系${index + 1}：${profile.label}`,
       `流派任务：${profile.task}`,
       `流派依据：${profile.basis}`,
-      '本派盘面资料：',
-      formatBaziSchoolFacts(result, school, embedded, selected.length === 1)
-        .split('\n')
-        .filter((line) => !(embedded && selected.length > 1 && line.startsWith('透干通根：')))
-        .join('\n'),
-    ].join('\n');
+      facts ? '本派盘面资料：' : '',
+      facts,
+    ]
+      .filter(Boolean)
+      .join('\n');
   });
   if (selected.length > 1) {
     blocks.push(

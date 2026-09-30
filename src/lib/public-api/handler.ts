@@ -1958,9 +1958,13 @@ export function getPublicApiOpenApiDocument(
               description: '出生地 IANA 历史时区，如 Asia/Shanghai（八宅）',
             },
             gender: { enum: ['male', 'female'], description: '性别（八宅）' },
-            mingGua: { type: 'string', description: '直接给定命卦（八宅）' },
-            sitMountain: { type: 'string', description: '坐山，如「子」（八宅）' },
-            facingMountain: { type: 'string', description: '朝向，如「午」（玄空、八宅）' },
+            mingGua: { type: 'string', minLength: 1, description: '直接给定命卦（八宅）' },
+            sitMountain: { type: 'string', minLength: 1, description: '坐山，如「子」（八宅）' },
+            facingMountain: {
+              type: 'string',
+              minLength: 1,
+              description: '朝向，如「午」（玄空、八宅）',
+            },
             facingDegree: {
               type: 'number',
               minimum: 0,
@@ -2109,10 +2113,11 @@ export function getPublicApiOpenApiDocument(
             gender: { enum: ['male', 'female'], description: '居住人性别。' },
             mingGua: {
               type: 'string',
+              minLength: 1,
               description: '直接给定命卦：坎、坤、震、巽、乾、兑、艮或离。',
             },
-            sitMountain: { type: 'string', description: '坐山，二十四山之一。' },
-            facingMountain: { type: 'string', description: '朝向，二十四山之一。' },
+            sitMountain: { type: 'string', minLength: 1, description: '坐山，二十四山之一。' },
+            facingMountain: { type: 'string', minLength: 1, description: '朝向，二十四山之一。' },
             facingDegree: {
               type: 'number',
               minimum: 0,
@@ -2212,8 +2217,8 @@ export function getPublicApiOpenApiDocument(
               maximum: 9999,
               description: '住宅建造年或起运年；交运首年只有年份时，运期待按立春前后核定。',
             },
-            sitMountain: { type: 'string', description: '坐山，二十四山之一。' },
-            facingMountain: { type: 'string', description: '朝向，二十四山之一。' },
+            sitMountain: { type: 'string', minLength: 1, description: '坐山，二十四山之一。' },
+            facingMountain: { type: 'string', minLength: 1, description: '朝向，二十四山之一。' },
             facingDegree: {
               type: 'number',
               minimum: 0,
@@ -4187,28 +4192,33 @@ function calculateBaZhaiApi(input: JsonRecord) {
   const birthTimezone = optNumber(input, 'birthTimezone', -12, 14);
   const birthTimeZoneId =
     input.birthTimeZoneId === undefined ? undefined : readRequiredString(input, 'birthTimeZoneId');
-  const mingGua = readString(input, 'mingGua', '');
-  const sitMountain = readString(input, 'sitMountain', '');
+  const mingGua = input.mingGua === undefined ? undefined : readString(input, 'mingGua', '');
+  const sitMountain =
+    input.sitMountain === undefined ? undefined : readString(input, 'sitMountain', '');
   const doorToInteriorDegree = optNumber(input, 'doorToInteriorDegree', 0, 360);
-  const northReference = readString(input, 'northReference', '') || undefined;
+  const northReference =
+    input.northReference === undefined ? undefined : readString(input, 'northReference', '');
   const magneticDeclinationDegrees = optNumber(input, 'magneticDeclinationDegrees', -30, 30);
   const measurementUncertaintyDegrees = optNumber(input, 'measurementUncertaintyDegrees', 0, 45);
   if (birthYear !== undefined && !gender) {
     throw new ApiError(400, 'BAD_REQUEST', '使用 birthYear 推命卦时必须同时提供 gender。');
   }
-  if (birthYear === undefined && !mingGua) {
+  if (birthYear === undefined && mingGua === undefined) {
     throw new ApiError(400, 'BAD_REQUEST', '需提供 birthYear+gender 或直接给定 mingGua。');
   }
-  if (mingGua && !BAGUA.includes(mingGua)) {
+  if (mingGua !== undefined && !BAGUA.includes(mingGua)) {
     throw new ApiError(400, 'BAD_REQUEST', `mingGua 必须是八卦之一：${BAGUA.join('、')}。`);
   }
-  if (sitMountain && !TWENTY_FOUR_MOUNTAINS.includes(sitMountain)) {
+  if (sitMountain !== undefined && !TWENTY_FOUR_MOUNTAINS.includes(sitMountain)) {
     throw new ApiError(400, 'BAD_REQUEST', 'sitMountain 必须是有效的二十四山。');
   }
-  if (sitMountain && doorToInteriorDegree !== undefined) {
+  if (sitMountain !== undefined && doorToInteriorDegree !== undefined) {
     throw new ApiError(400, 'BAD_REQUEST', 'sitMountain 与 doorToInteriorDegree 只能提供一个。');
   }
-  if (northReference && !['unspecified', 'magnetic', 'true'].includes(northReference)) {
+  if (
+    northReference !== undefined &&
+    !['unspecified', 'magnetic', 'true'].includes(northReference)
+  ) {
     throw new ApiError(400, 'BAD_REQUEST', 'northReference 只能是 unspecified、magnetic 或 true。');
   }
   const baseInput: {
@@ -4234,7 +4244,7 @@ function calculateBaZhaiApi(input: JsonRecord) {
           birthTimeZoneId,
         }
       : {}),
-    mingGua: mingGua || undefined,
+    ...(mingGua !== undefined ? { mingGua } : {}),
   };
   try {
     return doorToInteriorDegree !== undefined
@@ -4245,7 +4255,7 @@ function calculateBaZhaiApi(input: JsonRecord) {
           magneticDeclinationDegrees,
           measurementUncertaintyDegrees,
         })
-      : bazhai.analyzeBaZhai({ ...baseInput, sitMountain: sitMountain || undefined });
+      : bazhai.analyzeBaZhai({ ...baseInput, sitMountain });
   } catch (error) {
     throw new ApiError(
       400,
@@ -4704,8 +4714,8 @@ function calculateXuanKongApi(input: JsonRecord) {
   try {
     return xuankong.generateXuanKong({
       year,
-      ...(sitMountain ? { sitMountain } : {}),
-      ...(facingMountain ? { facingMountain } : {}),
+      ...(sitMountain !== undefined ? { sitMountain } : {}),
+      ...(facingMountain !== undefined ? { facingMountain } : {}),
       ...(facingDegree !== undefined ? { facingDegree } : {}),
       ...(sitDegree !== undefined ? { sitDegree } : {}),
       ...(measurementUncertaintyDegrees !== undefined ? { measurementUncertaintyDegrees } : {}),
@@ -4757,16 +4767,19 @@ function calculateResidentialApi(input: JsonRecord) {
   const guaType =
     input.guaType === undefined ? undefined : readEnum(input, 'guaType', ['下卦', '替卦'] as const);
 
-  if (mingGua && !BAGUA.includes(mingGua)) {
+  if (mingGua !== undefined && !BAGUA.includes(mingGua)) {
     throw new ApiError(400, 'BAD_REQUEST', `mingGua 必须是八卦之一：${BAGUA.join('、')}。`);
   }
-  if (sitMountain && !TWENTY_FOUR_MOUNTAINS.includes(sitMountain)) {
+  if (sitMountain !== undefined && !TWENTY_FOUR_MOUNTAINS.includes(sitMountain)) {
     throw new ApiError(400, 'BAD_REQUEST', 'sitMountain 必须是有效的二十四山。');
   }
-  if (facingMountain && !TWENTY_FOUR_MOUNTAINS.includes(facingMountain)) {
+  if (facingMountain !== undefined && !TWENTY_FOUR_MOUNTAINS.includes(facingMountain)) {
     throw new ApiError(400, 'BAD_REQUEST', 'facingMountain 必须是有效的二十四山。');
   }
-  if (northReference && !['unspecified', 'magnetic', 'true'].includes(northReference)) {
+  if (
+    northReference !== undefined &&
+    !['unspecified', 'magnetic', 'true'].includes(northReference)
+  ) {
     throw new ApiError(400, 'BAD_REQUEST', 'northReference 只能是 unspecified、magnetic 或 true。');
   }
   if (birthYear !== undefined && !gender && !mingGua) {
@@ -4788,13 +4801,13 @@ function calculateResidentialApi(input: JsonRecord) {
       ...(birthTimezone !== undefined ? { birthTimezone } : {}),
       ...(birthTimeZoneId !== undefined ? { birthTimeZoneId } : {}),
       ...(gender ? { gender } : {}),
-      ...(mingGua ? { mingGua } : {}),
-      ...(sitMountain ? { sitMountain } : {}),
-      ...(facingMountain ? { facingMountain } : {}),
+      ...(mingGua !== undefined ? { mingGua } : {}),
+      ...(sitMountain !== undefined ? { sitMountain } : {}),
+      ...(facingMountain !== undefined ? { facingMountain } : {}),
       ...(facingDegree !== undefined ? { facingDegree } : {}),
       ...(sitDegree !== undefined ? { sitDegree } : {}),
       ...(doorToInteriorDegree !== undefined ? { doorToInteriorDegree } : {}),
-      ...(northReference
+      ...(northReference !== undefined
         ? { northReference: northReference as 'unspecified' | 'magnetic' | 'true' }
         : {}),
       ...(magneticDeclinationDegrees !== undefined ? { magneticDeclinationDegrees } : {}),

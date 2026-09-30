@@ -339,10 +339,14 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
     ...TIME_MAP.flatMap((time) => {
       const timeZoneId = person.timeZoneId;
       const representative = { ...solarDate, hour: time.hour, minute: time.minute, second: 0 };
+      const hasAllowedOffset = (clock: Parameters<typeof getIanaCandidateOffsets>[0]) =>
+        getIanaCandidateOffsets(clock, timeZoneId!).some(
+          (offset) => person.timezone === undefined || Math.abs(offset - person.timezone) <= 1e-6,
+        );
       let hour: number = time.hour;
       let minute: number = time.minute;
-      if (timeZoneId && !getIanaCandidateOffsets(representative, timeZoneId).length) {
-        // 跳时缺口中的时辰中点不存在；改取同一时辰内仍存在的钟表时刻。
+      if (timeZoneId && !hasAllowedOffset(representative)) {
+        // 中点处于跳时缺口或不符合给定偏移时，取同一时辰内有效的钟表时刻。
         const fallback = [
           { hour: time.hour - 1, minute: 30 },
           { hour: time.hour, minute: 30 },
@@ -353,8 +357,7 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
             candidate.hour >= 0 &&
             candidate.hour < 24 &&
             getTimeIndexFromClock(candidate.hour, candidate.minute) === time.index &&
-            getIanaCandidateOffsets({ ...solarDate, ...candidate, second: 0 }, timeZoneId).length >
-              0,
+            hasAllowedOffset({ ...solarDate, ...candidate, second: 0 }),
         );
         if (!fallback) return [];
         hour = fallback.hour;
@@ -384,7 +387,7 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
     ...collectDstBoundaryCandidatePoints(person, solarDate),
   ];
 
-  return points.flatMap<UnknownTimeCandidate>((point) => {
+  const candidates = points.flatMap<UnknownTimeCandidate>((point) => {
     const clock = { ...solarDate, hour: point.hour, minute: point.minute, second: point.second };
     if (person.timeZoneId) {
       const offsets = getIanaCandidateOffsets(clock, person.timeZoneId).filter(
@@ -463,6 +466,12 @@ export function discoverUnknownTimeCandidates(person: Person): UnknownTimeCandid
         };
       });
   });
+  if (!candidates.length && person.timeZoneId && person.timezone !== undefined) {
+    throw new Error(
+      `timezone 固定偏移 UTC${person.timezone >= 0 ? '+' : ''}${person.timezone} 与 ${person.timeZoneId} 在该日期所有有效当地时刻的历史偏移不一致。`,
+    );
+  }
+  return candidates;
 }
 
 export function buildUnknownTimeScenario(
@@ -553,16 +562,13 @@ function copyPillars(pillars: Pillars): Pillars {
   };
 }
 
-function restoreUnknownBaseFacts(result: BaziChartResult, base: BaziChartResult): void {
+function restoreUnknownInputFacts(result: BaziChartResult, base: BaziChartResult): void {
   result.gender = base.gender;
   result.age = base.age;
   result.solarDate = { ...base.solarDate };
   result.lunarDate = { ...base.lunarDate };
-  result.pillars = copyPillars(base.pillars);
-  result.dayMaster = { ...base.dayMaster };
   result.zodiac = base.zodiac;
   result.constellation = base.constellation;
-  result.mingGua = base.mingGua;
   result.warnings = [...base.warnings];
   result.warningFacts = base.warningFacts.map((fact) => ({
     ...fact,
@@ -582,10 +588,11 @@ export function finalizeUnknownBirthTime(
   uncertainPillars: Array<'year' | 'month' | 'day'>,
   options: {
     batch?: BaziUnknownTimeBatchMetadata;
-    baseResult?: BaziChartResult;
+    inputResult?: BaziChartResult;
   } = {},
 ): BaziChartResult {
-  if (options.baseResult) restoreUnknownBaseFacts(result, options.baseResult);
+  if (options.inputResult) restoreUnknownInputFacts(result, options.inputResult);
+  result.pillars = copyPillars(result.pillars);
   const retainedWarnings = result.warnings.filter(
     (warning) => warning !== '出生时辰待补充，完整判断与岁运待确定出生时分后再排。',
   );
@@ -692,9 +699,12 @@ export function applyUnknownBirthTime(
     candidate,
     chart: calculateCandidate(candidate.person),
   }));
+  const firstChart = calculated[0]?.chart;
+  if (!firstChart) throw new Error('未知时辰候选目录为空。');
   return finalizeUnknownBirthTime(
-    result,
+    firstChart,
     calculated.map(({ chart, candidate }) => buildUnknownTimeScenario(chart, candidate)),
     getUnknownTimeUncertainPillars(calculated.map(({ chart }) => chart.pillars)),
+    { inputResult: result },
   );
 }

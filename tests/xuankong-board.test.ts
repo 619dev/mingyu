@@ -381,6 +381,16 @@ test('玄空坐向度数及显式山名必须相互一致', () => {
   }
 });
 
+test('仅按山名排盘时也拒绝显式空坐山或空朝向', () => {
+  for (const input of [
+    { sitMountain: '', facingMountain: '午' },
+    { sitMountain: '子', facingMountain: '' },
+    { facingMountain: '' },
+  ]) {
+    assert.throws(() => generateXuanKong({ year: 2024, ...input }), /有效二十四山/);
+  }
+});
+
 test('测量误差跨边界时标记山向边界敏感，仍使用下卦', () => {
   const result = generateXuanKong({
     year: 2024,

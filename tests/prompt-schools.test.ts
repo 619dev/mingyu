@@ -83,7 +83,7 @@ test('八字单盘与合盘应支持子平、盲派和新派合参', () => {
   }
 });
 
-test('缺时辰流派资料只列待补时场景，合盘入口明确要求补时', () => {
+test('缺时辰流派资料复用排盘候选，合盘入口明确要求补时', () => {
   const result = baziCalculator.calculateBazi({
     year: 2000,
     month: 1,
@@ -96,9 +96,11 @@ test('缺时辰流派资料只列待补时场景，合盘入口明确要求补�
     question: '请说明目前可核的资料。',
   });
 
-  assert.match(singlePrompt, /出生时辰资料：/);
+  assert.match(singlePrompt, /出生时辰未知/);
+  assert.match(singlePrompt, /【时辰候选比较】/);
   assert.match(singlePrompt, /丑时候选/);
-  assert.match(singlePrompt, /已确定的柱作为基础资料/);
+  assert.match(singlePrompt, /【已确定的柱】/);
+  assert.doesNotMatch(singlePrompt, /出生时辰资料：|已确定的柱作为基础资料/);
   assert.throws(
     () =>
       buildBaziCompatibilityPrompt({
