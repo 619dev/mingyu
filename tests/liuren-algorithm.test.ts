@@ -806,6 +806,89 @@ test('丙辰日卯时辰将首尾同课应按别责取亥午午', () => {
   assert.deepEqual(result.branches, ['亥', '午', '午']);
 });
 
+test('大六壬古例中的比用、涉害、遥克、别责和八专应排出原文三传', () => {
+  const cases = [
+    {
+      day: '壬辰',
+      hour: '乙巳',
+      monthLeader: '辰',
+      rule: '比用法',
+      expected: ['戌', '酉', '申'],
+      source: '《六壬大全》卷五《知一课》壬辰日巳时辰将',
+    },
+    {
+      day: '甲辰',
+      hour: '丁卯',
+      monthLeader: '亥',
+      rule: '涉害法',
+      expected: ['子', '申', '辰'],
+      source: '《六壬大全》卷五《涉害课》甲辰日亥将卯时',
+    },
+    {
+      day: '庚戌',
+      hour: '庚辰',
+      monthLeader: '申',
+      rule: '涉害法',
+      expected: ['辰', '申', '子'],
+      source: '《六壬大全》卷五《察微》庚戌日辰时申将',
+    },
+    {
+      day: '甲戌',
+      hour: '丙寅',
+      monthLeader: '亥',
+      rule: '遥克法',
+      expected: ['申', '巳', '寅'],
+      source: '《古今图书集成·艺术典》第717卷《遥克》甲戌日寅时亥将',
+    },
+    {
+      day: '庚戌',
+      hour: '甲申',
+      monthLeader: '亥',
+      rule: '遥克法',
+      expected: ['寅', '巳', '申'],
+      source: '《古今图书集成·艺术典》第717卷《遥克》庚戌日申时亥将',
+    },
+    {
+      day: '戊午',
+      hour: '乙卯',
+      monthLeader: '辰',
+      rule: '别责法',
+      expected: ['寅', '午', '午'],
+      source: '《古今图书集成·艺术典》第717卷《别责》戊午日卯时辰将',
+    },
+    {
+      day: '辛丑',
+      hour: '丙申',
+      monthLeader: '亥',
+      rule: '别责法',
+      expected: ['巳', '丑', '丑'],
+      source: '《古今图书集成·艺术典》第717卷《别责》辛丑日申时亥将',
+    },
+    {
+      day: '甲寅',
+      hour: '丙寅',
+      monthLeader: '亥',
+      rule: '八专法',
+      expected: ['丑', '亥', '亥'],
+      source: '《古今图书集成·艺术典》第717卷《八专》甲寅日寅时亥将',
+    },
+    {
+      day: '己未',
+      hour: '壬申',
+      monthLeader: '亥',
+      rule: '八专法',
+      expected: ['亥', '戌', '戌'],
+      source: '《古今图书集成·艺术典》第717卷《八专》己未日申时亥将',
+    },
+  ];
+
+  for (const item of cases) {
+    const result = buildReferenceLiurenPlate(item);
+    assert.equal(result.initial.rule, item.rule, item.source);
+    assert.deepEqual(result.branches, item.expected, item.source);
+  }
+});
+
 test('大六壬排盘骨架应与 GitHub 高星参考项目 kinliuren 样例一致', () => {
   const cases = [
     {

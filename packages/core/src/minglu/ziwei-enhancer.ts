@@ -4,6 +4,7 @@
  */
 
 import type { ZiweiRuntime } from '../ziwei/runtime';
+import { selectVerifiedZiweiPatterns } from '../ziwei/iztro/pattern-detection';
 import type { MingluZiweiPalaceData, MingluZiweiSectionData, MingluZiweiStarFact } from './types';
 import type { StarFact } from '../types/analysis';
 
@@ -66,7 +67,14 @@ export function buildEnhancedZiweiSection(runtime: ZiweiRuntime): MingluZiweiSec
     };
   });
 
-  const patterns = (origin.patterns || []).map((pat) => ({
+  const birthYearHeavenlyStem = /^[甲乙丙丁戊己庚辛壬癸]/u.exec(
+    origin.basic_info.chinese_date ?? '',
+  )?.[0];
+  const patterns = selectVerifiedZiweiPatterns({
+    patterns: origin.patterns || [],
+    palaces: origin.palaces,
+    birthYearHeavenlyStem,
+  }).map((pat) => ({
     name: pat.name,
     type: (pat.kind === 'auspicious' ? '吉格' : pat.kind === 'inauspicious' ? '凶格' : '中性格') as
       '吉格' | '凶格' | '中性格',

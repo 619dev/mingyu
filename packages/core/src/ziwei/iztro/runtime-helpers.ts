@@ -93,6 +93,14 @@ async function loadIztroAstro(): Promise<IztroAstro> {
   }
 }
 
+async function loadIztroBirthdayTools(): Promise<BirthdayTools> {
+  return Promise.all([
+    import('iztro/lib/astro/index.js'),
+    import('iztro/lib/star/index.js'),
+    import('iztro/lib/utils/index.js'),
+  ]);
+}
+
 function normalizeTextField(value: unknown, label: string, fallback = ''): string {
   if (value === undefined || value === null) {
     return fallback;
@@ -174,6 +182,8 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
   const normalized = normalizeChartInput(input);
   assertValidChartInput(normalized);
   const astro = await loadIztroAstro();
+  const birthdayTools: BirthdayTools | undefined =
+    normalized.ageDivide === 'birthday' ? await loadIztroBirthdayTools() : undefined;
   let effectiveBirthSolarDate: string | undefined;
 
   const options = {
@@ -220,16 +230,31 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
     // iztro 2.5.8 的运限查询未使用 dayDivide；当天口径的晚子时须按当日早子时取干支。
     const effectiveHourIndex =
       normalized.dayDivide === 'current' && hourIndex === 12 ? 0 : hourIndex;
-    if (!effectiveBirthSolarDate) {
-      return calculateHoroscope(dateStr, effectiveHourIndex);
-    }
-
     const displayBirthSolarDate = astrolabe.solarDate;
-    astrolabe.solarDate = effectiveBirthSolarDate;
+    if (effectiveBirthSolarDate) astrolabe.solarDate = effectiveBirthSolarDate;
     try {
-      return calculateHoroscope(dateStr, effectiveHourIndex);
+      let horoscope = calculateHoroscope(dateStr, effectiveHourIndex) as FunctionalHoroscope;
+      // 带钟表日期的显式早子时及当天口径晚子时，按实际公历日取同日子时干支。
+      if (
+        (effectiveHourIndex === 0 ||
+          (normalized.dayDivide === 'current' &&
+            hourIndex === undefined &&
+            horoscope.hourly.earthlyBranch === '子')) &&
+        (typeof dateStr !== 'string' || !/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateStr))
+      ) {
+        horoscope = calculateHoroscope(horoscope.solarDate, 0) as FunctionalHoroscope;
+      }
+      return birthdayTools
+        ? applyBirthdayAgeBoundary(
+            astrolabe,
+            horoscope,
+            horoscope.solarDate,
+            normalized,
+            birthdayTools,
+          )
+        : horoscope;
     } finally {
-      astrolabe.solarDate = displayBirthSolarDate;
+      if (effectiveBirthSolarDate) astrolabe.solarDate = displayBirthSolarDate;
     }
   };
 
@@ -396,13 +421,7 @@ export async function buildHoroscopeFromInput(
   // iztro 的配置是全局状态；每次取运限前恢复本盘配置，避免不同口径串盘。
   // 可选依赖只在调用紫微能力时加载，并在恢复配置前完成异步导入。
   const birthdayTools: BirthdayTools | undefined =
-    normalized.ageDivide === 'birthday'
-      ? await Promise.all([
-          import('iztro/lib/astro/index.js'),
-          import('iztro/lib/star/index.js'),
-          import('iztro/lib/utils/index.js'),
-        ])
-      : undefined;
+    normalized.ageDivide === 'birthday' ? await loadIztroBirthdayTools() : undefined;
   astro.config(buildIztroConfig(normalized));
   const horoscope = astrolabe.horoscope(dateStr, hourIndex) as FunctionalHoroscope;
   return birthdayTools
@@ -469,6 +488,7 @@ function applyBirthdayAgeBoundary(
     birth.year,
   );
   const nominalAge = Math.max(1, target.year - birth.year + (birthdayComparison >= 0 ? 1 : 0));
+  if (horoscope.age.nominalAge === nominalAge) return horoscope;
 
   const agePalace = astrolabe.palaces.find((palace) => palace.ages.includes(nominalAge));
   if (!agePalace) {

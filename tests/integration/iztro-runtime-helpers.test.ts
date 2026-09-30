@@ -185,6 +185,116 @@ test('紫微同步运限应保持本盘分界口径，不受后来创建的星�
   }
 });
 
+test('紫微星盘与同步运限在普通、闰月、小月和晚子生日边界应返回同一年龄及宫位', async () => {
+  const cases = [
+    {
+      input: { ...DEFAULT_CHART_INPUT, birthDate: '2000-06-15', birthTimeIndex: 6 },
+      dates: [
+        { dateStr: '2001-07-03', age: 1 },
+        { dateStr: '2001-07-04', age: 2 },
+      ],
+    },
+    {
+      input: {
+        ...DEFAULT_CHART_INPUT,
+        dateType: 'lunar' as const,
+        birthDate: '2023-02-04',
+        isLeapMonth: true,
+      },
+      dates: [
+        { dateStr: '2024-03-12', age: 1 },
+        { dateStr: '2024-03-13', age: 2 },
+      ],
+    },
+    {
+      input: { ...DEFAULT_CHART_INPUT, birthDate: '2024-04-08' },
+      dates: [
+        { dateStr: '2025-03-27', age: 1 },
+        { dateStr: '2025-03-28', age: 2 },
+      ],
+    },
+    {
+      input: { ...DEFAULT_CHART_INPUT, birthDate: '2024-02-09', birthTimeIndex: 12 },
+      dates: [
+        { dateStr: '2025-01-28', age: 1 },
+        { dateStr: '2025-01-29', age: 2 },
+      ],
+    },
+    {
+      input: DEFAULT_CHART_INPUT,
+      dates: [
+        { dateStr: '2026-08-03', age: 28 },
+        { dateStr: '2026-08-04', age: 29 },
+      ],
+    },
+  ];
+  const signature = (horoscope: ReturnType<typeof buildHoroscope>) => ({
+    age: horoscope.age,
+    decadal: {
+      ...horoscope.decadal,
+      stars: horoscope.decadal.stars?.map((stars) => stars.map((star) => star.name)),
+    },
+  });
+
+  for (const item of cases) {
+    const input = { ...item.input, ageDivide: 'birthday' as const };
+    const astrolabe = await buildAstrolabeFromInput(input);
+    await buildAstrolabeFromInput(DEFAULT_CHART_INPUT);
+    for (const { dateStr, age } of item.dates) {
+      const direct = astrolabe.horoscope(dateStr, 6);
+      const synchronous = buildHoroscope(astrolabe, dateStr, 6);
+      const asynchronous = await buildHoroscopeFromInput(astrolabe, input, dateStr, 6);
+      const expectedAgePalace = astrolabe.palaces.find((palace) => palace.ages.includes(age));
+      assert.ok(expectedAgePalace);
+      for (const horoscope of [direct, synchronous, asynchronous]) {
+        assert.equal(horoscope.age.nominalAge, age, `${input.birthDate} → ${dateStr}`);
+        assert.equal(horoscope.age.index, expectedAgePalace.index);
+        assert.deepEqual(signature(horoscope), signature(asynchronous));
+      }
+      const fromClockDate = astrolabe.horoscope(new Date(`${dateStr}T12:00:00`), 6);
+      assert.deepEqual(signature(fromClockDate), signature(asynchronous));
+    }
+  }
+});
+
+test('紫微带钟表日期应保留显式早子时与晚子分界，未指定时辰时采用原钟表', async () => {
+  for (const dayDivide of ['current', 'forward'] as const) {
+    const astrolabe = await buildAstrolabeFromInput({ ...DEFAULT_CHART_INPUT, dayDivide });
+    const earlyZi = astrolabe.horoscope('2026-08-04', 0);
+    const layerSignature = (horoscope: ReturnType<typeof buildHoroscope>) =>
+      [horoscope.daily, horoscope.hourly].map((layer) => ({
+        index: layer.index,
+        heavenlyStem: layer.heavenlyStem,
+        earthlyBranch: layer.earthlyBranch,
+        palaceNames: layer.palaceNames,
+      }));
+    for (const hour of [12, 23]) {
+      const targetDate = new Date(2026, 7, 4, hour, 30);
+      assert.deepEqual(layerSignature(astrolabe.horoscope(targetDate, 0)), layerSignature(earlyZi));
+      assert.deepEqual(
+        layerSignature(astrolabe.horoscope(`2026-08-04 ${hour}:30:00`, 0)),
+        layerSignature(earlyZi),
+      );
+    }
+    assert.deepEqual(
+      layerSignature(astrolabe.horoscope(new Date(2026, 7, 4, 23, 30), 12)),
+      layerSignature(astrolabe.horoscope('2026-08-04', 12)),
+    );
+    assert.deepEqual(
+      layerSignature(astrolabe.horoscope(new Date(2026, 7, 4, 23, 30))),
+      layerSignature(astrolabe.horoscope('2026-08-04', 12)),
+    );
+    assert.deepEqual(
+      layerSignature(astrolabe.horoscope('2026-08-04 23:30:00')),
+      layerSignature(astrolabe.horoscope('2026-08-04', 12)),
+    );
+    assert.deepEqual(
+      layerSignature(astrolabe.horoscope(new Date(2026, 7, 4, 12, 30))),
+      layerSignature(astrolabe.horoscope('2026-08-04', 6)),
+    );
+  }
+});
+
 test('紫微排盘封装应拒绝 iztro 会宽松接受的非法出生输入', async () => {
   await assert.rejects(
     () => buildAstrolabeFromInput({ ...DEFAULT_CHART_INPUT, birthDate: 19980813 as never }),
