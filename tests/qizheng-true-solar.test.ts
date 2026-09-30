@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateQizheng } from '../packages/core/src/qi_zheng/index.ts';
+import { isQizhengDaylightAtBirth } from '../packages/core/src/qi_zheng/en-nan.ts';
 
 test('七政真太阳时只校正传统命身宫，天体位置保持同一时刻', () => {
   const input = {
@@ -60,5 +61,65 @@ test('七政昼夜分金按出生地日出日落状态划分极昼极夜，并�
   assert.doesNotMatch(
     `${summer.prompt}\n${winter.prompt}`,
     /太阳高朗为贵|太阴清辉为吉|逢险有救应|须防动荡受挫/,
+  );
+});
+
+test('七政重历民用日按第二组升落交点判昼夜', () => {
+  const input = {
+    year: 1969,
+    month: 9,
+    day: 30,
+    hour: 12,
+    latitude: 8.7167,
+    longitude: 167.7333,
+    timeZoneId: 'Pacific/Kwajalein',
+  } as const;
+  const first = generateQizheng({ ...input, timezone: 11 });
+  const second = generateQizheng({ ...input, timezone: -12 });
+  const crossings = second.calculationContext.solarIllumination.sunriseSunset.crossings;
+
+  assert.equal(first.enNan?.sect, '昼生');
+  assert.equal(second.enNan?.sect, '昼生');
+  assert.deepEqual(first.calculationContext.solarIllumination.sunriseSunset.crossings, crossings);
+  assert.deepEqual(
+    crossings.map((event) => event.direction),
+    ['上行', '下行', '上行', '下行'],
+  );
+  assert.deepEqual(
+    crossings.map((event) => event.utcOffset),
+    ['+11:00', '+11:00', '-12:00', '-12:00'],
+  );
+  assert.equal(
+    isQizhengDaylightAtBirth(
+      crossings[2].utcTimestamp - 1,
+      second.calculationContext.solarIllumination.sunriseSunset,
+    ),
+    false,
+  );
+  assert.equal(
+    isQizhengDaylightAtBirth(
+      crossings[2].utcTimestamp,
+      second.calculationContext.solarIllumination.sunriseSunset,
+    ),
+    true,
+  );
+  assert.equal(
+    isQizhengDaylightAtBirth(
+      crossings[3].utcTimestamp,
+      second.calculationContext.solarIllumination.sunriseSunset,
+    ),
+    false,
+  );
+  assert.ok(
+    crossings[2].utcTimestamp <
+      Date.parse(second.calculationContext.solarIllumination.referenceUtcDateTime),
+  );
+  assert.ok(
+    crossings[3].utcTimestamp >
+      Date.parse(second.calculationContext.solarIllumination.referenceUtcDateTime),
+  );
+  assert.match(
+    second.calculationContext.solarIllumination.sunriseSunset.promptText,
+    /UTC\+11:00.*UTC-12:00/,
   );
 });

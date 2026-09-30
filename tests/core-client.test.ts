@@ -149,6 +149,53 @@ test('统一客户端应直接提供前端常用的时间、环境与轻量排�
   assert.ok(residential.xuankong);
 });
 
+test('客户端在夸贾林重复民用日分别保留两次中午的昼生结果', () => {
+  const client = createMingyuClient();
+  const base = {
+    year: 1969,
+    month: 9,
+    day: 30,
+    hour: 12,
+    latitude: 8.7167,
+    longitude: 167.7333,
+    timeZoneId: 'Pacific/Kwajalein',
+  };
+  for (const [timezone, utcDateTime] of [
+    [11, '1969-09-30T01:00:00.000Z'],
+    [-12, '1969-10-01T00:00:00.000Z'],
+  ] as const) {
+    const input = { ...base, timezone };
+    const illumination = client.solarIllumination(input);
+    const chart = client.qizheng(input);
+    assert.equal(Date.parse(illumination.referenceUtcDateTime), Date.parse(utcDateTime));
+    assert.equal(chart.calculationContext.utcDateTime, utcDateTime);
+    assert.equal(
+      Date.parse(chart.calculationContext.solarIllumination.referenceUtcDateTime),
+      Date.parse(utcDateTime),
+    );
+    assert.equal(chart.enNan?.sect, '昼生');
+  }
+});
+
+test('客户端可计算阿皮亚跳日前的有效民用日并拒绝跳过日', () => {
+  const client = createMingyuClient();
+  const input = {
+    year: 2011,
+    month: 12,
+    day: 29,
+    hour: 12,
+    latitude: -13.8333,
+    longitude: -171.75,
+    timeZoneId: 'Pacific/Apia',
+  };
+  const illumination = client.solarIllumination(input);
+  const chart = client.qizheng(input);
+  assert.equal(illumination.localDate, '2011-12-29');
+  assert.equal(chart.calculationContext.solarIllumination.localDate, '2011-12-29');
+  assert.equal(chart.enNan?.sect, '昼生');
+  assert.throws(() => client.solarIllumination({ ...input, day: 30 }));
+});
+
 test('月相客户端只接受明确时区的有效时间文本', () => {
   const client = createMingyuClient();
   const utc = client.moonPhase('2026-08-06T04:00:00.000Z');

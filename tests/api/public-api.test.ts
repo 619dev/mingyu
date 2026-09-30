@@ -1250,6 +1250,54 @@ test('公开 API 应提供太阳高度、日出日落与曙暮光证据接口', 
   assert.match(invalid.body.error.message, /timezone 与 timeZoneId 至少需要提供一项/);
 });
 
+test('公开光照与七政接口保留重复日期时区消歧并识别跳过日', async () => {
+  const repeated = await callApi('metaphysics/qizheng/calculate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      year: 1969,
+      month: 9,
+      day: 30,
+      hour: 12,
+      latitude: 8.7167,
+      longitude: 167.7333,
+      timeZoneId: 'Pacific/Kwajalein',
+      timezone: -12,
+      detailMode: 'full',
+    }),
+  });
+  assert.equal(repeated.response.status, 200);
+  assert.equal(repeated.body.data.calculationContext.utcDateTime, '1969-10-01T00:00:00.000Z');
+  assert.equal(
+    Date.parse(repeated.body.data.calculationContext.solarIllumination.referenceUtcDateTime),
+    Date.parse('1969-10-01T00:00:00.000Z'),
+  );
+  assert.equal(repeated.body.data.enNan.sect, '昼生');
+
+  const apia = {
+    year: 2011,
+    month: 12,
+    day: 29,
+    hour: 12,
+    latitude: -13.8333,
+    longitude: -171.75,
+    timeZoneId: 'Pacific/Apia',
+  };
+  const valid = await callApi('calendar/solar-illumination', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(apia),
+  });
+  assert.equal(valid.response.status, 200);
+  assert.equal(valid.body.data.localDate, '2011-12-29');
+  const skipped = await callApi('calendar/solar-illumination', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...apia, day: 30 }),
+  });
+  assert.equal(skipped.response.status, 400);
+});
+
 test('公开 API 应提供天文时间、月相与节气公共证据接口', async () => {
   const astronomicalTime = await callApi('calendar/astronomical-time', {
     method: 'POST',

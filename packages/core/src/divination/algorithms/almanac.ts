@@ -8,7 +8,7 @@ import { MONTH_COMMANDER } from '../../bazi/baziDefinitions';
 import { calculateSolarTermsForYear } from '../../calendar/solar-term-evidence';
 import { getCivilDateTimeAtFixedOffset } from '../../calendar/civil-time';
 import { createUtcTimestamp, getBirthDateValidationMessage } from '../../calendar/date-validation';
-import { SHICHEN_PERIODS } from '../../calendar/dateUtils';
+import { getTimeIndexFromClock, SHICHEN_PERIODS } from '../../calendar/dateUtils';
 import { calculateMoonPhaseEvidence } from '../../calendar/moon-phase-evidence';
 import { getHuangliSolarDayGods } from '../../shensha';
 import { EARTHLY_BRANCHES, HEAVENLY_STEMS } from '../../ganzhi/data';
@@ -424,6 +424,14 @@ function readParticipantBirthInput(item: AlmanacParticipantInput) {
     typeof item.timeIndex !== 'string' || hasBlankTimeIndex
       ? undefined
       : readParticipantInteger(item.timeIndex, '出生时辰', 0, 12);
+  if (birthHour !== undefined && birthMinute !== undefined && timeIndex !== undefined) {
+    const preciseTimeIndex = getTimeIndexFromClock(birthHour, birthMinute);
+    if (timeIndex !== preciseTimeIndex) {
+      throw new Error(
+        `参与人精准出生时间对应时辰索引 ${preciseTimeIndex}，与已提供的时辰索引 ${timeIndex} 不一致。`,
+      );
+    }
+  }
   if (timeIndex === undefined && !hasPreciseClock) {
     if (hasBlankTimeIndex) {
       readParticipantInteger(item.timeIndex, '出生时辰', 0, 12);

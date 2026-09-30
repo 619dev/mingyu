@@ -9,6 +9,7 @@ import {
   getAlmanacTwentyEightStarDetail,
 } from '../packages/core/src/divination/algorithms/almanac.ts';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator.ts';
+import { normalizeBirthProfile } from '../packages/core/src/profile/index.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
@@ -318,7 +319,7 @@ test('黄历参与人应保留案例的精准出生时刻而不是回落到时�
     year: '1990',
     month: '1',
     day: '1',
-    timeIndex: '6',
+    timeIndex: '0',
     birthHour: '0',
     birthMinute: '5',
     birthSecond: '30',
@@ -328,7 +329,7 @@ test('黄历参与人应保留案例的精准出生时刻而不是回落到时�
     year: 1990,
     month: 1,
     day: 1,
-    timeIndex: 6,
+    timeIndex: 0,
     birthHour: 0,
     birthMinute: 5,
     birthSecond: 30,
@@ -344,6 +345,50 @@ test('黄历参与人应保留案例的精准出生时刻而不是回落到时�
   });
 
   assert.equal(result.participants[0]?.pillars.hour, expected.pillars.hour.ganZhi);
+});
+
+test('黄历参与人的精准时间应核对早晚子时索引', () => {
+  const base = {
+    name: '子时案例',
+    gender: '男' as const,
+    year: '1990',
+    month: '1',
+    day: '1',
+    dateType: 'solar' as const,
+  };
+  const earlyZi = {
+    ...base,
+    id: 'early-zi',
+    timeIndex: '0',
+    birthHour: '0',
+    birthMinute: '5',
+  };
+  const lateZi = {
+    ...base,
+    id: 'late-zi',
+    timeIndex: '12',
+    birthHour: '23',
+    birthMinute: '5',
+  };
+  const params = {
+    topic: 'custom' as const,
+    startDate: '2026-06-10',
+    endDate: '2026-06-10',
+  };
+
+  const result = generateAlmanacSelection({ ...params, participants: [earlyZi, lateZi] });
+  assert.deepEqual(
+    result.participants.map((participant) => participant.id),
+    ['early-zi', 'late-zi'],
+  );
+  assert.throws(
+    () => generateAlmanacSelection({ ...params, participants: [{ ...earlyZi, timeIndex: '12' }] }),
+    /对应时辰索引 0，与已提供的时辰索引 12 不一致/,
+  );
+  assert.throws(
+    () => generateAlmanacSelection({ ...params, participants: [{ ...lateZi, timeIndex: '0' }] }),
+    /对应时辰索引 12，与已提供的时辰索引 0 不一致/,
+  );
 });
 
 test('黄历参与人应沿用案例的真太阳时精准时刻与经度', () => {
@@ -384,6 +429,31 @@ test('黄历参与人应沿用案例的真太阳时精准时刻与经度', () =>
 
   assert.equal(result.participants[0]?.solarDate, '1990-05-14');
   assert.equal(result.participants[0]?.pillars.hour, expected.pillars.hour.ganZhi);
+
+  const correctedTimeIndex = normalizeBirthProfile({
+    gender: 'female',
+    calendarType: 'solar',
+    year: 1990,
+    month: 5,
+    day: 15,
+    hour: 0,
+    minute: 5,
+    second: 0,
+    timeIndex: 0,
+    location: { longitude: 75, timezone: 8 },
+    useTrueSolarTime: true,
+  }).timeIndex;
+  assert.notEqual(correctedTimeIndex, 0);
+  assert.throws(
+    () =>
+      generateAlmanacSelection({
+        topic: 'custom',
+        startDate: '2026-06-10',
+        endDate: '2026-06-10',
+        participants: [{ ...participant, timeIndex: String(correctedTimeIndex) }],
+      }),
+    /对应时辰索引 0，与已提供的时辰索引 \d+ 不一致/,
+  );
 });
 
 test('黄历择日：空白参与人行可忽略，但半填资料必须报错', () => {

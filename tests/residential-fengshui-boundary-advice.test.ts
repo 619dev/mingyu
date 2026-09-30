@@ -56,6 +56,38 @@ test('候选宅卦同属东四宅时证据仍标明中心宅卦及另一候选�
   assert.match(result.prompt, /候选坐向：乙山辛向（震宅、命宅相合）、辰山戌向（巽宅、命宅相合）/);
 });
 
+test('住宅合参按实际边界区分候选山向与下卦替卦起法', () => {
+  const centralNine = generateResidentialFengshui({
+    year: 2025,
+    mingGua: '坎',
+    sitDegree: 4.5,
+    northReference: 'true',
+  });
+  assert.deepEqual(centralNine.xuankong?.measurement?.boundaryReasons, ['中央九度分界']);
+  assert.ok(centralNine.bazhai && 'directionMeasurement' in centralNine.bazhai);
+  assert.equal(centralNine.bazhai.directionMeasurement.stability, '稳定');
+  assert.ok(centralNine.agreements.some((item) => item.title === '下卦与替卦起法待核定'));
+  assert.match(centralNine.advice.join('\n'), /核定下卦或替卦起法/);
+  assert.doesNotMatch(
+    centralNine.agreements.map((item) => item.detail).join('\n'),
+    /候选山向与宅卦/,
+  );
+
+  const mountainOnly = generateResidentialFengshui({
+    year: 2025,
+    mingGua: '坎',
+    sitDegree: 7,
+    northReference: 'true',
+    measurementUncertaintyDegrees: 1,
+  });
+  assert.deepEqual(mountainOnly.xuankong?.measurement?.boundaryReasons, ['二十四山分界']);
+  assert.ok(mountainOnly.bazhai && 'directionMeasurement' in mountainOnly.bazhai);
+  assert.equal(mountainOnly.bazhai.directionMeasurement.stability, '山向边界敏感');
+  assert.ok(mountainOnly.agreements.some((item) => item.title === '山向边界仍敏感'));
+  assert.match(mountainOnly.advice.join('\n'), /核定候选山向后/);
+  assert.doesNotMatch(mountainOnly.advice.join('\n'), /核定候选山向与宅卦/);
+});
+
 test('交运首年只给年份时，宅运摘要与提示词保持暂排口径', () => {
   const result = generateResidentialFengshui({
     year: 2024,

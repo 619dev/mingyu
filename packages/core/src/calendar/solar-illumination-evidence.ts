@@ -3,7 +3,7 @@
  * @description 采用太阳星历与 NOAA/Meeus 太阳模型，输出地点相关的光照事件和计算限制。
  */
 import * as AstronomyEngine from 'astronomy-engine';
-import { formatFixedTimezoneOffset, resolveCivilDayStart } from './civil-time';
+import { formatFixedTimezoneOffset, resolveCivilDayEnd, resolveCivilDayStart } from './civil-time';
 import { getHistoricalTimezoneOffsetAt } from './historical-timezone';
 import {
   buildAstronomicalTimeEvidence,
@@ -19,11 +19,24 @@ const { Body, Equator, Horizon, Observer, SearchAltitude, SearchRiseSet } = Astr
 
 export type SolarCrossingStatus = '正常交点' | '全天高于阈值' | '全天低于阈值';
 
+export interface SolarCrossingEvent {
+  direction: '上行' | '下行';
+  utcTimestamp: number;
+  utcDateTime: string;
+  localDateTime: string;
+  utcOffset: string;
+}
+
 export interface SolarCrossingEvidence {
   key: string;
   name: string;
   solarAltitudeDegrees: number;
   status: SolarCrossingStatus;
+  dayStartUtcDateTime: string;
+  dayEndUtcDateTimeExclusive: string;
+  /** 按真实瞬时排序，保留同一民用日内的每一处交点。 */
+  crossings: SolarCrossingEvent[];
+  /** 兼容单次升落读取；有多组交点时为该方向的首个交点。 */
   morningUtcDateTime: string | null;
   eveningUtcDateTime: string | null;
   morningLocalDateTime: string | null;
@@ -55,7 +68,7 @@ export interface SolarIlluminationAssumptionFact {
   ownerStepKeys: string[];
   promptText: string;
   sources: string[];
-  limitation: '假设事实只说明标准太阳半径、折射近似与单日时区偏移的计算前提；不得当作实际天气、遮挡或时区切换影响已经排除';
+  limitation: '假设事实只说明标准太阳半径、折射近似与民用日界及逐事件时区偏移的计算前提；不得当作实际天气、遮挡或时区切换影响已经排除';
 }
 
 export interface SolarCrossingSummaryFact {
@@ -111,6 +124,8 @@ export interface SolarIlluminationEvidence {
   key: string;
   status: '已计算' | '存在全天状态';
   localDate: string;
+  localDayStartUtcDateTime: string;
+  localDayEndUtcDateTimeExclusive: string;
   referenceLocalDateTime: string;
   referenceUtcDateTime: string;
   latitude: number;
@@ -143,7 +158,7 @@ export interface SolarIlluminationEvidence {
 const CALCULATION_STEP_LIMITATION =
   '太阳光照步骤只证明天文时间、低阶太阳位置、视太阳正午和高度阈值交点如何形成；不得把几何结果解释为实际可见性、建筑采光效果或导航级精度' as const;
 const ASSUMPTION_FACT_LIMITATION =
-  '假设事实只说明标准太阳半径、折射近似与单日时区偏移的计算前提；不得当作实际天气、遮挡或时区切换影响已经排除' as const;
+  '假设事实只说明标准太阳半径、折射近似与民用日界及逐事件时区偏移的计算前提；不得当作实际天气、遮挡或时区切换影响已经排除' as const;
 const CROSSING_SUMMARY_LIMITATION =
   '交点汇总只说明四类太阳高度阈值在该民用日期是否存在正常交点；全天状态不是错误，也不得直接解释为现实吉凶或居住效果' as const;
 const LIMITATION_FACT_LIMITATION =
@@ -224,89 +239,107 @@ function crossingEvidence(
   const calculation = `以${altitudeDegrees === -0.833 ? '标准太阳上缘与近地平折射（太阳中心名义高度-0.833°）' : `太阳中心高度${altitudeDegrees}°`}为阈值，结合纬度${latitude}°、经度${longitude}°、时区${timezoneContext}，按太阳星历求该民用日期内的高度交点`;
   const observer = new Observer(latitude, longitude, 0);
   const endTimestamp = localDayEndUtcTimestamp;
-  const searchCrossing = (direction: 1 | -1) =>
-    altitudeDegrees === -0.833
-      ? SearchRiseSet(Body.Sun, observer, direction, new Date(localMidnightUtcTimestamp), 2)
-      : SearchAltitude(
-          Body.Sun,
-          observer,
-          direction,
-          new Date(localMidnightUtcTimestamp),
-          2,
-          altitudeDegrees,
-        );
-  const rising = searchCrossing(1);
-  const setting = searchCrossing(-1);
-  const morningTimestamp =
-    rising && rising.date.getTime() < endTimestamp ? rising.date.getTime() : undefined;
-  const eveningTimestamp =
-    setting && setting.date.getTime() < endTimestamp ? setting.date.getTime() : undefined;
-  if (morningTimestamp === undefined && eveningTimestamp === undefined) {
+  const base = {
+    key,
+    name,
+    solarAltitudeDegrees: altitudeDegrees,
+    dayStartUtcDateTime: new Date(localMidnightUtcTimestamp).toISOString(),
+    dayEndUtcDateTimeExclusive: new Date(endTimestamp).toISOString(),
+    ownerFactKeys: calculationStepKeys,
+    calculationStepKeys,
+    sources: [...CROSSING_SOURCES],
+    limitation: CROSSING_LIMITATION,
+  };
+  const crossings: SolarCrossingEvent[] = [];
+  for (const [direction, label] of [
+    [1, '上行'],
+    [-1, '下行'],
+  ] as const) {
+    let searchTimestamp = localMidnightUtcTimestamp;
+    while (searchTimestamp < endTimestamp) {
+      const limitDays = (endTimestamp - searchTimestamp) / DAY_MS + 1;
+      const found =
+        altitudeDegrees === -0.833
+          ? SearchRiseSet(Body.Sun, observer, direction, new Date(searchTimestamp), limitDays)
+          : SearchAltitude(
+              Body.Sun,
+              observer,
+              direction,
+              new Date(searchTimestamp),
+              limitDays,
+              altitudeDegrees,
+            );
+      if (!found) break;
+      const utcTimestamp = found.date.getTime();
+      if (utcTimestamp >= endTimestamp) break;
+      if (utcTimestamp < searchTimestamp) throw new Error(`${name}交点未按真实瞬时递增。`);
+      const utcOffsetHours = timeZoneId
+        ? getHistoricalTimezoneOffsetAt(new Date(utcTimestamp), timeZoneId)
+        : timezone;
+      crossings.push({
+        direction: label,
+        utcTimestamp,
+        utcDateTime: new Date(utcTimestamp).toISOString(),
+        localDateTime: formatLocalTimestamp(utcTimestamp, timezone, timeZoneId),
+        utcOffset: formatFixedTimezoneOffset(utcOffsetHours),
+      });
+      // 星历交点求解器在同一根附近可能重复返回相差数毫秒的数值解。
+      searchTimestamp = utcTimestamp + 1_000;
+    }
+  }
+  crossings.sort((left, right) => left.utcTimestamp - right.utcTimestamp);
+  const morning = crossings.find((item) => item.direction === '上行');
+  const evening = crossings.find((item) => item.direction === '下行');
+  if (crossings.length === 0) {
     const midpoint = new Date((localMidnightUtcTimestamp + endTimestamp) / 2);
     const equator = Equator(Body.Sun, midpoint, observer, true, true);
     const altitude = Horizon(midpoint, observer, equator.ra, equator.dec, '').altitude;
     if (altitude < altitudeDegrees) {
       return {
-        key,
-        name,
-        solarAltitudeDegrees: altitudeDegrees,
+        ...base,
         status: '全天低于阈值',
+        crossings,
         morningUtcDateTime: null,
         eveningUtcDateTime: null,
         morningLocalDateTime: null,
         eveningLocalDateTime: null,
         promptText: `${name}：太阳高度${altitudeDegrees}°阈值在该民用日期全天无交点，状态为全天低于阈值`,
-        ownerFactKeys: calculationStepKeys,
-        calculationStepKeys,
-        sources: [...CROSSING_SOURCES],
         calculation: `${calculation}；当日无交点且太阳高度低于阈值，判定全天低于阈值`,
-        limitation: CROSSING_LIMITATION,
       };
     }
     return {
-      key,
-      name,
-      solarAltitudeDegrees: altitudeDegrees,
+      ...base,
       status: '全天高于阈值',
+      crossings,
       morningUtcDateTime: null,
       eveningUtcDateTime: null,
       morningLocalDateTime: null,
       eveningLocalDateTime: null,
       promptText: `${name}：太阳高度${altitudeDegrees}°阈值在该民用日期全天无交点，状态为全天高于阈值`,
-      ownerFactKeys: calculationStepKeys,
-      calculationStepKeys,
-      sources: [...CROSSING_SOURCES],
       calculation: `${calculation}；当日无交点且太阳高度高于阈值，判定全天高于阈值`,
-      limitation: CROSSING_LIMITATION,
     };
   }
-  const morningUtcDateTime =
-    morningTimestamp === undefined ? null : new Date(morningTimestamp).toISOString();
-  const eveningUtcDateTime =
-    eveningTimestamp === undefined ? null : new Date(eveningTimestamp).toISOString();
-  const morningLocalDateTime =
-    morningTimestamp === undefined
-      ? null
-      : formatLocalTimestamp(morningTimestamp, timezone, timeZoneId);
-  const eveningLocalDateTime =
-    eveningTimestamp === undefined
-      ? null
-      : formatLocalTimestamp(eveningTimestamp, timezone, timeZoneId);
+  const showEventOffsets = new Set(crossings.map((item) => item.utcOffset)).size > 1;
+  const formatDirection = (direction: SolarCrossingEvent['direction']) => {
+    const events = crossings.filter((item) => item.direction === direction);
+    return events.length
+      ? events
+          .map((item) =>
+            showEventOffsets ? `${item.localDateTime}（UTC${item.utcOffset}）` : item.localDateTime,
+          )
+          .join('、')
+      : '当日无';
+  };
   return {
-    key,
-    name,
-    solarAltitudeDegrees: altitudeDegrees,
+    ...base,
     status: '正常交点',
-    morningUtcDateTime,
-    eveningUtcDateTime,
-    morningLocalDateTime,
-    eveningLocalDateTime,
-    promptText: `${name}：太阳高度${altitudeDegrees}°阈值的当地上行交点${morningLocalDateTime ?? '当日无'}、下行交点${eveningLocalDateTime ?? '当日无'}`,
-    ownerFactKeys: calculationStepKeys,
-    calculationStepKeys,
-    sources: [...CROSSING_SOURCES],
-    calculation: `${calculation}；在该民用日期内解得${Number(morningTimestamp !== undefined) + Number(eveningTimestamp !== undefined)}个交点`,
-    limitation: CROSSING_LIMITATION,
+    crossings,
+    morningUtcDateTime: morning?.utcDateTime ?? null,
+    eveningUtcDateTime: evening?.utcDateTime ?? null,
+    morningLocalDateTime: morning?.localDateTime ?? null,
+    eveningLocalDateTime: evening?.localDateTime ?? null,
+    promptText: `${name}：太阳高度${altitudeDegrees}°阈值的当地上行交点${formatDirection('上行')}、下行交点${formatDirection('下行')}`,
+    calculation: `${calculation}；在${base.dayStartUtcDateTime}至${base.dayEndUtcDateTimeExclusive}（终点不含）内解得${crossings.length}个交点`,
   };
 }
 
@@ -361,12 +394,11 @@ export function calculateSolarIlluminationEvidence(
         timeZoneId,
       }).utcTimestamp
     : nominalMidnightUtcTimestamp;
-  const nextCivilDay = new Date(Date.UTC(input.year, input.month - 1, input.day + 1));
   const localDayEndUtcTimestamp = timeZoneId
-    ? resolveCivilDayStart({
-        year: nextCivilDay.getUTCFullYear(),
-        month: nextCivilDay.getUTCMonth() + 1,
-        day: nextCivilDay.getUTCDate(),
+    ? resolveCivilDayEnd({
+        year: input.year,
+        month: input.month,
+        day: input.day,
         timeZoneId,
       }).utcTimestamp
     : localMidnightUtcTimestamp + DAY_MS;
@@ -480,6 +512,8 @@ export function calculateSolarIlluminationEvidence(
         timezone,
       },
       result: {
+        localDayStartUtcDateTime: new Date(localMidnightUtcTimestamp).toISOString(),
+        localDayEndUtcDateTimeExclusive: new Date(localDayEndUtcTimestamp).toISOString(),
         crossingCount: 4,
         normalCrossingCount: [
           sunriseSunset,
@@ -599,6 +633,8 @@ export function calculateSolarIlluminationEvidence(
     key: `solar-illumination:${localDate}:${input.latitude}:${input.longitude}:${astronomicalTime.utcDateTime}:${timezoneContext}`,
     status,
     localDate,
+    localDayStartUtcDateTime: new Date(localMidnightUtcTimestamp).toISOString(),
+    localDayEndUtcDateTimeExclusive: new Date(localDayEndUtcTimestamp).toISOString(),
     referenceLocalDateTime: astronomicalTime.localDateTime,
     referenceUtcDateTime: astronomicalTime.utcDateTime,
     latitude: input.latitude,

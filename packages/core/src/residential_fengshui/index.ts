@@ -269,6 +269,10 @@ function buildAgreements(
 
   if (bazhai && xuankong) {
     const xuankongBoundarySensitive = xuankong.measurement?.stability === '山向边界敏感';
+    const mountainBoundarySensitive =
+      xuankong.measurement?.boundaryReasons?.includes('二十四山分界') ?? false;
+    const houseBoundarySensitive =
+      'directionMeasurement' in bazhai && bazhai.directionMeasurement.stability === '宅卦不稳定';
     const periodLabel = `${xuankong.period.boundaryStatus ? '暂按' : ''}${xuankong.period.label}`;
     const candidateDirections =
       'directionMeasurement' in bazhai ? bazhai.directionMeasurement.candidateDirections : [];
@@ -311,8 +315,16 @@ function buildAgreements(
     if (xuankongBoundarySensitive || bazhai.match === '未知') {
       items.push({
         level: '资料不足',
-        title: '山向或宅卦边界仍敏感',
-        detail: '测量误差范围内的候选山向与宅卦一并列出。',
+        title: mountainBoundarySensitive
+          ? houseBoundarySensitive
+            ? '山向与宅卦边界仍敏感'
+            : '山向边界仍敏感'
+          : '下卦与替卦起法待核定',
+        detail: mountainBoundarySensitive
+          ? houseBoundarySensitive
+            ? '测量误差范围内的候选山向与宅卦一并列出。'
+            : '测量误差范围内的候选山向已列出，宅卦仍属同一卦。'
+          : '坐向触及中央九度分界，需复测后核定下卦或替卦起法。',
       });
     }
   }
@@ -366,11 +378,21 @@ function buildAdvice(
     advice.push('两边有分歧时，分别保留宅运结构与个人方位依据，不硬统一成一个总分。');
   }
   if (agreements.some((item) => item.level === '资料不足')) {
+    const mountainBoundarySensitive =
+      xuankong?.measurement?.boundaryReasons?.includes('二十四山分界') ?? false;
+    const houseBoundarySensitive =
+      bazhai &&
+      'directionMeasurement' in bazhai &&
+      bazhai.directionMeasurement.stability === '宅卦不稳定';
     advice.push(
       xuankongStatus === '缺少建造年或起运年'
         ? '请先补充住宅建造年或起运年，再排玄空宅运盘并讨论具体布局。'
         : bazhai && xuankong
-          ? '请复测坐向，核定候选山向与宅卦后再讨论具体布局。'
+          ? mountainBoundarySensitive
+            ? houseBoundarySensitive
+              ? '请复测坐向，核定候选山向与宅卦后再讨论具体布局。'
+              : '请复测坐向，核定候选山向后再讨论具体布局。'
+            : '请复测坐向，核定下卦或替卦起法后再讨论具体布局。'
           : '资料不足处先补山向或居住人信息，再做更细的布局讨论。',
     );
   }

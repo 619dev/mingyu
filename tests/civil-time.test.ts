@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   formatFixedTimezoneOffset,
+  resolveCivilDayEnd,
   resolveCivilDayStart,
   resolveCivilTime,
 } from 'mingyu-core/calendar';
@@ -219,4 +220,18 @@ test('IANA 民用日首点应核验输入偏移并保持最早午夜瞬时点', 
       }),
     /固定偏移.*历史偏移不一致/,
   );
+});
+
+test('民用日终点跨整日跳过与重历时取下一实际日期的首点', () => {
+  const apia = { year: 2011, month: 12, day: 29, timeZoneId: 'Pacific/Apia' };
+  assert.equal(resolveCivilDayEnd(apia).utcDateTime, '2011-12-30T10:00:00.000Z');
+  assert.equal(resolveCivilDayEnd(apia).localDateTime, '2011-12-31T00:00:00');
+  assert.throws(() => resolveCivilDayEnd({ ...apia, day: 30 }), /2011-12-30 整日不存在/);
+
+  const kwajalein = { year: 1969, month: 9, day: 30, timeZoneId: 'Pacific/Kwajalein' };
+  const start = resolveCivilDayStart(kwajalein);
+  const end = resolveCivilDayEnd(kwajalein);
+  assert.equal(start.utcDateTime, '1969-09-29T13:00:00.000Z');
+  assert.equal(end.utcDateTime, '1969-10-01T12:00:00.000Z');
+  assert.equal((end.utcTimestamp - start.utcTimestamp) / 3_600_000, 47);
 });

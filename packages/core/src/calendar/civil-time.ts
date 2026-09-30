@@ -291,3 +291,30 @@ export function resolveCivilDayStart(
     timezone: input.timezone ?? getHistoricalTimezoneOffsetAt(new Date(after), timeZoneId),
   });
 }
+
+/** 当前真实民用日的结束瞬时，即其后第一个实际存在的当地公历日首点。 */
+export function resolveCivilDayEnd(
+  input: Pick<CivilDateTimeParts, 'year' | 'month' | 'day'> & CivilTimeZoneInput,
+): CivilTimeResolution {
+  const start = resolveCivilDayStart(input);
+  for (let daysLater = 1; daysLater <= 7; daysLater += 1) {
+    const nextDate = new Date(
+      createUtcTimestamp(input.year, input.month - 1, input.day + daysLater),
+    );
+    try {
+      const end = resolveCivilDayStart({
+        year: nextDate.getUTCFullYear(),
+        month: nextDate.getUTCMonth() + 1,
+        day: nextDate.getUTCDate(),
+        ...(input.timeZoneId ? { timeZoneId: input.timeZoneId } : { timezone: input.timezone }),
+      });
+      if (end.utcTimestamp <= start.utcTimestamp) {
+        throw new Error('民用日结束瞬时必须晚于开始瞬时。');
+      }
+      return end;
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('整日不存在')) throw error;
+    }
+  }
+  throw new Error('无法定位当前民用日期之后的实际日首点。');
+}

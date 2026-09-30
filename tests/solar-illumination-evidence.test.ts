@@ -31,6 +31,17 @@ function assertEvidenceReferences(evidence: ReturnType<typeof calculateSolarIllu
         item.ownerFactKeys.join('|') === item.calculationStepKeys.join('|'),
     ),
   );
+  for (const item of crossings) {
+    assert.deepEqual(
+      item.crossings.map((event) => event.utcTimestamp),
+      [...item.crossings].map((event) => event.utcTimestamp).sort((a, b) => a - b),
+    );
+    for (const event of item.crossings) {
+      assert.equal(Date.parse(event.utcDateTime), event.utcTimestamp);
+      assert.ok(event.utcTimestamp >= Date.parse(item.dayStartUtcDateTime));
+      assert.ok(event.utcTimestamp < Date.parse(item.dayEndUtcDateTimeExclusive));
+    }
+  }
   assert.ok(
     [...evidence.assumptionFacts, ...evidence.limitationFacts].every(
       (item) =>
@@ -55,6 +66,8 @@ test('北京夏至应给出可复核的日出日落、太阳高度与曙暮光',
   assert.ok(evidence.solarAltitudeDegrees > 72 && evidence.solarAltitudeDegrees < 74);
   assert.ok(evidence.solarAzimuthDegrees > 160 && evidence.solarAzimuthDegrees < 180);
   assert.equal(evidence.sunriseSunset.status, '正常交点');
+  assert.equal(evidence.sunriseSunset.crossings.length, 2);
+  assert.doesNotMatch(evidence.sunriseSunset.promptText, /UTC[+-]\d\d:\d\d|\d{4}-\d\d-\d\dT\d\d:/);
   assert.match(evidence.sunriseSunset.morningLocalDateTime ?? '', /2024-06-21 04:4\d:/);
   assert.match(evidence.sunriseSunset.eveningLocalDateTime ?? '', /2024-06-21 19:4\d:/);
   assert.match(evidence.civilTwilight.morningLocalDateTime ?? '', /2024-06-21 04:1\d:/);
@@ -139,9 +152,11 @@ test('高纬冬夏应明确表达极夜无日出和极昼无日落', () => {
   });
 
   assert.equal(winter.sunriseSunset.status, '全天低于阈值');
+  assert.deepEqual(winter.sunriseSunset.crossings, []);
   assert.equal(winter.sunriseSunset.morningUtcDateTime, null);
   assert.match(winter.sunriseSunset.calculation, /全天低于阈值/);
   assert.equal(summer.sunriseSunset.status, '全天高于阈值');
+  assert.deepEqual(summer.sunriseSunset.crossings, []);
   assert.equal(summer.civilTwilight.status, '全天高于阈值');
   assert.match(summer.sunriseSunset.calculation, /全天高于阈值/);
   assert.equal(winter.status, '存在全天状态');
@@ -169,16 +184,19 @@ test('极昼起始前的交点应按民用日期归属，并允许当日只有�
   const may16 = calculateAt(16);
   const may17 = calculateAt(17);
   const may18 = calculateAt(18);
+  assert.equal(may16.crossings.length, 1);
   assert.match(may16.morningLocalDateTime ?? '', /^2024-05-16 01:2[4-7]:/);
   assert.equal(may16.eveningLocalDateTime, null);
   assert.equal(may16.status, '正常交点');
   assert.match(may16.promptText, /下行交点当日无/);
   assert.match(may17.morningLocalDateTime ?? '', /^2024-05-17 01:0[6-9]:/);
+  assert.equal(may17.crossings.length, 2);
   assert.match(may17.eveningLocalDateTime ?? '', /^2024-05-17 00:1[0-4]:/);
   assert.ok(
     Date.parse(may17.eveningUtcDateTime ?? '') < Date.parse(may17.morningUtcDateTime ?? ''),
   );
   assert.equal(may18.status, '全天高于阈值');
+  assert.deepEqual(may18.crossings, []);
   assert.equal(may18.morningLocalDateTime, null);
   assert.equal(may18.eveningLocalDateTime, null);
 });
@@ -219,6 +237,76 @@ test('太阳光照证据应复用IANA历史时区并拒绝非法坐标', () => {
       }),
     /经度需在 -180 至 180 之间/,
   );
+});
+
+test('跨国际日期变更线时保留真实民用日光照并拒绝被跳过的日期', () => {
+  const location = {
+    latitude: -13.8333,
+    longitude: -171.75,
+    timeZoneId: 'Pacific/Apia',
+    year: 2011,
+    month: 12,
+    hour: 12,
+  } as const;
+  const before = calculateSolarIlluminationEvidence({ ...location, day: 29 });
+  const after = calculateSolarIlluminationEvidence({ ...location, day: 31 });
+  assert.equal(before.localDayEndUtcDateTimeExclusive, '2011-12-30T10:00:00.000Z');
+  assert.equal(after.localDayStartUtcDateTime, before.localDayEndUtcDateTimeExclusive);
+  assert.ok(
+    before.sunriseSunset.crossings.every(
+      (event) =>
+        event.utcTimestamp >= Date.parse(before.localDayStartUtcDateTime) &&
+        event.utcTimestamp < Date.parse(before.localDayEndUtcDateTimeExclusive),
+    ),
+  );
+  assert.throws(() => calculateSolarIlluminationEvidence({ ...location, day: 30 }), /不存在/);
+});
+
+test('重历民用日保留47小时内四个完整升落交点及各自历史偏移', () => {
+  const input = {
+    year: 1969,
+    month: 9,
+    day: 30,
+    hour: 12,
+    latitude: 8.7167,
+    longitude: 167.7333,
+    timeZoneId: 'Pacific/Kwajalein',
+  } as const;
+  const first = calculateSolarIlluminationEvidence({ ...input, timezone: 11 });
+  const second = calculateSolarIlluminationEvidence({ ...input, timezone: -12 });
+  const sunriseSunset = second.sunriseSunset;
+  const events = sunriseSunset.crossings;
+
+  assert.equal(
+    (Date.parse(second.localDayEndUtcDateTimeExclusive) -
+      Date.parse(second.localDayStartUtcDateTime)) /
+      3_600_000,
+    47,
+  );
+  assert.deepEqual(first.sunriseSunset.crossings, events);
+  assert.deepEqual(
+    events.map((event) => event.direction),
+    ['上行', '下行', '上行', '下行'],
+  );
+  assert.deepEqual(
+    events.map((event) => event.utcOffset),
+    ['+11:00', '+11:00', '-12:00', '-12:00'],
+  );
+  assert.deepEqual(
+    events.map((event) => event.utcDateTime),
+    [
+      '1969-09-29T18:37:31.550Z',
+      '1969-09-30T06:40:49.824Z',
+      '1969-09-30T18:37:26.125Z',
+      '1969-10-01T06:40:16.081Z',
+    ],
+  );
+  assert.equal(sunriseSunset.morningUtcDateTime, events[0].utcDateTime);
+  assert.equal(sunriseSunset.eveningUtcDateTime, events[1].utcDateTime);
+  assert.ok(events.every((event) => event.localDateTime.startsWith('1969-09-30 ')));
+  assert.match(sunriseSunset.promptText, /UTC\+11:00.*UTC-12:00/);
+  assert.doesNotMatch(sunriseSunset.promptText, /\d{4}-\d\d-\d\dT\d\d:/);
+  assert.match(sunriseSunset.calculation, /解得4个交点/);
 });
 
 test('夏令时切换日的日出和视太阳正午应按事件时刻的历史偏移显示', () => {

@@ -196,8 +196,7 @@ test('恩难相位中的四余加括注不改变星曜身份', () => {
       birthUtcTimestamp: Date.parse('2024-06-21T12:00:00Z'),
       sunriseSunset: {
         status: '全天高于阈值' as const,
-        morningUtcDateTime: null,
-        eveningUtcDateTime: null,
+        crossings: [],
       },
       mingZhu,
       stars: [
@@ -236,8 +235,7 @@ test('恩难相位以合相描述零度吊照，不把跨宫关系写成同宫',
     birthUtcTimestamp: Date.parse('2024-06-21T12:00:00Z'),
     sunriseSunset: {
       status: '全天高于阈值',
-      morningUtcDateTime: null,
-      eveningUtcDateTime: null,
+      crossings: [],
     },
     mingZhu: '火',
     stars: [
@@ -269,8 +267,7 @@ test('恩难只采用本命当前黄经支持的吊照，不沿用旧角距或�
     birthUtcTimestamp: Date.parse('2024-06-21T12:00:00Z'),
     sunriseSunset: {
       status: '全天高于阈值' as const,
-      morningUtcDateTime: null,
-      eveningUtcDateTime: null,
+      crossings: [],
     },
     mingZhu: '火',
     aspects: [

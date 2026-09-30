@@ -78,32 +78,23 @@ export interface QizhengEnNanProfile {
   summary: string;
 }
 
-type SunriseSunset = Pick<
-  SolarCrossingEvidence,
-  'status' | 'morningUtcDateTime' | 'eveningUtcDateTime'
->;
+type SunriseSunset = Pick<SolarCrossingEvidence, 'status' | 'crossings'>;
 
-/** 以星历求出的太阳上缘日出日落交点判昼夜，兼容极昼、极夜与单交点日期。 */
+/** 按该民用日内全部升落交点的真实瞬时判昼夜，兼容极昼、极夜与单交点日期。 */
 export function isQizhengDaylightAtBirth(utcTimestamp: number, crossing: SunriseSunset): boolean {
   if (!Number.isFinite(utcTimestamp)) throw new Error('七政四余昼夜分金需要有效的出生时刻。');
+  if (!Array.isArray(crossing.crossings)) throw new Error('七政四余昼夜分金缺少完整日出日落交点。');
   if (crossing.status === '全天高于阈值') return true;
   if (crossing.status === '全天低于阈值') return false;
-  const sunrise = crossing.morningUtcDateTime ? Date.parse(crossing.morningUtcDateTime) : null;
-  const sunset = crossing.eveningUtcDateTime ? Date.parse(crossing.eveningUtcDateTime) : null;
-  if (
-    (sunrise !== null && !Number.isFinite(sunrise)) ||
-    (sunset !== null && !Number.isFinite(sunset))
-  ) {
-    throw new Error('七政四余日出日落交点时间无效。');
+  const events = crossing.crossings;
+  if (!events.length) throw new Error('七政四余昼夜分金缺少日出日落交点。');
+  let lastDirection: (typeof events)[number]['direction'] | undefined;
+  for (const event of events) {
+    if (!Number.isFinite(event.utcTimestamp)) throw new Error('七政四余日出日落交点时间无效。');
+    if (event.utcTimestamp > utcTimestamp) break;
+    lastDirection = event.direction;
   }
-  if (sunrise !== null && sunset !== null) {
-    return sunrise < sunset
-      ? utcTimestamp >= sunrise && utcTimestamp < sunset
-      : utcTimestamp >= sunrise || utcTimestamp < sunset;
-  }
-  if (sunrise !== null) return utcTimestamp >= sunrise;
-  if (sunset !== null) return utcTimestamp < sunset;
-  throw new Error('七政四余昼夜分金缺少日出日落交点或全天状态。');
+  return (lastDirection ?? (events[0].direction === '上行' ? '下行' : '上行')) === '上行';
 }
 
 /**

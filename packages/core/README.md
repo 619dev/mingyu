@@ -320,6 +320,8 @@ console.log(session.serializedResult); // 稳定 JSON，可用于缓存或历史
 
 `generateDivinationSession` 覆盖六爻、梅花、小六壬、金口诀、奇门、大六壬、太乙、塔罗、灵签、黄历、雷诺曼和星盘；`validateDivinationRequest` 可单独用于提交前校验。金口诀可传 `jinkoujue: { method: 'branch', branch: '申' }` 直接指定地分，也支持时间、数字和随机取地分；雷诺曼 `spread` 支持 `single`、`three`、`five`、`relationship`、`decision`、`nine`、`element`、`grandTableau`。旧版 `summary`、`prompt`、`data` 字段继续保留，新接入优先使用严格分层后的三个字段。手工牌面、三钱记录、逐张随机样本、灵签选号、种子和 replay 均保留在对应请求字段中。
 
+黄历择日参与人的出生时间可提供精确小时和分钟并省略 `timeIndex`；若同时提供，两者须对应同一时辰。
+
 如果需要一次得到本命盘、运限盘、结构化分析资料和大限时间线，可以直接使用紫微运行时入口。它支持数字或文本表单输入；服务端、缓存和测试建议显式传入 `horoscopeContext`，让同一出生盘在不同运行时保持相同快照：
 
 ```ts
@@ -687,7 +689,23 @@ console.log(qizhengChart.stars.length, qizhengChart.mansionBoundaries.length); /
 console.log(qizhengChart.positionSources); // 现代天文与传统均速来源分层
 ```
 
-单独调用 `qizheng.evaluateQizhengEnNan` 时，须传入本命 `stars`，每项包含星曜 `name` 与黄经度数 `longitude`；可复用 `generateQizheng` 返回的星曜资料。恩难交会按这些黄经及对应容许度复核 `aspects`，星曜位置资料未齐时只保留已核验的交会。
+`qizhengChart.calculationContext.solarIllumination.sunriseSunset` 保存所在民用日的实际起止 UTC 时刻（`dayStartUtcDateTime`、`dayEndUtcDateTimeExclusive`，终点不含）及按时间排序的全部 `crossings`。每个交点包含上行或下行方向、UTC 时间戳与文本、当地时间和当时的 UTC 偏移；夏令时及日期线变更造成的短日、长日均按实际时段列出交点。原有 `morning*`、`evening*` 字段仍是各方向的首个交点；跳过的民用日没有可计算的结果，会报错。
+
+单独调用 `qizheng.evaluateQizhengEnNan` 时，可直接复用同一七政盘的日光照资料和本命星曜：
+
+```typescript
+const sunriseSunset = qizhengChart.calculationContext.solarIllumination.sunriseSunset;
+const enNan = qizheng.evaluateQizhengEnNan({
+  birthUtcTimestamp: qizhengChart.calculationContext.astronomicalTime.unixMilliseconds,
+  sunriseSunset,
+  mingZhu: qizhengChart.mingZhu,
+  stars: qizhengChart.stars,
+  aspects: qizhengChart.aspects,
+});
+console.log(sunriseSunset.crossings, enNan.sect);
+```
+
+`stars` 每项需有星曜 `name` 与黄经度数 `longitude`；恩难交会按这些黄经及对应容许度复核 `aspects`，星曜位置资料未齐时只保留已核验的交会。
 
 ### 八字增强分析（从 vibebazi 整合）
 
