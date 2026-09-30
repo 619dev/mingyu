@@ -102,10 +102,13 @@ export const MingluAstrolabeSection: React.FC<Props> = ({ data }) => {
 
       {/* 四元素与三形态 */}
       <div id="astrolabe-elements-chart" className="minglu-subblock">
-        <h3 className="minglu-subblock-title">四元素与三形态能量分布</h3>
+        <h3 className="minglu-subblock-title">四元素与三形态星体统计</h3>
+        <p className="text-xs text-slate-500 mb-3">
+          按太阳至冥王星十颗本命星体逐颗计数；各组百分比以十颗星体为分母。
+        </p>
         <div className="minglu-card-grid minglu-card-grid-2">
           <div className="minglu-card">
-            <h4 className="font-bold text-base mb-3">四元素能量比例</h4>
+            <h4 className="font-bold text-base mb-3">四元素星体数占比</h4>
             {Object.entries(distributions.elements).map(([elem, info]) => (
               <div key={elem} className="mb-2">
                 <div className="flex justify-between text-xs font-semibold mb-1">
@@ -127,7 +130,7 @@ export const MingluAstrolabeSection: React.FC<Props> = ({ data }) => {
           </div>
 
           <div className="minglu-card">
-            <h4 className="font-bold text-base mb-3">三形态能量分布</h4>
+            <h4 className="font-bold text-base mb-3">三形态星体数占比</h4>
             {Object.entries(distributions.modalities).map(([mod, info]) => (
               <div key={mod} className="mb-2">
                 <div className="flex justify-between text-xs font-semibold mb-1">

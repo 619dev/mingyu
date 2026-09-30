@@ -136,12 +136,13 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
     data.birth.isTrueSolarTime && data.birth.trueSolarDateTime
       ? `出生时间校正：当地钟表时间${data.birth.standardDateTime || data.birth.dateTime}；真太阳时${data.birth.trueSolarDateTime}（传统时间参考）；星盘依据当地钟表时间对应的出生瞬间计算`
       : '',
-    `元素分布：${
+    '元素与模式分布口径：按太阳至冥王星十颗本命星体逐颗归类，每颗星体计作一个成员。',
+    `元素分布（十大星体）：${
       Object.entries(data.summary.elements)
         .map(([key, values]) => `${key}${values.join('、')}`)
         .join('；') || '未记录'
     }`,
-    `模式分布：${
+    `模式分布（十大星体）：${
       Object.entries(data.summary.modalities)
         .map(([key, values]) => `${key}${values.join('、')}`)
         .join('；') || '未记录'
