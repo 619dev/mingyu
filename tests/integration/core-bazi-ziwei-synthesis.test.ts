@@ -289,6 +289,28 @@ test('紫微原盘十二宫不完整时合参不能报告资料完整', async ()
   assert.equal(synthesis.corroboration?.shaYao.ziweiCheckStatus, 'origin-missing');
 });
 
+test('紫微原盘缺失时合参提示词保留煞曜与贵人星资料缺口', async () => {
+  const reading = await getCombinedReading();
+  assert.ok(reading.bundle.bazi);
+  assert.ok(reading.bundle.ziwei);
+  const synthesis = buildBaziZiweiSynthesis({
+    bazi: reading.bundle.bazi,
+    ziwei: {
+      ...reading.bundle.ziwei,
+      payloadByScope: {
+        ...reading.bundle.ziwei.payloadByScope,
+        origin: undefined,
+      },
+    },
+  });
+
+  assert.equal(synthesis.corroboration?.shaYao.ziweiCheckStatus, 'origin-missing');
+  assert.equal(synthesis.corroboration?.guiRen.ziweiCheckStatus, 'origin-missing');
+  const prompt = formatBaziZiweiSynthesisForPrompt(synthesis);
+  assert.match(prompt, /紫微本命十二宫资料缺失或不完整，关键宫煞曜与贵人星位置未核验/);
+  assert.doesNotMatch(prompt, /双盘煞曜不显|紫微关键宫未记录目标煞曜|关键宫也未记录目标贵人星/);
+});
+
 test('紫微宫位缺少星曜列表时合参记录资料缺口而不输出残缺宫位', async () => {
   const reading = await getCombinedReading();
   assert.ok(reading.bundle.bazi);

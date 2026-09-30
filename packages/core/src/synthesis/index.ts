@@ -705,6 +705,10 @@ export function formatBaziZiweiSynthesisForPrompt(
   const corroboration = synthesis.corroboration;
   const corroborationFacts = corroboration
     ? [
+        corroboration.shaYao.ziweiCheckStatus === 'origin-missing' ||
+        corroboration.guiRen.ziweiCheckStatus === 'origin-missing'
+          ? '紫微本命十二宫资料缺失或不完整，关键宫煞曜与贵人星位置未核验'
+          : '',
         corroboration.shaYao.baziYangRenPositions.length
           ? `八字羊刃：${corroboration.shaYao.baziYangRenPositions.map(formatBaziPosition).join('、')}`
           : '',
