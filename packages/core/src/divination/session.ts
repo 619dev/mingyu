@@ -517,7 +517,8 @@ function generateData(
     case 'liuyao':
       return generateLiuyao(customDate, {
         ...(request.liuyao ?? {}),
-        ...((request.liuyao?.method ?? (request.liuyao?.yaos ? 'manual' : 'time')) === 'coins' &&
+        ...(((request.liuyao?.method === 'coins' && !request.liuyao.coinThrows) ||
+          (request.liuyao?.method === 'yarrow' && !request.liuyao.yarrowSplits)) &&
         randomOptions
           ? randomOptions
           : {}),

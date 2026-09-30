@@ -288,6 +288,50 @@ test('显式占法会话应拒绝未被起课过程使用的重放记录', () =>
   );
 });
 
+test('三钱与蓍草会话应复用统一种子并支持相同随机样本重放', () => {
+  for (const method of ['coins', 'yarrow'] as const) {
+    const request = {
+      method: 'liuyao' as const,
+      question: '核对六爻随机记录',
+      divinationTime: '2026-02-01T10:30:00+08:00',
+      currentTime: '2026-02-01T10:30:00+08:00',
+      liuyao: { method },
+      random: { seed: '统一六爻种子' },
+    };
+    const first = generateDivinationSession(request);
+    assert.deepEqual(generateDivinationSession(request).data, first.data);
+    const data = first.data as import('../packages/core/src/types/divination').LiuyaoData;
+    assert.equal(data.meta?.random?.mode, 'seeded');
+    const samples = data.meta?.random?.samples;
+    assert.ok(samples?.length);
+    const replay = generateDivinationSession({ ...request, random: { replay: samples } });
+    const replayData = replay.data as import('../packages/core/src/types/divination').LiuyaoData;
+    assert.deepEqual(replayData.yaoArray, data.yaoArray);
+    assert.deepEqual(replayData.generation, data.generation);
+    assert.equal(replayData.meta?.random?.mode, 'replay');
+    assert.deepEqual(replayData.meta?.random?.samples, samples);
+  }
+});
+
+test('手摇三钱记录应保留原爻值且不消费统一种子', () => {
+  const coinThrows = Array.from({ length: 6 }, () => ({
+    coins: [2, 2, 3] as const,
+    total: 7 as const,
+  }));
+  const session = generateDivinationSession({
+    method: 'liuyao',
+    question: '核对手摇记录',
+    divinationTime: '2026-02-01T10:30:00+08:00',
+    currentTime: '2026-02-01T10:30:00+08:00',
+    liuyao: { method: 'coins', coinThrows },
+    random: { seed: '统一六爻种子' },
+  });
+  const data = session.data as import('../packages/core/src/types/divination').LiuyaoData;
+  assert.deepEqual(data.yaoArray, [7, 7, 7, 7, 7, 7]);
+  assert.deepEqual(data.generation?.coinThrows, coinThrows);
+  assert.equal(data.meta?.random, undefined);
+});
+
 test('统一占法会话应支持金口诀指定地分并在计算前校验输入', () => {
   const session = generateDivinationSession({
     method: 'jinkoujue',
