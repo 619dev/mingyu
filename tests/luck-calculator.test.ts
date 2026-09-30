@@ -61,7 +61,7 @@ test('支持出生范围及后续十二步大运的流年干支应与原年中�
   // 出生后第 11 个公历年，十二步大运最后半开区间止于 2231 年立春前，
   // 因而实际可能生成的流年范围为 1899-2230。
   for (let year = 1899; year <= 2230; year++) {
-    const legacyGanZhi = getGanZhiFromDate(new Date(year, 5, 1, 12)).year;
+    const legacyGanZhi = getGanZhiFromDate(new Date(Date.UTC(year, 5, 1, 4))).year;
     const legacyGan = legacyGanZhi[0];
     const legacyZhi = legacyGanZhi[1];
     const legacy = {

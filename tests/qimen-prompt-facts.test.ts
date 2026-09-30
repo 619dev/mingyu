@@ -9,6 +9,10 @@ import {
 import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 import { getDunJiaStem } from '../packages/core/src/divination/algorithms/qimen/helpers/palace-utils';
+import {
+  analyzeQimenEvidence,
+  getQimenActiveSpecialConditionText,
+} from '../packages/core/src/divination/qimen-evidence';
 
 test('奇门提示词按当前盘面重算格局与宫位证据', () => {
   const data = structuredClone(generateQimen(new Date('2026-05-19T10:30:00+08:00')));
@@ -236,6 +240,34 @@ test('奇门特殊条件未命中时不把残留说明写入在线提示词或�
     getDivinationSummaryBlocks('qimen', data).lines.join('\n'),
     /五不遇时残留说明/u,
   );
+});
+
+test('日干实际入墓与同宫格局只在提示词出现一次，独立特殊条件仍保留', () => {
+  const data = generateQimen(new Date('2025-01-28T04:00:00Z'), 'zhuanpan', 'day');
+  const palaces = structuredClone(data.jiuGongGe);
+  assert.equal(data.specialConditions?.isRiGanRuMu, true);
+  assert.ok(data.patternTags.includes('入墓（日干丁落艮八宫）'));
+
+  const enhanced = formatEnhancedDivinationInfo('qimen', data);
+  const evidence = analyzeQimenEvidence(data).promptText;
+  const summary = getDivinationSummaryBlocks('qimen', data).lines.join('\n');
+  assert.match(enhanced, /星奇入墓（凶格）：丁奇入艮八宫/u);
+  assert.match(evidence, /星奇入墓/u);
+  assert.match(summary, /格局：[^\n]*入墓（日干丁落艮八宫）/u);
+  for (const prompt of [enhanced, evidence, summary]) {
+    assert.doesNotMatch(prompt, /特殊条件：日干丁落艮八宫入墓/u);
+    assert.doesNotMatch(prompt, /日家特殊条件：日干丁落艮八宫入墓/u);
+  }
+  assert.deepEqual(data.jiuGongGe, palaces);
+
+  const withOtherCondition = structuredClone(data);
+  withOtherCondition.specialConditions!.isWuBuYuShi = true;
+  withOtherCondition.specialConditions!.description += '另一独立特殊条件；';
+  assert.equal(getQimenActiveSpecialConditionText(withOtherCondition), '另一独立特殊条件；');
+
+  const withoutMatchingPattern = structuredClone(data);
+  withoutMatchingPattern.patternTags = [];
+  assert.match(getQimenActiveSpecialConditionText(withoutMatchingPattern), /日干丁落艮八宫入墓/u);
 });
 
 test('奇门同宫比和与寄干五合各自保持身份，五合不直接写成合化', () => {

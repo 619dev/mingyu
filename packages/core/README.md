@@ -743,6 +743,8 @@ const reverse = reverseBaziDates({
 console.log(reverse.candidates); // 北京时间候选区间，起点含、终点不含
 ```
 
+`mingyu-core/ganzhi` 的 `getGanZhiFromDate(date)` 与 `getLunarHourFromDate(date)` 将 `Date` 视为真实瞬时，按 `TimeManager` 的统一时区读取民用年月日时分秒（默认 UTC+8）。完整四柱请用 `getGanZhiFromDate`：节气年、月以同一瞬时的节气参考计算，已配置其他时区时日、时柱使用该时区的钟表。`getLunarHourFromDate` 返回按当地民用钟表生成的 tyme4ts 时辰对象。构造北京时间样本时请使用带偏移的日期，例如 `new Date('2024-02-04T16:30:00+08:00')`；`new Date(2024, 1, 4, 16, 30)` 表示宿主本地钟表时间，其真实瞬时会随运行环境时区改变。
+
 ---
 
 ## 主要 API 一览

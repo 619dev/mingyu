@@ -68,6 +68,16 @@ export type NamingBirthInput = BaziChartInputDraft & {
   birthTimeRange?: NamingBirthRangeSource;
 };
 
+function hasNamingClockPart(
+  value: BaziChartInputDraft['birthHour'] | BaziChartInputDraft['birthMinute'],
+) {
+  return value !== undefined && value !== '';
+}
+
+function hasNamingClock(input: NamingBirthInput) {
+  return hasNamingClockPart(input.birthHour) && hasNamingClockPart(input.birthMinute);
+}
+
 function formatNamingClock(input: NamingBirthInput, includeSeconds: boolean) {
   if (input.birthHour === undefined || input.birthMinute === undefined) return null;
   const hour = String(Number(input.birthHour)).padStart(2, '0');
@@ -79,14 +89,10 @@ function formatNamingClock(input: NamingBirthInput, includeSeconds: boolean) {
 }
 
 function correctedChinaDstClock(input: NamingBirthInput): string | null {
-  if (
-    input.applyChinaDst !== true ||
-    input.useTrueSolarTime === true ||
-    input.birthSecond === undefined ||
-    input.birthSecond === ''
-  ) {
+  if (input.applyChinaDst !== true || input.useTrueSolarTime === true || !hasNamingClock(input)) {
     return null;
   }
+  const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
   const clock = resolveBirthCalendarClockTime({
     dateType: input.dateType === 'lunar' ? 'lunar' : 'solar',
     year: Number(input.year),
@@ -94,7 +100,7 @@ function correctedChinaDstClock(input: NamingBirthInput): string | null {
     day: Number(input.day),
     hour: Number(input.birthHour),
     minute: Number(input.birthMinute),
-    second: Number(input.birthSecond),
+    second: hasInputSecond ? Number(input.birthSecond) : 0,
     isLeapMonth: input.isLeapMonth,
   });
   const dst = checkChinaDst(clock.year, clock.month, clock.day, clock.hour, clock.minute);
@@ -102,7 +108,7 @@ function correctedChinaDstClock(input: NamingBirthInput): string | null {
   const corrected = new Date(
     Date.UTC(clock.year, clock.month - 1, clock.day, clock.hour, clock.minute + dst.offsetMinutes),
   );
-  return `${String(corrected.getUTCHours()).padStart(2, '0')}:${String(corrected.getUTCMinutes()).padStart(2, '0')}:${String(clock.second).padStart(2, '0')}`;
+  return `${String(corrected.getUTCHours()).padStart(2, '0')}:${String(corrected.getUTCMinutes()).padStart(2, '0')}${hasInputSecond ? `:${String(clock.second).padStart(2, '0')}` : ''}`;
 }
 
 function calculateNamingBazi(input: NamingBirthInput) {
@@ -129,11 +135,10 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
     resolvedPlace && longitude !== null && Math.abs(resolvedPlace.longitude - longitude) <= 1e-8
       ? resolvedPlace
       : null;
-  const hasPreciseStandardTime =
-    input.useTrueSolarTime !== true && input.birthSecond !== undefined && input.birthSecond !== '';
+  const hasStandardClock = input.useTrueSolarTime !== true && hasNamingClock(input);
   const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
   const inputClock = formatNamingClock(input, hasInputSecond);
-  const chinaDstClock = hasPreciseStandardTime ? correctedChinaDstClock(input) : null;
+  const chinaDstClock = hasStandardClock ? correctedChinaDstClock(input) : null;
   const calculatedClock = chart.timing
     ? `${String(chart.timing.correctedTime.hour).padStart(2, '0')}:${String(chart.timing.correctedTime.minute).padStart(2, '0')}${input.birthSecond !== undefined && input.birthSecond !== '' ? `:${String(chart.timing.correctedTime.second).padStart(2, '0')}` : ''}`
     : null;
@@ -161,17 +166,17 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
       inputTime: input.useTrueSolarTime
         ? (inputClock ??
           `${String(Number(input.birthHour)).padStart(2, '0')}:${String(Number(input.birthMinute)).padStart(2, '0')}`)
-        : hasPreciseStandardTime && inputClock
+        : hasStandardClock && inputClock
           ? inputClock
           : `${chart.timeInfo.name}（${chart.timeInfo.range}）`,
       mode: input.isThreePillars
         ? '待补时'
         : input.useTrueSolarTime
           ? '真太阳时'
-          : hasPreciseStandardTime
+          : hasStandardClock
             ? chinaDstClock
               ? '中国历史夏令时钟表时间（已回拨为标准北京时间）'
-              : '标准北京时间（精确到秒）'
+              : `标准北京时间（精确到${hasInputSecond ? '秒' : '分'}）`
             : '时辰',
       place,
       longitude,
@@ -181,7 +186,7 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
       timeZoneId: input.useTrueSolarTime ? (chart.timing?.timeZoneId ?? null) : null,
       calculatedTime: chart.timing
         ? calculatedClock!
-        : hasPreciseStandardTime && inputClock
+        : hasStandardClock && inputClock
           ? (chinaDstClock ?? inputClock)
           : `${chart.timeInfo.name}（${chart.timeInfo.range}）`,
     },

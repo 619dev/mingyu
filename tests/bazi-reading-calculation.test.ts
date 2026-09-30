@@ -163,6 +163,51 @@ test('精确标准北京时间保留秒数并沿用核心排盘结果', () => {
   assert.equal(output.result.timeInfo.index, expected.timeInfo.index);
 });
 
+test('本地 AI 八字补算以无秒标准时分为准并保留可重放身份', () => {
+  const clockInput = {
+    ...baseInput,
+    year: 2024,
+    month: 6,
+    day: 1,
+    timeIndex: 6,
+    birthHour: 0,
+    birthMinute: 5,
+  };
+  const withOldIndex = calculateBaziReading(clockInput);
+  const withoutIndex = calculateBaziReading({ ...clockInput, timeIndex: '' });
+  const expected = calculateBaziChartFromInput({
+    gender: 'male',
+    year: 2024,
+    month: 6,
+    day: 1,
+    timeIndex: '',
+    birthHour: 0,
+    birthMinute: 5,
+  });
+
+  for (const output of [withOldIndex, withoutIndex]) {
+    assert.equal(output.result.timeInfo.index, 0);
+    assert.deepEqual(output.result.pillars, expected.pillars);
+    assert.deepEqual(output.result.calculationIdentity.birth, {
+      gender: 'male',
+      year: 2024,
+      month: 6,
+      day: 1,
+      dateType: 'solar',
+      isLeapMonth: false,
+      useTrueSolarTime: false,
+      birthPlace: '',
+      birthHour: 0,
+      birthMinute: 5,
+      birthSecond: 0,
+    });
+  }
+  assert.throws(
+    () => calculateBaziReading({ ...clockInput, birthMinute: undefined }),
+    /同时提供出生小时和分钟/u,
+  );
+});
+
 test('取消信号在本地计算开始前直接中止', () => {
   const controller = new AbortController();
   controller.abort();

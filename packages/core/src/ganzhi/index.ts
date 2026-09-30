@@ -12,6 +12,7 @@
  * 对外函数签名与返回形状保持不变，已接入 API/MCP 的模块无需改动。
  */
 import { SolarTime, SixtyCycle, HeavenStem, EarthBranch } from 'tyme4ts';
+import { TimeManager } from '../calendar/timeManager';
 import {
   BRANCH_ORDER,
   BRANCH_WUXING,
@@ -469,32 +470,28 @@ export interface GanZhiDate {
 }
 
 /**
- * 把公历时间统一转换为 tyme4ts 的农历时辰对象。
+ * 把 Date 所代表的真实瞬时按统一占卜时区转换为 tyme4ts 的农历时辰对象。
  *
  * 注意：`LunarHour.fromYmdHms` 接收的是农历年月日，不能直接用于公历输入；
  * 公历必须先创建 `SolarTime`，再调用 `getLunarHour()`。
  */
 export function getLunarHourFromDate(date: Date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new Error('日期无效');
+  const parts = TimeManager.getWallClockParts(date);
   return SolarTime.fromYmdHms(
-    date.getFullYear(),
-    date.getMonth() + 1,
-    date.getDate(),
-    date.getHours(),
-    date.getMinutes(),
-    date.getSeconds(),
+    parts.year,
+    parts.month,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
   ).getLunarHour();
 }
 
-/** 从公历时间获取四柱干支（委托 tyme4ts，已含节气换月、真太阳时请在上层处理） */
+/** 从真实瞬时按统一时区获取四柱干支；节气参考同 TimeManager，真太阳时请在上层处理。 */
 export function getGanZhiFromDate(date: Date): GanZhiDate {
-  const eightChar = getLunarHourFromDate(date).getEightChar();
-  return {
-    year: eightChar.getYear().getName(),
-    month: eightChar.getMonth().getName(),
-    day: eightChar.getDay().getName(),
-    hour: eightChar.getHour().getName(),
-  };
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new Error('日期无效');
+  return TimeManager.getDivinationTime(date).ganzhi;
 }
 
 /** 天干五行（委托 tyme4ts，回退到本地表） */

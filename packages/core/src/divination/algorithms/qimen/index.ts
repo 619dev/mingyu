@@ -336,6 +336,7 @@ export function generateQimen(
     { hour: activeGanZhi },
     method,
   );
+  if (scope === 'day') checkDayRuMu(ganzhi.day, jiuGongGe, specialConditions);
   enrichLiuGuiTianWang(specialConditions, jiuGongGe);
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -648,7 +649,7 @@ function getZhiFuShiForScope(
   zhiFu: string;
   zhiShi: string;
   zhiFuPalace: number;
-  specialConditions: QimenData['specialConditions'];
+  specialConditions: NonNullable<QimenData['specialConditions']>;
 } {
   const defaultSpecialConditions = {
     isLiuJiaHour: false,
@@ -670,15 +671,13 @@ function getZhiFuShiForScope(
       };
     }
     case 'day': {
-      // 日家奇门：使用通用旬首法，补充日干入墓检查
+      // 日家奇门：使用通用旬首法；日干入墓待布盘后按天盘落宫核对。
       const result = getZhiFuZhiShiByGanZhi(activeGanZhi, jushuResult);
-      const conditions = { ...defaultSpecialConditions };
-      checkDayRuMu(ganzhi.day, conditions);
       return {
         zhiFu: result.zhiFu,
         zhiShi: result.zhiShi,
         zhiFuPalace: result.xunShouPalace,
-        specialConditions: conditions,
+        specialConditions: { ...defaultSpecialConditions },
       };
     }
     case 'month':
@@ -699,21 +698,25 @@ function getZhiFuShiForScope(
 /**
  * 检查日干入墓
  *
- * 日干五行入墓支：木墓在未、火墓在戌、金墓在丑、水土墓在辰
- * 与《烟波钓叟歌》"时干入墓凶无疑"同一套规则，但应用于日干级别。
+ * 按当前日干（甲日取六甲遁干）在天盘的实际落宫核对墓宫。
  */
 function checkDayRuMu(
   dayGanZhi: string,
+  jiuGongGe: QimenJiuGongGe[],
   conditions: Exclude<QimenData['specialConditions'], undefined>,
 ): void {
   const dayGan = dayGanZhi.charAt(0);
-  const dayZhi = dayGanZhi.charAt(1);
-  const ruMuMap = STEM_TOMB_MAP;
-  const ruMuInfo = ruMuMap[dayGan];
-  if (ruMuInfo && dayZhi === ruMuInfo.branch) {
-    conditions.isRiGanRuMu = true;
-    conditions.description += `日干${dayGan}入墓（${dayGan}入${ruMuInfo.palace}宫/${ruMuInfo.branch}支），大势迟滞，宜静不宜动；`;
-  }
+  const activeStem = getDunJiaStem(dayGanZhi);
+  const ruMuInfo = STEM_TOMB_MAP[activeStem];
+  if (!ruMuInfo) return;
+  const palace = jiuGongGe.find(
+    (item) => item.gong === ruMuInfo.palace && hasTianPanStem(item, activeStem),
+  );
+  if (!palace) return;
+  conditions.isRiGanRuMu = true;
+  const stemLabel =
+    dayGan === activeStem ? `日干${dayGan}` : `日干${dayGan}（${dayGanZhi}遁${activeStem}）`;
+  conditions.description += `${stemLabel}落${palace.name}入墓（墓支${ruMuInfo.branch}），大势迟滞，宜静不宜动；`;
 }
 
 /**

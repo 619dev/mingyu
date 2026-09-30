@@ -22,7 +22,27 @@ export function getQimenActiveSpecialConditionText(data: QimenData): string {
   ) {
     return '';
   }
-  return conditions.description.trim();
+  const description = conditions.description.trim();
+  if (!conditions.isRiGanRuMu || data.scope !== 'day') return description;
+
+  const activeStem = getDunJiaStem(data.ganzhi.day);
+  const dayStem = data.ganzhi.day.charAt(0);
+  const stemLabel =
+    dayStem === activeStem
+      ? `日干${dayStem}`
+      : `日干${dayStem}（${data.ganzhi.day}遁${activeStem}）`;
+  const palace = data.jiuGongGe.find(
+    (item) =>
+      hasTianPanStem(item, activeStem) &&
+      data.patternTags?.includes(`入墓（日干${activeStem}落${item.name}）`),
+  );
+  if (!palace) return description;
+
+  const segments = description
+    .split('；')
+    .map((item) => item.trim())
+    .filter((item) => item && !item.startsWith(`${stemLabel}落${palace.name}入墓`));
+  return segments.length ? `${segments.join('；')}；` : '';
 }
 
 export type QimenCandidateSource =

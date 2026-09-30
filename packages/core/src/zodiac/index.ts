@@ -244,7 +244,7 @@ function resolveYearGanZhi(input: ZodiacYearFortuneInput): string {
     year === undefined
       ? undefined
       : // 2 月 10 日一定在立春之后，可稳定取得该公历流年的年柱。
-        getGanZhiFromDate(new Date(year, 1, 10, 12, 0, 0)).year;
+        getGanZhiFromDate(new Date(Date.UTC(year, 1, 10, 4, 0, 0))).year;
   if (input.yearGanZhi !== undefined) {
     const value = input.yearGanZhi.trim();
     if (!isValidGanZhi(value)) throw new TypeError(`yearGanZhi 不是有效的六十甲子：${value}。`);

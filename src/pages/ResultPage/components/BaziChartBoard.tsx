@@ -55,6 +55,7 @@ type BaziBoardColumn = {
   kongWang: string[];
   shensha: string[];
   isDayMaster?: boolean;
+  isUnknownPillar?: boolean;
 };
 
 function filterBaziBoardShensha(items: string[]) {
@@ -670,25 +671,45 @@ export const BaziChartBoard = memo(function BaziChartBoard(props: {
         : '';
   const natalColumns = useMemo<BaziBoardColumn[]>(
     () =>
-      PILLAR_KEYS.map((key, index) => ({
-        key,
-        label: PILLAR_LABELS[index],
-        gan: result.pillars[key].gan,
-        zhi: result.pillars[key].zhi,
-        ganTenGod: key === 'day' && dayOwnerLabel ? dayOwnerLabel : result.tenGods[key],
-        zhiTenGod: getTenGodForBranch(result.pillars[key].zhi, result.dayMaster.gan),
-        hiddenStems: result.hiddenStems[key],
-        hiddenTenGods: result.hiddenTenGods[key],
-        nayin: result.nayin[key],
-        ziZuo: result.ziZuo[key],
-        lifeStage: result.lifeStages[key],
-        kongWang: result.kongWang[key],
-        shensha:
-          key === 'year'
-            ? [...(result.shensha.global ?? []), ...result.shensha[key]]
-            : result.shensha[key],
-        isDayMaster: key === 'day',
-      })),
+      PILLAR_KEYS.map((key, index) => {
+        const hasUnknownBirthTime = result.isThreePillars === true;
+        const isUnknownPillar =
+          hasUnknownBirthTime &&
+          (key === 'hour' || result.unknownTimeAnalysis?.uncertainPillars.includes(key) === true);
+        const pillar = result.pillars[key];
+        return {
+          key,
+          label: PILLAR_LABELS[index],
+          ...(isUnknownPillar ? { caption: key === 'hour' ? '时辰未知' : '待补时' } : {}),
+          gan: isUnknownPillar ? '' : pillar.gan,
+          zhi: isUnknownPillar ? '' : pillar.zhi,
+          ganTenGod: isUnknownPillar
+            ? ''
+            : key === 'day' && dayOwnerLabel
+              ? dayOwnerLabel
+              : hasUnknownBirthTime
+                ? '待补时'
+                : result.tenGods[key],
+          zhiTenGod: hasUnknownBirthTime
+            ? '待补时'
+            : getTenGodForBranch(pillar.zhi, result.dayMaster.gan),
+          hiddenStems: isUnknownPillar ? [] : result.hiddenStems[key],
+          hiddenTenGods: hasUnknownBirthTime
+            ? result.hiddenStems[key].map(() => '待补时')
+            : result.hiddenTenGods[key],
+          nayin: isUnknownPillar ? '' : result.nayin[key],
+          ziZuo: isUnknownPillar ? '' : result.ziZuo[key],
+          lifeStage: hasUnknownBirthTime ? '待补时' : result.lifeStages[key],
+          kongWang: isUnknownPillar ? [] : result.kongWang[key],
+          shensha: isUnknownPillar
+            ? []
+            : key === 'year'
+              ? [...(result.shensha.global ?? []), ...result.shensha[key]]
+              : result.shensha[key],
+          isDayMaster: key === 'day',
+          isUnknownPillar,
+        };
+      }),
     [dayOwnerLabel, result],
   );
   const activeFortuneColumns = useMemo<BaziBoardColumn[]>(
@@ -756,7 +777,7 @@ export const BaziChartBoard = memo(function BaziChartBoard(props: {
               : []),
           ]
         : []),
-      `四柱：年柱【${result.pillars.year.gan}${result.pillars.year.zhi}】 月柱【${result.pillars.month.gan}${result.pillars.month.zhi}】 日柱【${result.pillars.day.gan}${result.pillars.day.zhi}】 时柱【${result.pillars.hour.gan}${result.pillars.hour.zhi}】`,
+      `四柱：${natalColumns.map((column) => `${column.label}【${column.isUnknownPillar ? '待补时' : `${column.gan}${column.zhi}`}】`).join(' ')}`,
       result.analysis.usefulGod.incrementStatus === '待判'
         ? '增补五行喜忌：待判'
         : `五行取用：${transformation?.status === '成化' ? `化神${transformation.element}` : primaryUsefulWuxing || '待判'}  所忌：${primaryAvoidWuxing || '待判'}`,
@@ -778,6 +799,7 @@ export const BaziChartBoard = memo(function BaziChartBoard(props: {
     primaryUsefulWuxing,
     primaryAvoidWuxing,
     activeFortuneColumns,
+    natalColumns,
     interactions,
   ]);
 
@@ -1005,7 +1027,7 @@ export const BaziChartBoard = memo(function BaziChartBoard(props: {
             className="bazi-pillars-header"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
           >
-            <h3>四柱盘</h3>
+            <h3>{result.isThreePillars ? '三柱盘（时辰未知）' : '四柱盘'}</h3>
             <div style={{ display: 'flex', gap: '6px' }}>
               <button
                 type="button"
@@ -1053,7 +1075,12 @@ export const BaziChartBoard = memo(function BaziChartBoard(props: {
                       boardColumns[index]?.isDayMaster ? 'is-day-master' : ''
                     } ${index === natalColumns.length ? 'is-fortune-start' : ''}`}
                   >
-                    {value}
+                    {boardColumns[index]?.isUnknownPillar ||
+                    (result.isThreePillars && row.label === '神煞') ? (
+                      <span className="bazi-shensha-empty">待补时</span>
+                    ) : (
+                      value
+                    )}
                   </div>
                 )),
               ])}

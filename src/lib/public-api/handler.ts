@@ -1387,7 +1387,7 @@ export function getPublicApiOpenApiDocument(
               minimum: 0,
               maximum: 12,
               description:
-                '时辰索引（0-12）；普通时辰模式必填，精确标准北京时间或真太阳时可改传 birthHour/birthMinute/birthSecond',
+                '时辰索引（0-12）；普通时辰模式必填，提供 birthHour/birthMinute 时按钟表时间推导时辰，可省略本字段；标准北京时间秒数省略时按 00 秒',
             },
             dateType: { enum: ['solar', 'lunar'], default: 'solar' },
             isLeapMonth: { type: 'boolean', default: false },
@@ -1402,7 +1402,8 @@ export function getPublicApiOpenApiDocument(
               type: 'integer',
               minimum: 0,
               maximum: 59,
-              description: '出生秒数；与 birthHour/birthMinute 一起表示精确标准北京时间',
+              description:
+                '出生秒数；与 birthHour/birthMinute 一起表示标准北京时间，省略时按 00 秒',
             },
             birthPlace: { type: 'string' },
             birthLongitude: { type: 'number', minimum: -180, maximum: 180 },
@@ -3640,6 +3641,12 @@ function readNamingBirthInput(input: JsonRecord): NamingBirthInput | undefined {
   }
   const birth = value as JsonRecord;
   const useTrueSolarTime = readBoolean(birth, 'useTrueSolarTime', false);
+  const hasBirthHour = birth.birthHour !== undefined;
+  const hasBirthMinute = birth.birthMinute !== undefined;
+  if (hasBirthHour !== hasBirthMinute) {
+    throw new ApiError(400, 'BAD_REQUEST', 'birthHour 和 birthMinute 必须同时提供。');
+  }
+  const hasStandardClock = !useTrueSolarTime && hasBirthHour && hasBirthMinute;
   const hasPreciseStandardTime = !useTrueSolarTime && birth.birthSecond !== undefined;
   const birthTimeRange = readNamingBirthTimeRange(birth);
   return {
@@ -3647,9 +3654,10 @@ function readNamingBirthInput(input: JsonRecord): NamingBirthInput | undefined {
     year: readInteger(birth, 'year', 1900, 2100),
     month: readInteger(birth, 'month', 1, 12),
     day: readInteger(birth, 'day', 1, 31),
-    // 启用真太阳时或精确标准北京时间时允许以钟表时间替代时辰索引。
+    // 启用真太阳时或提供标准钟表时间时允许以钟表时间替代时辰索引。
     timeIndex:
-      (useTrueSolarTime || hasPreciseStandardTime) && birth.timeIndex === undefined
+      (useTrueSolarTime || hasStandardClock || hasPreciseStandardTime) &&
+      birth.timeIndex === undefined
         ? ''
         : readInteger(birth, 'timeIndex', 0, 12),
     dateType: readEnum(birth, 'dateType', ['solar', 'lunar'] as const, 'solar'),

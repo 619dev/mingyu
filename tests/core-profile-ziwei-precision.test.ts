@@ -36,10 +36,7 @@ function profileAt(timestamp: number, gender: 'male' | 'female' = 'male'): Birth
 }
 
 function expectedPillars(timestamp: number) {
-  const parts = beijingParts(timestamp);
-  const pillars = getGanZhiFromDate(
-    new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second),
-  );
+  const pillars = getGanZhiFromDate(new Date(timestamp));
   return {
     year_pillar: pillars.year,
     month_pillar: pillars.month,

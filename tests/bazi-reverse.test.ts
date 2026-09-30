@@ -29,7 +29,9 @@ function at(
 
 function pillarsAt(input: ReturnType<typeof at>): BaziReversePillars {
   return getGanZhiFromDate(
-    new Date(input.year, input.month - 1, input.day, input.hour, input.minute, input.second),
+    new Date(
+      Date.UTC(input.year, input.month - 1, input.day, input.hour - 8, input.minute, input.second),
+    ),
   );
 }
 

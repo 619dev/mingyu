@@ -22,7 +22,7 @@ import {
   CHART_RECORD_PARAM,
   normalizeChartInputForSource,
 } from '@/lib/case-navigation';
-import { clampNumericField, validateBirthInput } from '@/lib/input-validation';
+import { clampNumericField, isValidHourMinute, validateBirthInput } from '@/lib/input-validation';
 import { useBirthPlace } from '@/hooks/useBirthPlace';
 import { useActivePersonalCase } from '@/hooks/useActivePersonalCase';
 import {
@@ -372,7 +372,8 @@ export function InputPage() {
     const birthLongitude = isPartner ? form.partnerBirthLongitude : form.birthLongitude;
     const dateType = isPartner ? form.partnerDateType : form.dateType;
     const isLeapMonth = isPartner ? form.partnerIsLeapMonth : form.isLeapMonth;
-    const hasPreciseStandardTime = birthSecond !== '';
+    const hasClockInput = birthHour !== '' || birthMinute !== '' || birthSecond !== '';
+    const hasCompleteClock = birthHour !== '' && birthMinute !== '';
 
     if (
       personInputModes[role] === 'pillars' &&
@@ -383,17 +384,18 @@ export function InputPage() {
     if (!year || !month || !day) return `请填写完整的${label}信息`;
     const requiresPreciseBirthData = role === 'self' && config.preciseBirthData;
     const validateAsPreciseBirthData = useTrueSolarTime || requiresPreciseBirthData;
+    if ((validateAsPreciseBirthData || hasClockInput) && !hasCompleteClock) {
+      return `请填写${label}的精准出生时间`;
+    }
     if (
       !validateAsPreciseBirthData &&
+      !hasCompleteClock &&
       (timeIndex === '' || (timeIndex === -1 && (!config.allowUnknownTime || role !== 'self')))
     ) {
       return `请选择${label}的出生时辰`;
     }
-    if (
-      (validateAsPreciseBirthData || hasPreciseStandardTime) &&
-      (birthHour === '' || birthMinute === '' || (hasPreciseStandardTime && birthSecond === ''))
-    ) {
-      return `请填写${label}的精准出生时间`;
+    if (hasCompleteClock && !isValidHourMinute(Number(birthHour), Number(birthMinute))) {
+      return `${label}出生时间需在有效时分范围内`;
     }
     if (validateAsPreciseBirthData && (!birthPlaceText.trim() || !birthLongitude.trim())) {
       return `请先为${label}选择出生地`;
@@ -413,7 +415,7 @@ export function InputPage() {
       },
       label,
     );
-    if (result.ok && hasPreciseStandardTime) {
+    if (result.ok && birthSecond !== '') {
       const second = Number(birthSecond);
       if (!Number.isInteger(second) || second < 0 || second > 59) {
         return `${label}出生秒数需在 0-59 之间`;

@@ -111,7 +111,7 @@ test('四柱日期保存、重开与跨术数引用保留候选区间和秒数',
     await import('../src/pages/InputPage.field-helpers');
   const { buildChartFeaturePathForCase } = await import('../src/lib/case-navigation');
   const { parseInputState } = await import('../src/lib/query-state');
-  const pillars = getGanZhiFromDate(new Date(2000, 0, 7, 9));
+  const pillars = getGanZhiFromDate(new Date('2000-01-07T09:00:00+08:00'));
   const candidate = reverseBaziDates({ pillars, startYear: 2000, endYear: 2000 }).candidates[0];
   assert.ok(candidate);
   const selection = resolveBaziReverseCandidate(candidate);

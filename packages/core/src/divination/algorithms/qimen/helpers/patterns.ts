@@ -21,6 +21,7 @@ import {
   getOppositePalace,
   getTianPanStemForStar,
   getTianPanStems,
+  hasTianPanStem,
   hasTianPanStar,
 } from './palace-utils';
 import { STEM_TOMB_MAP } from './_constants';
@@ -181,7 +182,7 @@ export interface QimenPatternTagParams {
   zhiFu: string;
   /** 值使门名称（如 休门、生门） */
   zhiShi: string;
-  /** 值符星落宫编号（1-9） */
+  /** 值符星落宫编号（1-9）；刑墓另按主动干的实际天盘落宫核定。 */
   zhiFuLandingPalace: number;
   /** 值使门落宫编号（1-9） */
   zhiShiLandingPalace: number;
@@ -250,7 +251,6 @@ export function getQimenPatternTags(params: QimenPatternTagParams): string[] {
   const {
     zhiFu,
     zhiShi,
-    zhiFuLandingPalace,
     zhiShiLandingPalace,
     jiuGongGe,
     activeGanForFind,
@@ -306,21 +306,12 @@ export function getQimenPatternTags(params: QimenPatternTagParams): string[] {
   // 遍历所有宫位检查门克宫
   tags.push(...getMenPoTags(jiuGongGe));
 
-  // ── 4. 击刑（主动干落值符宫） ──
-  const zhiFuLandingGong = jiuGongGe.find((gong) => gong.gong === zhiFuLandingPalace);
-  const jiXingTag = zhiFuLandingGong
-    ? getJiXingTag(ganForFind, ganLabel, zhiFuLandingPalace, zhiFuLandingGong.name)
-    : null;
-  if (jiXingTag) {
-    tags.push(jiXingTag);
-  }
-
-  // ── 5. 入墓（主动干落值符宫） ──
-  const ruMuTag = zhiFuLandingGong
-    ? getRuMuTag(ganForFind, ganLabel, zhiFuLandingPalace, zhiFuLandingGong.name)
-    : null;
-  if (ruMuTag) {
-    tags.push(ruMuTag);
+  // ── 4-5. 击刑与入墓按主动干实际天盘落宫判断 ──
+  for (const gong of jiuGongGe.filter((item) => hasTianPanStem(item, ganForFind))) {
+    const jiXingTag = getJiXingTag(ganForFind, ganLabel, gong.gong, gong.name);
+    if (jiXingTag) tags.push(jiXingTag);
+    const ruMuTag = getRuMuTag(ganForFind, ganLabel, gong.gong, gong.name);
+    if (ruMuTag) tags.push(ruMuTag);
   }
 
   // ── 6. 三奇得 ──

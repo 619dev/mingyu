@@ -67,6 +67,53 @@ test('npm 八字输入适配器应支持真太阳时精确时分和经度', () =
   assert.equal(input.timeZoneId, 'Asia/Shanghai');
 });
 
+test('npm 八字完整标准时分优先于旧时辰，缺省秒为零', () => {
+  const base = { gender: 'male' as const, year: 2024, month: 6, day: 1 };
+  for (const [birthHour, birthMinute] of [
+    [0, 5],
+    ['0', '5'],
+  ] as const) {
+    for (const timeIndex of [6, ''] as const) {
+      const person = buildBaziPersonInput({
+        ...base,
+        timeIndex,
+        birthHour,
+        birthMinute,
+      });
+      assert.equal(person.timeIndex, 0);
+      assert.equal(person.birthHour, 0);
+      assert.equal(person.birthMinute, 5);
+      assert.equal(person.birthSecond, 0);
+      assert.equal(
+        calculateBaziChartFromInput({ ...base, timeIndex, birthHour, birthMinute }).timeInfo.index,
+        0,
+      );
+    }
+  }
+  const traditional = buildBaziPersonInput({ ...base, timeIndex: 6 });
+  assert.equal(traditional.timeIndex, 6);
+  assert.equal(traditional.birthSecond, undefined);
+});
+
+test('npm 八字拒绝部分标准钟表与无效时分秒', () => {
+  const base = { gender: 'male' as const, year: 2024, month: 6, day: 1, timeIndex: 6 };
+  assert.throws(() => buildBaziPersonInput({ ...base, birthHour: 0 }), /同时提供出生小时和分钟/u);
+  assert.throws(() => buildBaziPersonInput({ ...base, birthMinute: 5 }), /同时提供出生小时和分钟/u);
+  assert.throws(() => buildBaziPersonInput({ ...base, birthSecond: 0 }), /同时提供出生小时和分钟/u);
+  assert.throws(
+    () => buildBaziPersonInput({ ...base, birthHour: 24, birthMinute: 5 }),
+    /出生小时需在 0-23/u,
+  );
+  assert.throws(
+    () => buildBaziPersonInput({ ...base, birthHour: '0', birthMinute: '坏值' }),
+    /出生分钟必须是整数/u,
+  );
+  assert.throws(
+    () => buildBaziPersonInput({ ...base, birthHour: 0, birthMinute: 5, birthSecond: 60 }),
+    /出生秒数需在 0-59/u,
+  );
+});
+
 test('npm 地点索引应支持级联查询、路径反查和经度读取', () => {
   const index = createBirthPlaceIndex([
     {

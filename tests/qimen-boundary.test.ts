@@ -4,6 +4,7 @@ import { generateQimen } from '../packages/core/src/divination/algorithms/qimen/
 import {
   getDoorElement as getDoorElementFromPalaceUtils,
   getDunJiaStem,
+  hasTianPanStem,
 } from '../packages/core/src/divination/algorithms/qimen/helpers/palace-utils.ts';
 import {
   analyzePalaceRelations,
@@ -26,6 +27,7 @@ import {
   getYearQimenJuShu,
 } from '../packages/core/src/divination/algorithms/qimen/helpers/jushu-extended.ts';
 import { getQimenPatternTags } from '../packages/core/src/divination/algorithms/qimen/helpers/patterns.ts';
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import {
   getNamedStemPairPattern,
   getStemPairPattern,
@@ -47,25 +49,52 @@ test('奇门拆补法在交节当天应按具体时刻换节气，不应按整�
 });
 
 test('奇门日家月家主动干标签不得误写成时干', () => {
-  const dayChart = generateQimen(new Date('2026-09-03T04:00:00.000Z'), 'zhuanpan', 'day');
-  const monthChart = generateQimen(new Date('2024-01-15T02:30:00.000Z'), 'zhuanpan', 'month');
+  const dayChart = generateQimen(new Date('2025-01-21T04:00:00.000Z'), 'zhuanpan', 'day');
+  const monthChart = generateQimen(new Date('2025-01-08T04:00:00.000Z'), 'zhuanpan', 'month');
 
-  assert.ok(dayChart.patternTags.some((tag) => tag.includes('击刑（日干庚')));
-  assert.ok(monthChart.patternTags.some((tag) => tag.includes('入墓（月干乙')));
+  assert.ok(dayChart.patternTags.includes('击刑（日干庚落艮八宫）'));
+  assert.ok(monthChart.patternTags.includes('入墓（月干丁落艮八宫）'));
+  assert.equal(monthChart.jiuGongGe.find((palace) => hasTianPanStem(palace, '丁'))?.name, '艮八宫');
   assert.doesNotMatch(dayChart.patternTags.join('、'), /击刑（时干庚/);
-  assert.doesNotMatch(monthChart.patternTags.join('、'), /入墓（时干乙/);
+  assert.doesNotMatch(monthChart.patternTags.join('、'), /入墓（时干丁/);
   assert.match(
     dayChart.patternDetails.find((item) => item.tag.startsWith('击刑'))?.summary ?? '',
     /日干落击刑位/,
   );
+  assert.match(formatEnhancedDivinationInfo('qimen', monthChart), /星奇入墓（凶格）：丁奇入艮八宫/);
 });
 
-test('日家日干入墓与时家时干入墓分字段记录', () => {
-  const dayChart = generateQimen(new Date('2025-01-08T04:00:00Z'), 'zhuanpan', 'day');
-  assert.equal(dayChart.ganzhi.day, '丁丑');
-  assert.equal(dayChart.specialConditions?.isRiGanRuMu, true);
-  assert.equal(dayChart.specialConditions?.isShiGanRuMu, false);
-  assert.match(dayChart.specialConditions?.description ?? '', /日干丁入墓/);
+test('奇门刑墓须按主动天盘干实际落宫判定，日柱墓支不替代落宫', () => {
+  const falseTomb = generateQimen(new Date('2025-01-08T04:00:00Z'), 'zhuanpan', 'day');
+  assert.equal(falseTomb.ganzhi.day, '丁丑');
+  assert.equal(falseTomb.jiuGongGe.find((palace) => hasTianPanStem(palace, '丁'))?.name, '巽四宫');
+  assert.equal(falseTomb.specialConditions?.isRiGanRuMu, undefined);
+  assert.equal(falseTomb.specialConditions?.isShiGanRuMu, false);
+  assert.doesNotMatch(falseTomb.specialConditions?.description ?? '', /日干丁.*入墓/);
+  assert.doesNotMatch(falseTomb.patternTags.join('、'), /入墓（日干丁/);
+
+  const falsePunishment = generateQimen(new Date('2026-09-03T04:00:00Z'), 'zhuanpan', 'day');
+  assert.equal(falsePunishment.ganzhi.day, '庚辰');
+  assert.equal(
+    falsePunishment.jiuGongGe.find((palace) => hasTianPanStem(palace, '庚'))?.name,
+    '兑七宫',
+  );
+  assert.doesNotMatch(falsePunishment.patternTags.join('、'), /击刑（日干庚/);
+  assert.doesNotMatch(
+    formatEnhancedDivinationInfo('qimen', falsePunishment),
+    /击刑（日干庚落艮八宫）/,
+  );
+
+  const trueTomb = generateQimen(new Date('2025-01-28T04:00:00Z'), 'zhuanpan', 'day');
+  assert.equal(trueTomb.ganzhi.day, '丁酉');
+  assert.equal(trueTomb.jiuGongGe.find((palace) => hasTianPanStem(palace, '丁'))?.name, '艮八宫');
+  assert.equal(trueTomb.specialConditions?.isRiGanRuMu, true);
+  assert.match(trueTomb.specialConditions?.description ?? '', /日干丁落艮八宫入墓/);
+  assert.ok(trueTomb.patternTags.includes('入墓（日干丁落艮八宫）'));
+  const trueTombPrompt = formatEnhancedDivinationInfo('qimen', trueTomb);
+  assert.match(trueTombPrompt, /星奇入墓（凶格）：丁奇入艮八宫/);
+  assert.equal(trueTombPrompt.match(/丁奇入艮八宫/g)?.length, 1);
+  assert.doesNotMatch(trueTombPrompt, /日家特殊条件：日干丁落艮八宫入墓/);
 });
 
 test('奇门拆补法定三元应按晚子时日柱推进符头日', () => {

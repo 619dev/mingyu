@@ -9,6 +9,7 @@ import {
   BaziFortuneSelector,
   resolveFortuneSelectorState,
 } from '../src/components/BaziFortuneTools/BaziFortuneSelector';
+import { buildPersonFromInput, calculateFullBaziChart } from '../src/lib/full-chart-engine/bazi';
 import { BaziChartBoard } from '../src/pages/ResultPage/components/BaziChartBoard';
 
 test('八字结果盘应展示排盘预警和稳定基础参考', () => {
@@ -68,6 +69,67 @@ test('八字结果盘应展示排盘预警和稳定基础参考', () => {
   assert.ok(!html.includes('>马财库<'), '盘面应隐藏不常用神煞');
   assert.ok(!html.includes('>真鬼刑疾<'), '盘面应隐藏不常用神煞');
   assert.match(html, /bazi-shensha-tag is-(lucky|unlucky|neutral)/);
+});
+
+test('未知时辰盘面保留稳定柱并将依赖出生时刻的资料标为待补', () => {
+  const person = buildPersonFromInput({
+    gender: 'male',
+    year: 1999,
+    month: 1,
+    day: 1,
+    timeIndex: -1,
+  });
+  const result = calculateFullBaziChart(person);
+  const candidateCount = result.unknownTimeAnalysis?.scenarios.length ?? 0;
+
+  assert.equal(result.isThreePillars, true);
+  assert.equal(result.pillars.hour.ganZhi, '');
+  assert.ok(candidateCount > 0, '全天候选资料应保留');
+
+  const html = renderToStaticMarkup(
+    createElement(BaziChartBoard, {
+      title: '八字排盘',
+      name: '未知时辰测试',
+      result,
+    }),
+  );
+
+  assert.match(html, /三柱盘（时辰未知）/);
+  assert.match(html, /时辰未知/);
+  assert.match(html, />待补时</);
+  const knownPillars = (['year', 'month', 'day'] as const)
+    .map((key) => ({ key, ...result.pillars[key] }))
+    .filter((pillar) => pillar.gan && pillar.zhi);
+  assert.ok(knownPillars.length > 0, '已确定的本命柱应继续展示');
+  for (const pillar of knownPillars) {
+    assert.ok(html.includes(`>${pillar.gan}</strong>`), `${pillar.key}柱天干事实应继续展示`);
+    assert.ok(html.includes(`>${pillar.zhi}</strong>`), `${pillar.key}柱地支事实应继续展示`);
+  }
+  for (const key of result.unknownTimeAnalysis!.uncertainPillars) {
+    assert.equal(result.pillars[key].ganZhi, '', `${key}柱随出生时刻变化，继续待补时`);
+  }
+  assert.equal(result.unknownTimeAnalysis?.scenarios.length, candidateCount);
+  assert.equal(result.pillars.hour.ganZhi, '', '页面不应生成虚构时柱');
+});
+
+test('未知时辰跨交节时年、月、日待补柱可以完整渲染', () => {
+  const result = calculateFullBaziChart(
+    buildPersonFromInput({ gender: 'male', year: 2024, month: 2, day: 4, timeIndex: -1 }),
+  );
+  assert.deepEqual(
+    new Set(result.unknownTimeAnalysis?.uncertainPillars),
+    new Set(['year', 'month', 'day']),
+  );
+  const html = renderToStaticMarkup(
+    createElement(BaziChartBoard, { title: '八字排盘', name: '交节测试', result }),
+  );
+  assert.match(html, /三柱盘（时辰未知）/);
+  assert.match(html, />待补时</);
+  assert.doesNotMatch(html, /undefined|五行属undefined/);
+  assert.ok(result.unknownTimeAnalysis!.scenarios.length > 0);
+  for (const key of ['year', 'month', 'day', 'hour'] as const) {
+    assert.equal(result.pillars[key].ganZhi, '');
+  }
 });
 
 test('八字女命日柱应标注元女', () => {

@@ -593,7 +593,7 @@ async function withIsolatedMcpClient<T>(callback: (client: Client) => Promise<T>
   }
 }
 
-test('姓名 MCP 真太阳时可省略时辰，普通出生资料缺时辰应报错', async () => {
+test('姓名 MCP 真太阳时与完整标准时分可省略时辰，传统缺时辰应报错', async () => {
   await withMcpClient(async (client) => {
     const birth = {
       gender: 'male',
@@ -623,11 +623,39 @@ test('姓名 MCP 真太阳时可省略时辰，普通出生资料缺时辰应报
       });
       assert.equal(withTimeIndex.isError, undefined);
       assert.deepEqual(result.structuredContent, withTimeIndex.structuredContent);
-      const invalid = await client.callTool({
+      const standardClock = await client.callTool({
         name,
         arguments: { ...input, birth: { ...birth, useTrueSolarTime: false } },
       });
-      assert.equal(invalid.isError, true, `${name} 应拒绝缺少时辰的普通出生资料`);
+      assert.equal(standardClock.isError, undefined, `${name} 应接受无秒标准时分`);
+      const standardWithOldIndex = await client.callTool({
+        name,
+        arguments: { ...input, birth: { ...birth, useTrueSolarTime: false, timeIndex: 0 } },
+      });
+      assert.equal(standardWithOldIndex.isError, undefined);
+      assert.deepEqual(standardClock.structuredContent, standardWithOldIndex.structuredContent);
+      assert.match(JSON.stringify(standardClock.structuredContent), /12:30/u);
+      const missingClock = await client.callTool({
+        name,
+        arguments: {
+          ...input,
+          birth: {
+            ...birth,
+            useTrueSolarTime: false,
+            birthHour: undefined,
+            birthMinute: undefined,
+          },
+        },
+      });
+      assert.equal(missingClock.isError, true, `${name} 应拒绝缺少时辰与钟表的出生资料`);
+      const partialClock = await client.callTool({
+        name,
+        arguments: {
+          ...input,
+          birth: { ...birth, useTrueSolarTime: false, birthMinute: undefined },
+        },
+      });
+      assert.equal(partialClock.isError, true, `${name} 应拒绝部分标准钟表`);
     }
   });
 });

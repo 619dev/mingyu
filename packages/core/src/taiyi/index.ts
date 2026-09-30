@@ -461,7 +461,7 @@ function withTaiyiCalendarSupport<T>(operation: () => T): T {
   }
 }
 
-/** 按东八区民用字段推四柱，替代依赖环境时区的 getGanZhiFromDate。 */
+/** 按东八区民用字段推四柱，并以指定瞬时核对节气年、月。 */
 function getTaiyiGanZhiFromDate(
   date: Date,
   termReferenceDate = date,
