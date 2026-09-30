@@ -289,6 +289,7 @@ function projectDiscreteFacts(result: QizhengResult): unknown {
       crossings: projectSolarCrossings(result),
     },
     evidence: {
+      coordinateAccuracy: result.calculationContext.coordinateAccuracy ?? null,
       locationSource: result.calculationContext.locationSource,
       timezoneSource: result.calculationContext.timezoneSource,
       palaceTimeMode: result.calculationContext.palaceTimeMode,

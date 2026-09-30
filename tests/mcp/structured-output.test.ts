@@ -4231,6 +4231,64 @@ test('MCP 七政流年提示词保留巴黎秒级历史时区的立春当地时�
   });
 });
 
+test('MCP 七政计算与提示词保留坐标精度来源', async () => {
+  await withMcpClient(async (client) => {
+    const input = {
+      year: 1990,
+      month: 5,
+      day: 15,
+      hour: 12,
+      latitude: 23.6978,
+      longitude: 120.3120375,
+      timezone: 8,
+    };
+    for (const [coordinateAccuracy, locationSource] of [
+      ['user-provided', '用户提供'],
+      ['administrative-center', '行政中心坐标'],
+      ['province-approximation', '省级近似坐标'],
+      ['mixed', '混合坐标'],
+    ]) {
+      for (const name of ['metaphysics_qizheng', 'qizheng_prompt']) {
+        const response = await client.callTool({
+          name,
+          arguments: {
+            ...input,
+            coordinateAccuracy,
+            ...(name === 'metaphysics_qizheng' ? { detailMode: 'full' } : {}),
+          },
+        });
+        assert.equal(response.isError, undefined);
+        const content = response.structuredContent as {
+          result: {
+            calculationContext: {
+              coordinateAccuracy?: string;
+              locationSource: string;
+              latitude: number;
+              longitude: number;
+            };
+          };
+          prompt?: string;
+        };
+        assert.equal(content.result.calculationContext.coordinateAccuracy, coordinateAccuracy);
+        assert.equal(content.result.calculationContext.locationSource, locationSource);
+        assert.equal(content.result.calculationContext.latitude, input.latitude);
+        assert.equal(content.result.calculationContext.longitude, input.longitude);
+        if (name === 'qizheng_prompt') {
+          assert.match(
+            String(content.prompt),
+            new RegExp(
+              coordinateAccuracy === 'user-provided'
+                ? '出生地点：纬度23\\.6978°，经度120\\.3120375°；'
+                : `计算参考地点：.*${locationSource}`,
+            ),
+          );
+          assertPromptIsPortableTaskText(String(content.prompt));
+        }
+      }
+    }
+  });
+});
+
 test('MCP 七政省略坐标时标出北京参考地点', async () => {
   await withMcpClient(async (client) => {
     const arguments_ = { year: 2024, month: 6, day: 15, hour: 6, minute: 0 };

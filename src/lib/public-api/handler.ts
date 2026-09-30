@@ -2330,6 +2330,10 @@ export function getPublicApiOpenApiDocument(
             gender: { enum: ['male', 'female'] },
             latitude: { type: 'number', minimum: -90, maximum: 90 },
             longitude: { type: 'number', minimum: -180, maximum: 180 },
+            coordinateAccuracy: {
+              enum: ['user-provided', 'administrative-center', 'province-approximation', 'mixed'],
+              description: '坐标精度来源：用户坐标、行政中心、省级近似或混合坐标。',
+            },
             timezone: { type: 'number', minimum: -12, maximum: 14 },
             timeZoneId: { type: 'string', description: '出生地 IANA 时区。' },
             useTrueSolarTime: { type: 'boolean', default: false },
@@ -4698,6 +4702,12 @@ function calculateQizhengApi(input: JsonRecord) {
   buildSolarDate(year, month, day, hour, minute);
   const latitude = optNumber(input, 'latitude', -90, 90);
   const longitude = optNumber(input, 'longitude', -180, 180);
+  const coordinateAccuracy = readOptionalEnum(input, 'coordinateAccuracy', [
+    'user-provided',
+    'administrative-center',
+    'province-approximation',
+    'mixed',
+  ] as const);
   const timezone = optNumber(input, 'timezone', -12, 14);
   const timeZoneId =
     input.timeZoneId === undefined ? undefined : readRequiredString(input, 'timeZoneId');
@@ -4722,6 +4732,7 @@ function calculateQizhengApi(input: JsonRecord) {
       second: optInt(input, 'second', 0, 59) ?? 0,
       ...(latitude !== undefined ? { latitude } : {}),
       ...(longitude !== undefined ? { longitude } : {}),
+      ...(coordinateAccuracy ? { coordinateAccuracy } : {}),
       ...(timezone !== undefined ? { timezone } : {}),
       ...(timeZoneId ? { timeZoneId } : {}),
       ...(useTrueSolarTime ? { useTrueSolarTime: true } : {}),

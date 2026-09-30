@@ -1195,12 +1195,24 @@ function formatBirthContext(
         ),
       ]
     : [];
+  const knownPillars = context.pillarDetails.filter((pillar) => pillar.ganZhi);
+  const pendingPillars = context.pillarDetails.filter((pillar) => !pillar.ganZhi);
+  const pillarLines = unknownTime
+    ? [
+        knownPillars.length
+          ? `已确定柱：${knownPillars.map((pillar) => `${pillar.label}${pillar.ganZhi}`).join('、')}`
+          : '',
+        pendingPillars.length
+          ? `待补柱：${pendingPillars.map((pillar) => pillar.label).join('、')}`
+          : '',
+      ].filter(Boolean)
+    : [`四柱：${context.pillars.join(' ')}`];
   return [
     `出生记录：${context.timeBasis.inputDate} ${context.timeBasis.inputTime}`,
     `时间口径：${context.timeBasis.mode}${context.timeBasis.longitude !== null ? `；${formatNamingLocationTimeBasis(context.timeBasis)}` : ''}`,
     `排盘公历：${context.solarDate} ${context.timeBasis.calculatedTime}`,
     `农历：${context.lunarDate}`,
-    `四柱${unknownTime ? '（已确定柱）' : ''}：${context.pillars.join(' ')}`,
+    ...pillarLines,
     `日主：${context.dayMaster || (unknownTime ? '待补时' : '')}`,
     `生肖：${context.zodiac}`,
     `格局：${context.pattern.name}${context.pattern.basis ? `；取格依据：${context.pattern.basis}` : ''}`,
@@ -1230,10 +1242,12 @@ function formatBirthContext(
       : [
           `月令：${context.monthContext.branch}月；司令${context.monthContext.commander}；${context.monthContext.season}；节气${context.monthContext.term}`,
         ]),
-    ...context.pillarDetails.map(
-      (pillar) =>
-        `${pillar.label}${pillar.ganZhi}藏干：${pillar.hiddenStems.map((item) => `${item.stem}${item.tenGod ? `（${item.tenGod}）` : ''}`).join('、')}`,
-    ),
+    ...context.pillarDetails
+      .filter((pillar) => !unknownTime || pillar.ganZhi)
+      .map(
+        (pillar) =>
+          `${pillar.label}${pillar.ganZhi}藏干：${pillar.hiddenStems.map((item) => `${item.stem}${item.tenGod ? `（${item.tenGod}）` : ''}`).join('、')}`,
+      ),
     ...(unknownTime
       ? []
       : [`旺衰：${context.strength.status}；${context.strength.basis.join('；')}`]),

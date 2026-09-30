@@ -206,6 +206,38 @@ test('自定义地点索引应拒绝把重名简称静默解析为其中一项',
   );
 });
 
+test('自定义地点树的代码即使与内置行政区重合也不借用省级纬度', () => {
+  const index = createBirthPlaceIndex([
+    {
+      id: '71',
+      label: '自定义省',
+      longitude: 100,
+      cities: [
+        {
+          id: '7102',
+          label: '自定义市',
+          displayName: '自定义省 自定义市',
+          longitude: 100,
+          districts: [
+            {
+              id: '710246',
+              label: '自定义区',
+              displayName: '自定义省 自定义市 自定义区',
+              longitude: 100.25,
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+
+  const resolved = index.resolve('710246');
+  assert.equal(resolved?.longitude, 100.25);
+  assert.equal(resolved?.latitude, undefined);
+  assert.equal(resolved?.coordinateAccuracy, undefined);
+  assert.equal(index.search('自定义区')[0]?.latitude, undefined);
+});
+
 test('npm 出生输入校验应返回字段级错误并复用真太阳时边界', () => {
   assert.deepEqual(
     validateBirthInput(

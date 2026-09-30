@@ -44,6 +44,7 @@ import {
   type SolarIlluminationEvidence,
 } from '../calendar/solar-illumination-evidence';
 import { getBranchIndex, getGanZhiYinYang, getStemIndex } from '../ganzhi';
+import type { BirthPlaceCoordinateAccuracy } from '../location';
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import { calculateSolarTermEvidence } from '../calendar/solar-term-evidence';
@@ -221,7 +222,14 @@ export interface QizhengCalculationContext {
   timezone: number;
   latitude: number;
   longitude: number;
-  locationSource: '用户提供' | '默认北京坐标' | '部分坐标使用默认值';
+  coordinateAccuracy?: QizhengInput['coordinateAccuracy'];
+  locationSource:
+    | '用户提供'
+    | '行政中心坐标'
+    | '省级近似坐标'
+    | '混合坐标'
+    | '默认北京坐标'
+    | '部分坐标使用默认值';
   timezoneSource: 'IANA历史时区' | '用户提供' | '默认东八区';
   astronomicalTime: AstronomicalTimeEvidence;
   moonPhase: MoonPhaseEvidence;
@@ -280,6 +288,7 @@ export interface QizhengCalculationFact {
     timezone: number;
     latitude: number;
     longitude: number;
+    coordinateAccuracy?: QizhengInput['coordinateAccuracy'];
     locationSource: QizhengCalculationContext['locationSource'];
     timezoneSource: QizhengCalculationContext['timezoneSource'];
   };
@@ -424,6 +433,8 @@ export interface QizhengInput {
   second?: number;
   latitude?: number;
   longitude?: number;
+  /** 坐标来源精度；省略时完整经纬度视为用户提供。 */
+  coordinateAccuracy?: BirthPlaceCoordinateAccuracy | 'user-provided' | 'mixed';
   timezone?: number;
   timeZoneId?: string;
   /**
@@ -489,6 +500,8 @@ export interface QizhengFlowingStarsResult {
   minute: number;
   timestampNote: string;
   localDateTime: string;
+  coordinateAccuracy?: QizhengInput['coordinateAccuracy'];
+  locationSource: QizhengCalculationContext['locationSource'];
   stars: QizhengFlowingStar[];
   transits: QizhengAspect[];
   periodEvents?: QizhengPeriodEventCollection;
@@ -660,7 +673,7 @@ export const QIZHENG_POSITION_SOURCES: QizhengPositionSource[] = [
     precisionClass: '现代天文计算',
     limitations: [
       '采用 Astronomy Engine 标准太阳系算法，并已用 Swiss Ephemeris/JPL DE440 独立抽样复算',
-      '太阳、水金火木土、罗计孛抽样最大偏差均低于0.01°；太阴在2200年单样本约0.05°，不改变二十八宿与十二宫归属',
+      '太阳、水金火木土、罗计孛抽样最大偏差均低于0.01°；太阴在2200-06-15 12:00 UTC与Swiss默认时间口径单次比对约差0.04°，该时刻宫宿归属一致；临近边界时远期ΔT模型差异可改变归属',
       '不得仅凭页面显示小数位宣称达到观测级或JPL星历精度',
     ],
   },
@@ -803,6 +816,21 @@ function validateQizhengInput(input: QizhengInput, includeLocation: boolean): vo
   if (includeLocation) {
     if (input.latitude !== undefined) assertNumberRange(input.latitude, '纬度', -90, 90);
     if (input.longitude !== undefined) assertNumberRange(input.longitude, '经度', -180, 180);
+    if (
+      input.coordinateAccuracy !== undefined &&
+      input.coordinateAccuracy !== 'user-provided' &&
+      input.coordinateAccuracy !== 'administrative-center' &&
+      input.coordinateAccuracy !== 'province-approximation' &&
+      input.coordinateAccuracy !== 'mixed'
+    ) {
+      throw new Error('七政四余坐标来源精度无效。');
+    }
+    if (
+      input.coordinateAccuracy !== undefined &&
+      (input.latitude === undefined || input.longitude === undefined)
+    ) {
+      throw new Error('七政四余坐标来源精度需要完整经纬度。');
+    }
   }
   if (input.gender !== undefined && input.gender !== 'male' && input.gender !== 'female') {
     throw new Error('gender 只能是 male 或 female。');
@@ -1043,6 +1071,8 @@ function buildCalculationContext(
 ): QizhengCalculationContext {
   const hasLatitude = input.latitude !== undefined;
   const hasLongitude = input.longitude !== undefined;
+  const coordinateAccuracy =
+    hasLatitude && hasLongitude ? (input.coordinateAccuracy ?? 'user-provided') : undefined;
   const moonPhase = calculateMoonPhaseEvidence(astronomicalTime.unixMilliseconds);
   const solarIllumination = calculateSolarIlluminationEvidence({
     year: input.year,
@@ -1062,9 +1092,16 @@ function buildCalculationContext(
     timezone: astronomicalTime.timezone,
     latitude,
     longitude,
+    coordinateAccuracy,
     locationSource:
       hasLatitude && hasLongitude
-        ? '用户提供'
+        ? coordinateAccuracy === 'administrative-center'
+          ? '行政中心坐标'
+          : coordinateAccuracy === 'province-approximation'
+            ? '省级近似坐标'
+            : coordinateAccuracy === 'mixed'
+              ? '混合坐标'
+              : '用户提供'
         : !hasLatitude && !hasLongitude
           ? '默认北京坐标'
           : '部分坐标使用默认值',
@@ -1326,7 +1363,9 @@ function buildQizhengEvidence(
         ? 'IANA历史时区已解析'
         : context.timezoneSource;
   const defaults = [
-    context.locationSource === '用户提供' ? '' : `地点来源${context.locationSource}`,
+    context.locationSource === '默认北京坐标' || context.locationSource === '部分坐标使用默认值'
+      ? `地点来源${context.locationSource}`
+      : '',
     context.timezoneSource === '用户提供' || context.timezoneSource === 'IANA历史时区'
       ? ''
       : `时区来源${context.timezoneSource}`,
@@ -1447,6 +1486,7 @@ function buildQizhengEvidence(
       timezone: context.timezone,
       latitude: context.latitude,
       longitude: context.longitude,
+      coordinateAccuracy: context.coordinateAccuracy,
       locationSource: context.locationSource,
       timezoneSource: context.timezoneSource,
     },
@@ -1981,6 +2021,7 @@ function getQizhengFlowRangeInvariant(input: QizhengInput): string {
     longitude: input.longitude ?? null,
     timezone: input.timezone ?? null,
     timeZoneId: input.timeZoneId ?? null,
+    coordinateAccuracy: input.coordinateAccuracy ?? null,
     useTrueSolarTime: input.useTrueSolarTime ?? false,
     gender: input.gender ?? null,
     flowYear: input.flowYear ?? null,
@@ -2122,6 +2163,8 @@ function overlayQizhengFlowingStars(
     minute: flow.flowInput.minute ?? 0,
     timestampNote: flow.timestampNote,
     localDateTime: collected.calculationContext.localDateTime,
+    coordinateAccuracy: collected.calculationContext.coordinateAccuracy,
+    locationSource: collected.calculationContext.locationSource,
     stars,
     transits,
     periodEvents,
@@ -2343,16 +2386,24 @@ function generateQizhengInternal(
       ? '出生地点'
       : locationSource === '默认北京坐标'
         ? '计算参考地点'
-        : '计算参考坐标（部分采用北京参考值）';
+        : locationSource === '部分坐标使用默认值'
+          ? '计算参考坐标（部分采用北京参考值）'
+          : '计算参考地点';
   const locationText =
     locationSource === '默认北京坐标'
       ? `北京（纬度${calculationContext.latitude}°，经度${calculationContext.longitude}°）`
       : `纬度${calculationContext.latitude}°，经度${calculationContext.longitude}°`;
+  const locationAccuracyText =
+    locationSource === '行政中心坐标' ||
+    locationSource === '省级近似坐标' ||
+    locationSource === '混合坐标'
+      ? `（${locationSource}）`
+      : '';
 
   const prompt = [
     `【七政四余 · 果老星宗】`,
     `出生时间：${input.year}年${input.month}月${input.day}日 ${String(input.hour).padStart(2, '0')}:${String(input.minute ?? 0).padStart(2, '0')}${input.second ? `:${String(input.second).padStart(2, '0')}` : ''}。`,
-    `${locationLabel}：${locationText}；时区UTC${formatFixedTimezoneOffset(tz)}${input.timeZoneId ? `（${input.timeZoneId}）` : ''}；${calculationContext.palaceTimeNote}。`,
+    `${locationLabel}：${locationText}${locationAccuracyText}；时区UTC${formatFixedTimezoneOffset(tz)}${input.timeZoneId ? `（${input.timeZoneId}）` : ''}；${calculationContext.palaceTimeNote}。`,
     `十二宫：${twelvePalaces.map((item) => `${item.palace}在${item.signBranch}宫`).join('、')}；身宫落${getQizhengSignBranch(shenGong)}宫。`,
     ...stars.map(
       (s) =>

@@ -75,10 +75,8 @@ test('生肖六十流年七百二十组合保留全部刑冲害破与合会关�
           sanhui.some((group) => group.includes(branch) && group.includes(yearBranch)),
       );
       assert.ok(result.prompt.includes(yearGanZhi));
-      assert.match(
-        result.prompt,
-        /五行生克看作用方向；十神以个人出生日干和流年年干的阴阳五行为参照/,
-      );
+      assert.doesNotMatch(result.prompt, /十神|出生日干/);
+      assert.match(result.prompt, /五行关系：流年年干.*生肖地支/);
       if (result.noble?.startsWith('三合组成员关系')) {
         const group = sanhe.find(
           (members) => members.includes(branch) && members.includes(yearBranch),

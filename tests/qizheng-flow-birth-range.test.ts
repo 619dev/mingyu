@@ -357,6 +357,76 @@ test('七政坐标来源区分省略、明确提供与显式空值', () => {
   );
 });
 
+test('七政本命与流曜保留用户、行政中心、省级近似和混合坐标来源', () => {
+  const natalInput: QizhengInput = {
+    ...DAILY_INPUT,
+    flowYear: undefined,
+    flowMonth: undefined,
+    flowDay: undefined,
+    flowHour: undefined,
+    flowMinute: undefined,
+  };
+  const userChart = generateQizheng(natalInput);
+  assert.equal(userChart.calculationContext.coordinateAccuracy, 'user-provided');
+  assert.equal(userChart.calculationContext.locationSource, '用户提供');
+  assert.ok(userChart.prompt.includes('出生地点：纬度39.9°，经度116.4°；'));
+  for (const [coordinateAccuracy, locationSource] of [
+    ['administrative-center', '行政中心坐标'],
+    ['province-approximation', '省级近似坐标'],
+    ['mixed', '混合坐标'],
+  ] as const) {
+    const chart = generateQizheng({ ...natalInput, coordinateAccuracy });
+    assert.equal(chart.calculationContext.coordinateAccuracy, coordinateAccuracy);
+    assert.equal(chart.calculationContext.locationSource, locationSource);
+    assert.equal(
+      chart.evidenceAnalysis.calculationFact.context.coordinateAccuracy,
+      coordinateAccuracy,
+    );
+    assert.equal(chart.evidenceAnalysis.calculationFact.context.locationSource, locationSource);
+    assert.ok(chart.prompt.includes(`计算参考地点：纬度39.9°，经度116.4°（${locationSource}）`));
+    assert.deepEqual(chart.stars, userChart.stars);
+    assert.deepEqual(
+      chart.calculationContext.solarIllumination,
+      userChart.calculationContext.solarIllumination,
+    );
+    assert.equal(chart.evidenceAnalysis.calculationFact.status, '输入明确');
+  }
+
+  const approximateInput: QizhengInput = {
+    ...DAILY_INPUT,
+    coordinateAccuracy: 'province-approximation',
+  };
+  const calculator = createQizhengFlowRangeCalculator(approximateInput);
+  assert.equal(calculator.flow.flowInput.coordinateAccuracy, 'province-approximation');
+  const flowChart = calculator.generate(approximateInput);
+  assert.equal(flowChart.flowingStars?.coordinateAccuracy, 'province-approximation');
+  assert.equal(flowChart.flowingStars?.locationSource, '省级近似坐标');
+  assert.ok(flowChart.prompt.includes('省级近似坐标'));
+  assert.throws(
+    () => calculator.generate({ ...approximateInput, coordinateAccuracy: 'user-provided' }),
+    /只允许改变出生年月日时分秒/u,
+  );
+
+  const range = generateQizhengFlowBirthRange(
+    approximateInput,
+    source('2024-02-19 11:24:48', '2024-02-19 11:24:49'),
+  );
+  assert.equal(range.branches[0]?.representative.flowingStars?.locationSource, '省级近似坐标');
+  assert.equal(
+    range.branches[0]?.representative.calculationContext.coordinateAccuracy,
+    'province-approximation',
+  );
+  assert.throws(
+    () =>
+      generateQizheng({
+        ...natalInput,
+        coordinateAccuracy: 'province-approximation',
+        latitude: undefined,
+      }),
+    /坐标来源精度需要完整经纬度/u,
+  );
+});
+
 test('七政流曜范围计算器区分 IANA 时区下未提供与明确提供的固定偏移', () => {
   const input: QizhengInput = {
     ...DAILY_INPUT,

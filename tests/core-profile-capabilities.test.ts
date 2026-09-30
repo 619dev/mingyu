@@ -46,6 +46,38 @@ test('秒级出生精度应保留到八字、星盘、七政和择日输入', ()
   assert.equal(birthProfileToAstrolabeInput(minuteProfile).second, undefined);
 });
 
+test('统一出生档案向星盘与七政保留同一坐标精度及实际坐标', () => {
+  const base = {
+    gender: 'male' as const,
+    calendarType: 'solar' as const,
+    year: 1990,
+    month: 5,
+    day: 15,
+    hour: 12,
+    minute: 0,
+  };
+  const cases = [
+    [{ regionId: '710246' }, 'province-approximation'],
+    [{ regionId: '110101' }, 'administrative-center'],
+    [{ longitude: 120.3, latitude: 22.6, timezone: 8 }, 'user-provided'],
+    [{ regionId: '110101', latitude: 40 }, 'mixed'],
+  ] as const;
+
+  for (const [location, expectedAccuracy] of cases) {
+    const profile = { ...base, location };
+    const normalized = normalizeBirthProfile(profile);
+    const qizheng = birthProfileToQizhengInput(profile);
+    const astrolabe = birthProfileToAstrolabeInput(profile);
+    assert.equal(normalized.resolvedLocation?.coordinateAccuracy, expectedAccuracy);
+    assert.equal(qizheng.coordinateAccuracy, expectedAccuracy);
+    assert.equal(astrolabe.coordinateAccuracy, expectedAccuracy);
+    assert.equal(qizheng.longitude, normalized.resolvedLocation?.longitude);
+    assert.equal(qizheng.latitude, normalized.resolvedLocation?.latitude);
+    assert.equal(qizheng.longitude, Number(astrolabe.longitude));
+    assert.equal(qizheng.latitude, Number(astrolabe.latitude));
+  }
+});
+
 test('统一出生档案缺少时间时应在排盘前拒绝', () => {
   const profile = {
     gender: 'female' as const,

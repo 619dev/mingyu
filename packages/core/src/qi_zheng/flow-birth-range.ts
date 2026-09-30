@@ -214,6 +214,8 @@ function projectFlowDiscrete(result: QizhengResult): unknown {
       })
     : undefined;
   return {
+    coordinateAccuracy: flowing?.coordinateAccuracy ?? null,
+    locationSource: flowing?.locationSource ?? null,
     stars: flowing?.stars.map((star) => ({
       name: star.name,
       xiu: star.xiu,

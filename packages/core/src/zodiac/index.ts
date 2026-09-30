@@ -380,7 +380,6 @@ export function getZodiacYearFortune(zodiacBranch: string, yearGanZhi: string): 
       ? `地支成员：出生年支与流年年支同为${zodiacBranch}，计一种地支。`
       : '',
     `五行关系：流年年干${yearGanZhi[0]}属${yearStemWuxing}，生肖地支${zodiacBranch}属${zodiacWuxing}，${relation}。`,
-    '传统依据：五行生克看作用方向；十神以个人出生日干和流年年干的阴阳五行为参照。',
     noble && !hasSanheMemberRelation ? `相合关系：按十二地支关系表命中${noble}。` : '',
     hasSanheMemberRelation
       ? `三合组成员：生肖年支${zodiacBranch}与流年年支${yearBranch}同属${BRANCH_SANHE[zodiacBranch].group}，当前两支已知；另一成员为${sanhePartners.filter((branch) => !presentBranches.has(branch)).join('、')}，三支齐备及成化条件结合完整命盘核验。`

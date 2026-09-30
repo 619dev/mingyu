@@ -159,12 +159,17 @@ function findBirthPlaceApproximateLatitude(regionId: string): number | undefined
   return PROVINCE_APPROXIMATE_LATITUDE_BY_ID_PREFIX[regionId.slice(0, 2)];
 }
 
-function resolvePath(path: BirthPlaceCascadePath): ResolvedBirthPlace {
+function resolvePath(
+  path: BirthPlaceCascadePath,
+  useProvinceApproximation: boolean,
+): ResolvedBirthPlace {
   const node = pathNode(path);
   const hasAdministrativeLatitude = node.latitude !== undefined;
   const approximateLatitude = hasAdministrativeLatitude
     ? undefined
-    : findBirthPlaceApproximateLatitude(node.id);
+    : useProvinceApproximation
+      ? findBirthPlaceApproximateLatitude(node.id)
+      : undefined;
   const latitude = node.latitude ?? approximateLatitude;
   return {
     regionId: node.id,
@@ -204,6 +209,7 @@ function searchScore(entry: SearchEntry, query: string): number | null {
 
 /** 从任意省市区树创建地点索引。 */
 export function createBirthPlaceIndex(tree: readonly BirthPlaceProvinceOption[]): BirthPlaceIndex {
+  const useProvinceApproximation = tree === CHINA_BIRTH_PLACE_TREE_DATA;
   const regionPathById = new Map<string, BirthPlaceCascadePath>();
   const pathByDisplayName = new Map<string, BirthPlaceCascadePath | null>();
   const searchEntries: SearchEntry[] = [];
@@ -279,11 +285,11 @@ export function createBirthPlaceIndex(tree: readonly BirthPlaceProvinceOption[])
             left.entry.displayName.localeCompare(right.entry.displayName, 'zh-CN'),
         )
         .slice(0, limit)
-        .map(({ entry }) => resolvePath(entry.path));
+        .map(({ entry }) => resolvePath(entry.path, useProvinceApproximation));
     },
     resolve: (regionIdOrDisplayName) => {
       const path = findPath(regionIdOrDisplayName);
-      return path ? resolvePath(path) : null;
+      return path ? resolvePath(path, useProvinceApproximation) : null;
     },
     resolveLongitude: (regionIdOrDisplayName) => {
       const path = findPath(regionIdOrDisplayName);

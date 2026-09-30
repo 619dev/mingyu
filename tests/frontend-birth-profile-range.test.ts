@@ -7,7 +7,11 @@ import {
 import { FRONTEND_DEFAULT_TIME_ZONE_ID } from '@/lib/time-policy';
 import { defaultInputState, type QueryInputState } from '@/lib/query-state';
 import { resolveBirthPlace } from 'mingyu-core/location';
-import { birthProfileToAstrolabeInput, normalizeBirthProfile } from 'mingyu-core/profile';
+import {
+  birthProfileToAstrolabeInput,
+  birthProfileToQizhengInput,
+  normalizeBirthProfile,
+} from 'mingyu-core/profile';
 
 const startTimestamp = Date.parse('2000-01-01T08:00:00+08:00');
 
@@ -160,6 +164,7 @@ test('前端选择省级近似地点后保留坐标精度来源', () => {
     'province-approximation',
   );
   assert.equal(birthProfileToAstrolabeInput(profile).coordinateAccuracy, 'province-approximation');
+  assert.equal(birthProfileToQizhengInput(profile).coordinateAccuracy, 'province-approximation');
 
   const editedProfile = buildFrontendBirthProfile(
     { ...input, birthLatitude: String(place.latitude! + 0.1) },
@@ -170,6 +175,7 @@ test('前端选择省级近似地点后保留坐标精度来源', () => {
     normalizeBirthProfile(editedProfile).resolvedLocation?.coordinateAccuracy,
     'user-provided',
   );
+  assert.equal(birthProfileToQizhengInput(editedProfile).coordinateAccuracy, 'user-provided');
 });
 
 test('点输入只有时分时保留分钟精度和默认 IANA 时区', () => {

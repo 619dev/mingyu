@@ -19,6 +19,10 @@ const qiZhengSchema = z.object({
   second: z.number().int().min(0).max(59).optional().describe('秒，默认0'),
   latitude: z.number().min(-90).max(90).optional().describe('纬度（默认北京）'),
   longitude: z.number().min(-180).max(180).optional().describe('经度（默认北京）'),
+  coordinateAccuracy: z
+    .enum(['user-provided', 'administrative-center', 'province-approximation', 'mixed'])
+    .optional()
+    .describe('坐标精度来源：用户坐标、行政中心、省级近似或混合坐标'),
   useTrueSolarTime: z.boolean().optional().describe('是否启用真太阳时仅校正传统命身十二宫'),
   timezone: z.number().min(-12).max(14).optional().describe('时区偏移（默认 +8）'),
   timeZoneId: z
@@ -60,6 +64,7 @@ export function registerQizhengTool(server: McpServer) {
           second: args.second ?? 0,
           ...(args.latitude !== undefined ? { latitude: args.latitude } : {}),
           ...(args.longitude !== undefined ? { longitude: args.longitude } : {}),
+          ...(args.coordinateAccuracy ? { coordinateAccuracy: args.coordinateAccuracy } : {}),
           ...(args.timezone !== undefined ? { timezone: args.timezone } : {}),
           ...(args.timeZoneId ? { timeZoneId: args.timeZoneId } : {}),
           ...(args.useTrueSolarTime !== undefined
@@ -97,6 +102,7 @@ export function registerQizhengTool(server: McpServer) {
           second: args.second ?? 0,
           ...(args.latitude !== undefined ? { latitude: args.latitude } : {}),
           ...(args.longitude !== undefined ? { longitude: args.longitude } : {}),
+          ...(args.coordinateAccuracy ? { coordinateAccuracy: args.coordinateAccuracy } : {}),
           ...(args.timezone !== undefined ? { timezone: args.timezone } : {}),
           ...(args.timeZoneId ? { timeZoneId: args.timeZoneId } : {}),
           ...(args.useTrueSolarTime !== undefined

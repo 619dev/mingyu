@@ -773,6 +773,7 @@ export function birthProfileToQizhengInput(profile: BirthProfile): QizhengInput 
     second: clock.second,
     latitude: location.latitude,
     longitude: location.longitude,
+    ...(location.coordinateAccuracy ? { coordinateAccuracy: location.coordinateAccuracy } : {}),
     ...(location.timezone !== undefined ? { timezone: location.timezone } : {}),
     ...(location.timeZoneId ? { timeZoneId: location.timeZoneId } : {}),
     useTrueSolarTime: profile.useTrueSolarTime === true,

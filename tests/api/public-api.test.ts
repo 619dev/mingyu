@@ -6391,6 +6391,56 @@ test('公开 API 七政四余应返回十一星、真实距星宿界、证据链
   assert.doesNotMatch(promptResponse.body.data.prompt, /宿界模型/);
   assertPromptIsPortableTaskText(promptResponse.body.data.prompt);
 });
+test('公开 API 七政计算与提示词保留坐标精度来源', async () => {
+  const input = {
+    year: 1990,
+    month: 5,
+    day: 15,
+    hour: 12,
+    latitude: 23.6978,
+    longitude: 120.3120375,
+    timezone: 8,
+    detailMode: 'full',
+    responseMode: 'full',
+  };
+  for (const [coordinateAccuracy, locationSource] of [
+    ['user-provided', '用户提供'],
+    ['administrative-center', '行政中心坐标'],
+    ['province-approximation', '省级近似坐标'],
+    ['mixed', '混合坐标'],
+  ]) {
+    for (const endpoint of ['calculate', 'prompt']) {
+      const response = await callApi(`metaphysics/qizheng/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...input, coordinateAccuracy }),
+      });
+      assert.equal(response.response.status, 200);
+      const result = endpoint === 'calculate' ? response.body.data : response.body.data.result;
+      assert.equal(result.calculationContext.coordinateAccuracy, coordinateAccuracy);
+      assert.equal(result.calculationContext.locationSource, locationSource);
+      assert.equal(result.calculationContext.latitude, input.latitude);
+      assert.equal(result.calculationContext.longitude, input.longitude);
+      if (endpoint === 'prompt') {
+        assert.match(
+          response.body.data.prompt,
+          new RegExp(
+            coordinateAccuracy === 'user-provided'
+              ? '出生地点：纬度23\\.6978°，经度120\\.3120375°；'
+              : `计算参考地点：.*${locationSource}`,
+          ),
+        );
+        assertPromptIsPortableTaskText(response.body.data.prompt);
+      }
+    }
+  }
+  const openapi = await callApi('openapi.json');
+  assert.deepEqual(
+    openapi.body.data.components.schemas.QizhengRequest.properties.coordinateAccuracy.enum,
+    ['user-provided', 'administrative-center', 'province-approximation', 'mixed'],
+  );
+});
+
 test('公开 API 七政省略坐标时标出北京参考地点', async () => {
   const input = { year: 2024, month: 6, day: 15, hour: 6, minute: 0 };
   const calculate = await callApi('metaphysics/qizheng/calculate', {
