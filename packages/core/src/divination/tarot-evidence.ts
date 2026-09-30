@@ -18,7 +18,7 @@ export interface TarotCardEvidence {
   cardId: number;
   position: string;
   name: string;
-  orientation: '正位' | '逆位';
+  orientation: '正位' | '逆位' | '未记录';
   keywords: string[];
   element: string;
   archetype: string;
@@ -33,9 +33,11 @@ export interface TarotCardEvidence {
 
 export interface TarotSpreadCoverageFact {
   key: 'tarot:spread-coverage';
-  status: '完整' | '牌数不符' | '牌位异常' | '未知牌阵';
+  status: '完整' | '牌数不符' | '牌位异常' | '牌阵名称不符' | '未知牌阵';
   spreadType: string;
   spreadName: string;
+  expectedSpreadName: string | null;
+  identityMismatches: string[];
   expectedCardCount: number | null;
   actualCardCount: number;
   expectedPositions: string[];
@@ -188,7 +190,7 @@ export interface TarotTraditionalFact {
   index: number;
   position: string;
   card: string;
-  orientation: '正位' | '逆位';
+  orientation: '正位' | '逆位' | '未记录';
   kind: '牌面事实';
   originalText: string;
   promptText: string;
@@ -280,6 +282,7 @@ function canonicalizeTarotCards(data: TarotData) {
     if (!sameStringList(input.keywords, evidence.keywords)) fields.push('关键词');
     if (input.element !== evidence.element) fields.push('元素主题');
     if (input.archetype !== evidence.archetype) fields.push('牌阶主题');
+    if (typeof input.reversed !== 'boolean') fields.push('正逆位缺失或无效');
     mismatches.push(fields);
     return {
       ...input,
@@ -325,6 +328,10 @@ function buildSpreadCoverageFact(
 ): TarotSpreadCoverageFact {
   const spread = tarotSpreads[data.spreadType as keyof typeof tarotSpreads];
   const expectedPositions = spread ? [...spread.positions] : [];
+  const identityMismatches =
+    spread && data.spreadName !== spread.name
+      ? [`牌阵名称应为${spread.name}，记录为${String(data.spreadName)}`]
+      : [];
   const actualPositions = cards.map((item) => item.position);
   const missingPositions = expectedPositions.filter(
     (position) => !actualPositions.includes(position),
@@ -348,18 +355,22 @@ function buildSpreadCoverageFact(
     ? '未知牌阵'
     : cards.length !== spread.cardCount
       ? '牌数不符'
-      : missingPositions.length ||
-          duplicatePositions.length ||
-          unexpectedPositions.length ||
-          positionOrderMismatches.length ||
-          duplicateCardIds.length
-        ? '牌位异常'
-        : '完整';
+      : identityMismatches.length
+        ? '牌阵名称不符'
+        : missingPositions.length ||
+            duplicatePositions.length ||
+            unexpectedPositions.length ||
+            positionOrderMismatches.length ||
+            duplicateCardIds.length
+          ? '牌位异常'
+          : '完整';
   return {
     key: 'tarot:spread-coverage',
     status,
     spreadType: data.spreadType,
     spreadName: data.spreadName,
+    expectedSpreadName: spread?.name ?? null,
+    identityMismatches,
     expectedCardCount: spread?.cardCount ?? null,
     actualCardCount: cards.length,
     expectedPositions,
@@ -377,7 +388,9 @@ function buildSpreadCoverageFact(
           ? `牌阵类型${data.spreadType}未找到已声明配置，不得补造预期牌位与牌数`
           : status === '牌数不符'
             ? `${data.spreadName}应有${spread?.cardCount ?? '未知'}张，当前记录${cards.length}张，不得补造缺失牌面`
-            : `牌阵资料异常：缺少牌位${missingPositions.join('、') || '无'}；重复牌位${duplicatePositions.join('、') || '无'}；越位牌位${unexpectedPositions.join('、') || '无'}；顺序不符位置${positionOrderMismatches.join('、') || '无'}；重复牌号${duplicateCardIds.join('、') || '无'}`,
+            : status === '牌阵名称不符'
+              ? identityMismatches.join('；')
+              : `牌阵资料异常：缺少牌位${missingPositions.join('、') || '无'}；重复牌位${duplicatePositions.join('、') || '无'}；越位牌位${unexpectedPositions.join('、') || '无'}；顺序不符位置${positionOrderMismatches.join('、') || '无'}；重复牌号${duplicateCardIds.join('、') || '无'}`,
     sources: ['已声明牌阵牌数与牌位顺序', '当前逐牌位置与牌号唯一性核验'],
     limitation: SPREAD_COVERAGE_LIMITATION,
   };
@@ -419,6 +432,52 @@ function buildDrawOrderFacts(data: TarotData, cards: TarotCardEvidence[]): Tarot
   });
 }
 
+function getTarotDrawIdentityMismatches(data: TarotData): string[] {
+  const draw = data.draw;
+  if (!draw) return [];
+
+  const manual = draw.method === '用户按牌位手工录入';
+  const interactive = draw.method === '用户逐张触发前端随机抽取';
+  const recognizedMethod =
+    manual || interactive || draw.method === 'Fisher-Yates洗牌后依牌位顺序取顶牌';
+  const expectedAlgorithm = manual
+    ? 'tarot.spread.manual'
+    : interactive
+      ? 'tarot.spread.interactive'
+      : data.spreadType === 'single'
+        ? 'tarot.single'
+        : 'tarot.spread';
+  const expectedOrientationRule = manual
+    ? '正逆位由用户逐张录入'
+    : '每张牌独立取随机数，小于0.5为逆位，否则为正位';
+  const mismatches: string[] = [];
+
+  if (!recognizedMethod) mismatches.push(`抽牌方式无法识别：${String(draw.method)}`);
+  if (draw.orientationRule !== expectedOrientationRule) {
+    mismatches.push(
+      `正逆位规则应为${expectedOrientationRule}，记录为${String(draw.orientationRule)}`,
+    );
+  }
+  if (data.meta) {
+    if (data.meta.algorithm !== expectedAlgorithm) {
+      mismatches.push(`算法标识应为${expectedAlgorithm}，记录为${String(data.meta.algorithm)}`);
+    }
+    if (
+      typeof data.meta.resultId === 'string' &&
+      !data.meta.resultId.startsWith(`${data.meta.algorithm}:`)
+    ) {
+      mismatches.push('结果身份前缀与算法标识不一致');
+    }
+    if (manual && data.meta.random !== undefined) {
+      mismatches.push('手工录入记录带有随机轨迹');
+    }
+    if (interactive && data.meta.random && data.meta.random.mode !== 'system') {
+      mismatches.push(`逐张抽牌随机模式应为system，记录为${String(data.meta.random.mode)}`);
+    }
+  }
+  return mismatches;
+}
+
 function buildDrawFact(data: TarotData, drawOrderFacts: TarotDrawOrderFact[]): TarotDrawFact {
   const isManual = data.draw?.method === '用户按牌位手工录入';
   const isInteractive = data.draw?.method === '用户逐张触发前端随机抽取';
@@ -436,10 +495,14 @@ function buildDrawFact(data: TarotData, drawOrderFacts: TarotDrawOrderFact[]): T
     ...missingIndexes,
     ...extraIndexes,
   ].filter((item, index, values) => values.indexOf(item) === index);
-  const metadataMismatches =
-    data.draw && data.draw.deckSize !== tarotCards.length
-      ? [`牌组规模应为${tarotCards.length}张，记录为${String(data.draw.deckSize)}张`]
-      : [];
+  const metadataMismatches = data.draw
+    ? [
+        data.draw.deckSize !== tarotCards.length
+          ? `牌组规模应为${tarotCards.length}张，记录为${String(data.draw.deckSize)}张`
+          : '',
+        ...getTarotDrawIdentityMismatches(data),
+      ].filter(Boolean)
+    : [];
   const status: TarotDrawFact['status'] =
     !data.draw || order.length !== data.cards.length
       ? '来源链缺失'
@@ -579,19 +642,21 @@ function buildThemeFacts(cards: TarotCardEvidence[]): TarotThemeFact[] {
 
 function buildCounterEvidenceFacts(cards: TarotCardEvidence[]): TarotCounterEvidenceFact[] {
   return cards.flatMap((card) =>
-    card.constraints.map((constraint, index) => ({
-      key: `tarot:counter:${card.index}:${index + 1}`,
-      ownerCardKey: card.key,
-      position: card.position,
-      card: card.name,
-      orientation: card.orientation,
-      type: '逆位解释约束',
-      status: '已触发',
-      detail: constraint,
-      promptText: `${card.position}${card.name}${card.orientation}：${constraint}`,
-      sources: ['逐牌正逆位记录', '逆位解释约束与整组牌序互证原则'],
-      limitation: COUNTER_FACT_LIMITATION,
-    })),
+    card.orientation === '逆位'
+      ? card.constraints.map((constraint, index) => ({
+          key: `tarot:counter:${card.index}:${index + 1}`,
+          ownerCardKey: card.key,
+          position: card.position,
+          card: card.name,
+          orientation: '逆位' as const,
+          type: '逆位解释约束',
+          status: '已触发',
+          detail: constraint,
+          promptText: `${card.position}${card.name}逆位：${constraint}`,
+          sources: ['逐牌正逆位记录', '逆位解释约束与整组牌序互证原则'],
+          limitation: COUNTER_FACT_LIMITATION,
+        }))
+      : [],
   );
 }
 
@@ -927,7 +992,8 @@ export function analyzeTarotEvidence(data: TarotData): TarotEvidenceAnalysis {
     },
   ];
   const cards = data.cards.map((card, index): TarotCardEvidence => {
-    const orientation = card.reversed ? '逆位' : '正位';
+    const orientation =
+      typeof card.reversed !== 'boolean' ? '未记录' : card.reversed ? '逆位' : '正位';
     const activeMeaning = card.keywords.join('、');
     const promptMeaning = `${card.position}为${card.name}${orientation}`;
     const key = `tarot:card:${index + 1}:${card.id}:${orientation}`;

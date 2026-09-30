@@ -875,3 +875,84 @@ test('雷诺曼固定组合事实应引用两张所属牌并进入反证汇总',
     [fixed.key],
   );
 });
+
+test('雷诺曼抽牌方式与算法身份不一致时保留来源缺口', () => {
+  const data = drawLenormandSpread('three', { seed: '雷诺曼身份交叉核对' });
+  data.draw!.method = '用户按牌位手工录入';
+
+  const evidence = analyzeLenormandEvidence(data);
+
+  assert.equal(evidence.randomFact.status, '不适用');
+  assert.equal(evidence.drawFact.status, '来源链不一致');
+  assert.ok(
+    evidence.drawFact.metadataMismatches.some((item) =>
+      item.includes('算法标识应为lenormand.spread.manual'),
+    ),
+  );
+  assert.ok(evidence.drawFact.metadataMismatches.includes('手工录入记录带有随机轨迹'));
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+});
+
+test('雷诺曼提示词列出牌位与坐标实际缺口，不携带抽牌审计字段', () => {
+  const three = drawLenormandSpread('three', { manualCardIds: [1, 2, 3] });
+  const changedPositions: LenormandData = structuredClone(three);
+  changedPositions.cards[1]!.position = changedPositions.cards[0]!.position;
+  changedPositions.cards[1]!.id = changedPositions.cards[0]!.id;
+  const positionPrompt = formatEnhancedDivinationInfo('lenormand', changedPositions);
+
+  assert.match(
+    positionPrompt,
+    /盘面资料缺口：缺少牌位现状；重复牌位起因；顺序异常位置2；重复牌号1/u,
+  );
+  assert.doesNotMatch(positionPrompt, /来源链|算法标识|随机样本|随机轨迹/u);
+
+  const nine = drawLenormandSpread('nine', {
+    manualCardIds: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  });
+  const changedGeometry: LenormandData = structuredClone(nine);
+  changedGeometry.cards[0]!.row = 2;
+  changedGeometry.cards[0]!.column = 3;
+  const geometryPrompt = formatEnhancedDivinationInfo('lenormand', changedGeometry);
+
+  assert.match(geometryPrompt, /第1张行号记录2，应为1；列号记录3，应为1/u);
+  assert.doesNotMatch(geometryPrompt, /来源链|算法标识|随机样本|随机轨迹/u);
+
+  const incompleteLayout: LenormandData = {
+    ...nine,
+    cards: nine.cards.slice(0, 8),
+    layoutEvidence: ['旧版布局文字'],
+  };
+  const incompleteLayoutPrompt = formatEnhancedDivinationInfo('lenormand', incompleteLayout);
+
+  assert.match(incompleteLayoutPrompt, /九宫中心、行列与对角线关系资料未齐/u);
+  assert.doesNotMatch(
+    incompleteLayoutPrompt,
+    /结构化布局事实|旧版布局文字|来源链|算法标识|随机样本|随机轨迹/u,
+  );
+
+  const unknownSpread: LenormandData = {
+    ...three,
+    spreadType: 'unmapped-internal' as LenormandSpreadType,
+    spreadName: '未登记牌阵',
+  };
+  const unknownSpreadPrompt = formatEnhancedDivinationInfo('lenormand', unknownSpread);
+
+  assert.match(unknownSpreadPrompt, /本次牌阵名称与牌位关系待补/u);
+  assert.match(unknownSpreadPrompt, /核心结构：共3张牌/u);
+  assert.match(unknownSpreadPrompt, /起因：骑士/u);
+  assert.doesNotMatch(unknownSpreadPrompt, /unmapped-internal|牌阵类型|没有对应/u);
+});
+
+test('雷诺曼牌阵名称不符时按牌阵类型显示规范名称', () => {
+  const data = drawLenormandSpread('three', { manualCardIds: [1, 2, 3] });
+  data.spreadName = '九宫牌阵';
+
+  const evidence = analyzeLenormandEvidence(data);
+  const prompt = formatEnhancedDivinationInfo('lenormand', data);
+
+  assert.equal(evidence.spreadCoverageFact.status, '牌阵名称不符');
+  assert.equal(evidence.spreadCoverageFact.expectedSpreadName, '三牌事件线');
+  assert.match(prompt, /核心结构：牌阵三牌事件线；共3张牌/u);
+  assert.doesNotMatch(prompt, /九宫牌阵/u);
+  assert.doesNotMatch(prompt, /来源链|算法标识|随机样本|随机轨迹/u);
+});

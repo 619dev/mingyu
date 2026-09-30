@@ -510,6 +510,57 @@ test('塔罗牌位、顺序和牌号异常时应给出可定位的覆盖事实',
   assert.equal(unknownSpread.spreadCoverageFact.expectedCardCount, null);
 });
 
+test('塔罗缺少正逆位时保留未记录状态，不默认按正位解释', () => {
+  const data = drawTarotSpread('single', {
+    manualCards: [{ id: 1, reversed: false }],
+  });
+  Reflect.deleteProperty(data.cards[0], 'reversed');
+
+  const evidence = analyzeTarotEvidence(data);
+  const prompt = formatEnhancedDivinationInfo('tarot', data);
+
+  assert.equal(evidence.cards[0]?.orientation, '未记录');
+  assert.ok(evidence.cards[0]?.mismatches.includes('正逆位缺失或无效'));
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+  assert.equal(evidence.counterEvidenceFacts.length, 0);
+  assert.match(prompt, /当前指引：愚者（未记录）/u);
+  assert.doesNotMatch(prompt, /当前指引：愚者（正位）/u);
+});
+
+test('塔罗抽牌方式与算法身份不一致时不标记来源完整', () => {
+  const data = drawTarotSpread('three', { seed: '塔罗身份交叉核对' });
+  data.draw!.method = '用户按牌位手工录入';
+  data.draw!.orientationRule = '正逆位由用户逐张录入';
+
+  const evidence = analyzeTarotEvidence(data);
+
+  assert.equal(evidence.randomFact.status, '不适用');
+  assert.equal(evidence.drawFact.status, '来源链不一致');
+  assert.ok(
+    evidence.drawFact.metadataMismatches.some((item) =>
+      item.includes('算法标识应为tarot.spread.manual'),
+    ),
+  );
+  assert.ok(evidence.drawFact.metadataMismatches.includes('手工录入记录带有随机轨迹'));
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+});
+
+test('塔罗牌阵名称与牌阵类型不符时标记身份缺口', () => {
+  const data = drawTarotSpread('three', {
+    manualCards: [1, 2, 3].map((id) => ({ id, reversed: false })),
+  });
+  data.spreadName = '凯尔特十字';
+
+  const evidence = analyzeTarotEvidence(data);
+
+  assert.equal(evidence.spreadCoverageFact.expectedSpreadName, '时间流牌阵');
+  assert.equal(evidence.spreadCoverageFact.status, '牌阵名称不符');
+  assert.deepEqual(evidence.spreadCoverageFact.identityMismatches, [
+    '牌阵名称应为时间流牌阵，记录为凯尔特十字',
+  ]);
+  assert.equal(evidence.summaryFact.status, '证据链有缺口');
+});
+
 test('塔罗主题对象只做标签计数，不生成权重或吉凶评分', () => {
   const data = drawTarotSpread('three', {
     manualCards: [

@@ -37,9 +37,11 @@ export interface LenormandCardEvidence {
 
 export interface LenormandSpreadCoverageFact {
   key: 'lenormand:spread-coverage';
-  status: '完整' | '牌数不符' | '牌位异常' | '未知牌阵';
+  status: '完整' | '牌数不符' | '牌位异常' | '牌阵名称不符' | '未知牌阵';
   spreadType: string;
   spreadName: string;
+  expectedSpreadName: string | null;
+  identityMismatches: string[];
   expectedCardCount: number | null;
   actualCardCount: number;
   expectedPositions: string[];
@@ -296,6 +298,11 @@ function buildSpreadCoverageFact(
   cards: LenormandCardEvidence[],
 ): LenormandSpreadCoverageFact {
   const expectedPositions = LENORMAND_SPREAD_POSITIONS[data.spreadType];
+  const expectedSpread = LENORMAND_SPREADS[data.spreadType as keyof typeof LENORMAND_SPREADS];
+  const identityMismatches =
+    expectedSpread && data.spreadName !== expectedSpread.name
+      ? [`牌阵名称应为${expectedSpread.name}，记录为${String(data.spreadName)}`]
+      : [];
   const actualPositions = cards.map((card) => card.position);
   const normalizedActualPositions = actualPositions.map((position) =>
     normalizeCoveragePosition(data.spreadType, position),
@@ -322,18 +329,22 @@ function buildSpreadCoverageFact(
     ? '未知牌阵'
     : cards.length !== expectedPositions.length
       ? '牌数不符'
-      : missingPositions.length ||
-          duplicatePositions.length ||
-          unexpectedPositions.length ||
-          positionOrderMismatches.length ||
-          duplicateCardIds.length
-        ? '牌位异常'
-        : '完整';
+      : identityMismatches.length
+        ? '牌阵名称不符'
+        : missingPositions.length ||
+            duplicatePositions.length ||
+            unexpectedPositions.length ||
+            positionOrderMismatches.length ||
+            duplicateCardIds.length
+          ? '牌位异常'
+          : '完整';
   return {
     key: 'lenormand:spread-coverage',
     status,
     spreadType: data.spreadType,
     spreadName: data.spreadName,
+    expectedSpreadName: expectedSpread?.name ?? null,
+    identityMismatches,
     expectedCardCount: expectedPositions?.length ?? null,
     actualCardCount: cards.length,
     expectedPositions: expectedPositions ? [...expectedPositions] : [],
@@ -351,7 +362,9 @@ function buildSpreadCoverageFact(
           ? `牌阵类型${data.spreadType}未找到已声明配置，不得补造预期牌位与牌数`
           : status === '牌数不符'
             ? `${data.spreadName}应有${expectedPositions?.length ?? '未知'}张，现有资料记录${cards.length}张，不得补造缺失牌面`
-            : `牌阵资料异常：缺少牌位${missingPositions.join('、') || '无'}；重复牌位${duplicatePositions.join('、') || '无'}；越位牌位${unexpectedPositions.join('、') || '无'}；顺序不符位置${positionOrderMismatches.join('、') || '无'}；重复牌号${duplicateCardIds.join('、') || '无'}`,
+            : status === '牌阵名称不符'
+              ? identityMismatches.join('；')
+              : `牌阵资料异常：缺少牌位${missingPositions.join('、') || '无'}；重复牌位${duplicatePositions.join('、') || '无'}；越位牌位${unexpectedPositions.join('、') || '无'}；顺序不符位置${positionOrderMismatches.join('、') || '无'}；重复牌号${duplicateCardIds.join('、') || '无'}`,
     sources: ['已声明牌阵牌数与牌位顺序', '逐牌位置与牌号唯一性核验'],
     limitation: SPREAD_COVERAGE_LIMITATION,
   };
@@ -400,6 +413,42 @@ function buildDrawOrderFacts(
   });
 }
 
+function getLenormandDrawIdentityMismatches(data: LenormandData): string[] {
+  const draw = data.draw;
+  if (!draw) return [];
+
+  const manual = draw.method === '用户按牌位手工录入';
+  const interactive = draw.method === '用户逐张触发前端随机抽取';
+  const recognizedMethod =
+    manual || interactive || draw.method === 'Fisher-Yates洗牌后依牌位顺序取顶牌';
+  const expectedAlgorithm = manual
+    ? 'lenormand.spread.manual'
+    : interactive
+      ? 'lenormand.spread.interactive'
+      : 'lenormand.spread';
+  const mismatches: string[] = [];
+
+  if (!recognizedMethod) mismatches.push(`抽牌方式无法识别：${String(draw.method)}`);
+  if (data.meta) {
+    if (data.meta.algorithm !== expectedAlgorithm) {
+      mismatches.push(`算法标识应为${expectedAlgorithm}，记录为${String(data.meta.algorithm)}`);
+    }
+    if (
+      typeof data.meta.resultId === 'string' &&
+      !data.meta.resultId.startsWith(`${data.meta.algorithm}:`)
+    ) {
+      mismatches.push('结果身份前缀与算法标识不一致');
+    }
+    if (manual && data.meta.random !== undefined) {
+      mismatches.push('手工录入记录带有随机轨迹');
+    }
+    if (interactive && data.meta.random && data.meta.random.mode !== 'system') {
+      mismatches.push(`逐张抽牌随机模式应为system，记录为${String(data.meta.random.mode)}`);
+    }
+  }
+  return mismatches;
+}
+
 function buildDrawFact(
   data: LenormandData,
   drawOrderFacts: LenormandDrawOrderFact[],
@@ -420,10 +469,14 @@ function buildDrawFact(
     ...missingIndexes,
     ...extraIndexes,
   ].filter((item, index, values) => values.indexOf(item) === index);
-  const metadataMismatches =
-    data.draw && data.draw.deckSize !== LENORMAND_CARDS.length
-      ? [`牌组规模应为${LENORMAND_CARDS.length}张，记录为${String(data.draw.deckSize)}张`]
-      : [];
+  const metadataMismatches = data.draw
+    ? [
+        data.draw.deckSize !== LENORMAND_CARDS.length
+          ? `牌组规模应为${LENORMAND_CARDS.length}张，记录为${String(data.draw.deckSize)}张`
+          : '',
+        ...getLenormandDrawIdentityMismatches(data),
+      ].filter(Boolean)
+    : [];
   const status: LenormandDrawFact['status'] =
     !data.draw || order.length !== data.cards.length
       ? '来源链缺失'

@@ -1441,8 +1441,71 @@ function formatAlmanacInfo(data: AlmanacData) {
     .join('\n');
 }
 
+function formatLenormandPromptGaps(
+  data: LenormandData,
+  evidence: ReturnType<typeof analyzeLenormandEvidence>,
+) {
+  const gaps: string[] = [];
+  const coverage = evidence.spreadCoverageFact;
+
+  if (coverage.status === '未知牌阵') {
+    gaps.push('本次牌阵名称与牌位关系待补');
+  } else {
+    if (coverage.expectedCardCount !== coverage.actualCardCount) {
+      gaps.push(`牌数应为${coverage.expectedCardCount}张，实际${coverage.actualCardCount}张`);
+    }
+    if (coverage.missingPositions.length) {
+      gaps.push(`缺少牌位${coverage.missingPositions.join('、')}`);
+    }
+    if (coverage.duplicatePositions.length) {
+      gaps.push(`重复牌位${coverage.duplicatePositions.join('、')}`);
+    }
+    if (coverage.unexpectedPositions.length) {
+      gaps.push(`额外牌位${coverage.unexpectedPositions.join('、')}`);
+    }
+    if (coverage.positionOrderMismatches.length) {
+      gaps.push(`顺序异常位置${coverage.positionOrderMismatches.join('、')}`);
+    }
+  }
+  if (coverage.duplicateCardIds.length) {
+    gaps.push(`重复牌号${coverage.duplicateCardIds.join('、')}`);
+  }
+
+  for (const card of evidence.cards) {
+    const input = data.cards[card.index - 1];
+    if (!input) continue;
+    const layoutMismatches: string[] = [];
+    if (card.mismatches.includes('宫位')) {
+      layoutMismatches.push(`宫位记录${input.house ?? '未记录'}，应为${card.house ?? '无'}`);
+    }
+    if (card.mismatches.includes('行号')) {
+      layoutMismatches.push(`行号记录${input.row ?? '未记录'}，应为${card.row ?? '无'}`);
+    }
+    if (card.mismatches.includes('列号')) {
+      layoutMismatches.push(`列号记录${input.column ?? '未记录'}，应为${card.column ?? '无'}`);
+    }
+    if (layoutMismatches.length) {
+      gaps.push(`第${card.index}张${layoutMismatches.join('；')}`);
+    }
+  }
+
+  const layout = evidence.layoutCoverageFact;
+  if (layout.status === '结构缺失' || layout.status === '旧版字符串兼容') {
+    if (data.spreadType === 'nine') {
+      gaps.push('九宫中心、行列与对角线关系资料未齐');
+    } else if (data.spreadType === 'grandTableau') {
+      gaps.push('大桌宫位与人物牌近身关系资料未齐');
+    }
+  }
+
+  return gaps.length ? `盘面资料缺口：${Array.from(new Set(gaps)).join('；')}` : '';
+}
+
 function formatLenormandInfo(data: LenormandData) {
   const evidenceAnalysis = analyzeLenormandEvidence(data);
+  const coverage = evidenceAnalysis.spreadCoverageFact;
+  const spreadName = coverage.expectedSpreadName ?? data.spreadName;
+  const gapLine = formatLenormandPromptGaps(data, evidenceAnalysis);
   const cardLines = evidenceAnalysis.cards.map((card) => {
     const meaning = evidenceAnalysis.traditionalFacts
       .find((fact) => fact.kind === '单牌牌义' && fact.cardFactKeys.includes(card.key))
@@ -1466,7 +1529,10 @@ function formatLenormandInfo(data: LenormandData) {
     .map((item) => `  ${item.factText}`);
   return [
     '占法：雷诺曼',
-    `核心结构：牌阵${data.spreadName}；共${data.cards.length}张牌`,
+    coverage.status === '未知牌阵'
+      ? `核心结构：共${data.cards.length}张牌`
+      : `核心结构：牌阵${spreadName}；共${data.cards.length}张牌`,
+    gapLine,
     '牌位明细：',
     ...cardLines,
     ...(layoutLines.length ? ['布局关系：', ...layoutLines] : []),
