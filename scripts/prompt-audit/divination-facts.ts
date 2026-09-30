@@ -247,7 +247,7 @@ function qimenPalaceFacts(data: AnyRecord): DivinationPromptFact[] {
             : undefined,
           di && text(di.stem) ? `地盘${text(di.stem)}` : undefined,
         ],
-        { scope: { start: '九宫简表：', end: '同干定位：' } },
+        { scope: { start: '九宫简表：' } },
       );
     }),
   );

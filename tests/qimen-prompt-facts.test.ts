@@ -25,9 +25,9 @@ test('奇门原生提示词绑定符使宫生克、天地盘时干和取用宫�
   const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
   const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
   assert.match(prompt, /值符值使与时干：[^\n]*时干丁/);
-  assert.match(prompt, /同干定位：[\s\S]*丁：天盘离九宫；地盘巽四宫/);
-  assert.equal(prompt.split('丁：天盘离九宫；地盘巽四宫').length - 1, 1);
-  assert.doesNotMatch(prompt, /天盘丁：离九宫；地盘丁：巽四宫/);
+  assert.match(prompt, /离九宫（正南，火）：[^\n]*天盘丁，地盘庚/);
+  assert.match(prompt, /巽四宫（东南，木）：[^\n]*天盘癸，地盘丁/);
+  assert.doesNotMatch(prompt, /同干定位：/);
   assert.match(prompt, /值符宫与值使宫五行：值使宫乾六宫金克值符宫巽四宫木/);
   assert.match(prompt, /巽四宫天地盘干：天盘癸水克地盘丁火；天干相冲：癸与丁相冲/);
   assert.doesNotMatch(prompt, /天干五合：癸与丁相合/);
@@ -144,7 +144,9 @@ test('奇门甲子时以旬首所遁戊分别定位天盘和地盘', () => {
     assert.equal(data.ganzhi.hour, '甲子');
     const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
     assert.match(prompt, /时干甲（甲子遁于戊）/);
-    assert.match(prompt, /同干定位：[\s\S]*戊：天盘[一-龥]+；地盘[一-龥]+/);
+    assert.match(prompt, /九宫简表：[\s\S]*天盘戊/);
+    assert.match(prompt, /九宫简表：[\s\S]*地盘戊/);
+    assert.doesNotMatch(prompt, /同干定位：/);
     assert.doesNotMatch(prompt, /时干甲未见落宫/);
   }
 });
@@ -286,7 +288,8 @@ test('转盘与飞盘的换象造象任务保留原盘、转换条件与现实�
     const data = generateQimen(new Date('2026-05-20T00:30:00+08:00'), method);
     const before = structuredClone(data);
     const prompt = buildDivinationPrompt('qimen', '项目谈判怎样换象与造象？', data);
-    assert.match(prompt, /同干定位：/);
+    assert.match(prompt, /九宫简表：[\s\S]*天盘[甲乙丙丁戊己庚辛壬癸]/);
+    assert.doesNotMatch(prompt, /同干定位：/);
     assert.match(prompt, /换象：.*盘层、所追干（含寄干）、起宫与落宫/);
     assert.match(prompt, /替代象及成立条件；多种解释用可核实的现实信息区分/);
     assert.match(prompt, /造象：.*盘象依据、作用路径、投入或时机、原盘制约和可观察反馈/);

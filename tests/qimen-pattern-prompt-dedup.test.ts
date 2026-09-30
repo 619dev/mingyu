@@ -24,10 +24,12 @@ test('奇门证据提示词保留命中条件并省略同宫格局的重复前�
 test('奇门完整在线提示词只保留一处旬空与驿马位置映射', () => {
   const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
   const prompt = formatEnhancedDivinationInfo('qimen', data);
-  const palaceTable = prompt.split('九宫简表：\n')[1]?.split('\n同干定位：')[0] ?? '';
+  const palaceTable = prompt.match(/九宫简表：\r?\n((?:  [^\r\n]*(?:\r?\n|$))*)/u)?.[1] ?? '';
 
   assert.match(prompt, /旬空与马星：旬空子空落坎一宫、丑空落艮八宫；马星巳时驿马在亥，落乾六宫/u);
   assert.doesNotMatch(palaceTable, /逢空|马星/u);
+  assert.match(palaceTable, /兑七宫[^\n]*天盘壬、丙（丙为寄干），地盘戊/u);
+  assert.doesNotMatch(prompt, /同干定位：/u);
 });
 
 test('三奇得、马星和击刑在在线提示词中各保留一次有效事实', () => {

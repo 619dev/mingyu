@@ -823,7 +823,8 @@ test('奇门终身局 P4：自包含提示词规范、多流派依据与合规�
   assert.ok(prompt.length > 500);
   assert.match(prompt, /换象：/);
   assert.match(prompt, /造象：/);
-  assert.match(prompt, /同干定位（本命局）：/);
+  assert.match(prompt, /九宫四盘明细：[\s\S]*天盘\[[^\n]+地盘干\[/);
+  assert.doesNotMatch(prompt, /同干定位（本命局）：/);
   assert.match(prompt, /阶段与流年各用本层已列盘面/);
   assert.equal(data.topicCandidates.length, 2, 'topics 过滤应真正生效');
   assert.match(data.basis.timeZoneUsed, /America\/New_York/);
@@ -1064,7 +1065,7 @@ test('奇门终身局基础盘省略同格局复述并保留独有组合与遁�
     },
     '未来一年的事业如何？',
   );
-  const patterns = prompt.split('盘面吉凶格局：')[1]?.split('同干定位')[0] ?? '';
+  const patterns = prompt.split('盘面吉凶格局：')[1]?.split('【个人标记与主题宫】')[0] ?? '';
 
   assert.match(patterns, /虎遁（吉）：生门、乙奇落艮八宫，主威严稳固、资源回归/u);
   assert.match(patterns, /休诈（吉）：丁奇、开门、六合同宫于乾六宫，主和合调停、协作成事/u);

@@ -20,7 +20,6 @@ import {
   formatQimenActiveStem,
   formatQimenHourStem,
   formatQimenRelationFacts,
-  formatQimenStemLocations,
 } from './qimen-facts';
 import { resolveXiaoliurenRule } from '../divination/xiaoliuren-rules';
 import {
@@ -968,7 +967,7 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
       return `${name}：${compactedSummary}`;
     });
   const palaceLines = data.jiuGongGe.map((palace) => {
-    return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}，地盘${palace.diPan.stem || '无'}`;
+    return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}${palace.tianPan.companionStem ? `（${palace.tianPan.companionStem}为寄干）` : ''}，地盘${palace.diPan.stem || '无'}`;
   });
   const isYearOrMonth = scopePresentation.scope === 'year' || scopePresentation.scope === 'month';
   const seasonalitySummary =
@@ -1012,7 +1011,6 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
       : '',
     palaceLines.length ? '九宫简表：' : '',
     ...palaceLines,
-    `同干定位：\n${formatQimenStemLocations(data).join('\n')}`,
     classicPatternLines.length ? `盘面命中格局：\n${classicPatternLines.join('\n')}` : '',
     comboLines.length
       ? `复合格局：\n${comboLines.map((item) => item.replaceAll('；', '；\n')).join('\n')}`

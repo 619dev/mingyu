@@ -7,7 +7,6 @@
 import type { QimenLifetimeData } from '../../../../types/divination';
 import { TimeManager } from '../../../../calendar/timeManager';
 import { QIMEN_IMAGE_INTERPRETATION_TASK } from '../../../../prompt/qimen-interpretation';
-import { formatQimenStemLocations } from '../../../../prompt/qimen-facts';
 import { buildPromptTask } from '../../../../prompt/guidance';
 
 type TriggerDate = NonNullable<
@@ -238,8 +237,6 @@ export function buildLifetimePrompt(
     }
   }
   lines.push('');
-
-  lines.push(`同干定位（本命局）：\n${formatQimenStemLocations(data.baseChart).join('\n')}\n`);
 
   // 5. 【个人标记与主题宫】
   lines.push(`【个人标记与主题宫】`);

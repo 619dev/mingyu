@@ -740,7 +740,8 @@ function assertSamplePromptsAreClean(samples: PromptSample[]) {
   if (!qimenSample) {
     leakedMessages.push('缺少奇门遁甲提示词样本');
   } else {
-    const palaceText = qimenSample.prompt.split('九宫简表：')[1]?.split('同干定位：')[0] ?? '';
+    const palaceText =
+      qimenSample.prompt.match(/九宫简表：\r?\n((?:  [^\r\n]*(?:\r?\n|$))*)/u)?.[1] ?? '';
     const patternText = qimenSample.prompt.split('盘面命中格局：')[1]?.split('复合格局：')[0] ?? '';
     if (!/旬空与马星：旬空[^\n]*空落[^\n]*；马星/u.test(qimenSample.prompt)) {
       leakedMessages.push('奇门遁甲样本缺少旬空与宫位映射事实');
