@@ -3,7 +3,12 @@
  * @description 统一处理当地钟表时间、固定 UTC 偏移与 IANA 历史时区，供真太阳时、星盘和天文时间共用。
  */
 
-import { createUtcTimestamp, daysInGregorianMonth, isValidClockTime } from './date-validation';
+import {
+  createUtcTimestamp,
+  daysInGregorianMonth,
+  formatUtcOffsetHours,
+  isValidClockTime,
+} from './date-validation';
 import {
   getHistoricalTimezoneOffsetAt,
   resolveHistoricalTimezone,
@@ -60,12 +65,7 @@ export function formatCivilDateTime(value: CivilDateTimeParts): string {
 /** 将固定 UTC 偏移格式化为 ISO 8601 后缀，保留历史时区可能出现的秒级偏移。 */
 export function formatFixedTimezoneOffset(timezone: number): string {
   assertFixedTimezoneHours(timezone);
-  const totalSeconds = Math.round(Math.abs(timezone) * 3600);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const sign = timezone >= 0 ? '+' : '-';
-  return `${sign}${pad(hours)}:${pad(minutes)}${seconds ? `:${pad(seconds)}` : ''}`;
+  return formatUtcOffsetHours(timezone);
 }
 
 export function assertFixedTimezoneHours(value: number, label = 'timezone'): void {
@@ -165,7 +165,7 @@ export function resolveCivilTime(
   }
   if (timezoneEvidence?.offsetConflict) {
     throw new Error(
-      `timezone 固定偏移 UTC${input.timezone! >= 0 ? '+' : ''}${input.timezone} 与 ${timeZoneId} 在该当地时刻的历史偏移不一致。`,
+      `timezone 固定偏移 UTC${formatFixedTimezoneOffset(input.timezone!)} 与 ${timeZoneId} 在该当地时刻的历史偏移不一致。`,
     );
   }
 

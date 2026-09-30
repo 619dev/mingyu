@@ -4,6 +4,7 @@ import { getShichenFromClock } from './dateUtils';
 import { checkChinaDst, type ChinaDstCheckResult } from './china-dst';
 import {
   DEFAULT_CHINA_TIMEZONE_HOURS,
+  formatFixedTimezoneOffset,
   resolveCivilTime,
   type CivilDateTimeParts,
 } from './civil-time';
@@ -217,7 +218,7 @@ function buildTrueSolarTimeEvidence(
               mappingStatus: input.timezoneEvidence.status,
               offsetConflict: input.timezoneEvidence.offsetConflict,
             },
-            promptText: `按 IANA 时区 ${input.timezoneEvidence.timeZoneId} 的历史规则，将当地钟表时间${input.clockDateTime}解析为 UTC${input.timezone >= 0 ? '+' : ''}${input.timezone}${input.timezoneEvidence.status === 'ambiguous' ? '，并已用明确固定偏移消解回拨歧义' : ''}`,
+            promptText: `按 IANA 时区 ${input.timezoneEvidence.timeZoneId} 的历史规则，将当地钟表时间${input.clockDateTime}解析为 UTC${formatFixedTimezoneOffset(input.timezone)}${input.timezoneEvidence.status === 'ambiguous' ? '，并已用明确固定偏移消解回拨歧义' : ''}`,
             sources: ['IANA Time Zone Database 与 Intl.DateTimeFormat 历史时区解析'],
             limitation: TRUE_SOLAR_STEP_LIMITATION,
           },
@@ -239,7 +240,7 @@ function buildTrueSolarTimeEvidence(
         ...(input.timeZoneId ? { timeZoneId: input.timeZoneId } : {}),
       },
       result: { standardMeridian: input.standardMeridian },
-      promptText: `核验当地钟表时间${input.clockDateTime}、经度${input.longitude}°与法定时区 UTC${input.timezone >= 0 ? '+' : ''}${input.timezone}，对应标准经线${input.standardMeridian}°`,
+      promptText: `核验当地钟表时间${input.clockDateTime}、经度${input.longitude}°与法定时区 UTC${formatFixedTimezoneOffset(input.timezone)}，对应标准经线${input.standardMeridian}°`,
       sources: ['明确当地钟表时间、经度与法定 UTC 偏移'],
       limitation: TRUE_SOLAR_STEP_LIMITATION,
     },
@@ -331,7 +332,7 @@ function buildTrueSolarTimeEvidence(
             status: '已解析' as const,
             ownerFactKeys: [timezoneStepKey],
             ownerStepKeys: [timezoneStepKey],
-            promptText: `IANA 时区 ${input.timezoneEvidence.timeZoneId} 的当地历史偏移解析为 UTC${input.timezone >= 0 ? '+' : ''}${input.timezone}`,
+            promptText: `IANA 时区 ${input.timezoneEvidence.timeZoneId} 的当地历史偏移解析为 UTC${formatFixedTimezoneOffset(input.timezone)}`,
             sources: ['IANA 历史时区映射结果'],
             limitation: TRUE_SOLAR_CORRECTION_LIMITATION,
           },
@@ -523,7 +524,7 @@ function buildTrueSolarTimeEvidence(
     limitationFacts,
     ...(input.timezoneEvidence ? { timezoneEvidence: input.timezoneEvidence } : {}),
     source,
-    promptText: `真太阳时证据：钟表时间${input.clockDateTime}${input.timezoneEvidence ? `，IANA 时区 ${input.timezoneEvidence.timeZoneId} 的历史偏移为 UTC${input.timezone >= 0 ? '+' : ''}${input.timezone}` : ''}，标准时间${input.standardDateTime}，经度时差${input.longitudeCorrectionMinutes.toFixed(3)}分钟，均时差${input.equationOfTimeMinutes.toFixed(3)}分钟，总校正${input.totalCorrectionMinutes.toFixed(3)}分钟，采用${input.correctedDateTime}与${input.shichen.name}。计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}。证据汇总：${summaryFact.promptText}。来源：${source}。限制：${limitations.join('；')}`,
+    promptText: `真太阳时证据：钟表时间${input.clockDateTime}${input.timezoneEvidence ? `，IANA 时区 ${input.timezoneEvidence.timeZoneId} 的历史偏移为 UTC${formatFixedTimezoneOffset(input.timezone)}` : ''}，标准时间${input.standardDateTime}，经度时差${input.longitudeCorrectionMinutes.toFixed(3)}分钟，均时差${input.equationOfTimeMinutes.toFixed(3)}分钟，总校正${input.totalCorrectionMinutes.toFixed(3)}分钟，采用${input.correctedDateTime}与${input.shichen.name}。计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}。证据汇总：${summaryFact.promptText}。来源：${source}。限制：${limitations.join('；')}`,
   };
 }
 

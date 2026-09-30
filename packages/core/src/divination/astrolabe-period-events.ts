@@ -9,7 +9,11 @@ import {
   unixToJulianDate,
 } from '../astrology/engine';
 import { daysInGregorianMonth } from '../calendar/date-validation';
-import { resolveCivilDayStart, type CivilTimeZoneInput } from '../calendar/civil-time';
+import {
+  formatFixedTimezoneOffset,
+  resolveCivilDayStart,
+  type CivilTimeZoneInput,
+} from '../calendar/civil-time';
 import type { AstrolabeData, AstrolabePoint } from '../types/divination';
 
 export type AstrolabePeriodScopeMode = 'yearly' | 'monthly' | 'daily';
@@ -533,7 +537,7 @@ export function resolveAstrolabePeriodWindow(
   const timeZoneId = getTimeZoneId(source);
   const timezoneLabel = timeZoneId
     ? `${timeZoneId}（各时刻按当地历史时区规则换算）`
-    : `UTC${start.timezone >= 0 ? '+' : ''}${start.timezone}`;
+    : `UTC${formatFixedTimezoneOffset(start.timezone)}`;
   return {
     start,
     end,

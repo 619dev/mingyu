@@ -1,5 +1,6 @@
 import type { AstrolabeData, AstrolabeSynastryData } from '../types/divination';
 import { formatAstrolabeAspectSections } from '../divination/astrolabe-chart-facts';
+import { formatFixedTimezoneOffset } from '../calendar/civil-time';
 import { formatPromptCurrentTime } from './current-time';
 import { buildPromptGuidance, buildPromptTask } from './guidance';
 import { buildPromptSchoolSection } from './schools';
@@ -126,8 +127,9 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
   const sun = data.planets.find((item) => item.name === 'Sun');
   const moon = data.planets.find((item) => item.name === 'Moon');
   const ascendant = data.angles.find((item) => item.name === 'Ascendant');
+  const gender = data.birth.gender ? `${data.birth.gender}；` : '';
   return [
-    `出生信息：${data.birth.name}；${data.birth.gender || '性别未填'}；${data.birth.dateTime}；位置${data.birth.location}；时区UTC${data.birth.timezone >= 0 ? '+' : ''}${data.birth.timezone}`,
+    `出生信息：${data.birth.name}；${gender}${data.birth.dateTime}；位置${data.birth.location}；时区UTC${formatFixedTimezoneOffset(data.birth.timezone)}`,
     data.birth.latitude !== undefined && data.birth.longitude !== undefined
       ? `出生坐标：纬度${data.birth.latitude}°，经度${data.birth.longitude}°${data.birth.timeZoneId ? `；时区${data.birth.timeZoneId}` : ''}`
       : data.birth.timeZoneId
@@ -254,6 +256,7 @@ export function buildAstrolabeSynastryPromptDocument(
     '双方本命盘',
     ...(options.synastry.aspects.length ? ['已列跨盘相位'] : []),
     ...(options.synastry.houseOverlays.length ? ['已列跨盘落宫'] : []),
+    ...(options.synastry.receptions?.length ? ['已列古典接纳与互溶'] : []),
   ].join('、');
   const task = buildPromptTask(
     `请依据${factSources}分析互动主轴、互补点与张力点，逐项列出对应证据，再回答问题。`,

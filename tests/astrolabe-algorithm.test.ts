@@ -70,6 +70,21 @@ test('星盘可选秒数应贯穿现代星历、UTC和光照证据，省略时�
   );
 });
 
+test('星盘出生时区证据应以时分秒格式化固定历史偏移', () => {
+  const data = generateAstrolabe(validInput);
+  data.birth.timezone = 4 + (51 * 60 + 16) / 3600;
+  delete data.evidenceAnalysis;
+
+  const evidence = analyzeAstrolabeEvidence(data);
+  const inputStep = evidence.calculationFact.steps.find((step) => step.stage === '输入固定');
+  const inputEvidence = evidence.evidence.items.find(
+    (item) => item.title === '星盘输入与计算链事实',
+  );
+
+  assert.match(inputStep?.promptText ?? '', /UTC\+04:51:16/);
+  assert.match(inputEvidence?.detail ?? '', /UTC\+04:51:16/);
+});
+
 test('星盘底层算法应拒绝越界经纬度和时区', () => {
   assert.throws(
     () => generateAstrolabe({ ...validInput, latitude: '100' }),

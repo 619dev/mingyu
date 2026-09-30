@@ -21,7 +21,11 @@
 import * as AstronomyEngine from 'astronomy-engine';
 import type { Body } from 'astronomy-engine';
 import { SevenStar, SolarTerm, SolarTime, TwentyEightStar } from 'tyme4ts';
-import { getCivilDateTimeAtFixedOffset, resolveCivilDayStart } from '../calendar/civil-time';
+import {
+  formatFixedTimezoneOffset,
+  getCivilDateTimeAtFixedOffset,
+  resolveCivilDayStart,
+} from '../calendar/civil-time';
 import { createUtcTimestamp, daysInGregorianMonth } from '../calendar/date-validation';
 import { getShichenFromClock } from '../calendar/dateUtils';
 import { getHistoricalTimezoneOffsetAt } from '../calendar/historical-timezone';
@@ -1349,7 +1353,7 @@ function buildQizhengEvidence(
       },
       result: { utcDateTime: context.utcDateTime },
       dependsOnStepKeys: [],
-      promptText: `当地民用时间${context.localDateTime}按UTC${context.timezone >= 0 ? '+' : ''}${context.timezone}换算为${context.utcDateTime}`,
+      promptText: `当地民用时间${context.localDateTime}按UTC${formatFixedTimezoneOffset(context.timezone)}换算为${context.utcDateTime}`,
       sources: ['历史时区或固定UTC偏移解析', '当前民用时间输入'],
       limitation: QIZHENG_CALCULATION_STEP_LIMITATION,
     },
@@ -2356,7 +2360,7 @@ function generateQizhengInternal(
   const prompt = [
     `【七政四余 · 果老星宗】`,
     `出生时间：${input.year}年${input.month}月${input.day}日 ${String(input.hour).padStart(2, '0')}:${String(input.minute ?? 0).padStart(2, '0')}${input.second ? `:${String(input.second).padStart(2, '0')}` : ''}。`,
-    `${locationLabel}：${locationText}；时区UTC${tz >= 0 ? '+' : ''}${tz}${input.timeZoneId ? `（${input.timeZoneId}）` : ''}；${calculationContext.palaceTimeNote}。`,
+    `${locationLabel}：${locationText}；时区UTC${formatFixedTimezoneOffset(tz)}${input.timeZoneId ? `（${input.timeZoneId}）` : ''}；${calculationContext.palaceTimeNote}。`,
     `十二宫：${twelvePalaces.map((item) => `${item.palace}在${item.signBranch}宫`).join('、')}；身宫落${getQizhengSignBranch(shenGong)}宫。`,
     ...stars.map(
       (s) =>

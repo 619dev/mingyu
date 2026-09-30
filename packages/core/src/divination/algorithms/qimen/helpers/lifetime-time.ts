@@ -8,6 +8,7 @@ import type { QimenLifetimeInput, QimenStagePolicy } from '../../../../types/div
 import {
   resolveCivilTime,
   DEFAULT_CHINA_TIMEZONE_HOURS,
+  formatFixedTimezoneOffset,
   getCivilDateTimeAtFixedOffset,
   type CivilDateTimeParts,
 } from '../../../../calendar/civil-time';
@@ -221,8 +222,8 @@ export function normalizeQimenLifetimeTime(input: QimenLifetimeInput): QimenNorm
     solarTerm: solarTermName,
     timeStandard: timeStandard === 'trueSolar' ? '真太阳时' : '法定民用时',
     timeZoneUsed: timeZoneId
-      ? `${timeZoneId} (UTC${effectiveTimezone >= 0 ? '+' : ''}${effectiveTimezone})`
-      : `UTC${effectiveTimezone >= 0 ? '+' : ''}${effectiveTimezone}`,
+      ? `${timeZoneId} (UTC${formatFixedTimezoneOffset(effectiveTimezone)})`
+      : `UTC${formatFixedTimezoneOffset(effectiveTimezone)}`,
     trueSolarOffsetSeconds,
     isDstApplied,
     crossesDate,

@@ -119,6 +119,35 @@ test('IANA 回拨重复小时的比例模型也可用时间字符串偏移消歧
   assert.equal(later.calendar.actualElapsedSeconds - earlier.calendar.actualElapsedSeconds, 3600);
 });
 
+test('历史秒级时区偏移可从盘面回填并保持真实瞬时与日序', () => {
+  const original = calculateHuangjiSixDayCycleFromDate(
+    parseProportionalSixDay('1900-01-02T12:00:00', undefined, 'Asia/Shanghai'),
+  );
+  assert.equal(original.civilTime.dateTime, '1900-01-02T12:00:00+08:05:43');
+  assert.equal(original.civilTime.utcDateTime, '1900-01-02T03:54:17.000Z');
+
+  const restored = calculateHuangjiSixDayCycleFromDate(
+    parseProportionalSixDay(original.civilTime.dateTime, undefined, 'Asia/Shanghai'),
+  );
+  assert.equal(restored.civilTime.utcDateTime, original.civilTime.utcDateTime);
+  assert.equal(restored.calendar.logicalElapsedDays, original.calendar.logicalElapsedDays);
+  assert.equal(restored.hexagrams.hourly.id, original.hexagrams.hourly.id);
+
+  const epoch = '1900-01-01T00:00:00+08:05:43';
+  const explicit = calculateHuangjiSixDayCycleFromDate(
+    parseSixDay(original.civilTime.dateTime, epoch, undefined, 'Asia/Shanghai'),
+  );
+  assert.equal(explicit.civilTime.utcDateTime, original.civilTime.utcDateTime);
+  assert.equal(explicit.calendar.actualElapsedDays, 1);
+  const result = calculateHuangjiJingshi({
+    sixDayDate: parseProportionalSixDay(original.civilTime.dateTime, undefined, 'Asia/Shanghai'),
+  });
+  assert.match(result.prompt, /UTC\+08:05:43，Asia\/Shanghai/u);
+  assert.doesNotMatch(result.prompt, /8\.095277/u);
+  assert.match(formatHuangjiInfo(result), /UTC\+08:05:43/u);
+  assert.throws(() => parseProportionalSixDay('1900-01-02T12:00:00+08:05:60'), /时区偏移无效/u);
+});
+
 test('六日逐爻公历入口拒绝未经校定的模型、历元和坐标范围', () => {
   assert.throws(
     () =>

@@ -38,7 +38,7 @@ test('姓名出生事实区分地点代表坐标并列出实际校正经度和�
   assert.equal(districtAnalysis.birthContext?.timeBasis.timezone, 8);
   assert.match(
     districtPrompt,
-    /地点记录：北京市 东城区；真太阳时校正经度：116\.416334°（区县行政中心代表点）；时区：UTC\+8/,
+    /地点记录：北京市 东城区；真太阳时校正经度：116\.416334°（区县行政中心代表点）；时区：UTC\+08:00/,
   );
   assert.doesNotMatch(districtPrompt, /出生地按经度定位|中国行政区地点数据|来源与精度未注明/);
 
@@ -70,6 +70,6 @@ test('姓名出生事实区分地点代表坐标并列出实际校正经度和�
   assert.equal(longitudeOnlyAnalysis.birthContext?.timeBasis.timezone, 5.5);
   assert.match(
     buildChineseNameAnalysisPrompt({ analysis: longitudeOnlyAnalysis }),
-    /地点记录：未提供；真太阳时校正经度：75°；时区：Asia\/Kolkata，UTC\+5\.5/,
+    /地点记录：未提供；真太阳时校正经度：75°；时区：Asia\/Kolkata，UTC\+05:30/,
   );
 });

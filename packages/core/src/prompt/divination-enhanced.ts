@@ -1,6 +1,6 @@
 import type { WuyunLiuqiResult } from '../wuyun-liuqi';
 import { formatWuyunLiuqiFacts } from '../wuyun-liuqi';
-import { DEFAULT_CHINA_TIMEZONE_HOURS } from '../calendar/civil-time';
+import { DEFAULT_CHINA_TIMEZONE_HOURS, formatFixedTimezoneOffset } from '../calendar/civil-time';
 import { TimeManager } from '../calendar/timeManager';
 import { formatAstrolabeForPrompt } from './astrolabe';
 import {
@@ -1509,7 +1509,7 @@ export function formatHuangjiInfo(data: HuangjiJingshiResult) {
     dateTime
       ? `起盘时间：${dateTime.civilTime.dateTime}（${dateTime.civilTime.timezone}）；皇极历${dateTime.calendar.monthBranch}月第${dateTime.calendar.dayOfMonth}日；节气${dateTime.calendar.activeSolarTerm}`
       : sixDay
-        ? `起盘时间：${sixDay.civilTime.dateTime}（UTC${sixDay.civilTime.timezone >= 0 ? '+' : ''}${sixDay.civilTime.timezone}）`
+        ? `起盘时间：${sixDay.civilTime.dateTime}（UTC${formatFixedTimezoneOffset(sixDay.civilTime.timezone)}）`
         : '',
     sixDay
       ? sixDay.model === '书绪言六日逐爻·显式历元'

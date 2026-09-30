@@ -3,7 +3,7 @@
  * @description 采用太阳星历与 NOAA/Meeus 太阳模型，输出地点相关的光照事件和计算限制。
  */
 import * as AstronomyEngine from 'astronomy-engine';
-import { resolveCivilDayStart } from './civil-time';
+import { formatFixedTimezoneOffset, resolveCivilDayStart } from './civil-time';
 import { getHistoricalTimezoneOffsetAt } from './historical-timezone';
 import {
   buildAstronomicalTimeEvidence,
@@ -220,7 +220,7 @@ function crossingEvidence(
 ): SolarCrossingEvidence {
   const key = `光照交点:${name}`;
   const calculationStepKeys = ['solar-illumination:calculation:crossings'];
-  const timezoneContext = timeZoneId || `UTC${timezone >= 0 ? '+' : ''}${timezone}`;
+  const timezoneContext = timeZoneId || `UTC${formatFixedTimezoneOffset(timezone)}`;
   const calculation = `以${altitudeDegrees === -0.833 ? '标准太阳上缘与近地平折射（太阳中心名义高度-0.833°）' : `太阳中心高度${altitudeDegrees}°`}为阈值，结合纬度${latitude}°、经度${longitude}°、时区${timezoneContext}，按太阳星历求该民用日期内的高度交点`;
   const observer = new Observer(latitude, longitude, 0);
   const endTimestamp = localDayEndUtcTimestamp;

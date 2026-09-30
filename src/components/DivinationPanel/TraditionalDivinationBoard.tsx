@@ -25,6 +25,7 @@ import { formatJinkoujueRangeInterval } from '@/lib/divination/jinkoujue-range';
 import { formatMeihuaRangeInterval } from '@/lib/divination/meihua-range';
 import { formatTaiyiRangeInterval } from '@/lib/divination/taiyi-range';
 import { formatHuangjiRangeInterval } from '@/lib/divination/huangji-range';
+import { formatFixedTimezoneOffset } from 'mingyu-core/calendar';
 import {
   formatLiuyaoRangeInterval,
   formatLiuyaoRangeBackground,
@@ -3402,10 +3403,7 @@ function HuangjiTraditionalBoard({
               ['六日目标时间', sixDayCycle.civilTime.dateTime],
               [sixDayUsesExplicitEpoch ? '校定历元' : '现代冬至定位', sixDayCycle.anchor.dateTime],
               ['换算模型', sixDayModelLabel],
-              [
-                '时区',
-                `UTC${sixDayCycle.civilTime.timezone >= 0 ? '+' : ''}${sixDayCycle.civilTime.timezone}`,
-              ],
+              ['时区', `UTC${formatFixedTimezoneOffset(sixDayCycle.civilTime.timezone)}`],
             ]}
           />
           <TraditionalFacts

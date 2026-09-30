@@ -14,7 +14,7 @@ import {
 } from '../bazi/input';
 import { baziCalculator } from '../bazi/baziCalculator';
 import { formatUsefulGodFunctions } from '../bazi/baziAnalysisFormatter';
-import { getCivilDateTimeAtFixedOffset } from '../calendar/civil-time';
+import { formatFixedTimezoneOffset, getCivilDateTimeAtFixedOffset } from '../calendar/civil-time';
 import { checkChinaDst } from '../calendar/china-dst';
 import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
 import { resolveBirthPlace } from '../location';
@@ -914,11 +914,15 @@ export function buildChineseCharacterPrompt(input: {
     if (!detail) return `【${char}】\n字典资料暂缺。`;
     return [
       `【${char}】`,
-      `简体：${detail.simplified}；繁体：${detail.traditional}`,
+      ...(detail.simplified !== detail.traditional
+        ? [
+            `简体：${detail.simplified}；繁体：${detail.traditional}`,
+            `简体笔画：${detail.simplifiedStrokes ?? '待考'}；繁体笔画：${detail.traditionalStrokes ?? '待考'}；姓名学康熙笔画：${detail.kangxiStrokes}`,
+          ]
+        : [`姓名学康熙笔画：${detail.kangxiStrokes}`]),
       `读音：${detail.pinyin || '待考'}`,
       ...(detail.readingNote ? [`音义用法：${detail.readingNote}`] : []),
       `用字范围：${detail.common ? 'GB2312一级字' : '补充用字'}`,
-      `简体笔画：${detail.simplifiedStrokes ?? '待考'}；繁体笔画：${detail.traditionalStrokes ?? '待考'}；姓名学康熙笔画：${detail.kangxiStrokes}`,
       ...(detail.strokeNote ? [`笔画用法：${detail.strokeNote}`] : []),
       `部首：${detail.radical || '待考'}；结构：${detail.structure || '待考'}；姓名学五行：${detail.wuxing || '待考'}`,
       `字义：${detail.definition || '待考'}`,
@@ -1258,7 +1262,7 @@ function formatNamingLocationTimeBasis(timeBasis: NamingBirthPointContext['timeB
         ? '（省级近似坐标）'
         : '';
   const timezone = timeBasis.timezone ?? 8;
-  const offset = `UTC${timezone >= 0 ? '+' : ''}${timezone}`;
+  const offset = `UTC${formatFixedTimezoneOffset(timezone)}`;
   const timezoneLabel = timeBasis.timeZoneId ? `${timeBasis.timeZoneId}，${offset}` : offset;
   return `地点记录：${timeBasis.place || '未提供'}；真太阳时校正经度：${timeBasis.longitude}°${representativePointLabel}；时区：${timezoneLabel}`;
 }

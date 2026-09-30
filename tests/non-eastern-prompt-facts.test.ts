@@ -66,7 +66,7 @@ test('七政四余提示词保留十二宫映射及出生时空口径', () => {
     longitude: 116.4074,
     timezone: 8,
   });
-  assert.match(result.prompt, /出生地点：纬度39\.9042°，经度116\.4074°；时区UTC\+8/);
+  assert.match(result.prompt, /出生地点：纬度39\.9042°，经度116\.4074°；时区UTC\+08:00/);
   assert.equal(result.prompt.split(`命宫在${result.twelvePalaces[0].signBranch}宫`).length - 1, 1);
   assert.doesNotMatch(result.prompt, /命宫在命宫|命宫落/);
   assert.match(result.prompt, /十二宫：.+；身宫落.+宫。/);

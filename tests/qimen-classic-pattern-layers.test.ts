@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { QimenJiuGongGe } from '../packages/core/src/types/divination';
-import { getClassicPatterns } from '../packages/core/src/divination/algorithms/qimen/helpers/classic-patterns';
+import {
+  getClassicPatterns,
+  getStemRelations,
+} from '../packages/core/src/divination/algorithms/qimen/helpers/classic-patterns';
 import { detectQimenPatternCombos } from '../packages/core/src/divination/algorithms/qimen/helpers/pattern-combos';
 import { getQimenPatternTags } from '../packages/core/src/divination/algorithms/qimen/helpers/patterns';
 import { generateQimen } from '../packages/core/src/divination/algorithms/qimen';
@@ -130,6 +133,29 @@ test('丁奇升殿在兑金宫不误称为火的本气之地', () => {
   );
   assert.match(pattern?.summary ?? '', /火临兑金，升殿得位/);
   assert.doesNotMatch(pattern?.summary ?? '', /得本气之地/);
+});
+
+test('命名天地盘格局不遮蔽同宫实际入墓与击刑', () => {
+  const chart = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const relations = getStemRelations(chart.jiuGongGe);
+  const geng = relations.filter((item) => item.palace === 2 && item.heaven === '庚');
+  assert.deepEqual(
+    geng.map((item) => item.type),
+    ['命名格局', '入墓'],
+  );
+  const gui = relations.filter((item) => item.palace === 4 && item.heaven === '癸');
+  assert.deepEqual(
+    gui.map((item) => item.type),
+    ['命名格局', '入墓', '击刑'],
+  );
+  assert.ok(
+    chart.classicPatterns?.some((item) => item.name === '庚入墓' && item.palaces.includes(2)),
+  );
+
+  const palaceFact = chart.evidenceAnalysis?.palaceFacts.find((item) => item.gong === 2);
+  assert.ok(palaceFact?.stemRelations.some((item) => item.includes('庚临壬为入墓')));
+  const xunPalaceFact = chart.evidenceAnalysis?.palaceFacts.find((item) => item.gong === 4);
+  assert.ok(xunPalaceFact?.stemRelations.some((item) => item.includes('癸临丁为击刑')));
 });
 
 test('甲己日固定盘三奇常在，不据此生成额外的三奇会甲吉格', () => {

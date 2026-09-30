@@ -161,7 +161,7 @@ test('终身奇门初始盘与 AI 补算共享历史时区和阶段口径', asyn
     yearsPerStage: 15,
   });
   assert.equal(decadalInput.stagePolicy?.model, 'decadalGanzhi');
-  assert.match(initial.basis.timeZoneUsed, /Asia\/Shanghai \(UTC\+9\)/u);
+  assert.match(initial.basis.timeZoneUsed, /Asia\/Shanghai \(UTC\+09:00\)/u);
 
   await withRealApi(async () => {
     const resource = await executeReadingAction(action, undefined, historicalSubject);

@@ -318,7 +318,7 @@ test('混合范围组合保留仅名称地点、坐标 IANA 时区和固定侧�
   const context = formatBaziCurrentSampleContext(currentPage);
   assert.match(context, /出生地：范围主方/u);
   assert.match(context, /出生地：有坐标对方/u);
-  assert.match(context, /时区：UTC\+8/u);
+  assert.match(context, /时区：UTC\+08:00/u);
   assert.match(context, /时区：Asia\/Shanghai/u);
   assert.match(context, /第一人：.*输入精度：秒/u);
   assert.match(context, /第二人：.*输入精度：分钟/u);

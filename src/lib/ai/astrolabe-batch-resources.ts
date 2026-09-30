@@ -7,6 +7,7 @@ import {
   type AstrolabePeriodEventCollection,
   type AstrolabePeriodScopeMode,
 } from 'mingyu-core/divination/astrolabe-scope';
+import { formatFixedTimezoneOffset } from 'mingyu-core/calendar';
 
 export const DEFAULT_ASTROLABE_PERIOD_BATCH_DAYS = 7;
 
@@ -351,8 +352,8 @@ export async function fetchAstrolabePeriodCollection(args: {
     startDateTime,
     endDateTime,
     timezoneLabel: timeZoneId
-      ? `${timeZoneId}（UTC${timezone >= 0 ? '+' : ''}${timezone}）`
-      : `UTC${timezone >= 0 ? '+' : ''}${timezone}`,
+      ? `${timeZoneId}（UTC${formatFixedTimezoneOffset(timezone)}）`
+      : `UTC${formatFixedTimezoneOffset(timezone)}`,
     events: sortedEvents,
     ...layers,
     parentRange,

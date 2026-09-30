@@ -57,7 +57,7 @@ test('住宅统一入口把已知出生时分传给八宅立春年界', () => {
   const result = generateResidentialFengshui(input);
   assert.equal(input.birthHour, 16);
   assert.equal(result.bazhai?.mingGua, '震');
-  assert.match(result.prompt, /已按出生时分（UTC\+8）与立春瞬时核定/);
+  assert.match(result.prompt, /已按出生时分（UTC\+08:00）与立春瞬时核定/);
   assert.doesNotMatch(result.prompt, /未提供出生时刻/);
 });
 

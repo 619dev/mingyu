@@ -436,6 +436,19 @@ test('纽约夏令时流年批次的结果时区取父范围起点', () => {
   });
 });
 
+test('固定时区周期标签保留历史秒级偏移', () => {
+  const fixedOffsetData = structuredClone(astrolabeData);
+  delete fixedOffsetData.birth.timeZoneId;
+  fixedOffsetData.birth.timezone = 4 + (51 * 60 + 16) / 3600;
+  const window = resolveAstrolabePeriodWindow(
+    buildAstrolabePeriodContext(fixedOffsetData),
+    'daily',
+    { year: 2028, month: 7, day: 12 },
+  );
+
+  assert.equal(window.timezoneLabel, 'UTC+04:51:16');
+});
+
 test('合并周期星象应按时刻去重排序', () => {
   const yearly = buildAstrolabePeriodEvents(astrolabeData, 'yearly', {
     year: 2028,

@@ -29,6 +29,7 @@ import {
 } from './datetime';
 import { evaluateHuangjiEraTrend, type HuangjiEraTrendResult } from './trend';
 import { hexagramsData } from '../divination/hexagram-data';
+import { formatFixedTimezoneOffset } from '../calendar';
 
 export * from './standard';
 export * from './datetime';
@@ -306,15 +307,15 @@ export function buildHuangjiJingshiPrompt(
     const sixDayDateTimeLines = sixDayCycle
       ? sixDayCycle.model === '书绪言六日逐爻·显式历元'
         ? [
-            `六日逐爻公历时间：${sixDayCycle.civilTime.dateTime}（UTC${sixDayCycle.civilTime.timezone >= 0 ? '+' : ''}${sixDayCycle.civilTime.timezone}${sixDayCycle.civilTime.timeZoneId ? `，${sixDayCycle.civilTime.timeZoneId}` : ''}）`,
-            `显式历元：${sixDayCycle.anchor.dateTime}（UTC${sixDayCycle.anchor.timezone >= 0 ? '+' : ''}${sixDayCycle.anchor.timezone}，真实瞬时${sixDayCycle.anchor.utcDateTime}）为经校定的当地子半起点，对应六日逐爻已过日数0、子半时刻。`,
+            `六日逐爻公历时间：${sixDayCycle.civilTime.dateTime}（UTC${formatFixedTimezoneOffset(sixDayCycle.civilTime.timezone)}${sixDayCycle.civilTime.timeZoneId ? `，${sixDayCycle.civilTime.timeZoneId}` : ''}）`,
+            `显式历元：${sixDayCycle.anchor.dateTime}（UTC${formatFixedTimezoneOffset(sixDayCycle.anchor.timezone)}，真实瞬时${sixDayCycle.anchor.utcDateTime}）为经校定的当地子半起点，对应六日逐爻已过日数0、子半时刻。`,
             `六日逐爻坐标：从显式历元至目标当地日期经过${sixDayCycle.calendar.actualElapsedDays}个完整公历日，直接取得三百六十日正数中的第${sixDayCycle.dayOfCycle}日；实际 UTC 瞬时相隔${sixDayCycle.calendar.actualElapsedSeconds}秒。`,
             `值年背景：目标真实瞬时按北京时间冬至换年，取${formatHuangjiCivilYear(sixDayCycle.calendar.targetYear)}。`,
             `经卦${sixDayCycle.hexagrams.jing.name}第${sixDayCycle.dayLine}爻当日，日变卦${sixDayCycle.hexagrams.daily.name}，${sixDayCycle.hourRange}时变卦${sixDayCycle.hexagrams.hourly.name}。`,
             `时段依据：当地公历子半起，钟表${sixDayCycle.civilTime.hour}时处于${sixDayCycle.hourRange}，每四小时一爻。`,
           ]
         : [
-            `六日逐爻公历时间：${sixDayCycle.civilTime.dateTime}（UTC${sixDayCycle.civilTime.timezone >= 0 ? '+' : ''}${sixDayCycle.civilTime.timezone}${sixDayCycle.civilTime.timeZoneId ? `，${sixDayCycle.civilTime.timeZoneId}` : ''}）`,
+            `六日逐爻公历时间：${sixDayCycle.civilTime.dateTime}（UTC${formatFixedTimezoneOffset(sixDayCycle.civilTime.timezone)}${sixDayCycle.civilTime.timeZoneId ? `，${sixDayCycle.civilTime.timeZoneId}` : ''}）`,
             `现代冬至岁周换算模型：以${sixDayCycle.anchor.dateTime}的冬至真实瞬时确定${sixDayCycle.calendar.targetYear}岁周；该冬至落在公历${sixDayCycle.anchor.winterSolsticeGregorianYear}年，该瞬时在目标地点为${sixDayCycle.anchor.localDateTime}。`,
             `${sixDayCycle.anchor.dayBoundary === '当地子半' ? '当地子半锚点' : '当地日首个实际时刻锚点'}：${sixDayCycle.anchor.dayStartDateTime}（真实瞬时${sixDayCycle.anchor.dayStartUtcDateTime}），以${sixDayCycle.anchor.dayBoundary === '当地子半' ? '冬至子半至下一冬至子半' : '冬至当地日首点至下一冬至当地日首点'}的实际跨度按三百六十逻辑日比例映射。`,
             `实际跨度：已经过${sixDayCycle.calendar.actualElapsedSeconds}秒（${sixDayCycle.calendar.actualElapsedDays}个完整日），逻辑位置${sixDayCycle.calendar.logicalPosition.toFixed(9)}日，即第${sixDayCycle.calendar.logicalElapsedDays + 1}个逻辑日的${sixDayCycle.calendar.logicalDayFraction.toFixed(9)}。`,

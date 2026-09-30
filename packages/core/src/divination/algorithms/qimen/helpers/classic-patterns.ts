@@ -1843,10 +1843,10 @@ function getStemPairNamedPatterns(jiuGongGe: QimenJiuGongGe[]): ClassicPattern[]
 /**
  * 识别天地盘干关系
  *
- * 每个宫位最多输出一条主关系，并附加最多一条特殊（入墓/击刑/奇仪相合）。
+ * 每组天地盘干最多输出一条主关系，入墓、击刑分别作为独立事实附加。
  *
- * 入墓与击刑为独立判定，与五行关系可以共存不同宫位，但同宫内
- * 若已有入墓或击刑，则不再输出五行生克/奇仪相合（避免关系过多）。
+ * 命名格局不遮蔽同宫入墓或击刑；若已命中这些事实，则不再输出
+ * 普通五行生克或奇仪相合关系。
  *
  * @param jiuGongGe - 九宫格数据
  * @returns 天地盘干关系列表
@@ -1871,7 +1871,6 @@ export function getStemRelations(jiuGongGe: QimenJiuGongGe[]): StemRelation[] {
           type: '命名格局',
           note: `${namedPattern.name}：${namedPattern.summary}`,
         });
-        continue;
       }
 
       // 入墓判断：天盘干落入统一入墓表对应墓宫（入墓与击刑可同宫并存，均独立判定）
@@ -1903,7 +1902,7 @@ export function getStemRelations(jiuGongGe: QimenJiuGongGe[]): StemRelation[] {
       }
 
       // 入墓或击刑命中后，不再输出五行生克/奇仪相合（避免同宫关系过多）
-      if (muHit || xingHit) continue;
+      if (namedPattern || muHit || xingHit) continue;
 
       // 奇仪相合
       const heAndPairs: Array<[string, string, string]> = [

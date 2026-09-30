@@ -11,6 +11,7 @@ import {
   type TransitPosition,
   type Transit,
 } from '../astrology/engine';
+import { formatFixedTimezoneOffset } from '../calendar/civil-time';
 export type AstrolabeScopeMode = 'natal' | 'full' | 'yearly' | 'monthly' | 'daily';
 import type { AstrolabeData, AstrolabePoint } from '../types/divination';
 import {
@@ -2272,7 +2273,7 @@ export function calculateSolarReturnEvidence(
       timeScale,
       limitations,
       limitationFacts,
-      promptText: `太阳返照证据：返照当地钟表时刻${dateTime}（UTC${localReturn.timezone >= 0 ? '+' : ''}${localReturn.timezone}，太阳黄经残差${residualDegrees.toFixed(4)}°）；${returnChart.promptText}；${timeScale.promptText}；计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}；搜索方法：${precision}；相位汇总：${aspectSummaryFact.promptText}；证据汇总：${summaryFact.promptText}；来源：${baseEvidence.source}；精度边界：${limitations.join('；')}；${aspects.join('；') || '未见容许度内的主要返照对本命触发'}。`,
+      promptText: `太阳返照证据：返照当地钟表时刻${dateTime}（UTC${formatFixedTimezoneOffset(localReturn.timezone)}，太阳黄经残差${residualDegrees.toFixed(4)}°）；${returnChart.promptText}；${timeScale.promptText}；计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}；搜索方法：${precision}；相位汇总：${aspectSummaryFact.promptText}；证据汇总：${summaryFact.promptText}；来源：${baseEvidence.source}；精度边界：${limitations.join('；')}；${aspects.join('；') || '未见容许度内的主要返照对本命触发'}。`,
     };
   } catch {
     return unavailableEvidence('太阳返照计算失败，不作为本次判断依据。', '位置计算', [
@@ -2444,7 +2445,7 @@ function buildTransitHouseEvidence(
   return {
     status: '有效' as const,
     facts,
-    promptText: `行运落宫：取样时区UTC${timezone >= 0 ? '+' : ''}${timezone}；${facts
+    promptText: `行运落宫：取样时区UTC${formatFixedTimezoneOffset(timezone)}；${facts
       .map((fact) => fact.promptText)
       .join('；')}。`,
   } satisfies AstrolabeTransitHouseEvidence;
@@ -2649,8 +2650,8 @@ export function buildAstrolabeScopeContext(
   const anchorDate = formatAnchorDate(target);
   const targetTimezone = resolveScopeTimezone(data, { ...target, hour: 12, minute: 0 });
   const timezoneLabel = data.birth.timeZoneId
-    ? `${data.birth.timeZoneId}（UTC${targetTimezone >= 0 ? '+' : ''}${targetTimezone}）`
-    : `UTC${targetTimezone >= 0 ? '+' : ''}${targetTimezone}`;
+    ? `${data.birth.timeZoneId}（UTC${formatFixedTimezoneOffset(targetTimezone)}）`
+    : `UTC${formatFixedTimezoneOffset(targetTimezone)}`;
   const includeScopeFacts = options.includeScopeFacts ?? true;
   const transitFacts = includeScopeFacts
     ? buildTransitEvidence(data, target, targetTimezone)

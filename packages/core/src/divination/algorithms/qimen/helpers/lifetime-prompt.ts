@@ -250,17 +250,33 @@ export function buildLifetimePrompt(
   // 6. 【人生阶段资料】
   lines.push(`【人生阶段资料】`);
   const basePatternFacts = new Map<string, string>();
-  for (const pattern of data.baseChart.classicPatterns ?? []) {
+  const classicPatterns = data.baseChart.classicPatterns ?? [];
+  const redundantStagePatternFacts = new Set<string>();
+  for (const pattern of classicPatterns) {
     const label = pattern.type === 'good' ? '成吉格' : pattern.type === 'bad' ? '逢凶格' : '';
     if (label) {
-      basePatternFacts.set(
-        `${label}「${pattern.name}」：${pattern.summary}`,
-        `${label}「${pattern.name}」`,
-      );
+      const fullFact = `${label}「${pattern.name}」：${pattern.summary}`;
+      basePatternFacts.set(fullFact, `${label}「${pattern.name}」`);
+      if (
+        /^[日月星]奇得使$/u.test(pattern.name) &&
+        classicPatterns.some(
+          (item) =>
+            item.name === `${pattern.name}临吉门` &&
+            pattern.palaces.some((gong) => item.palaces.includes(gong)),
+        )
+      ) {
+        redundantStagePatternFacts.add(fullFact);
+      }
     }
   }
   const formatStageFacts = (facts: string[]) =>
-    [...new Set(facts.map((fact) => basePatternFacts.get(fact) ?? fact))].join('；');
+    [
+      ...new Set(
+        facts
+          .filter((fact) => !redundantStagePatternFacts.has(fact))
+          .map((fact) => basePatternFacts.get(fact) ?? fact),
+      ),
+    ].join('；');
   for (const st of data.stages) {
     const domNames = st.dominantPalaces.map((d) => d.name).join('、');
     lines.push(

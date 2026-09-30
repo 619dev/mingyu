@@ -4,7 +4,7 @@
  */
 
 import { daysInGregorianMonth } from './date-validation';
-import { resolveCivilTime } from './civil-time';
+import { formatFixedTimezoneOffset, resolveCivilTime } from './civil-time';
 import type { HistoricalTimezoneEvidence } from './historical-timezone';
 
 export interface AstronomicalTimeInput {
@@ -254,7 +254,7 @@ export function buildAstronomicalTimeEvidence(
   const utcDateTime = `${formatDateTime(utcParts)}Z`;
   const assumptions = [
     timezoneEvidence
-      ? `IANA 时区 ${timezoneEvidence.timeZoneId} 解析出历史偏移 UTC${timezone >= 0 ? '+' : ''}${timezone}。`
+      ? `IANA 时区 ${timezoneEvidence.timeZoneId} 解析出历史偏移 UTC${formatFixedTimezoneOffset(timezone)}。`
       : '输入 timezone 视为该时刻已经确认的法定 UTC 偏移，不自动推断地点历史时区。',
     '缺少实时 DUT1 数据时使用 UT1≈UTC，误差上限通常小于 0.9 秒。',
   ];
@@ -275,8 +275,8 @@ export function buildAstronomicalTimeEvidence(
       },
       result: { timezone },
       promptText: timezoneEvidence
-        ? `按 IANA 时区 ${timezoneEvidence.timeZoneId} 解析该时刻历史偏移 UTC${timezone >= 0 ? '+' : ''}${timezone}`
-        : `采用明确给定的法定偏移 UTC${timezone >= 0 ? '+' : ''}${timezone}`,
+        ? `按 IANA 时区 ${timezoneEvidence.timeZoneId} 解析该时刻历史偏移 UTC${formatFixedTimezoneOffset(timezone)}`
+        : `采用明确给定的法定偏移 UTC${formatFixedTimezoneOffset(timezone)}`,
       sources: timezoneEvidence
         ? ['IANA 时区历史规则', '历史偏移解析结果']
         : ['明确给定的法定 UTC 偏移'],
@@ -289,7 +289,7 @@ export function buildAstronomicalTimeEvidence(
       dependsOnStepKeys: ['astronomical-time:calculation:timezone'],
       inputs: { localDateTime, timezone },
       result: { utcDateTime, unixMilliseconds: utcTimestamp },
-      promptText: `当地钟表时间${localDateTime}按 UTC${timezone >= 0 ? '+' : ''}${timezone}换算为${utcDateTime}`,
+      promptText: `当地钟表时间${localDateTime}按 UTC${formatFixedTimezoneOffset(timezone)}换算为${utcDateTime}`,
       sources: ['民用时间与 UTC 偏移换算'],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -460,6 +460,6 @@ export function buildAstronomicalTimeEvidence(
     limitationFacts,
     summaryFact,
     source,
-    promptText: `天文时间尺度：当地钟表时间${localDateTime}（${timeZoneId ? `${timeZoneId}，` : ''}UTC${timezone >= 0 ? '+' : ''}${timezone}）→ UTC ${utcDateTime}；JD(UTC)=${julianDayUtc.toFixed(6)}，在 UT1≈UTC 假设下 JD(UT)≈${julianDayUtApprox.toFixed(6)}；ΔT≈${deltaTSeconds.toFixed(3)}秒，JD(TT)≈${julianDayTtApprox.toFixed(6)}。模型等级：${precisionLevel}。计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}。反证汇总：${counterSummaryFact.promptText}。证据汇总：${summaryFact.promptText}。${timezoneEvidence ? `历史时区诊断：${timezoneEvidence.diagnostics.join('；')}。` : ''}来源：${source}。限制：${[...assumptions, ...limitations].join('；')}`,
+    promptText: `天文时间尺度：当地钟表时间${localDateTime}（${timeZoneId ? `${timeZoneId}，` : ''}UTC${formatFixedTimezoneOffset(timezone)}）→ UTC ${utcDateTime}；JD(UTC)=${julianDayUtc.toFixed(6)}，在 UT1≈UTC 假设下 JD(UT)≈${julianDayUtApprox.toFixed(6)}；ΔT≈${deltaTSeconds.toFixed(3)}秒，JD(TT)≈${julianDayTtApprox.toFixed(6)}。模型等级：${precisionLevel}。计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}。反证汇总：${counterSummaryFact.promptText}。证据汇总：${summaryFact.promptText}。${timezoneEvidence ? `历史时区诊断：${timezoneEvidence.diagnostics.join('；')}。` : ''}来源：${source}。限制：${[...assumptions, ...limitations].join('；')}`,
   };
 }

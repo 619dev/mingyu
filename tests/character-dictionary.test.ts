@@ -182,6 +182,12 @@ test('汉字提示词使用完整字义且区分繁简与姓名学笔画', async
   assert.ok(prompt.includes(learning.kangxiText!));
   assert.match(prompt, /简体笔画：8；繁体笔画：16；姓名学康熙笔画：16/);
   assert.doesNotMatch(prompt, /undefined|null|kangxiText|API|MCP/);
+
+  const traditionalCharacter = await analyzeChineseCharactersWithReferences('後');
+  const traditionalPrompt = buildChineseCharacterPrompt({ analysis: traditionalCharacter });
+  assert.match(traditionalPrompt, /【後】/);
+  assert.match(traditionalPrompt, /姓名学康熙笔画：9/);
+  assert.doesNotMatch(traditionalPrompt, /简体：後；繁体：後|简体笔画：9；繁体笔画：9/);
   assert.throws(() => analyzeChineseCharacters('😀'), /只能包含汉字/);
 });
 

@@ -243,7 +243,7 @@ test('星盘流年分析对象会生成行运证据和展示文本', () => {
   assert.equal(context.dateStr, '2028');
   assert.match(context.promptText, /分析对象：流年2028。/);
   assert.doesNotMatch(context.promptText, /宫主星落宫/);
-  assert.match(context.promptText, /行运取样：2028-07-01 12:00（UTC\+8）/);
+  assert.match(context.promptText, /行运取样：2028-07-01 12:00（UTC\+08:00）/);
   assert.match(context.promptText, /主要行运相位：/);
   const sampledAspects = context.promptText
     .split('\n')
@@ -341,6 +341,12 @@ test('太阳返照应返回可复核的求根过程和精度边界', () => {
     ],
   );
   assertAdvancedEvidenceReferences(evidence);
+
+  const secondOffsetData = structuredClone(astrolabeData) as AstrolabeData;
+  delete secondOffsetData.birth.timeZoneId;
+  secondOffsetData.birth.timezone = 4 + (51 * 60 + 16) / 3600;
+  const secondOffsetEvidence = calculateSolarReturnEvidence(secondOffsetData, 2028);
+  assert.match(secondOffsetEvidence.promptText, /UTC\+04:51:16/);
 });
 
 test('太阳返照应返回出生地完整返照盘及两层主要相位', () => {
@@ -868,11 +874,18 @@ test('星盘行运应使用目标日期的出生地时区而不是固定北京�
   const summer = buildAstrolabeScopeContext(newYorkData, 'daily', '2028-07-12');
   const winter = buildAstrolabeScopeContext(newYorkData, 'daily', '2028-01-12');
 
-  assert.match(summer.promptText, /America\/New_York（UTC-4）/);
-  assert.match(summer.promptText, /行运落宫：取样时区UTC-4/);
-  assert.match(winter.promptText, /America\/New_York（UTC-5）/);
-  assert.match(winter.promptText, /行运落宫：取样时区UTC-5/);
+  assert.match(summer.promptText, /America\/New_York（UTC-04:00）/);
+  assert.match(summer.promptText, /行运落宫：取样时区UTC-04:00/);
+  assert.match(winter.promptText, /America\/New_York（UTC-05:00）/);
+  assert.match(winter.promptText, /行运落宫：取样时区UTC-05:00/);
   assert.doesNotMatch(`${summer.promptText}\n${winter.promptText}`, /按北京时间|取样时区UTC\+8/);
+
+  const historicalFixedOffset = structuredClone(newYorkData) as AstrolabeData;
+  delete historicalFixedOffset.birth.timeZoneId;
+  historicalFixedOffset.birth.timezone = 4 + (51 * 60 + 16) / 3600;
+  const historical = buildAstrolabeScopeContext(historicalFixedOffset, 'daily', '2028-07-12');
+  assert.match(historical.promptText, /行运取样：.*UTC\+04:51:16/);
+  assert.match(historical.promptText, /行运落宫：取样时区UTC\+04:51:16/);
 });
 
 test('星盘行运缺少真实经纬度时不得静默使用零度坐标', () => {

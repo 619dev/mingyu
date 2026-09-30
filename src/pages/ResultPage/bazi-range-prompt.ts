@@ -1,5 +1,6 @@
 import type { BaziChartResult, Person } from 'mingyu-core/bazi';
 import type { BirthProfile } from 'mingyu-core/profile';
+import { formatFixedTimezoneOffset } from 'mingyu-core/calendar';
 import type {
   BaziRangePage,
   BaziRangePageSide,
@@ -243,7 +244,7 @@ function formatBaziSampleSide(side: BaziRangePageSide): string {
     timeZoneId !== undefined
       ? `时区：${timeZoneId}`
       : timezone !== undefined
-        ? `时区：UTC${timezone >= 0 ? '+' : ''}${timezone}`
+        ? `时区：UTC${formatFixedTimezoneOffset(timezone)}`
         : '';
   const precision =
     side.profile.second !== undefined

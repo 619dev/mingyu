@@ -790,11 +790,11 @@ test('紫微双盘提示词应分别输出双方真实计算的真太阳时校�
   assert.notEqual(primaryCorrection, partnerCorrection);
   assert.match(
     primaryCorrection,
-    /当地钟表时间：1992-08-18T12:00:00；法定时区：UTC\+8；出生经度：116\.4°；真太阳时：/,
+    /当地钟表时间：1992-08-18T12:00:00；法定时区：UTC\+08:00；出生经度：116\.4°；真太阳时：/,
   );
   assert.match(
     partnerCorrection,
-    /当地钟表时间：1990-05-12T23:50:00；法定时区：UTC\+8；出生经度：87\.6°；真太阳时：/,
+    /当地钟表时间：1990-05-12T23:50:00；法定时区：UTC\+08:00；出生经度：87\.6°；真太阳时：/,
   );
   assert.match(partnerCorrection, /；时辰：/);
   assert.ok(prompt.includes(`【甲方出生时间校正】\n${primaryCorrection}`));
@@ -831,7 +831,7 @@ test('紫微时间校正任务书保留历史时区消歧和已执行的夏令�
 
   assert.match(
     formatZiweiTrueSolarEvidence(newYork.trueSolarEvidence),
-    /当地钟表时间：2024-11-03T01:30:00；法定时区：America\/New_York，UTC-4/,
+    /当地钟表时间：2024-11-03T01:30:00；法定时区：America\/New_York，UTC-04:00/,
   );
   assert.match(formatZiweiTrueSolarEvidence(chinaDst.trueSolarEvidence), /夏令时还原：回拨60分钟/);
 });

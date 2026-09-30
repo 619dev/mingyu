@@ -145,7 +145,7 @@ test('八宅立春当天已知出生时分按真实瞬时核定命卦', () => {
   assert.equal(crossDate.mingGua, '震');
   assert.match(crossDate.birthYearBoundaryNote, /出生时刻已过/);
   assert.equal(after.evidenceAnalysis.calculationFact.yearBoundaryStatus, '已核定');
-  assert.match(after.prompt, /已按出生时分（UTC\+8）与立春瞬时核定/);
+  assert.match(after.prompt, /已按出生时分（UTC\+08:00）与立春瞬时核定/);
   assert.doesNotMatch(after.prompt, /未提供出生时刻/);
 });
 
@@ -170,7 +170,7 @@ test('八宅立春年界按上海历史时区复核出生时分', () => {
   assert.equal(historicalBefore.effectiveBirthYear, 1941);
   assert.equal(historicalAfter.effectiveBirthYear, 1942);
   assert.equal(fixedEight.effectiveBirthYear, 1942);
-  assert.match(historicalBefore.prompt, /Asia\/Shanghai，UTC\+9/);
+  assert.match(historicalBefore.prompt, /Asia\/Shanghai，UTC\+09:00/);
 });
 
 test('八宅大游年应符合八宅逐宫传统真值', () => {

@@ -177,7 +177,7 @@ test('奇门终身局 IANA 夏令时应让基础盘保持当地 civil', () => {
     hour: 14,
     minute: 30,
   });
-  assert.match(lifetime.basis.timeZoneUsed, /America\/New_York \(UTC-4\)/);
+  assert.match(lifetime.basis.timeZoneUsed, /America\/New_York \(UTC-04:00\)/);
 });
 
 test('奇门终身局真太阳时应沿用非东八区修正后的 civil', () => {
@@ -1030,6 +1030,33 @@ test('奇门终身局阶段只引用本命格局名称，完整条件保留在�
   assert.match(taskSection, /先综述全盘态势，再围绕所问事项整理主判断及可观察的应期线索/);
   assert.doesNotMatch(taskSection, /不视为原盘改动/);
   assert.doesNotMatch(taskSection, /按事项定用神与主客，以用神宫门星神干核对格局和空迫墓的作用/);
+});
+
+test('奇门终身局阶段同宫得使临吉门只列加强条件', () => {
+  const data = calculateQimenLifetime({
+    birthDateTime: '2026-01-01T08:00:00',
+    gender: 'male',
+    stagePolicy: { model: 'fuShiHexagramOrbit' },
+  });
+  const prompt = buildLifetimePrompt(data, undefined, { includeCurrentTime: false });
+  const baseSection = prompt.split('【终身局基础盘】')[1].split('【个人标记与主题宫】')[0];
+  const stageSection = prompt.split('【人生阶段资料】')[1].split('【任务】')[0];
+  assert.match(baseSection, /月奇得使（吉）/);
+  assert.match(baseSection, /月奇得使临吉门（吉）/);
+  assert.match(stageSection, /成吉格「月奇得使临吉门」/);
+  assert.doesNotMatch(stageSection, /成吉格「月奇得使」(?:；|\n|$)/u);
+});
+
+test('奇门终身局历史秒级偏移在出生时区和任务书中保持精度', () => {
+  const data = calculateQimenLifetime({
+    birthDateTime: '1900-01-02T12:00:00',
+    timeZoneId: 'Asia/Shanghai',
+  });
+  assert.equal(data.basis.timeZoneUsed, 'Asia/Shanghai (UTC+08:05:43)');
+  assert.equal(data.baseChart.timestamp, Date.parse('1900-01-02T03:54:17Z'));
+  const prompt = buildLifetimePrompt(data, undefined, { includeCurrentTime: false });
+  assert.match(prompt, /出生时区：Asia\/Shanghai \(UTC\+08:05:43\)/u);
+  assert.doesNotMatch(prompt, /8\.095277/u);
 });
 
 test('奇门终身局 P5：公开 API 接口验证', async () => {

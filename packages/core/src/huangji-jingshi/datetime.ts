@@ -277,13 +277,20 @@ function assertSixDayMillisecond(value: number | undefined): number {
 function parseSixDayTimezoneOffset(value: string): number {
   if (value === 'Z') return 0;
   const sign = value.startsWith('-') ? -1 : 1;
-  const [hoursText, minutesText] = value.slice(1).split(':');
+  const [hoursText, minutesText, secondsText] = value.slice(1).split(':');
   const hours = Number(hoursText);
   const minutes = Number(minutesText);
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || minutes > 59) {
+  const seconds = secondsText === undefined ? 0 : Number(secondsText);
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    minutes > 59 ||
+    !Number.isInteger(seconds) ||
+    seconds > 59
+  ) {
     throw new Error('六日逐爻公历时间的时区偏移无效。');
   }
-  const offset = sign * (hours + minutes / 60);
+  const offset = sign * (hours + minutes / 60 + seconds / 3600);
   assertFixedTimezoneHours(offset, '六日逐爻公历时间的 timezone');
   return offset;
 }
@@ -296,7 +303,7 @@ type ParsedSixDayDateTime = CivilDateTimeParts & {
 function parseSixDayDateTimeParts(value: string, label: string): ParsedSixDayDateTime {
   if (typeof value !== 'string') throw new Error(`${label}必须是 ISO 8601 字符串。`);
   const match =
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:\d{2})?$/u.exec(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:\d{2}(?::\d{2})?)?$/u.exec(
       value,
     );
   if (!match) {
@@ -701,7 +708,7 @@ function calculateHuangjiSixDayCycleFromExplicitDate(
     },
     calendar,
     calculationChain: [
-      `${targetDateTime}解析为 UTC${target.timezone >= 0 ? '+' : ''}${target.timezone} 的当地公历时刻，保留真实 UTC 瞬时点。`,
+      `${targetDateTime}解析为 UTC${formatFixedTimezoneOffset(target.timezone)} 的当地公历时刻，保留真实 UTC 瞬时点。`,
       `${epochDateTime}是经校定的当地子半起点，对应六日逐爻已过日数0、子半时刻。`,
       `按当地公历日期从显式历元至目标时间经过${actualElapsedDays}个完整日，直接取得六日逐爻坐标第${cycleElapsedDays + 1}日；实际 UTC 瞬时相隔${actualElapsedSeconds}秒。`,
       `长期值年背景按目标真实瞬时的北京时间冬至换年，取${calendar.targetYear}年。`,
@@ -817,7 +824,7 @@ function calculateHuangjiSixDayCycleFromProportionalDate(
     },
     calendar,
     calculationChain: [
-      `${targetDateTime}解析为 UTC${target.timezone >= 0 ? '+' : ''}${target.timezone} 的当地公历时刻，保留真实 UTC 瞬时点。`,
+      `${targetDateTime}解析为 UTC${formatFixedTimezoneOffset(target.timezone)} 的当地公历时刻，保留真实 UTC 瞬时点。`,
       `以${anchorDateTime}的冬至天文时刻确定所属${anchor.termYear}冬至岁周；该瞬时在目标地点为${anchorLocalDateTime}。`,
       `以冬至所在当地公历日${anchorDayStartDateTime}${anchor.dayBoundary === '当地子半' ? '子半' : '首个实际时刻'}为起点，至下一冬至当地公历日首点的实际跨度为${(yearLengthMilliseconds / MILLISECONDS_PER_DAY).toFixed(6)}日（${yearLengthMilliseconds}毫秒），按三百六十逻辑日比例映射。`,
       `目标距当地日首点实际经过${actualElapsedSeconds}秒（${actualElapsedDays}个完整UTC日），逻辑位置为${mapped.logicalPosition.toFixed(9)}日，即第${mapped.logicalElapsedDays + 1}个逻辑日的${mapped.logicalDayFraction.toFixed(9)}。`,

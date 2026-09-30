@@ -180,7 +180,7 @@ test('真太阳时应按 IANA 历史时区解析偏移并保留证据', () => {
     result.calculationSteps.some((item) => item.stage === '历史时区解析'),
     true,
   );
-  assert.match(result.promptText, /America\/New_York.*UTC-4/);
+  assert.match(result.promptText, /America\/New_York.*UTC-04:00/);
   assertTrueSolarEvidence(result);
 });
 

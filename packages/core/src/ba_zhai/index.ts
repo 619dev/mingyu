@@ -7,7 +7,7 @@
 import { calculateMingGua } from '../bazi/mingGua';
 import { SolarTerm } from 'tyme4ts';
 import { createUtcTimestamp, daysInGregorianMonth } from '../calendar/date-validation';
-import { resolveCivilTime } from '../calendar/civil-time';
+import { formatFixedTimezoneOffset, resolveCivilTime } from '../calendar/civil-time';
 import {
   getHouseTrigram,
   getEightMansion,
@@ -354,7 +354,7 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
       isLichunDate && !hasBirthTime
         ? `出生日期与 ${year} 年立春同日，未提供出生时刻；现按当日正午与立春时刻比较，命卦暂按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算，请按准确出生时刻复核。`
         : isLichunDate
-          ? `出生日期与 ${year} 年立春同日，已按出生时分（${birthTime?.timeZoneId ? `${birthTime.timeZoneId}，` : ''}UTC${birthTime!.timezone >= 0 ? '+' : ''}${birthTime!.timezone}）与立春瞬时核定命卦年份为 ${effectiveYear} 年。`
+          ? `出生日期与 ${year} 年立春同日，已按出生时分（${birthTime?.timeZoneId ? `${birthTime.timeZoneId}，` : ''}UTC${formatFixedTimezoneOffset(birthTime!.timezone)}）与立春瞬时核定命卦年份为 ${effectiveYear} 年。`
           : effectiveYear === year
             ? `${hasBirthTime ? '出生时刻' : '出生日期'}已过 ${year} 年立春，命卦按 ${year} 年计算。`
             : `${hasBirthTime ? '出生时刻' : '出生日期'}在 ${year} 年立春前，命卦按 ${effectiveYear === 0 ? '公元前1年（天文年0）' : `${effectiveYear} 年`}计算。`,

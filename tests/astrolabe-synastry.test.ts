@@ -263,7 +263,35 @@ test('西占双盘应保留截断数量和关闭落宫的反证', () => {
   assert.match(noFactsPrompt, /本次所选计算点未见容许度内的主要相位/);
   assert.match(noFactsPrompt, /本次未启用跨盘落宫计算/);
   assert.match(noFactsPrompt, /请依据双方本命盘分析互动主轴/);
+  assert.doesNotMatch(noFactsPrompt, /已列古典接纳与互溶/);
   assert.doesNotMatch(noFactsPrompt, /请依据双方本命盘、跨盘相位和跨盘落宫/);
+});
+
+test('西占双盘提示词不输出空性别占位并按已列资料限定关系需求', () => {
+  const first = chart('甲', 15, 120);
+  const second = chart('乙', 45, 210);
+  delete first.birth.gender;
+  delete second.birth.gender;
+  first.birth.timezone = 4 + (51 * 60 + 16) / 3600;
+  first.planets = [point('Venus', '金星', 15)];
+  second.planets = [point('Mars', '火星', 45)];
+
+  const synastry = analyzeAstrolabeSynastry(first, second, {
+    pointNames: ['Venus', 'Mars'],
+    includeHouseOverlays: false,
+  });
+  const prompt = buildAstrolabeSynastryPrompt({ chart1: first, chart2: second, synastry });
+
+  assert.match(prompt, /出生信息：甲；2000-01-01 12:00/);
+  assert.match(prompt, /时区UTC\+04:51:16/);
+  assert.match(prompt, /时区UTC\+08:00/);
+  assert.doesNotMatch(prompt, /性别未填|；；/);
+  assert.match(prompt, /有现实资料时结合问题所述情况/);
+  assert.doesNotMatch(prompt, /关系需求构成各自本命资料/);
+  assert.match(prompt, /双方本命盘、已列古典接纳与互溶/);
+  assert.match(prompt, /【第一人本命盘】[\s\S]*?金星15°/);
+  assert.match(prompt, /【第二人本命盘】[\s\S]*?火星45°/);
+  assert.match(prompt, /甲的金星落白羊座，乙的火星落金牛座/);
 });
 
 test('西占合盘互溶与接纳判定：识别金火互溶与接纳断诀', () => {

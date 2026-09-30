@@ -1,4 +1,5 @@
 import { formatPromptEvidenceBundle } from '../prompt-evidence/format';
+import { formatFixedTimezoneOffset } from '../calendar/civil-time';
 import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidence/types';
 import type { AstrolabeData } from '../types/divination';
 import type { HistoricalTimezoneEvidence } from '../calendar/historical-timezone';
@@ -389,7 +390,7 @@ function buildCalculationFact(
         standardDateTime: data.birth.standardDateTime ?? data.birth.dateTime,
       },
       dependsOnStepKeys: [],
-      promptText: `固定出生民用时间${data.birth.standardDateTime ?? data.birth.dateTime}、地点${data.birth.location}与UTC${data.birth.timezone >= 0 ? '+' : ''}${data.birth.timezone}`,
+      promptText: `固定出生民用时间${data.birth.standardDateTime ?? data.birth.dateTime}、地点${data.birth.location}与UTC${formatFixedTimezoneOffset(data.birth.timezone)}`,
       sources: ['出生时间与地点输入', '历史时区或固定 UTC 偏移解析'],
       limitation: STEP_FACT_LIMITATION,
     },
@@ -1002,7 +1003,7 @@ export function analyzeAstrolabeEvidence(
                 ? ('反证' as const)
                 : ('辅证' as const),
             title: '历史时区映射与诊断',
-            detail: `${timezoneFact.timeZoneId} 的当地钟表时间对应 UTC ${timezoneFact.selectedUtcDateTime}，历史偏移 UTC${timezoneFact.resolvedOffsetHours >= 0 ? '+' : ''}${timezoneFact.resolvedOffsetHours}；${timezoneFact.diagnosticSummaryFact.promptText}；诊断边界：${timezoneFact.diagnosticSummaryFact.limitation}`,
+            detail: `${timezoneFact.timeZoneId} 的当地钟表时间对应 UTC ${timezoneFact.selectedUtcDateTime}，历史偏移 UTC${formatFixedTimezoneOffset(timezoneFact.resolvedOffsetHours)}；${timezoneFact.diagnosticSummaryFact.promptText}；诊断边界：${timezoneFact.diagnosticSummaryFact.limitation}`,
             source: timezoneFact.source,
             tags: ['历史时区', timezoneFact.status, timezoneFact.diagnosticSummaryFact.status],
           },

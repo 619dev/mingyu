@@ -1,4 +1,5 @@
 import { getTenGodForBranch, type BaziChartResult } from 'mingyu-core/bazi';
+import { formatFixedTimezoneOffset } from 'mingyu-core/calendar';
 import type { QizhengResult } from 'mingyu-core/qizheng';
 import { formatInstantQizhengPrompt } from 'mingyu-core/instant';
 import type { ZiweiRuntime } from 'mingyu-core/ziwei';
@@ -133,7 +134,7 @@ function formatInstantAstrolabeData(data: AstrolabeData) {
     ...data.angles,
   ]);
   return [
-    `起盘时刻：${data.birth.dateTime}；观测地点：${data.birth.location}；时区：UTC${data.birth.timezone >= 0 ? '+' : ''}${data.birth.timezone}`,
+    `起盘时刻：${data.birth.dateTime}；观测地点：${data.birth.location}；时区：UTC${formatFixedTimezoneOffset(data.birth.timezone)}`,
     data.birth.latitude !== undefined && data.birth.longitude !== undefined
       ? `观测坐标：${data.birth.latitude >= 0 ? '北纬' : '南纬'}${Math.abs(data.birth.latitude)}°，${data.birth.longitude >= 0 ? '东经' : '西经'}${Math.abs(data.birth.longitude)}°`
       : '',

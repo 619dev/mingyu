@@ -4,6 +4,7 @@ import {
   buildPromptTask,
 } from '../../prompt/guidance';
 import { formatPromptCurrentTime } from '../../prompt/current-time';
+import { formatFixedTimezoneOffset } from '../../calendar/civil-time';
 import { buildPromptSchoolSection, type PromptSchoolId } from '../../prompt/schools';
 import type { AnalysisPayloadV1 } from '../../types/analysis';
 import {
@@ -213,7 +214,7 @@ export function formatZiweiTrueSolarEvidence(evidence?: ZiweiTrueSolarEvidence):
   return [
     typeof clockDateTime === 'string' ? `当地钟表时间：${clockDateTime}` : '',
     typeof timezone === 'number'
-      ? `法定时区：${typeof timeZoneId === 'string' ? `${timeZoneId}，` : ''}UTC${timezone >= 0 ? '+' : ''}${timezone}`
+      ? `法定时区：${typeof timeZoneId === 'string' ? `${timeZoneId}，` : ''}UTC${formatFixedTimezoneOffset(timezone)}`
       : '',
     daylightSaving?.result.applied === true &&
     typeof daylightSaving.result.offsetMinutes === 'number'
