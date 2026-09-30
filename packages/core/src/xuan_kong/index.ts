@@ -751,26 +751,26 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
 function describeCombination(combination: Combination): string {
   switch (combination.name) {
     case '父母三般卦':
-      return '九宫运、山、向三星各成一四七、二五八或三六九组；具体宫位的山水形势仍需核对。';
+      return '九宫运、山、向三星各成一四七、二五八或三六九组。';
     case '连珠三般卦':
-      return '九宫运、山、向三星各按九星循环连续；具体宫位的山水形势仍需核对。';
+      return '九宫运、山、向三星各按九星循环连续。';
     case '山星合十':
-      return '九宫山星与运星逐宫合十；作用须结合所问年份的运期与实际山势核对。';
+      return '九宫山星与运星逐宫合十。';
     case '向星合十':
-      return '九宫向星与运星逐宫合十；作用须结合所问年份的运期与实际水口、门路核对。';
+      return '九宫向星与运星逐宫合十。';
     case '山星入囚':
-      return '当运山星落中宫；中宫的开阔、动静及实际山势须另行核对。';
+      return '本宅运山星落中宫。';
     case '向星入囚':
-      return '当运向星落中宫；中宫的开阔、动静及实际水口须另行核对。';
+      return '本宅运向星落中宫。';
     case '七星真打劫':
     case '七星假打劫':
-      return `${combination.name === '七星真打劫' ? '乾、震、离' : '坎、巽、兑'}三宫向星成一四七、二五八或三六九组；${combination.kind === 'inauspicious' ? '山盘全盘伏吟，此打劫结构不作可用条件；' : ''}实际水口、门路与通气条件须另行核对。`;
+      return `${combination.name === '七星真打劫' ? '乾、震、离' : '坎、巽、兑'}三宫向星成一四七、二五八或三六九组${combination.kind === 'inauspicious' ? '；山盘全盘伏吟' : ''}。`;
     default:
       if (/^(全盘|单宫)(伏吟|反吟)（(山星|向星)）$/.test(combination.name)) {
         const relation = combination.name.includes('伏吟') ? '与元旦盘同星' : '与元旦盘合十';
-        return `${combination.name.includes('山星') ? '山星' : '向星'}${relation}；实际形势及引动条件须另行核对。`;
+        return `${combination.name.includes('山星') ? '山星' : '向星'}${relation}。`;
       }
-      return `盘面检出${combination.name}结构；实际形势与运期须另行核对。`;
+      return `盘面检出${combination.name}结构。`;
   }
 }
 

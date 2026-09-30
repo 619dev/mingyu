@@ -79,7 +79,7 @@ export interface CastleGateCandidate {
 }
 
 export interface CastleGateEvaluation {
-  /** 缺实地水口、门路与形势时，城门是否真正可用尚无法确定。 */
+  /** @deprecated 旧字段曾以旺星到位代表可用；缺实地水口、门路与形势时，实际可用性未定，此字段为 null。盘面判断使用 hasWangStarGate。 */
   hasUsableGate: null;
   /** 仅表示按本宅运盘推得的城门旺星到位。 */
   hasWangStarGate: boolean;

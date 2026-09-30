@@ -681,7 +681,7 @@ test('替卦未成四正局仍保留实际盘面的反伏吟组合', () => {
   assert.ok(checked > 0);
 });
 
-test('玄空组合只登记盘式和待核山水条件，交运首年证据保持暂列口径', () => {
+test('玄空组合只登记盘式，交运首年证据保持暂列口径', () => {
   const settled = generateXuanKong({ year: 2008, sitMountain: '子', flowYear: 2026 });
   assert.match(settled.prompt, /流年飞星：2026年/);
   assert.match(settled.prompt, /，8运当运）/);
@@ -695,13 +695,13 @@ test('玄空组合只登记盘式和待核山水条件，交运首年证据保�
   assert.ok(daJie);
   assert.deepEqual(daJie.palaces, [6, 3, 9]);
   assert.match(daJie.note, /乾、震、离三宫向星成一四七、二五八或三六九组/);
-  assert.match(daJie.note, /实际水口、门路与通气条件须另行核对/);
+  assert.equal(daJie.note, '乾、震、离三宫向星成一四七、二五八或三六九组。');
   assert.doesNotMatch(daJie.note, /主财富|力强|大吉|引动旺气/);
   assert.match(
     settled.evidenceAnalysis.facts.find(
       (item) => item.key === 'xuankong:fact:combination:七星真打劫',
     )?.promptText ?? '',
-    /实际水口、门路与通气条件须另行核对/,
+    /乾、震、离三宫向星成一四七、二五八或三六九组/,
   );
 
   const boundary = generateXuanKong({ year: 2024, sitMountain: '子' });
