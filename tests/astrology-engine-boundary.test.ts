@@ -554,6 +554,47 @@ test('月亮行运在精确相位附近仍按当前运动方向识别入相', ()
   assert.equal(result.transits.find((item) => item.natalPoint === '出相点')!.phase, 'separating');
 });
 
+test('行运距精确六合约三角分时按运动方向区分入相与出相', () => {
+  // J2000 的月亮黄经 223.3237754384° 取自 Swiss Ephemeris 2.10.03 的地心回归坐标。
+  const moonLongitude = 223.32377543840954;
+  const result = calculateTransits(
+    [
+      { name: '前方本命点', longitude: moonLongitude + 60.05, type: 'planet' },
+      { name: '后方本命点', longitude: moonLongitude + 59.95, type: 'planet' },
+    ],
+    2451545,
+    { aspectTypes: [AspectType.Sextile], transitingBodies: [CelestialBody.Moon] },
+  );
+  assert.ok(Math.abs(result.transits[0].transitingPosition.longitude - moonLongitude) < 0.001);
+  assert.ok(result.transits.every((transit) => transit.deviation > 0.049));
+  assert.equal(
+    result.transits.find((transit) => transit.natalPoint === '前方本命点')?.phase,
+    'applying',
+  );
+  assert.equal(
+    result.transits.find((transit) => transit.natalPoint === '后方本命点')?.phase,
+    'separating',
+  );
+});
+
+test('行运精准标签采用偏差百分位展示精度，边界外仍区分入相出相', () => {
+  const moonLongitude = 223.32377543840954;
+  const result = calculateTransits(
+    [
+      { name: '显示零偏差', longitude: moonLongitude + 60.004, type: 'planet' },
+      { name: '显示非零偏差', longitude: moonLongitude + 60.006, type: 'planet' },
+    ],
+    2451545,
+    { aspectTypes: [AspectType.Sextile], transitingBodies: [CelestialBody.Moon] },
+  );
+  const near = result.transits.find((transit) => transit.natalPoint === '显示零偏差')!;
+  const outside = result.transits.find((transit) => transit.natalPoint === '显示非零偏差')!;
+  assert.equal(near.deviation.toFixed(2), '0.00');
+  assert.equal(near.phase, 'exact');
+  assert.equal(outside.deviation.toFixed(2), '0.01');
+  assert.equal(outside.phase, 'applying');
+});
+
 test('本命格局只由十大星体及已列出的组成相位支持', () => {
   const input = {
     year: 1995,

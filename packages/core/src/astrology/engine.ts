@@ -269,6 +269,7 @@ export interface Transit {
   isOutOfSign: boolean;
   deviation: number;
   strength: number;
+  /** exact 表示偏差按 0.01° 展示为 0.00°；其余按当前位置速度判定入相或出相。 */
   phase: 'applying' | 'exact' | 'separating' | 'unknown';
   isRetrograde: boolean;
 }
@@ -965,7 +966,7 @@ export function calculateTransits(
           deviation,
           strength,
           phase:
-            deviation <= 0.1
+            deviation < 0.005
               ? 'exact'
               : applying === null
                 ? 'unknown'

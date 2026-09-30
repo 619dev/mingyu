@@ -388,10 +388,12 @@ function buildEvidencePrompt(params: {
         ? params.bazhai.directionMeasurement.candidateDirections
         : [];
     const candidateMatches = new Set(candidateDirections.map((item) => item.match));
+    const candidateHouseGuas = [...new Set(candidateDirections.map((item) => item.houseGua))];
+    const houseUnstable = candidateHouseGuas.length > 1;
     items.push({
       level: '主证',
       title: '八宅人宅层',
-      detail: `命卦${params.bazhai.mingGua}，宅卦${params.bazhai.houseGua ?? '未定'}${candidateMatches.size > 1 ? '（中心读数）' : ''}，${candidateMatches.size > 1 ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${params.bazhai.match}`}`,
+      detail: `命卦${params.bazhai.mingGua}，宅卦${params.bazhai.houseGua ?? '未定'}${houseUnstable ? `（中心读数；候选${candidateHouseGuas.map((gua) => `${gua}宅`).join('、')}）` : ''}，${candidateMatches.size > 1 ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${params.bazhai.match}`}`,
       source: '八宅大游年',
     });
   }
