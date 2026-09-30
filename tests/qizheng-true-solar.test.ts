@@ -54,8 +54,9 @@ test('七政昼夜分金按出生地日出日落状态划分极昼极夜，并�
   assert.equal(winter.calculationContext.solarIllumination.sunriseSunset.status, '全天低于阈值');
   assert.equal(summer.enNan?.sect, '昼生');
   assert.equal(winter.enNan?.sect, '夜生');
-  assert.match(summer.prompt, /昼生.*日出日落星历交点.*-0\.833°.*全天高于阈值/);
-  assert.match(winter.prompt, /夜生.*日出日落星历交点.*-0\.833°.*全天低于阈值/);
+  assert.match(summer.prompt, /昼生.*当地太阳高度阈值.*-0\.833°/);
+  assert.match(winter.prompt, /夜生.*当地太阳高度阈值.*-0\.833°/);
+  assert.doesNotMatch(`${summer.prompt}\n${winter.prompt}`, /全天高于阈值|全天低于阈值|正常交点/);
   assert.doesNotMatch(
     `${summer.prompt}\n${winter.prompt}`,
     /太阳高朗为贵|太阴清辉为吉|逢险有救应|须防动荡受挫/,

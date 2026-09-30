@@ -24,6 +24,8 @@ test('七政本命区间资料保留月亮换宫两侧、整秒范围与完整�
     }
   }
   assert.match(text, /流年与行限属于另外的时段资料/);
+  assert.match(text, /昼夜分金：.*当地太阳高度阈值/);
+  assert.doesNotMatch(text, /正常交点|全天高于阈值|全天低于阈值|光照日期/);
   assert.doesNotMatch(text, /罗睺\(火余\)[^。]*，—|计都\(土余\)[^。]*，—/);
   assert.doesNotMatch(text, /calculationContext|startTimestamp|sourceId|mingyu|API|MCP/);
   assert.doesNotMatch(
@@ -124,6 +126,7 @@ test('七政流曜区间资料保留目标窗口、所有分段、行限与事�
   assert.match(text, /【时段1】/);
   assert.match(text, /【时段2】/);
   assert.doesNotMatch(text, /流年与行限属于另外/);
+  assert.doesNotMatch(text, /正常交点|全天高于阈值|全天低于阈值|光照日期/);
   for (const branch of range.branches) {
     for (const item of branch.continuous) assert.ok(text.includes(item.label));
     for (const event of branch.representative.flowingStars!.periodEvents.events) {

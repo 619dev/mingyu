@@ -206,7 +206,7 @@ export function evaluateQizhengEnNan(params: {
     ? [...new Set(interactionRoleFacts)].slice(0, 2).join('；')
     : '';
 
-  const summary = `【七政恩难】${sect}（${sectSummary}）；命主：${mingZhu}（${mingElement}）${interactionDesc ? `；${interactionDesc}` : ''}；按出生时刻与当地日出日落星历交点划分昼夜（太阳上缘阈值-0.833°，${sunriseSunset.status}）`;
+  const summary = `【七政恩难】${sect}（${sectSummary}）；命主：${mingZhu}（${mingElement}）${interactionDesc ? `；${interactionDesc}` : ''}；按出生时刻与当地太阳高度阈值划分昼夜（太阳上缘-0.833°）`;
 
   return {
     sect,

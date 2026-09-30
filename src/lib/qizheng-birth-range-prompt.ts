@@ -34,13 +34,12 @@ function formatNatalFacts(data: QizhengResult): string[] {
     `神煞：${data.shensha.map((item) => `${item.name}${item.value}`).join('；')}。`,
     ...(enNan
       ? [
-          `昼夜分金：${enNan.sect}；${enNan.sectSummary}。按出生时刻与当地日出日落星历交点划分，太阳上缘阈值负零点八三三度；当日${context.solarIllumination.sunriseSunset.status}。`,
+          `昼夜分金：${enNan.sect}；${enNan.sectSummary}。按出生时刻与当地太阳高度阈值划分，太阳上缘负零点八三三度。`,
           `命主五行${enNan.mingElement}；恩星${enNan.enStars.join('、')}；难星${enNan.nanStars.join('、')}；仇星${enNan.chouStars.join('、')}；用星${enNan.yongStars.join('、')}。`,
           `恩难交会：${enNan.aspectInteraction.length ? enNan.aspectInteraction.join('；') : '无对应交会'}。`,
         ]
       : []),
     `月相：${context.moonPhase.eightPhaseName}，${context.moonPhase.waxing ? '盈' : '亏'}；${context.moonPhase.currentPrincipalPhase ? `当前四正月相${context.moonPhase.currentPrincipalPhase.name}，` : ''}前一四正月相${context.moonPhase.previousPrincipalPhase.name}，后一四正月相${context.moonPhase.nextPrincipalPhase.name}。`,
-    `光照日期${context.solarIllumination.localDate}：${context.solarIllumination.status}；${[context.solarIllumination.sunriseSunset, context.solarIllumination.civilTwilight, context.solarIllumination.nauticalTwilight, context.solarIllumination.astronomicalTwilight].map((item) => `${item.name}${item.status}`).join('；')}。`,
   ];
 }
 

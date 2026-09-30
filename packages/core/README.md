@@ -316,6 +316,8 @@ console.log(session.serializedResult); // 稳定 JSON，可用于缓存或历史
 
 `divinationTime` 与 `currentTime` 接受 `Date`、毫秒时间戳或带 `Z`／明确时区偏移的 ISO 日期时间字符串；无时区文本与不存在的日期会在排盘前报错。随机选择太乙且未提供 `taiyi` 参数时，按起课时刻的北京时间年份生成年计盘。
 
+`request.random` 可统一传入 `seed` 或 `replay`，六爻三钱与蓍草起卦均使用这项设置。重放样本须覆盖本次实际随机抽取并恰好用尽；样本不足、额外样本或未被消费的样本会报错。手工爻值、三钱记录和蓍草分堆记录按实际输入排卦。
+
 `generateDivinationSession` 覆盖六爻、梅花、小六壬、金口诀、奇门、大六壬、太乙、塔罗、灵签、黄历、雷诺曼和星盘；`validateDivinationRequest` 可单独用于提交前校验。金口诀可传 `jinkoujue: { method: 'branch', branch: '申' }` 直接指定地分，也支持时间、数字和随机取地分；雷诺曼 `spread` 支持 `single`、`three`、`five`、`relationship`、`decision`、`nine`、`element`、`grandTableau`。旧版 `summary`、`prompt`、`data` 字段继续保留，新接入优先使用严格分层后的三个字段。手工牌面、三钱记录、逐张随机样本、灵签选号、种子和 replay 均保留在对应请求字段中。
 
 如果需要一次得到本命盘、运限盘、结构化分析资料和大限时间线，可以直接使用紫微运行时入口。它支持数字或文本表单输入；服务端、缓存和测试建议显式传入 `horoscopeContext`，让同一出生盘在不同运行时保持相同快照：
@@ -401,14 +403,14 @@ console.log(first.meta.schemaVersion); // 公共结果结构版本
 | **紫微斗数 Ziwei**       | `mingyu-core/ziwei`（兼容 `mingyu-core/ziwei/iztro`）、`mingyu-core/ziwei/runtime`                                                            | 十二宫、星曜、四化、运限、证据池、固定快照运行时，以及双盘宫位叠盘与生年四化跨盘落点                 |
 | **即时排盘 Instant**     | `mingyu-core/instant`                                                                                                                         | 当前时刻八字、紫微、八字紫微、星盘与七政四余，区分北京时间与真太阳时且不需要性别                     |
 | **六爻 Liuyao**          | `mingyu-core/divination/liuyao`                                                                                                               | 京房八宫法、纳甲、世应、六亲六神、月破日破、化进退神、用神作用链与逐爻证据                           |
-| **梅花易数 Meihua**      | `mingyu-core/divination/meihua`                                                                                                               | 时间/数字/声音/字数/方位/随机起卦，timeTrigram 兼容、体用生克与主互变阶段推进证据                   |
+| **梅花易数 Meihua**      | `mingyu-core/divination/meihua`                                                                                                               | 时间/数字/声音/字数/方位/随机起卦，timeTrigram 兼容、体用生克与主互变阶段推进证据                    |
 | **奇门遁甲 Qimen**       | `mingyu-core/divination/qimen`                                                                                                                | 转盘法、拆补定局、经典格局、节令背景、节气黄经核验、复合格局、方位与条件触发式应期证据               |
 | **大六壬 Liuren**        | `mingyu-core/divination/liuren`                                                                                                               | 月将、贵人、九宗门取传、三传、天将、神煞及四课取传与三传推进证据                                     |
 | **择日 Almanac**         | `mingyu-core/divination/almanac`                                                                                                              | 黄历宜忌、参与人冲突、候选时辰、透明约束证据、二十八宿与彭祖百忌                                     |
 | **灵签 SSGW**            | `mingyu-core/divination/ssgw`                                                                                                                 | 三山国王 92 签，返回签号、签题与签诗原文，支持 `seed` 和 `replay`                                    |
 | **西洋占星 Astrolabe**   | `mingyu-core/divination/astrolabe`                                                                                                            | 本命盘、Placidus 宫位、行星、扩展点、相位偏差、容许度分层、行运与太阳返照求根证据                    |
 | **西占双盘 Synastry**    | `mingyu-core/divination/astrolabe-synastry`                                                                                                   | 双方主要跨盘相位、实际夹角、精确角、可配置容许度、紧密等级、跨盘落宫与结构化证据                     |
-| **历法 Calendar**        | `mingyu-core/calendar`、`mingyu-core/calendar/true-solar-time`、`mingyu-core/calendar/bazi-reverse`                                          | 农历、干支、节气黄经核验、朔弦望月相、太阳高度与曙暮光、真太阳时、UTC/UT/TT 时间尺度及四柱反推日期      |
+| **历法 Calendar**        | `mingyu-core/calendar`、`mingyu-core/calendar/true-solar-time`、`mingyu-core/calendar/bazi-reverse`                                           | 农历、干支、节气黄经核验、朔弦望月相、太阳高度与曙暮光、真太阳时、UTC/UT/TT 时间尺度及四柱反推日期   |
 | **出生档案 Profile**     | `mingyu-core/profile`                                                                                                                         | 统一公农历、闰月、时辰、地点与真太阳时输入，直接生成八字传统盘并提供紫微、星盘、择日适配器           |
 | **出生盘 Bundle**        | `mingyu-core/birth`                                                                                                                           | 从一份 `BirthProfile` 按需生成八字、紫微、星盘和七政四余结果                                         |
 | **双人合盘 Bundle**      | `mingyu-core/compatibility`                                                                                                                   | 从两份 `BirthProfile` 生成八字合盘、紫微双盘证据和西占双盘相位                                       |
@@ -685,6 +687,8 @@ console.log(qizhengChart.stars.length, qizhengChart.mansionBoundaries.length); /
 console.log(qizhengChart.positionSources); // 现代天文与传统均速来源分层
 ```
 
+单独调用 `qizheng.evaluateQizhengEnNan` 时，须传入本命 `stars`，每项包含星曜 `name` 与黄经度数 `longitude`；可复用 `generateQizheng` 返回的星曜资料。恩难交会按这些黄经及对应容许度复核 `aspects`，星曜位置资料未齐时只保留已核验的交会。
+
 ### 八字增强分析（从 vibebazi 整合）
 
 ```typescript
@@ -775,8 +779,8 @@ console.log(reverse.candidates); // 北京时间候选区间，起点含、终�
 | ------------------------------------------------- | ---------------------------------------------------------------- |
 | `calendar.resolveTrueSolarBirthTime(input)`       | 公历/农历出生真太阳时、历史时区、夏令时、跨日和时辰索引统一换算  |
 | `calendar.convertTrueSolarTime(input)`            | 当地钟表时间按固定偏移或 IANA 历史时区、经度和均时差换算真太阳时 |
-| `calendar.reverseBaziDates(input)`                 | 根据完整四柱反推公历北京时间候选区间（节气月、23:00 子时换日） |
-| `calendar/bazi-reverse` 独立子路径                  | 仅导出 `reverseBaziDates` 及其请求、结果类型，适合按需加载       |
+| `calendar.reverseBaziDates(input)`                | 根据完整四柱反推公历北京时间候选区间（节气月、23:00 子时换日）   |
+| `calendar/bazi-reverse` 独立子路径                | 仅导出 `reverseBaziDates` 及其请求、结果类型，适合按需加载       |
 | `profile.calculateBaziFromBirthProfile(profile)`  | 从统一出生档案直接生成八字传统盘结果                             |
 | `profile.birthProfileToZiweiChartInput(profile)`  | 将统一出生档案转换为紫微传统盘输入                               |
 | `bazhai.analyzeBaZhaiByDoorDegree(input)`         | 按入户实测度数、北向基准、磁偏角和测量误差生成八宅结果与候选坐向 |

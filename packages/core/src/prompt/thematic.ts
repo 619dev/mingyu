@@ -414,18 +414,18 @@ export function buildThematicConsultationPrompt(
       options.baziSchool || options.baziSchools?.length
         ? ''
         : formatBaziPatternConditions(options.baziResult);
-    const taskText = buildPromptSelectionTask(
-      isCustomMode
-        ? buildPromptTask(
+    const taskText = isCustomMode
+      ? buildPromptSelectionTask(
+          buildPromptTask(
             '请依据八字排盘资料回答咨询问题。',
             selection.scope === 'natal' ? 'bazi-natal' : 'bazi',
-          )
-        : buildPromptTask(
-            buildThematicTask(config, selection, 'bazi'),
-            selection.scope === 'natal' ? 'bazi-natal' : 'bazi',
           ),
-      selection,
-    );
+          selection,
+        )
+      : buildPromptTask(
+          buildThematicTask(config, selection, 'bazi'),
+          selection.scope === 'natal' ? 'bazi-natal' : 'bazi',
+        );
 
     const schoolSection = options.baziSchools?.length
       ? buildBaziSchoolsPromptSection(options.baziResult, options.baziSchools, true, true)
@@ -500,18 +500,18 @@ export function buildThematicConsultationPrompt(
             })
           : formatZiweiEvidenceText(options.ziweiResult, ziweiScope);
 
-    const taskText = buildPromptSelectionTask(
-      isCustomMode
-        ? buildPromptTask(
+    const taskText = isCustomMode
+      ? buildPromptSelectionTask(
+          buildPromptTask(
             '请依据紫微盘面资料回答咨询问题。',
             ziweiScope === 'origin' ? 'ziwei-natal' : 'ziwei',
-          )
-        : buildPromptTask(
-            buildThematicTask(config, promptSelection, 'ziwei'),
-            ziweiScope === 'origin' ? 'ziwei-natal' : 'ziwei',
           ),
-      promptSelection,
-    );
+          promptSelection,
+        )
+      : buildPromptTask(
+          buildThematicTask(config, promptSelection, 'ziwei'),
+          ziweiScope === 'origin' ? 'ziwei-natal' : 'ziwei',
+        );
 
     const selectedSchools = options.ziweiSchools?.length ? options.ziweiSchools : [];
     const schoolText = selectedSchools.length
@@ -590,18 +590,18 @@ export function buildThematicConsultationPrompt(
     .filter(Boolean)
     .join('\n\n');
 
-  const taskText = buildPromptSelectionTask(
-    isCustomMode
-      ? buildPromptTask(
+  const taskText = isCustomMode
+    ? buildPromptSelectionTask(
+        buildPromptTask(
           '请依据八字和紫微盘面资料回答咨询问题。',
           selection.scope === 'natal' ? 'bazi-ziwei-natal' : 'bazi-ziwei',
-        )
-      : buildPromptTask(
-          buildThematicTask(config, selection, 'bazi_ziwei'),
-          selection.scope === 'natal' ? 'bazi-ziwei-natal' : 'bazi-ziwei',
         ),
-    promptSelection,
-  );
+        promptSelection,
+      )
+    : buildPromptTask(
+        buildThematicTask(config, selection, 'bazi_ziwei'),
+        selection.scope === 'natal' ? 'bazi-ziwei-natal' : 'bazi-ziwei',
+      );
 
   const promptText = joinPromptSections([
     buildPromptGuidance('bazi-ziwei'),

@@ -458,7 +458,7 @@ export function formatInstantQizhengPrompt(result: QizhengResult): string {
     .replace('【七政四余 · 果老星宗】', '【七政四余即时盘 · 果老星宗】')
     .replace('出生时间：', '起盘时间：')
     .replace('出生地点：', '起盘地点：')
-    .replace('按出生时刻与当地日出日落星历交点划分昼夜', '按起盘时刻与当地日出日落星历交点划分昼夜')
+    .replace('按出生时刻与当地太阳高度阈值划分昼夜', '按起盘时刻与当地太阳高度阈值划分昼夜')
     .replace(
       '本命盘以出生时点的星曜位置、落宿、落宫和吊照分析先天结构。',
       '本盘记录起盘时刻的星曜位置、落宿、落宫和吊照。',

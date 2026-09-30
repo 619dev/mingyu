@@ -230,7 +230,7 @@ test('星盘和七政四余即时盘始终要求完整观测地点', async () =>
   assert.equal(qizheng.result.calculationContext.longitude, beijingObserver.longitude);
   assert.match(qizheng.result.prompt, /起盘时间/);
   assert.match(qizheng.result.prompt, /起盘地点：/);
-  assert.match(qizheng.result.prompt, /按起盘时刻与当地日出日落/);
+  assert.match(qizheng.result.prompt, /按起盘时刻与当地太阳高度阈值/);
   assert.match(qizheng.result.prompt, /命宫主宰星/);
   assert.match(qizheng.result.prompt, /本盘记录起盘时刻的星曜位置、落宿、落宫和吊照/);
   assert.doesNotMatch(qizheng.result.prompt, /出生|昼生|夜生|命主|命宫主星/);

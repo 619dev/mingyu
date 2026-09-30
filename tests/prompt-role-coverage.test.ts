@@ -54,6 +54,13 @@ test('合参答题骨架不要求未列出的岁运或运限', () => {
   assert.match(PROMPT_METHOD_ANSWER_FRAMEWORKS['bazi-ziwei-mismatch'], /分开陈述/);
 });
 
+test('七政与太乙答题骨架只要求本次盘面的时间层资料', () => {
+  assert.doesNotMatch(PROMPT_METHOD_ANSWER_FRAMEWORKS.qizheng, /行限|流曜|阶段引动/);
+  assert.match(PROMPT_METHOD_ANSWER_FRAMEWORKS.qizheng, /命身宫度|十一曜落宿|吊照/);
+  assert.doesNotMatch(PROMPT_METHOD_ANSWER_FRAMEWORKS.taiyi, /年、月、日或时计/);
+  assert.match(PROMPT_METHOD_ANSWER_FRAMEWORKS.taiyi, /本次计式及目标时点/);
+});
+
 test('全部体系都提供传统判断规则与传统依据', () => {
   Object.entries(PROMPT_GUIDANCE_TEXT).forEach(([method, guidance]) => {
     assert.ok('tradition' in guidance, `${method} 应提供传统判断规则`);
