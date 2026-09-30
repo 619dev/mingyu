@@ -189,11 +189,48 @@ test('八字本命证据应拒绝与地支不对应的藏干资料', () => {
   const fact = analyzeBaziNatalEvidence(result).pillarFacts.find((item) => item.pillar === '年柱');
 
   assert.equal(fact?.status, '资料缺口');
+  assert.deepEqual(fact?.hiddenStems, []);
+  assert.deepEqual(fact?.hiddenTenGods, []);
   assert.match(
     fact?.promptText || '',
     new RegExp(`藏干资料与地支${result.pillars.year.zhi}不一致`),
   );
   assert.doesNotMatch(fact?.promptText || '', /藏干癸|藏干十神偏印/);
+});
+
+test('藏干十神与日主依据不一致时结构化事实不回传可疑值', () => {
+  const result = baziCalculator.calculateBazi({
+    year: 1990,
+    month: 5,
+    day: 15,
+    timeIndex: 1,
+    gender: 'male',
+  });
+  result.hiddenTenGods.year[0] = '伪十神';
+
+  const fact = analyzeBaziNatalEvidence(result).pillarFacts.find((item) => item.pillar === '年柱');
+
+  assert.equal(fact?.status, '资料缺口');
+  assert.deepEqual(fact?.hiddenStems, result.hiddenStems.year);
+  assert.deepEqual(fact?.hiddenTenGods, []);
+  assert.doesNotMatch(fact?.promptText ?? '', /伪十神/);
+});
+
+test('日主天干与日柱不一致时不把藏干十神视为已核实', () => {
+  const result = baziCalculator.calculateBazi({
+    year: 1990,
+    month: 5,
+    day: 15,
+    timeIndex: 1,
+    gender: 'male',
+  });
+  result.dayMaster.gan = result.dayMaster.gan === '甲' ? '乙' : '甲';
+
+  const fact = analyzeBaziNatalEvidence(result).pillarFacts.find((item) => item.pillar === '年柱');
+
+  assert.equal(fact?.status, '资料缺口');
+  assert.deepEqual(fact?.hiddenTenGods, []);
+  assert.match(fact?.promptText ?? '', /藏干十神资料与藏干或日主不一致，暂不采用/);
 });
 
 test('八字本命证据应标出缺失或错位的派生资料，且不把可疑值写入提示词', () => {

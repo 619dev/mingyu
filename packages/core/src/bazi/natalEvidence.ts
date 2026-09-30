@@ -281,6 +281,8 @@ function filterPortableStrategyTrace(values: string[] | undefined) {
 
 function buildPillarFacts(data: BaziChartResult): BaziNatalPillarFact[] {
   const dayMasterValid = hasConsistentDayMaster(data);
+  const dayStemValid =
+    hasValidPillarGanZhi(data.pillars.day) && data.dayMaster.gan === data.pillars.day.gan;
   return PILLAR_KEYS.map((key) => {
     const pillar = data.pillars[key];
     const hiddenStems = data.hiddenStems[key] ?? [];
@@ -293,10 +295,11 @@ function buildPillarFacts(data: BaziChartResult): BaziNatalPillarFact[] {
       hiddenStems.some((stem, index) => stem !== expectedHiddenStems[index]);
     const hiddenTenGodLengthMismatch = hiddenTenGods.length !== hiddenStems.length;
     const hiddenTenGodValueMismatch =
-      !hiddenTenGodLengthMismatch &&
-      hiddenStems.some(
-        (stem, index) => getTenGod(stem, data.dayMaster.gan) !== hiddenTenGods[index],
-      );
+      !dayStemValid ||
+      (!hiddenTenGodLengthMismatch &&
+        hiddenStems.some(
+          (stem, index) => getTenGod(stem, data.dayMaster.gan) !== hiddenTenGods[index],
+        ));
     const ganZhiValid = hasValidPillarGanZhi(pillar);
     const expectedTenGod =
       ganZhiValid && dayMasterValid
@@ -369,8 +372,11 @@ function buildPillarFacts(data: BaziChartResult): BaziNatalPillarFact[] {
       zhi: pillar.zhi,
       ganZhi: pillar.ganZhi,
       tenGod: tenGodValid ? data.tenGods[key] : '',
-      hiddenStems,
-      hiddenTenGods,
+      hiddenStems: hiddenStemsMismatch ? [] : hiddenStems,
+      hiddenTenGods:
+        hiddenStemsMismatch || hiddenTenGodLengthMismatch || hiddenTenGodValueMismatch
+          ? []
+          : hiddenTenGods,
       nayin: nayinValid ? data.nayin[key] : '',
       pillarLifeStage: pillarLifeStageValid ? data.pillarLifeStages[key] : '',
       dayMasterLifeStage: dayMasterLifeStageValid ? data.lifeStages[key] : '',
@@ -547,8 +553,8 @@ function buildCalculationSteps(args: {
   const unresolvedBoundaryCount = data.warningFacts.filter(
     (item) => item.status === '资料不完整' || item.status === '需核验原始记录',
   ).length;
-  const hiddenTenGodMismatchCount = pillarFacts.filter(
-    (item) => item.hiddenStems.length > 0 && item.hiddenTenGods.length !== item.hiddenStems.length,
+  const hiddenTenGodMismatchCount = PILLAR_KEYS.filter(
+    (key) => data.hiddenTenGods[key]?.length !== data.hiddenStems[key]?.length,
   ).length;
 
   return [
