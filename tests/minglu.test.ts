@@ -365,7 +365,7 @@ test('命录未知时辰按各柱稳定状态展示事实，不把未见五行�
   );
   assert.doesNotMatch(
     fiveElementsMarkup,
-    /缺此行|加权计数 \(0%\)|不得令|无明显根|无印生|透干无比劫|同类生扶 \(印比帮身\): 0分/,
+    /已确定柱|缺此行|加权计数 \(0%\)|不得令|无明显根|无印生|透干无比劫|同类生扶 \(印比帮身\): 0分/,
   );
   assert.match(fiveElementsMarkup, /同类生扶：待补时/);
   assert.match(fiveElementsMarkup, /异类耗泄：待补时/);

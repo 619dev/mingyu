@@ -25,7 +25,7 @@ export const MingluFiveElementsSection: React.FC<Props> = ({ data }) => {
           <h2 className="minglu-section-title">第二章：日主精微与五行能量全息剖析</h2>
           <p className="minglu-section-subtitle">
             {unknownTime
-              ? '已确定柱的五行出现情况与待补的旺衰资料'
+              ? '五行出现情况与待补的旺衰资料'
               : '天干地支加权量化、五行同异类比例、通根透干与旺衰强弱综合判定'}
           </p>
         </div>
@@ -34,7 +34,7 @@ export const MingluFiveElementsSection: React.FC<Props> = ({ data }) => {
       {/* 五行分布条形图与打分 */}
       <div id="bazi-elements-distribution" className="minglu-subblock">
         <h3 className="minglu-subblock-title">
-          {unknownTime ? '已确定柱五行出现情况' : '五行结构加权分布'}
+          {unknownTime ? '五行出现情况' : '五行结构加权分布'}
         </h3>
         <div className="minglu-elements-grid">
           {elements.map((el) => (
