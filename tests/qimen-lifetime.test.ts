@@ -1031,7 +1031,17 @@ test('奇门终身局阶段只引用本命格局名称，完整条件保留在�
   const topicSection = prompt.split('【个人标记与主题宫】')[1].split('【人生阶段资料】')[0];
   const stageSection = prompt.split('【人生阶段资料】')[1].split('【周期触发与事件簇】')[0];
   const taskSection = prompt.split('【任务】')[1].split('\n\n【问题】')[0];
-  assert.ok(baseSection.includes(pattern.summary));
+  const basePatternLine = baseSection
+    .split('\n')
+    .find((line) => line.trimStart().startsWith(`${pattern.name}（`));
+  assert.ok(basePatternLine);
+  assert.ok(
+    pattern.palaces.every((gong) =>
+      basePatternLine.includes(
+        data.baseChart.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`,
+      ),
+    ),
+  );
   assert.ok(data.topicCandidates.some((item) => item.patternSummary.length > 0));
   assert.match(topicSection, /人生重点主题候选宫：/);
   assert.doesNotMatch(topicSection, /宫位现状：/);
@@ -1043,6 +1053,31 @@ test('奇门终身局阶段只引用本命格局名称，完整条件保留在�
   assert.match(taskSection, /先综述全盘态势，再围绕所问事项整理主判断及可观察的应期线索/);
   assert.doesNotMatch(taskSection, /不视为原盘改动/);
   assert.doesNotMatch(taskSection, /按事项定用神与主客，以用神宫门星神干核对格局和空迫墓的作用/);
+});
+
+test('奇门终身局基础盘省略同格局复述并保留独有组合与遁干依据', () => {
+  const { data, prompt } = generateQimenLifetimePrompt(
+    {
+      birthDateTime: '1990-05-15T14:30:00',
+      timeZoneId: 'Asia/Shanghai',
+      periodRange: { startDate: '2026-01-01', endDate: '2026-12-31' },
+    },
+    '未来一年的事业如何？',
+  );
+  const patterns = prompt.split('盘面吉凶格局：')[1]?.split('同干定位')[0] ?? '';
+
+  assert.match(patterns, /虎遁（吉）：生门、乙奇落艮八宫，主威严稳固、资源回归/u);
+  assert.match(patterns, /休诈（吉）：丁奇、开门、六合同宫于乾六宫，主和合调停、协作成事/u);
+  assert.doesNotMatch(patterns, /乃(?:虎遁|休诈)之格|三奇、吉门、六合同宫/u);
+  assert.match(patterns, /丙奇升殿（吉）：月奇·光明显达入离九宫，得本气之地/u);
+  assert.doesNotMatch(patterns, /升殿得位/u);
+  assert.match(patterns, /戊击刑（凶）：戊在震三宫击刑，主规则、口舌、文书/u);
+  assert.doesNotMatch(patterns, /在此宫落于相刑之位/u);
+  assert.match(patterns, /干合蛇刑（中性）：天盘壬加地盘丁于坎一宫，主文书财喜/u);
+  assert.doesNotMatch(patterns, /壬加地盘丁为干合蛇刑/u);
+  assert.match(patterns, /罗网青龙（中性）：[^\n]*癸加地盘甲为罗网青龙；排盘时以甲子戊代甲/u);
+  assert.doesNotMatch(patterns, /故癸加地盘戊按此格论/u);
+  assert.ok(data.baseChart.classicPatterns?.some((item) => item.summary.includes('乃虎遁之格')));
 });
 
 test('奇门终身局阶段同宫得使临吉门只列加强条件', () => {

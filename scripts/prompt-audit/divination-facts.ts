@@ -8,6 +8,7 @@
 import type { PromptFactExpectation } from './facts';
 import { resolveSsgwStoryContent } from '../../packages/core/src/divination/ssgw-content';
 import { conditionLenormandTraditionalText } from '../../packages/core/src/divination/lenormand-evidence';
+import { formatLifetimePatternSummary } from '../../packages/core/src/divination/algorithms/qimen/helpers/lifetime-prompt';
 import { isKe, isSheng } from '../../packages/core/src/ganzhi';
 import type {
   LenormandCombinationRelation,
@@ -585,10 +586,15 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
         const summary = text(pattern.summary);
         const tone = pattern.type === 'good' ? '吉' : pattern.type === 'bad' ? '凶' : '中性';
         return name && summary
-          ? fact(`qimen-lifetime.base-pattern.${index}`, `${name}（${tone}）：`, [summary], {
-              scope: baseScope,
-              unit: 'line',
-            })
+          ? fact(
+              `qimen-lifetime.base-pattern.${index}`,
+              `${name}（${tone}）：`,
+              [formatLifetimePatternSummary(name, summary)],
+              {
+                scope: baseScope,
+                unit: 'line',
+              },
+            )
           : null;
       }),
     ),
@@ -914,11 +920,7 @@ function extractXiaoliurenFacts(data: unknown): DivinationPromptFact[] {
     fact(
       'xiaoliuren.hour',
       '定时宫：',
-      [
-        hour
-          ? `从日宫${text(day?.name) || ''}起子时，顺数至${text(d.hourLabel) || ''}`
-          : undefined,
-      ],
+      [hour ? `从日宫${text(day?.name) || ''}起子时，顺数至${text(d.hourLabel) || ''}` : undefined],
       { scope: { start: '起课过程：', end: '定位用途' } },
     ),
     fact('xiaoliuren.location', '定位用途：', [
