@@ -26,7 +26,13 @@ export function formatJinkoujueRelations(data: JinkoujueData): string {
     [p.guiShen, p.diFen, data.relations.guiToDi],
   ];
   const label = (position: JinkoujueFourPosition) => `${position.name}${position.element}`;
-  return `四位关系：${pairs
+  const movementPairs = new Set(
+    (data.movements ?? []).map(
+      (movement) => `${movement.from}|${movement.to}|${movement.relation}`,
+    ),
+  );
+  const relations = pairs
+    .filter(([from, to, relation]) => !movementPairs.has(`${from.name}|${to.name}|${relation}`))
     .map(([from, to, relation]) => {
       if (relation === '被生') return `${label(to)}生${label(from)}`;
       if (relation === '被克') return `${label(to)}克${label(from)}`;
@@ -34,7 +40,8 @@ export function formatJinkoujueRelations(data: JinkoujueData): string {
       if (relation === '生' || relation === '克') return `${label(from)}${relation}${label(to)}`;
       return `${label(from)}对${label(to)}为${relation}`;
     })
-    .join('；')}`;
+    .join('；');
+  return relations ? `四位关系：${relations}` : '';
 }
 
 /** 四位取用的起课依据、具体生扶与制约，供单时刻和时间区间共用。 */

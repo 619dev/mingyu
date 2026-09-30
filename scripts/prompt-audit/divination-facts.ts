@@ -916,7 +916,7 @@ function extractXiaoliurenFacts(data: unknown): DivinationPromptFact[] {
       '定时宫：',
       [
         hour
-          ? `从日宫${text(day?.name) || ''}起子时，顺数至${text(d.hourLabel) || ''}，落${text(hour.name) || ''}`
+          ? `从日宫${text(day?.name) || ''}起子时，顺数至${text(d.hourLabel) || ''}`
           : undefined,
       ],
       { scope: { start: '起课过程：', end: '定位用途' } },
@@ -979,6 +979,11 @@ function extractJinkoujueFacts(data: unknown): DivinationPromptFact[] {
     ['renYuan', 'diFen', text(record(d.relations)?.renToDi) || ''],
     ['guiShen', 'diFen', text(record(d.relations)?.guiToDi) || ''],
   ];
+  const movementPairs = new Set(
+    movementItems.map(
+      (item) => `${text(item.from) || ''}|${text(item.to) || ''}|${text(item.relation) || ''}`,
+    ),
+  );
   const relationText = (fromKey: string, toKey: string, relation: string) => {
     const from = record(positions[fromKey]);
     const to = record(positions[toKey]);
@@ -1011,7 +1016,13 @@ function extractJinkoujueFacts(data: unknown): DivinationPromptFact[] {
     fact(
       'jinkoujue.relations',
       '四位关系：',
-      relationPairs.map(([from, to, relation]) => relationText(from, to, relation)),
+      relationPairs
+        .filter(([from, to, relation]) => {
+          const fromName = text(record(positions[from])?.name) || from;
+          const toName = text(record(positions[to])?.name) || to;
+          return !movementPairs.has(`${fromName}|${toName}|${relation}`);
+        })
+        .map(([from, to, relation]) => relationText(from, to, relation)),
     ),
   ]);
 }

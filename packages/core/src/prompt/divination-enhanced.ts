@@ -7,6 +7,8 @@ import {
   formatLiurenLesson,
   formatLiurenOrdinaryTransmissionAdjudication,
   formatLiurenTransmission,
+  omitRepeatedLiurenFocusMonthState,
+  omitRepeatedLiurenRidingMonthState,
 } from './liuren-facts';
 import { formatMeihuaFacts } from './meihua-facts';
 import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
@@ -604,10 +606,33 @@ function formatMeihuaInfo(data: MeihuaData) {
   const yingQiConditions = evidence.timingFacts
     .filter((fact) => fact.type === '原应期条件')
     .map((fact) => fact.promptText.replace('，只作取数来源旁证，不换算绝对日期', '；取数来源旁证'));
-  const yingQiText = yingQiConditions.length ? `应期条件：${yingQiConditions.join('；')}` : '';
   const originStage = stages.find((stage) => stage.stage === 'origin');
   const processStage = stages.find((stage) => stage.stage === 'process');
   const resultStage = stages.find((stage) => stage.stage === 'result');
+  const stagePromptTexts = stages.map((stage) =>
+    stage.stage === 'origin' && stage.relation
+      ? stage.promptText.replace(`，关系${stage.relation}`, '')
+      : stage.promptText,
+  );
+  const originRelation = originStage?.relation;
+  const originSeasonEvaluation = originStage
+    ? getMeihuaTiYongSeasonEvaluation(
+        originStage.relation,
+        originStage.ti.seasonState,
+        originStage.yong.seasonState,
+      )
+    : '';
+  const originSeasonRelationPrefix = originRelation ? `主卦${originRelation}，` : '';
+  const originSeasonConditions =
+    originRelation &&
+    originRelation !== '比和' &&
+    originSeasonEvaluation.startsWith(originSeasonRelationPrefix)
+      ? originSeasonEvaluation.slice(originSeasonRelationPrefix.length)
+      : originSeasonEvaluation;
+  const timingConditions = yingQiConditions.map((condition) =>
+    originRelation ? condition.replace(`${originRelation}，`, '') : condition,
+  );
+  const yingQiText = timingConditions.length ? `应期条件：${timingConditions.join('；')}` : '';
   const generationText =
     calculation && methodLabel !== '未给出'
       ? `起卦法：${methodLabel}${!hasCalculationFact && typeof calculation.number === 'number' ? `；起卦数字${calculation.number}` : ''}`
@@ -641,11 +666,9 @@ function formatMeihuaInfo(data: MeihuaData) {
     (changedTiYongText || data.analysis.changedRelation)
       ? `变卦：${resultHexagram}${changedTiYongText}${data.analysis.changedRelation ? `；结果关系${data.analysis.changedRelation}` : ''}`
       : '',
-    stages.length ? `体用阶段：\n${stages.map((stage) => stage.promptText).join('\n')}` : '',
+    stagePromptTexts.length ? `体用阶段：\n${stagePromptTexts.join('\n')}` : '',
     generationText,
-    originStage?.status === '已计算'
-      ? `主卦体用月令条件：${getMeihuaTiYongSeasonEvaluation(originStage.relation, originStage.ti.seasonState, originStage.yong.seasonState)}`
-      : '',
+    originStage?.status === '已计算' ? `主卦体用月令条件：${originSeasonConditions}` : '',
     timelineText,
     yingQiText,
   ]
@@ -697,7 +720,7 @@ function formatXiaoliurenInfo(data: XiaoliurenData, omitRepeatedCivilTime = fals
     '起课过程：月、日、时各段起点计为第一位',
     `  定月宫：${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月从大安顺数，落${data.sequence.month.name}`,
     `  定日宫：从月宫${data.sequence.month.name}${rule.dayStartOffset ? '下一宫' : ''}起初一（${firstDayPalace.name}），顺数至${data.lunarDay}日，落${data.sequence.day.name}`,
-    `  定时宫：从日宫${data.sequence.day.name}起子时，顺数至${data.hourLabel}，落${data.sequence.hour.name}`,
+    `  定时宫：从日宫${data.sequence.day.name}起子时，顺数至${data.hourLabel}`,
     rule.dayStartOffset
       ? `定位用途：月宫是月份起数位置；初一从${firstDayPalace.name}起数；日宫是子时的起数位置`
       : '定位用途：月宫是初一的起数位置；日宫是子时的起数位置',
@@ -1013,7 +1036,15 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
 function formatLiurenInfo(data: LiurenData) {
   const analysis = analyzeLiurenEvidence(data);
   const plateVerified = analysis.plateFact.status === '完整';
-  const ridingFacts = analysis.traditionalFacts.filter((item) => item.kind === '天将乘神');
+  const ridingFacts = analysis.traditionalFacts
+    .filter((item) => item.kind === '天将乘神')
+    .map((item) => ({
+      item,
+      transmission: data.threeTransmissions.find(
+        (transmission) =>
+          item.stages?.includes(transmission.stage) && item.branches?.includes(transmission.branch),
+      ),
+    }));
   const lessonLines = data.fourLessons.map(formatLiurenLesson);
   const transmissionLines = data.threeTransmissions.map((_, index) =>
     formatLiurenTransmission(data, index),
@@ -1082,10 +1113,25 @@ function formatLiurenInfo(data: LiurenData) {
     transmissionLines.length ? '三传：' : '',
     ...transmissionLines.map((item) => `  ${item}`),
     data.focusEvidence?.length
-      ? `取用定位：${data.focusEvidence.map((item) => `${item.role}${item.target}（${item.level}）：${item.evidence.filter(Boolean).join('、')}${item.limitations.length ? `；${item.limitations.join('、')}` : ''}`).join('；')}`
+      ? `取用定位：${data.focusEvidence
+          .map((item) => {
+            const evidence =
+              item.role === '发用主轴'
+                ? omitRepeatedLiurenFocusMonthState(
+                    item.evidence,
+                    timingEvidence,
+                    data.threeTransmissions[0],
+                  )
+                : item.evidence;
+            return `${item.role}${item.target}（${item.level}）：${evidence.filter(Boolean).join('、')}${item.limitations.length ? `；${item.limitations.join('、')}` : ''}`;
+          })
+          .join('；')}`
       : '',
     timingEvidence.length ? `应期依据：${timingEvidence.join('；')}` : '',
-    ...ridingFacts.map((item) => `乘神生克：${item.promptText}`),
+    ...ridingFacts.map(
+      ({ item, transmission }) =>
+        `乘神生克：${omitRepeatedLiurenRidingMonthState(item.promptText, timingEvidence, transmission)}`,
+    ),
   ]
     .filter(Boolean)
     .join('\n');

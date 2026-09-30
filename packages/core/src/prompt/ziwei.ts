@@ -398,7 +398,9 @@ export function formatZiweiPayloadForPrompt(
   const evidenceAppendix = evidenceItems.slice(evidenceLimit);
   const includeBasicInfo = options.includeBasicInfo ?? true;
   const matchedPatterns = includeBasicInfo
-    ? formatObjectList(buildZiweiMatchedPatternSummary(payload))
+    ? formatObjectList(
+        buildZiweiMatchedPatternSummary(payload, { displayedPalaces: selectedPalaces }),
+      )
     : '';
   const bodyPalace = payload.palaces.find((p) => p.is_body_palace);
   const bodyPalaceName = payload.basic_info.hidden_palaces?.body_palace_name || bodyPalace?.name;

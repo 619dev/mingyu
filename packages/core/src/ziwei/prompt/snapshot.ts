@@ -1,5 +1,6 @@
-import type { AnalysisPayloadV1 } from '../../types/analysis';
+import type { AnalysisPayloadV1, PalaceFact } from '../../types/analysis';
 import { selectVerifiedZiweiPatterns } from '../iztro/pattern-detection';
+import { isRepeatedZiweiCoLocationCondition } from './pattern-condition-visibility';
 import { buildFocusTaskBundle } from './focus';
 import {
   buildEvidenceSummary,
@@ -83,7 +84,10 @@ function buildTaskBookBasicInfo(payload: AnalysisPayloadV1) {
   };
 }
 
-export function buildZiweiMatchedPatternSummary(payload: AnalysisPayloadV1) {
+export function buildZiweiMatchedPatternSummary(
+  payload: AnalysisPayloadV1,
+  options: { displayedPalaces?: readonly PalaceFact[] } = {},
+) {
   const birthYearHeavenlyStem = /^[甲乙丙丁戊己庚辛壬癸]/u.exec(
     payload.basic_info.chinese_date,
   )?.[0];
@@ -94,6 +98,12 @@ export function buildZiweiMatchedPatternSummary(payload: AnalysisPayloadV1) {
   });
   return patterns.map((pattern) => {
     const conditions = [...new Set(pattern.matched_conditions ?? [])];
+    const displayedConditions = options.displayedPalaces
+      ? conditions.filter(
+          (condition) =>
+            !isRepeatedZiweiCoLocationCondition(pattern, condition, options.displayedPalaces!),
+        )
+      : conditions;
     const uncoveredPalaces = pattern.palace_names.filter(
       (name) => !conditionCoversZiweiPalace(name, conditions),
     );
@@ -108,7 +118,7 @@ export function buildZiweiMatchedPatternSummary(payload: AnalysisPayloadV1) {
           : pattern.kind === 'inauspicious'
             ? '传统凶格'
             : '传统中性格',
-      命中条件: conditions.length ? conditions.join('；') : undefined,
+      命中条件: displayedConditions.length ? displayedConditions.join('；') : undefined,
       涉及宫位: uncoveredPalaces.length ? uncoveredPalaces.join('、') : undefined,
       涉及星曜: uncoveredStars.length ? uncoveredStars.join('、') : undefined,
       古籍依据: pattern.sources?.[0],
@@ -126,6 +136,10 @@ export function buildPromptContextSnapshot(params: {
   const currentPalace = getPalaceByIndex(payload, payload.active_scope.palace_index);
   const currentMutagens = payload.active_scope.mutagen_map ?? [];
   const isOrigin = payload.active_scope.scope === 'origin';
+  const displayedPalaceIndexes = new Set(focusPalaces.map((palace) => palace.index));
+  const patternVisiblePalaces = payload.palaces.filter((palace) =>
+    displayedPalaceIndexes.has(palace.index),
+  );
   return {
     命主基础信息: buildTaskBookBasicInfo(payload),
     当前运限信息: {
@@ -141,7 +155,9 @@ export function buildPromptContextSnapshot(params: {
             )
           : undefined,
     },
-    命盘格局: buildZiweiMatchedPatternSummary(payload),
+    命盘格局: buildZiweiMatchedPatternSummary(payload, {
+      displayedPalaces: patternVisiblePalaces,
+    }),
     运限结构: buildScopeStructureSummary(payload),
     重点宫位摘要: focusPalaces.map((item) => buildPalaceSummary(payload, item)),
     全盘宫位索引: buildPalaceIndex(payload),
@@ -203,7 +219,9 @@ export function buildZiweiTaskBookSnapshot(params: {
   const focusTaskBundle = buildFocusTaskBundle(payload, reportContext);
   const focusPalaces = focusTaskBundle.focusPalaces;
   const isOrigin = payload.active_scope.scope === 'origin';
-  const patternSummary = buildZiweiMatchedPatternSummary(payload);
+  const patternSummary = buildZiweiMatchedPatternSummary(payload, {
+    displayedPalaces: payload.palaces,
+  });
   const yunxianFocus = buildScopeHitSummary(payload);
   const focusBody = `宫位：${focusPalaces.map((item) => formatPalaceName(item.name)).join('、')}`;
   const palaceBody = payload.palaces

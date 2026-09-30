@@ -12,7 +12,11 @@ import {
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 import { buildDivinationPrompt as buildAppDivinationPrompt } from '../src/lib/divination/engine';
-import { formatLiurenOrdinaryTransmissionAdjudication } from '../packages/core/src/prompt/liuren-facts';
+import {
+  formatLiurenOrdinaryTransmissionAdjudication,
+  omitRepeatedLiurenFocusMonthState,
+  omitRepeatedLiurenRidingMonthState,
+} from '../packages/core/src/prompt/liuren-facts';
 import { formatLiurenJudgmentFacts } from '../packages/core/src/prompt/liuren-judgment';
 import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules';
 
@@ -220,6 +224,41 @@ test('大六壬完整提示词只补充尚未在盘面显示的判断事实', ()
       for (const limitation of focus.limitations) assert.ok(prompt.includes(limitation));
     }
   }
+});
+
+test('大六壬月令旺衰集中在应期段，取用与乘神仍保留各自依据', () => {
+  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  for (const prompt of [
+    buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
+    buildAppDivinationPrompt('liuren', '问合作进度', data),
+  ]) {
+    assert.match(prompt, /发用主轴初传酉乘勾陈（主证）：涉害法取为初传、火克金/u);
+    assert.match(prompt, /初传酉（月令死）→中传丑（月令相）→末传巳（月令旺）/u);
+    assert.match(prompt, /乘神生克：初传勾陈乘天盘酉金，与日干癸水为乘神生日，不逢旬空/u);
+    assert.equal(prompt.split('月令死）').length - 1, 1);
+    assert.equal(prompt.split('月令相）').length - 1, 1);
+    assert.equal(prompt.split('月令旺）').length - 1, 1);
+  }
+});
+
+test('大六壬应期段未列同一初传月令状态时保留取用和乘神资料', () => {
+  const transmission = { stage: '初传', branch: '酉', seasonState: '死' } as const;
+  const focusEvidence = ['涉害法取为初传', '月令死', '火克金'];
+  const ridingFact = '初传勾陈乘天盘酉金，与日干癸水为乘神生日，月令死，不逢旬空';
+
+  assert.deepEqual(
+    omitRepeatedLiurenFocusMonthState(focusEvidence, [], transmission),
+    focusEvidence,
+  );
+  assert.equal(omitRepeatedLiurenRidingMonthState(ridingFact, [], transmission), ridingFact);
+  assert.deepEqual(
+    omitRepeatedLiurenFocusMonthState(
+      focusEvidence,
+      ['二级三传：初传酉（月令死）→中传丑（月令相）→末传巳（月令旺）'],
+      transmission,
+    ),
+    ['涉害法取为初传', '火克金'],
+  );
 });
 
 test('大六壬在线提示词用取传依据和期限条件表达候选取舍', () => {

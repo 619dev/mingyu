@@ -353,6 +353,7 @@ function getBasicPatternTone(tag: string): QimenPatternEvidenceFact['traditional
 }
 
 export function formatQimenPatternBasis(item: QimenPatternEvidenceFact): string {
+  if (item.kind === '基础格局' && /^三奇得（/u.test(item.name)) return item.name;
   const clauses = item.promptText
     .split(/[，；。]/u)
     .map((clause) => clause.trim())
@@ -361,7 +362,7 @@ export function formatQimenPatternBasis(item: QimenPatternEvidenceFact): string 
     /主(?!客)|宜|不宜|百事|可成|成功|失败|灾|病|损失|受阻|阻滞|停滞|有利|利于|利客|利主|利事|吉利|可借助|上升机会|天助|和合调停|协作成事|助力相辅/u.test(
       clause,
     );
-  const firstClause = clauses[0];
+  const firstClause = clauses[0]?.replace(/（([乙丙丁戊己庚辛壬癸])在此宫落于相刑之位）/gu, '');
   const factualClauses = firstClause && !containsOutcomeClaim(firstClause) ? [firstClause] : [];
   const additionalFacts =
     item.kind === '经典格局'
@@ -1527,7 +1528,11 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
   const calculationChain = calculationEvidenceFacts.map((item) => item.promptText);
   const promptClassicFacts = selectQimenClassicPatternsForPrompt(classicFactsForPrompt);
   const patternLines = promptPatternFacts
-    .filter((item) => item.kind !== '经典格局' || promptClassicFacts.includes(item))
+    .filter(
+      (item) =>
+        !(item.kind === '基础格局' && item.name.startsWith('马星（')) &&
+        (item.kind !== '经典格局' || promptClassicFacts.includes(item)),
+    )
     .map((item) => {
       const palaces =
         item.palaces.length || item.kind !== '基础格局'

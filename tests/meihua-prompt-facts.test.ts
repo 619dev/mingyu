@@ -167,7 +167,11 @@ test('梅花旧盘派生月令和走势文字不直接进入两种提示词', ()
     question: '请分析后续进展。',
   });
   assert.doesNotMatch(prompt, /伪造的月令断语|伪造的走势|盘内关系走势始终受制/u);
-  assert.ok(prompt.includes(`主卦体用月令条件：${verifiedSeasonEvaluation}`));
+  const expectedSeasonConditions = verifiedSeasonEvaluation.replace(
+    `主卦${data.analysis.tiYongRelation}，`,
+    '',
+  );
+  assert.ok(prompt.includes(`主卦体用月令条件：${expectedSeasonConditions}`));
   assert.match(prompt, /盘内关系走势先难后易/u);
 
   data.analysis.inter1Relation = '伪造的体互关系';
@@ -229,7 +233,11 @@ test('梅花在线提示词保留六个体用角色的月令关系且阶段不�
   });
   assert.ok(data.evidenceAnalysis?.stages.length);
   for (const stage of data.evidenceAnalysis.stages) {
-    assert.ok(prompt.includes(stage.promptText));
+    const displayedStage =
+      stage.stage === 'origin' && stage.relation
+        ? stage.promptText.replace(`，关系${stage.relation}`, '')
+        : stage.promptText;
+    assert.ok(prompt.includes(displayedStage));
     assert.doesNotMatch(stage.promptText, /月令|支持：|限制：/u);
   }
   const stageSection = prompt.split('体用阶段：\n')[1]?.split('\n起卦法：')[0] ?? '';
@@ -242,6 +250,8 @@ test('梅花在线提示词保留六个体用角色的月令关系且阶段不�
 
   const origin = data.evidenceAnalysis.stages.find((stage) => stage.stage === 'origin');
   assert.ok(origin);
+  assert.match(prompt, new RegExp(`体用关系${origin.relation}`, 'u'));
+  assert.doesNotMatch(prompt, new RegExp(`主卦${origin.relation}，体卦月令`, 'u'));
   for (const [role, state] of [
     ['体', origin.ti.seasonState],
     ['用', origin.yong.seasonState],
@@ -311,7 +321,12 @@ test('梅花主卦生体而变卦克体时保留条件，不把旺衰写成吉�
     assert.equal(data.analysis.tiSeasonState, state);
     assert.ok(data.analysis.tiYongSeasonEvaluation?.includes(`生体条件${strength}`));
     assert.ok(data.analysis.yingQi?.includes(`体卦月令${state}，可作应期${speed}的盘内参考`));
-    assert.match(prompt, /主卦体用月令条件：主卦用生体/u);
+    assert.match(prompt, /体用关系用生体/u);
+    assert.match(
+      prompt,
+      new RegExp(`主卦体用月令条件：体卦月令${state}、用卦月令${data.analysis.yongSeasonState}`),
+    );
+    assert.doesNotMatch(prompt, /主卦体用月令条件：主卦用生体/u);
     assert.match(prompt, /变卦泽火革：.*关系用克体/u);
     assert.doesNotMatch(prompt, /起因泽山咸|过程泽山咸|结果泽火革/u);
     assert.match(prompt, /盘内关系走势先顺后阻；体用强弱与应期合参主互变、所问事项及现实进展/u);

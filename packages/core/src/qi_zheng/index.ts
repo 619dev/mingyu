@@ -2147,7 +2147,7 @@ function formatQizhengFlowingPrompt(
       const second = natalStars.find((star) => `本命${star.name}` === aspect.star2)!;
       const relation = aspect.type === '同宫' ? '合相' : aspect.type;
       const palaceRelation = first.signBranch === second.signBranch ? '同宫' : '异宫';
-      return `采样时刻${flowing.localDateTime}：${aspect.star1}（入本命${first.signBranch}宫${first.palace}）与${aspect.star2}（${second.signBranch}宫${second.palace}）：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`;
+      return `采样时刻${flowing.localDateTime}：${aspect.star1}与${aspect.star2}：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`;
     }),
     16,
   );
@@ -2374,7 +2374,7 @@ function generateQizhengInternal(
               const second = stars.find((star) => star.name === aspect.star2)!;
               const relation = aspect.type === '同宫' ? '合相' : aspect.type;
               const palaceRelation = first.signBranch === second.signBranch ? '同宫' : '异宫';
-              return `${first.name}（${first.signBranch}宫${first.palace}）与${second.name}（${second.signBranch}宫${second.palace}）：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°；落宫关系${palaceRelation}`;
+              return `${first.name}与${second.name}：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°；落宫关系${palaceRelation}`;
             })
             .join('；')
         : '未见容许度内的主要合相、六合、四正、三方或对照'

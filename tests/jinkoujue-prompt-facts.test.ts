@@ -65,7 +65,7 @@ test('金口诀提示资料只列实际动爻，不再重复展开未触发的�
   for (const format of formatters) {
     const text = format('jinkoujue', data);
     assert.match(text, /兄弟动（人元火比和地分火）/);
-    assert.match(text, /人元火与地分火比和/);
+    assert.doesNotMatch(text, /人元火与地分火比和/);
     assert.match(text, /地分火克将神金/);
     assert.match(text, /五动三动：.*兄弟动（人元火比和地分火）/);
     assert.doesNotMatch(text, /五动取法：|三动取法：/);

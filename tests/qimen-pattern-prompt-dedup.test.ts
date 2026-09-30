@@ -21,6 +21,23 @@ test('奇门证据提示词保留命中条件并省略同宫格局的重复前�
   assert.match(patterns, /凶格：门迫；惊门（金）克巽四宫（木）/);
 });
 
+test('三奇得、马星和击刑在在线提示词中各保留一次有效事实', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const analysis = analyzeQimenEvidence(data);
+  const prompt = analysis.promptText;
+  const patterns = prompt.split('【传统格局】\n')[1]?.split('【应期资料】')[0] ?? '';
+
+  assert.match(patterns, /吉格：三奇得（丙奇（月奇）合生门于兑七宫）\n/u);
+  assert.match(patterns, /吉格：三奇得（丁奇（星奇）合开门于离九宫）\n/u);
+  assert.doesNotMatch(patterns, /三奇与开休生吉门同宫|中性格局：马星（/u);
+  assert.match(prompt, /乾六宫[^\n]*马星/u);
+  assert.match(prompt, /驿马发动，出现行动、迁移、消息流转时更容易触发进展/u);
+  assert.match(patterns, /凶格：癸击刑；癸在巽四宫击刑\n/u);
+  assert.doesNotMatch(patterns, /在此宫落于相刑之位/u);
+  assert.ok(analysis.patternFacts.some((item) => item.name.startsWith('马星（')));
+  assert.ok(analysis.patternFacts.some((item) => item.originalText.includes('在此宫落于相刑之位')));
+});
+
 test('三奇入墓在固定盘与证据提示词中只保留三奇专名', () => {
   const data = generateQimen(new Date('2026-05-01T14:00:00+08:00'));
   const tombNames = (data.classicPatterns ?? []).map((pattern) => pattern.name);

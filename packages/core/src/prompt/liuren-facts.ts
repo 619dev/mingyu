@@ -1,6 +1,43 @@
-import type { LiurenData, LiurenLesson } from '../types/divination';
+import type { LiurenData, LiurenLesson, LiurenTransmission } from '../types/divination';
 import { BRANCH_WUXING, STEM_WUXING, isSheng, isKe } from '../ganzhi';
 import { getLiurenOrdinaryCandidateStatusLabel } from '../divination/liuren-ordinary-adjudication';
+
+function isTransmissionMonthStateInTiming(
+  timingEvidence: readonly string[],
+  transmission: Pick<LiurenTransmission, 'stage' | 'branch' | 'seasonState'> | undefined,
+) {
+  if (!transmission?.seasonState) return false;
+  const marker = `${transmission.stage}${transmission.branch}（月令${transmission.seasonState}`;
+  return timingEvidence.some((fact) => fact.includes(marker));
+}
+
+export function omitRepeatedLiurenFocusMonthState(
+  evidence: readonly string[],
+  timingEvidence: readonly string[],
+  transmission: Pick<LiurenTransmission, 'stage' | 'branch' | 'seasonState'> | undefined,
+) {
+  if (
+    !transmission?.seasonState ||
+    !isTransmissionMonthStateInTiming(timingEvidence, transmission)
+  ) {
+    return [...evidence];
+  }
+  return evidence.filter((fact) => fact !== `月令${transmission.seasonState}`);
+}
+
+export function omitRepeatedLiurenRidingMonthState(
+  promptText: string,
+  timingEvidence: readonly string[],
+  transmission: Pick<LiurenTransmission, 'stage' | 'branch' | 'seasonState'> | undefined,
+) {
+  if (
+    !transmission?.seasonState ||
+    !isTransmissionMonthStateInTiming(timingEvidence, transmission)
+  ) {
+    return promptText;
+  }
+  return promptText.replace(`，月令${transmission.seasonState}`, '');
+}
 
 function formatRelation(source: string, target: string, sourceName: string, targetName: string) {
   const sourceElement = STEM_WUXING[source] || BRANCH_WUXING[source];

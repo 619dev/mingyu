@@ -39,7 +39,7 @@ test('只指定流分时，流曜采样时刻与提示词时间一致', () => {
   assert.match(result.prompt, /落宫取 12:37；落宫时刻 2022-06-15T12:37:00/);
 });
 
-test('流曜吊照逐条绑定采样时刻和本命宫位，角距两端来自不同时间盘', () => {
+test('流曜吊照绑定采样时刻并保留落宫关系，角距两端来自不同时间盘', () => {
   const result = generateQizheng({
     year: 1993,
     month: 4,
@@ -65,7 +65,24 @@ test('流曜吊照逐条绑定采样时刻和本命宫位，角距两端来自�
     assert.ok(Math.abs(Math.abs(angle - aspect.exactAngle) - aspect.orb) < 0.0001);
     assert.ok(
       result.prompt.includes(
-        `采样时刻${flowing.localDateTime}：${aspect.star1}（入本命${first.signBranch}宫${first.palace}）与${aspect.star2}（${second.signBranch}宫${second.palace}）`,
+        `采样时刻${flowing.localDateTime}：${aspect.star1}与${aspect.star2}：`,
+      ),
+    );
+    const relation = aspect.type === '同宫' ? '合相' : aspect.type;
+    const palaceRelation = first.signBranch === second.signBranch ? '同宫' : '异宫';
+    assert.ok(
+      result.prompt.includes(
+        `采样时刻${flowing.localDateTime}：${aspect.star1}与${aspect.star2}：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`,
+      ),
+    );
+    assert.ok(
+      result.prompt.includes(
+        `流曜${first.name}：在${first.xiu}宿${first.xiuDegree.toFixed(2)}度，入本命${first.signBranch}宫${first.palace}`,
+      ),
+    );
+    assert.ok(
+      result.prompt.includes(
+        `${second.kind} ${second.name}：在${second.xiu}宿${second.xiuDegree.toFixed(2)}度，落${second.signBranch}宫${second.palace}`,
       ),
     );
   }
@@ -86,11 +103,11 @@ test('七政正文区分跨宫合相与同宫位置，并保留角距和偏差�
   });
   assert.match(
     result.prompt,
-    /太阳（酉宫福德）与辰星\(水\)（申宫相貌）：合相；目标角0°，实际角距5\.48°，偏差5\.48°，容许偏差上限8°；落宫关系异宫/,
+    /太阳与辰星\(水\)：合相；目标角0°，实际角距5\.48°，偏差5\.48°，容许偏差上限8°；落宫关系异宫/,
   );
   assert.match(
     result.prompt,
-    /太阴（未宫命宫）与太白\(金\)（未宫命宫）：合相；目标角0°，实际角距0\.39°，偏差0\.39°，容许偏差上限8°；落宫关系同宫/,
+    /太阴与太白\(金\)：合相；目标角0°，实际角距0\.39°，偏差0\.39°，容许偏差上限8°；落宫关系同宫/,
   );
   const stars = new Map(result.stars.map((star) => [star.name, star]));
   for (const aspect of result.aspects) {
@@ -102,8 +119,9 @@ test('七政正文区分跨宫合相与同宫位置，并保留角距和偏差�
     assert.ok(Math.abs(Math.abs(angle - aspect.exactAngle) - aspect.orb) < 0.0001);
     assert.ok(aspect.orb <= aspect.allowedOrb);
     if (first.name === '罗睺(火余)' && second.name === '计都(土余)') continue;
+    assert.ok(result.prompt.includes(`${first.name}与${second.name}：`));
     assert.ok(
-      result.prompt.includes(
+      !result.prompt.includes(
         `${first.name}（${first.signBranch}宫${first.palace}）与${second.name}（${second.signBranch}宫${second.palace}）`,
       ),
     );
@@ -141,8 +159,8 @@ test('七政在线任务书省去恒定罗计对照和重复星曜名单，完�
   assert.equal(nodalAspect?.actualAngle, 180);
   assert.match(result.prompt, /四余 罗睺\(火余\)：/);
   assert.match(result.prompt, /四余 计都\(土余\)：/);
-  assert.match(result.prompt, /太白\(金\)（未宫命宫）与紫炁\(木余\)（寅宫奴仆）：对照/);
-  assert.doesNotMatch(result.prompt, /罗睺\(火余\)（亥宫迁移）与计都\(土余\)（巳宫兄弟）：对照/);
+  assert.match(result.prompt, /太白\(金\)与紫炁\(木余\)：对照/);
+  assert.doesNotMatch(result.prompt, /罗睺\(火余\)与计都\(土余\)：对照/);
   assert.doesNotMatch(result.prompt, /七政：太阳、太阴、水、金、火、木、土；四余：/);
   assert.ok(
     extractQizhengFacts(result)

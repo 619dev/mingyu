@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { EARTHLY_BRANCHES } from '../packages/core/src/ganzhi/data';
 import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
 import { buildFocusTaskBundle } from '../packages/core/src/ziwei/prompt/focus';
+import { isRepeatedZiweiCoLocationCondition } from '../packages/core/src/ziwei/prompt/pattern-condition-visibility';
 
 import {
   buildCombinedZiweiCompatibilityPrompt,
@@ -198,24 +199,65 @@ test('紫微提示词快照应输出已校勘格局的条件与古籍依据', ()
 
   assert.match(snapshot, /【命盘格局】/);
   assert.match(snapshot, /格局：紫府同宫/);
-  assert.match(snapshot, /命中条件：紫微与天府同坐命宫/);
+  assert.doesNotMatch(snapshot, /命中条件：紫微与天府同坐命宫/);
   assert.match(snapshot, /古籍依据：《紫微斗数全书》卷一/);
   assert.doesNotMatch(snapshot, /涉及宫位：命宫|涉及星曜：紫微、天府/);
   const taskBook = buildZiweiTaskBookSnapshot({
     payload,
     reportContext: createReportContext(),
   });
-  assert.match(taskBook, /命中条件：紫微与天府同坐命宫/);
+  assert.doesNotMatch(taskBook, /命中条件：紫微与天府同坐命宫/);
   assert.match(taskBook, /古籍依据：《紫微斗数全书》卷一/);
   assert.doesNotMatch(taskBook, /涉及宫位：命宫|涉及星曜：紫微、天府/);
   assert.doesNotMatch(snapshot, /因此必然|命盘总分|保证实现/);
   const onlinePromptFacts = formatZiweiPayloadForPrompt(payload);
   assert.match(onlinePromptFacts, /命盘格局：\n格局：紫府同宫/);
-  assert.match(onlinePromptFacts, /命中条件：紫微与天府同坐命宫/);
+  assert.doesNotMatch(onlinePromptFacts, /命中条件：紫微与天府同坐命宫/);
   assert.match(onlinePromptFacts, /古籍依据：《紫微斗数全书》卷一/);
+  assert.match(onlinePromptFacts, /命宫；[^\n]*主星：紫微、天府/);
   assert.doesNotMatch(
     onlinePromptFacts,
     /涉及宫位：命宫|涉及星曜：紫微、天府|传统目录|未命中规则|不可唯一复算/,
+  );
+});
+
+test('紫微在线提示词省略完整十二宫已列明的同宫命中条件', () => {
+  const payload = createPayload();
+  const spousePalace = payload.palaces.find((palace) => palace.name === '夫妻');
+  assert.ok(spousePalace);
+  spousePalace.major_stars.push({ name: '太阴', kind: 'major' });
+  spousePalace.minor_stars.push({ name: '文曲', kind: 'minor' });
+  payload.patterns = detectPatterns({ palaces: payload.palaces });
+
+  const prompt = formatZiweiPayloadForPrompt(payload);
+  assert.match(prompt, /夫妻宫；[^\n]*主星：太阴/u);
+  assert.match(prompt, /夫妻宫；[^\n]*辅曜：文曲/u);
+  assert.match(prompt, /格局：蟾宫折桂/u);
+  assert.doesNotMatch(prompt, /命中条件：太阴与文曲同守夫妻宫/u);
+  assert.match(prompt, /古籍依据：《紫微斗数全书》卷三·太阴/u);
+
+  const focusedPrompt = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
+  assert.match(focusedPrompt, /命中条件：太阴与文曲同守夫妻宫/u);
+});
+
+test('紫微同宫去重保留含独立限定的复合条件', () => {
+  const spousePalace = createPalace(2, '夫妻', ['太阴']);
+  spousePalace.minor_stars.push({ name: '文曲', kind: 'minor' });
+  const pattern = {
+    palace_indexes: [2],
+    palace_names: ['夫妻'],
+    star_names: ['太阴', '文曲'],
+  };
+
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(pattern, '太阴与文曲同守夫妻宫', [spousePalace]),
+    true,
+  );
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(pattern, '太阴与文曲同守夫妻宫，太阴另见生年化忌', [
+      spousePalace,
+    ]),
+    false,
   );
 });
 
@@ -228,13 +270,17 @@ test('紫微在线提示词省略未出现的可选格局加强条件', () => {
 
   const promptWithoutEnhancer = formatZiweiPayloadForPrompt(payload);
   assert.match(promptWithoutEnhancer, /格局：玉袖天香/);
-  assert.match(promptWithoutEnhancer, /命中条件：文昌与文曲同守福德宫/);
+  assert.doesNotMatch(promptWithoutEnhancer, /命中条件：文昌与文曲同守福德宫/);
   assert.doesNotMatch(promptWithoutEnhancer, /未附加紫微加强条件/);
 
   fudePalace.major_stars.push({ name: '紫微', kind: 'major' });
   payload.patterns = detectPatterns({ palaces: payload.palaces });
   const promptWithEnhancer = formatZiweiPayloadForPrompt(payload);
   assert.match(promptWithEnhancer, /福德宫同时见紫微加强条件/);
+  assert.doesNotMatch(promptWithEnhancer, /文昌与文曲同守福德宫/);
+
+  const focusedPrompt = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
+  assert.match(focusedPrompt, /命中条件：文昌与文曲同守福德宫/);
 });
 
 test('真实紫微盘的重点宫星只在详细资料列出一次，十二宫索引保留完整宫位', async () => {
@@ -387,7 +433,7 @@ test('紫微提示词快照应从十二宫重建登记内容，不信任带合�
   });
 
   assert.match(snapshot, /格局：紫府同宫/);
-  assert.match(snapshot, /命中条件：紫微与天府同坐命宫/);
+  assert.doesNotMatch(snapshot, /命中条件：紫微与天府同坐命宫/);
   assert.match(snapshot, /古籍依据：《紫微斗数全书》卷一/);
   assert.doesNotMatch(snapshot, /篡改格局|篡改条件|篡改宫位|篡改星曜|篡改来源/);
 });
