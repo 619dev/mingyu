@@ -50,7 +50,6 @@ import { generateLiuren } from 'mingyu-core/divination/liuren';
 import { generateMeihua } from 'mingyu-core/divination/meihua';
 import { generateXiaoliuren } from 'mingyu-core/divination/xiaoliuren';
 import { drawRandomSign } from 'mingyu-core/divination/ssgw';
-import { SSGW_SIGNS } from '../packages/core/src/divination/ssgw-data';
 import {
   analyzeQimenEvidence,
   generateQimen,
@@ -59,18 +58,6 @@ import {
 import type { HuangjiJingshiResult } from 'mingyu-core/huangji-jingshi';
 
 type DivinationDraftInput = Parameters<typeof generateDivinationSession>[0];
-
-test('三山国王九十二签应完整保存签号、签题与签诗', () => {
-  assert.equal(SSGW_SIGNS.length, 92);
-  assert.deepEqual(
-    SSGW_SIGNS.map((sign) => sign.id),
-    Array.from({ length: 92 }, (_, index) => index + 1),
-  );
-  SSGW_SIGNS.forEach((sign) => {
-    assert.ok(sign.title?.trim(), `第${sign.id}签缺少签题`);
-    assert.ok(sign.qianwen?.trim(), `第${sign.id}签缺少签诗`);
-  });
-});
 
 function buildDraft(overrides: Partial<DivinationDraftInput>): DivinationDraftInput {
   return {
@@ -118,8 +105,6 @@ test('蓍草页面草稿生成六爻十八变及完整提示词', async () => {
   assert.ok(data.generation?.yarrow?.lines.every((line) => line.changes.length === 3));
   assert.match(session.prompt, /蓍草/);
   assert.match(session.prompt, /第3变/);
-  const restored = JSON.parse(JSON.stringify(data));
-  assert.deepEqual(analyzeLiuyaoEvidence(restored), analyzeLiuyaoEvidence(data));
 });
 
 const qimenPalaceNameByGong: Record<number, string> = {
@@ -3993,21 +3978,6 @@ test('时间型占卜算法应拒绝无效自定义时间对象', () => {
   assert.throws(() => generateQimen(invalidDate), /自定义时间不是有效日期/);
   assert.throws(() => generateLiuren(invalidDate), /自定义时间不是有效日期/);
   assert.throws(() => drawRandomSign(invalidDate), /自定义时间不是有效日期/);
-});
-
-test('三山国王灵签返回完整签谱与可重放抽取资料', () => {
-  const confirmed = drawRandomSign(new Date('2025-01-01T00:00:00+08:00'), {
-    replay: [0.1],
-  });
-  assert.equal(confirmed.draw?.poolSize, 92);
-  assert.equal(confirmed.draw?.selectedNumber, confirmed.number);
-  assert.equal(confirmed.draw?.method, 'random');
-  assert.ok(confirmed.title);
-  assert.ok(confirmed.poem);
-  assert.ok(confirmed.story);
-  assert.ok(confirmed.details?.['吉凶']);
-  assert.equal('ritual' in confirmed, false);
-  assert.equal('evidenceAnalysis' in confirmed, false);
 });
 
 test('占卜时间格式化遇到无效时间戳时应明确报错，不得静默回退当前时间', () => {

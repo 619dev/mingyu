@@ -81,7 +81,7 @@ test('太乙阳遁十三、二十二、二十八局与金镜式经卷六局式�
   }
 });
 
-test('太乙在线任务书合并三门、五将与阴阳判断，省略未命中条件', () => {
+test('太乙在线任务书合并实际条件，并按盘面重算而忽略旧盘缓存', () => {
   const result = generateTaiyi({ year: 2004, scope: 'year' });
   const text = formatTaiyiInfo(result);
   assert.match(text, /三门：两门不具；直使生门；太乙生门、文昌（主目）景门/);
@@ -93,37 +93,19 @@ test('太乙在线任务书合并三门、五将与阴阳判断，省略未命�
   assert.doesNotMatch(text, /taiyi:|usedFor|complete:|step\.key|三门三门/);
   const legacy = formatTaiyiInfo({ ...result, tacticGuidance: '' });
   assert.doesNotMatch(legacy, /利主不利客|利客不利主/);
-});
-
-test('太乙在线任务书按盘面重算条件并忽略旧盘缓存判断', () => {
-  const data = generateTaiyi({ year: 2004, scope: 'year' });
-  const expected = evaluateTaiyiConditions({
-    accumulatedValue: data.accumulatedValue,
-    taiyiPosition: data.taiyiPosition,
-    taiyiPalace: data.taiyiPalace,
-    wenChangPosition: data.wenChangPosition,
-    wenChangPalace: data.wenChangPalace,
-    shiJiPosition: data.shiJiPosition,
-    shiJiPalace: data.shiJiPalace,
-    lordCount: data.lordCount,
-    guestCount: data.guestCount,
-    lordGeneral: data.lordGeneral,
-    lordAssistant: data.lordAssistant,
-    guestGeneral: data.guestGeneral,
-    guestAssistant: data.guestAssistant,
-  });
-  data.conditions.fiveGenerals.launched = !expected.fiveGenerals.launched;
-  data.judgments.push('旧盘缓存：此占必胜。');
+  const expectedLaunched = result.conditions.fiveGenerals.launched;
+  result.conditions.fiveGenerals.launched = !expectedLaunched;
+  result.judgments.push('旧盘缓存：此占必胜。');
 
   for (const prompt of [
-    formatTaiyiInfo(data),
+    formatTaiyiInfo(result),
     buildDivinationPrompt({
       method: 'taiyi',
-      data,
+      data: result,
       question: '请分析当前问题。',
     }),
   ]) {
-    assert.match(prompt, new RegExp(`五将：${expected.fiveGenerals.launched ? '发' : '不发'}`));
+    assert.match(prompt, new RegExp(`五将：${expectedLaunched ? '发' : '不发'}`));
     assert.doesNotMatch(prompt, /此占必胜/u);
   }
 });
@@ -236,7 +218,7 @@ test('太乙在线证据任务书只列本次成立格局且不重复反证与�
     /2004-07-01|结构化证据|反证核验|证据汇总|解释限制/,
   );
   for (const year of [2004, 2026]) {
-    const result = generateTaiyi({ year, scope: 'year' });
+    const result = year === 2004 ? withCover : generateTaiyi({ year, scope: 'year' });
     assert.match(result.evidenceAnalysis.promptText, /囚成立：客大将与太乙同宫/);
     assert.doesNotMatch(result.evidenceAnalysis.promptText, /文昌或主客大小将至少一项/);
   }
@@ -952,11 +934,9 @@ test('太乙真太阳时跨交节只校正日时，月计与时计阴阳遁仍�
     date: correctedAfterLichun,
     termReferenceDate: actualBeforeLichun,
   });
-  assert.equal(month.ganZhi, generateTaiyi({ scope: 'month', date: actualBeforeLichun }).ganZhi);
-  assert.equal(
-    month.accumulatedValue,
-    generateTaiyi({ scope: 'month', date: actualBeforeLichun }).accumulatedValue,
-  );
+  const actualMonth = generateTaiyi({ scope: 'month', date: actualBeforeLichun });
+  assert.equal(month.ganZhi, actualMonth.ganZhi);
+  assert.equal(month.accumulatedValue, actualMonth.accumulatedValue);
   assert.notEqual(
     month.accumulatedValue,
     generateTaiyi({ scope: 'month', date: correctedAfterLichun }).accumulatedValue,

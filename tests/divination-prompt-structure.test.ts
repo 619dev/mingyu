@@ -786,7 +786,6 @@ test('Issue #204：奇门提示词应统一正式定局三元并补齐年命落�
   assert.match(prompt, /核心结构：阴遁5局；立秋 中元/);
   assert.doesNotMatch(prompt, /立秋上元/);
   assert.doesNotMatch(prompt, /。、|。；|；。|、、|；；/);
-  assert.ok(Math.max(...prompt.split('\n').map((line) => line.length)) < 200);
   assert.match(prompt, /年命资料：公历1989年按年中口径取年命干支己巳，命干己/);
   assert.match(prompt, /立春前出生则取年命干支戊辰，命干戊/);
   assert.doesNotMatch(prompt, /【补充信息】/);

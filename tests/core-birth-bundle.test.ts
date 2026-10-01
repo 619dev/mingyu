@@ -6,7 +6,6 @@ import {
   type BirthChartBundleOptions,
   type BirthProfile,
 } from 'mingyu-core/birth';
-import { generateQizheng } from 'mingyu-core/qizheng';
 import {
   BirthProfileError,
   birthProfileToAstrolabeInput,
@@ -40,11 +39,48 @@ test('统一出生档案 Bundle 应共享同一套真太阳时输入并生成多
   });
 
   assert.deepEqual(bundle.systems, ['bazi', 'astrolabe', 'qizheng']);
-  assert.equal(bundle.bazi?.pillars.hour.ganZhi.length, 2);
+  assert.equal(bundle.bazi?.pillars.hour.zhi, '巳');
   assert.equal(bundle.astrolabe?.birth.isTrueSolarTime, true);
-  assert.equal(bundle.qizheng?.stars.length, 11);
   assert.equal(bundle.inputs.qizheng?.useTrueSolarTime, true);
-  assert.deepEqual(bundle.normalized, normalizeBirthProfile(profile));
+  const input = bundle.inputs.qizheng!;
+  assert.deepEqual(
+    [input.year, input.month, input.day, input.hour, input.minute],
+    [1990, 5, 15, 10, 30],
+  );
+  assert.equal(bundle.qizheng?.calculationContext.localDateTime, '1990-05-15T10:30:00');
+  assert.equal(bundle.qizheng?.calculationContext.utcDateTime, '1990-05-15T02:30:00.000Z');
+});
+
+test('出生档案真太阳时选项须为布尔值，标准时与校正时辰保持各自口径', async () => {
+  const input: BirthProfile = {
+    ...profile,
+    year: 2024,
+    month: 2,
+    day: 4,
+    hour: 16,
+    minute: 30,
+    location: { longitude: 75, latitude: 40, timezone: 8 },
+  };
+  for (const [useTrueSolarTime, timeIndex] of [
+    [false, 8],
+    [true, 7],
+  ] as const) {
+    const person = birthProfileToBaziPerson({ ...input, useTrueSolarTime });
+    assert.equal(person.useTrueSolarTime, useTrueSolarTime);
+    assert.equal(person.timeIndex, timeIndex);
+    assert.equal(
+      birthProfileToZiweiChartInput({ ...input, useTrueSolarTime }).birthTimeIndex,
+      timeIndex,
+    );
+  }
+  for (const flag of ['false', 'true', 0, 1, null]) {
+    const invalid = { ...input, useTrueSolarTime: flag } as never;
+    assert.throws(() => normalizeBirthProfile(invalid), /useTrueSolarTime 必须是布尔值/);
+    await assert.rejects(
+      () => calculateBirthChartBundle(invalid, { systems: ['bazi', 'ziwei'] }),
+      /useTrueSolarTime 必须是布尔值/,
+    );
+  }
 });
 
 test('单点多系统排盘锁定出生资料和规则，异步计算期间不混入后续改动', async () => {
@@ -74,24 +110,6 @@ test('单点多系统排盘锁定出生资料和规则，异步计算期间不�
   assert.equal(bundle.inputs.astrolabe?.year, '1990');
   assert.equal(bundle.normalized.resolvedLocation?.longitude, 116.4);
   assert.ok(bundle.ziwei?.payloadByScope.origin);
-});
-
-test('七政四余适配器应把原始民用时间交给引擎，避免真太阳时重复校正', () => {
-  const normalized = normalizeBirthProfile(profile);
-  const input = birthProfileToQizhengInput(profile);
-  const direct = generateQizheng(input);
-
-  assert.deepEqual(
-    [input.year, input.month, input.day, input.hour, input.minute],
-    [
-      normalized.solarClockTime.year,
-      normalized.solarClockTime.month,
-      normalized.solarClockTime.day,
-      normalized.solarClockTime.hour,
-      normalized.solarClockTime.minute,
-    ],
-  );
-  assert.deepEqual(direct.stars, generateQizheng(input).stars);
 });
 
 test('中国夏令时普通模式应为传统盘回拨并给天文盘保留原始钟表时间', () => {

@@ -192,6 +192,9 @@ function assertProfileShape(profile: BirthProfile): void {
   if (profile.location !== undefined) {
     assertBirthProfileLocationShape(profile.location);
   }
+  if (profile.useTrueSolarTime !== undefined && typeof profile.useTrueSolarTime !== 'boolean') {
+    throw new TypeError('useTrueSolarTime 必须是布尔值。');
+  }
   if (profile.applyChinaDst !== undefined && typeof profile.applyChinaDst !== 'boolean') {
     throw new TypeError('applyChinaDst 必须是布尔值。');
   }

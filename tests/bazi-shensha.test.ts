@@ -2000,9 +2000,9 @@ test('五行精纪名福应按年干所定生月取用', () => {
   }
 });
 
-test('五行精纪命学堂应按年支后一辰取用', () => {
+test('五行精纪命学堂与禄学堂按年支不同位次取用', () => {
   for (const calculator of createCalculators()) {
-    const hitResult = calculator.calculateAllShenSha(
+    const mingXueTang = calculator.calculateAllShenSha(
       [
         ['甲', '子'],
         ['乙', '亥'],
@@ -2011,7 +2011,7 @@ test('五行精纪命学堂应按年支后一辰取用', () => {
       ],
       'male',
     );
-    const missResult = calculator.calculateAllShenSha(
+    const luXueTang = calculator.calculateAllShenSha(
       [
         ['甲', '子'],
         ['甲', '戌'],
@@ -2021,36 +2021,12 @@ test('五行精纪命学堂应按年支后一辰取用', () => {
       'male',
     );
 
-    assert.ok(hitResult.month.includes('命学堂'));
-    assert.ok(!hitResult.year.includes('命学堂'));
-    assert.ok(!Object.values(missResult).flat().includes('命学堂'));
-  }
-});
-
-test('五行精纪禄学堂应按年支后二辰取用', () => {
-  for (const calculator of createCalculators()) {
-    const hitResult = calculator.calculateAllShenSha(
-      [
-        ['甲', '子'],
-        ['甲', '戌'],
-        ['丙', '寅'],
-        ['丁', '卯'],
-      ],
-      'male',
-    );
-    const missResult = calculator.calculateAllShenSha(
-      [
-        ['甲', '子'],
-        ['乙', '亥'],
-        ['丙', '寅'],
-        ['丁', '卯'],
-      ],
-      'male',
-    );
-
-    assert.ok(hitResult.month.includes('禄学堂'));
-    assert.ok(!hitResult.year.includes('禄学堂'));
-    assert.ok(!Object.values(missResult).flat().includes('禄学堂'));
+    assert.ok(mingXueTang.month.includes('命学堂'));
+    assert.ok(!mingXueTang.year.includes('命学堂'));
+    assert.ok(!Object.values(luXueTang).flat().includes('命学堂'));
+    assert.ok(luXueTang.month.includes('禄学堂'));
+    assert.ok(!luXueTang.year.includes('禄学堂'));
+    assert.ok(!Object.values(mingXueTang).flat().includes('禄学堂'));
   }
 });
 

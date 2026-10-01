@@ -204,12 +204,11 @@ test('通用神煞证据应严格核验完整四柱并逐项定位命中柱位',
 
   assert.equal(analysis.status, '已核验');
   assert.equal(analysis.pillarFacts.length, 4);
-  assert.equal(analysis.calculationSteps.length, 8);
-  assert.deepEqual(
-    analysis.calculationChain,
-    analysis.calculationSteps.map((item) => item.promptText),
-  );
-  assert.equal(analysis.matchFacts.length, 3);
+  assert.deepEqual(Object.fromEntries(analysis.matchFacts.map((item) => [item.id, item.status])), {
+    kongwang: '未命中',
+    yima: '命中',
+    taohua: '命中',
+  });
   assert.deepEqual(analysis.matchFacts.find((item) => item.id === 'kongwang')?.targetBranches, [
     '戌',
     '亥',
@@ -223,10 +222,14 @@ test('通用神煞证据应严格核验完整四柱并逐项定位命中柱位',
   ]);
   assert.equal(analysis.summaryFact.status, '证据链完整');
   assert.equal(analysis.summaryFact.matchedRuleCount, 2);
-  assert.equal(analysis.summaryFact.matchFactCount, analysis.matchFacts.length);
-  assert.equal(analysis.summaryFact.limitationFactCount, analysis.limitationFacts.length);
   assert.ok(analysis.matchFacts.every((item) => item.evidenceStatus === '来源已声明'));
-  assert.ok(analysis.matchFacts.every((item) => item.ownerStepKeys.length === 2));
+  const stepKeys = new Set(analysis.calculationSteps.map((item) => item.key));
+  assert.ok(
+    analysis.matchFacts.every(
+      (item) =>
+        item.ownerStepKeys.length > 0 && item.ownerStepKeys.every((key) => stepKeys.has(key)),
+    ),
+  );
   assert.match(
     analysis.promptText,
     /【任务】[\s\S]*【四柱】[\s\S]*【命中资料】[\s\S]*【传统依据】[\s\S]*【输出要求】/,

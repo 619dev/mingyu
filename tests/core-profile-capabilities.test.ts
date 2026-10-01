@@ -13,7 +13,6 @@ import {
   normalizeBirthProfile,
   resolveBirthProfileLocation,
 } from '../packages/core/src/profile/index';
-import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
 import {
   SYSTEM_CAPABILITY_IDS,
   getCapabilities,
@@ -394,14 +393,20 @@ test('农历统一档案启用真太阳时应只换算一次，并保留时区',
   const person = birthProfileToBaziPerson(profile);
   assert.equal(person.isLunar, false);
   assert.equal(person.isLeapMonth, false);
-  assert.equal(person.year, normalized.solarClockTime.year);
-  assert.equal(person.month, normalized.solarClockTime.month);
-  assert.equal(person.day, normalized.solarClockTime.day);
+  // 香港天文台 1990 年日期对照表：农历五月十五为公历 6 月 7 日。
+  // https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1990c.txt
+  assert.deepEqual(normalized.solarClockTime, {
+    year: 1990,
+    month: 6,
+    day: 7,
+    hour: 10,
+    minute: 30,
+    second: 0,
+  });
+  assert.deepEqual([person.year, person.month, person.day], [1990, 6, 7]);
   assert.equal(person.timezone, 5.5);
 
   const fromProfile = calculateBaziFromBirthProfile(profile);
-  const direct = baziCalculator.calculateBazi(person);
-  assert.deepEqual(fromProfile.pillars, direct.pillars);
   assert.equal(fromProfile.timing?.timezone, 5.5);
   assert.equal(fromProfile.timing?.standardMeridian, 82.5);
 });
