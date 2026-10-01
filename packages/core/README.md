@@ -206,6 +206,8 @@ console.log(compatibility.ziwei);
 console.log(compatibility.astrolabe);
 ```
 
+紫微合盘以双方本命盘计算关系。`chart.ziwei.scopes` 可同时请求运限资料，合盘入口会补齐 `origin`；独立本命批次使用 `independentBatch: 'scope'` 和 `scopes: ['origin']`，仅运限的 `independentBatch: 'fortune'` 不适用于合盘。出生范围合盘需固定 `chart.ziwei.horoscopeContext` 或 `now`，保证各批次使用同一运限时刻。
+
 ```ts
 import { birthProfileToZiweiChartInput, calculateBaziFromBirthProfile } from 'mingyu-core/profile';
 import { buildAstrolabeFromInput } from 'mingyu-core/ziwei';

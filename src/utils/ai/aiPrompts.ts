@@ -1,6 +1,7 @@
 import {
   formatBaziForPrompt,
   type BaziChartResult,
+  type BaziCompatibilityEvidenceResult,
   type FortuneSelectionContext,
   type PromptChartScene,
 } from 'mingyu-core/bazi';
@@ -8,7 +9,10 @@ import {
   getBaziCompatibilityDefaultQuestion,
   getBaziDefaultQuestion,
 } from '../../lib/prompt-default-questions';
-import { formatBaziCompatibilityFacts } from '../../lib/bazi-compatibility-facts';
+import {
+  formatBaziCompatibilityFacts,
+  formatCalculatedBaziCompatibilityFacts,
+} from '../../lib/bazi-compatibility-facts';
 import {
   BAZI_COMPATIBILITY_PROMPT_PRESETS,
   BAZI_PROMPT_PRESETS,
@@ -258,7 +262,13 @@ export function getCompatibilityPrompt(
   baziResult1: BaziChartResult | null,
   baziResult2: BaziChartResult | null,
   compatType?: CompatType,
-  options: { isCustomQuestion?: boolean; person1Name?: string; person2Name?: string } = {},
+  options: {
+    isCustomQuestion?: boolean;
+    person1Name?: string;
+    person2Name?: string;
+    /** 同一请求已按这两份盘及姓名计算的双盘关系。 */
+    compatibility?: BaziCompatibilityEvidenceResult;
+  } = {},
 ): { system: string; user: string } {
   const data1 = baziResult1
     ? demoteEmbeddedPromptSections(formatBaziForPrompt(baziResult1, null, 'compatibility'))
@@ -268,10 +278,12 @@ export function getCompatibilityPrompt(
     : '';
   const compatibilityEvidence =
     baziResult1 && baziResult2
-      ? formatBaziCompatibilityFacts(baziResult1, baziResult2, {
-          person1Name: options.person1Name,
-          person2Name: options.person2Name,
-        })
+      ? options.compatibility
+        ? formatCalculatedBaziCompatibilityFacts(options.compatibility)
+        : formatBaziCompatibilityFacts(baziResult1, baziResult2, {
+            person1Name: options.person1Name,
+            person2Name: options.person2Name,
+          })
       : '';
   const patternConditions1 = baziResult1 ? formatBaziPatternConditions(baziResult1) : '';
   const patternConditions2 = baziResult2 ? formatBaziPatternConditions(baziResult2) : '';

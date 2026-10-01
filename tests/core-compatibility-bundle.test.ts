@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { calculateBirthChartBundle } from 'mingyu-core/birth';
 import { calculateCompatibilityBundle } from 'mingyu-core/compatibility';
 
 const primary = {
@@ -62,6 +63,63 @@ test('双人档案姓名与方向覆盖下层分析选项中的旧姓名', async
   });
   assert.deepEqual(bundle.bazi?.people, { person1: primary.name, person2: partner.name });
   assert.deepEqual(bundle.ziwei?.people, { person1: primary.name, person2: partner.name });
+});
+
+test('紫微合盘补齐本命资料并拒绝不含本命盘的独立批次', async () => {
+  const horoscopeContext = { dateStr: '2025-01-01', hourIndex: 6 };
+  const standalone = await calculateBirthChartBundle(primary, {
+    systems: ['ziwei'],
+    ziwei: { scopes: ['yearly'], skipAnalysis: true, horoscopeContext },
+  });
+  assert.ok(!('range' in standalone));
+  assert.equal(standalone.ziwei?.payloadByScope.origin, undefined);
+  assert.ok(standalone.ziwei?.payloadByScope.yearly);
+
+  const bundle = await calculateCompatibilityBundle(primary, partner, {
+    systems: ['ziwei'],
+    chart: { ziwei: { scopes: ['yearly'], skipAnalysis: true, horoscopeContext } },
+  });
+  assert.ok(!('range' in bundle));
+  assert.ok(bundle.primary.ziwei?.payloadByScope.origin);
+  assert.ok(bundle.partner.ziwei?.payloadByScope.origin);
+  assert.ok(bundle.primary.ziwei?.payloadByScope.yearly);
+  assert.ok(bundle.partner.ziwei?.payloadByScope.yearly);
+  assert.deepEqual(bundle.primary.ziwei?.horoscopeContext, horoscopeContext);
+  assert.deepEqual(bundle.partner.ziwei?.horoscopeContext, horoscopeContext);
+  assert.deepEqual(bundle.ziwei?.people, { person1: '第一人', person2: '第二人' });
+
+  const independentOrigin = await calculateCompatibilityBundle(primary, partner, {
+    systems: ['ziwei'],
+    chart: {
+      ziwei: {
+        independentBatch: 'scope',
+        scopes: ['origin'],
+        skipAnalysis: true,
+        horoscopeContext,
+      },
+    },
+  });
+  assert.ok(!('range' in independentOrigin));
+  assert.ok(independentOrigin.primary.ziwei?.payloadByScope.origin);
+  assert.ok(independentOrigin.partner.ziwei?.payloadByScope.origin);
+  assert.ok(independentOrigin.ziwei?.palaceOverlays.length);
+
+  await assert.rejects(
+    () =>
+      calculateCompatibilityBundle(primary, partner, {
+        systems: ['ziwei'],
+        chart: { ziwei: { independentBatch: 'fortune' } },
+      }),
+    /紫微合盘需要双方本命 origin 资料/,
+  );
+  await assert.rejects(
+    () =>
+      calculateCompatibilityBundle(primary, partner, {
+        systems: ['ziwei'],
+        chart: { ziwei: { independentBatch: 'scope', scopes: ['yearly'] } },
+      }),
+    /紫微合盘需要双方本命 origin 资料/,
+  );
 });
 
 test('单点合盘锁定双方档案和规则，异步计算后关系仍对应原始盘面', async () => {

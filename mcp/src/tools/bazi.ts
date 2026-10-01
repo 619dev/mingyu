@@ -665,6 +665,7 @@ export function registerBaziTool(server: McpServer) {
             isCustomQuestion: args.promptMode === 'custom',
             person1Name: args.person1.name,
             person2Name: args.person2.name,
+            compatibility,
           },
         );
         const basePrompt = [promptParts.system, promptParts.user].filter(Boolean).join('\n\n');

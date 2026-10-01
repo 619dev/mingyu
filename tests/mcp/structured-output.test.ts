@@ -865,6 +865,38 @@ test('MCP 工具列表应声明输出结构', async () => {
     assert.ok(ziweiTool?.outputSchema?.properties?.payloadByScope);
     assert.ok(tools.find((tool) => tool.name === 'ziwei_compatibility'));
     assert.ok(tools.find((tool) => tool.name === 'ziwei_compatibility_prompt'));
+    for (const name of ['ziwei_compatibility', 'ziwei_compatibility_prompt']) {
+      const personProperties = tools.find((tool) => tool.name === name)?.inputSchema?.properties
+        ?.person1?.properties;
+      for (const field of [
+        'name',
+        'gender',
+        'dateType',
+        'year',
+        'month',
+        'day',
+        'timeIndex',
+        'birthHour',
+        'birthMinute',
+        'birthSecond',
+        'birthLongitude',
+        'timezone',
+        'timeZoneId',
+        'applyChinaDst',
+        'algorithm',
+      ]) {
+        assert.ok(personProperties?.[field], `${name} 双盘出生资料缺少 ${field}`);
+      }
+      for (const field of [
+        'promptScope',
+        'scopeDate',
+        'scopeHourIndex',
+        'scopeBatch',
+        'fortuneBatch',
+      ]) {
+        assert.equal(personProperties?.[field], undefined, `${name} 双盘出生资料不应包含 ${field}`);
+      }
+    }
     assert.ok(tools.find((tool) => tool.name === 'divine_qimen_lifetime'));
     assert.ok(tools.find((tool) => tool.name === 'qimen_lifetime_prompt'));
     assert.equal(
@@ -2137,6 +2169,20 @@ test('MCP 一站式提示词工具应同时返回提示词与结构化盘面', a
       const text = result.content[0]?.type === 'text' ? result.content[0].text : '';
       assert.equal(text, prompt);
       assert.ok(JSON.stringify(result.structuredContent?.result).length > 0);
+
+      if (name === 'bazi_compatibility_prompt') {
+        const compatibility = result.structuredContent?.result.compatibility as {
+          people: { person1: string; person2: string };
+          dayMasterRelation: { promptText: string };
+          crossPillarRelations: Array<{ promptText: string }>;
+        };
+        assert.deepEqual(compatibility.people, { person1: '甲方', person2: '乙方' });
+        assert.ok(prompt.includes(compatibility.dayMasterRelation.promptText));
+        assert.ok(compatibility.crossPillarRelations.length > 0);
+        assert.ok(
+          compatibility.crossPillarRelations.every((fact) => prompt.includes(fact.promptText)),
+        );
+      }
     }
   });
 });

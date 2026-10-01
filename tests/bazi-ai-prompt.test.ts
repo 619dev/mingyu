@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildPromptFromConfig, getCompatibilityPrompt } from '../src/utils/ai/aiPrompts';
-import { formatBaziCompatibilityFacts } from '../src/lib/bazi-compatibility-facts';
+import {
+  formatBaziCompatibilityFacts,
+  formatCalculatedBaziCompatibilityFacts,
+} from '../src/lib/bazi-compatibility-facts';
+import { analyzeBaziCompatibility } from '@core/bazi';
 import { baziCalculator } from '@core/bazi/baziCalculator';
 import { formatBaziForPrompt, formatPatternBasisForPrompt } from '@core/bazi/baziAnalysisFormatter';
 import { buildFortuneSelectionContext } from '@core/bazi/fortuneSelection';
@@ -197,11 +201,18 @@ test('合参任务书保留喜忌待判方向及另一人的已核覆盖', () =>
 
 test('八字紫微合参只复用双方关系事实，不嵌套整份八字合盘任务书', () => {
   const { result1, result2 } = createCompatibilityBaziResults();
-  const facts = formatBaziCompatibilityFacts(result1, result2);
-  const prompt = getCompatibilityPrompt('双方如何协作？', result1, result2, 'career');
+  const compatibility = analyzeBaziCompatibility(result1, result2, {
+    person1Name: '甲方',
+    person2Name: '乙方',
+  });
+  const facts = formatCalculatedBaziCompatibilityFacts(compatibility);
+  const prompt = getCompatibilityPrompt('双方如何协作？', result1, result2, 'career', {
+    compatibility,
+  });
 
   assert.match(facts, /日主关系：|四柱关系：/);
   assert.ok(prompt.user.includes(`【双盘关系资料】\n${facts}`));
+  assert.deepEqual(compatibility.people, { person1: '甲方', person2: '乙方' });
   assert.doesNotMatch(facts, /【第一人排盘信息】|【第二人排盘信息】|【任务】|【问题】/);
 });
 

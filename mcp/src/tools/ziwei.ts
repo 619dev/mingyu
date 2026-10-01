@@ -147,9 +147,17 @@ const ziweiPromptSchema = ziweiSchema.extend({
   scope: z.enum(PROMPT_SCOPE_IDS).optional().describe('统一解读资料范围；会同步紫微运限层'),
 });
 
+const ziweiCompatibilityBirthSchema = ziweiSchema.omit({
+  promptScope: true,
+  scopeDate: true,
+  scopeHourIndex: true,
+  scopeBatch: true,
+  fortuneBatch: true,
+});
+
 const ziweiCompatibilitySchema = z.object({
-  person1: ziweiSchema.omit({ promptScope: true, scopeBatch: true, fortuneBatch: true }),
-  person2: ziweiSchema.omit({ promptScope: true, scopeBatch: true, fortuneBatch: true }),
+  person1: ziweiCompatibilityBirthSchema,
+  person2: ziweiCompatibilityBirthSchema,
 });
 
 const ziweiCompatibilityPromptSchema = ziweiCompatibilitySchema.extend({

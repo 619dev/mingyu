@@ -296,7 +296,7 @@ test('公开 API 真太阳时即时盘缺少地点时应明确拒绝', async () 
   assert.match(body.error.message, /观测地点/);
 });
 
-test('公开 API OpenAPI 应公开即时盘类型与两种时间口径', async () => {
+test('公开 API OpenAPI 应公开即时盘、紫微合盘出生资料与时间口径', async () => {
   const { body } = await getOpenApiDocument();
   const schema = body.data.components.schemas.InstantChartRequest;
 
@@ -313,6 +313,51 @@ test('公开 API OpenAPI 应公开即时盘类型与两种时间口径', async (
   assert.deepEqual(metaphysics.properties.guaType.enum, ['下卦', '替卦']);
   assert.ok(metaphysics.properties.facingDegree);
   assert.ok(metaphysics.properties.sitDegree);
+
+  const ziweiCompatibility = body.data.components.schemas.ZiweiCompatibilityRequest;
+  const ziweiPerson = body.data.components.schemas.ZiweiCompatibilityPerson;
+  assert.deepEqual(ziweiCompatibility.properties.person1, {
+    $ref: '#/components/schemas/ZiweiCompatibilityPerson',
+  });
+  assert.deepEqual(ziweiCompatibility.properties.person2, {
+    $ref: '#/components/schemas/ZiweiCompatibilityPerson',
+  });
+  for (const field of [
+    'name',
+    'gender',
+    'dateType',
+    'year',
+    'month',
+    'day',
+    'timeIndex',
+    'isLeapMonth',
+    'useTrueSolarTime',
+    'birthHour',
+    'birthMinute',
+    'birthSecond',
+    'birthPlace',
+    'birthLongitude',
+    'timezone',
+    'timeZoneId',
+    'applyChinaDst',
+    'algorithm',
+  ]) {
+    assert.ok(ziweiPerson.properties[field], `双盘出生资料缺少 ${field}`);
+  }
+  for (const field of [
+    'promptScope',
+    'scopeDate',
+    'scopeHourIndex',
+    'scopeBatch',
+    'fortuneBatch',
+    'birthTimeRange',
+    'rangeBatch',
+    'detailMode',
+    'birthLatitude',
+  ]) {
+    assert.equal(ziweiPerson.properties[field], undefined, `双盘出生资料不应包含 ${field}`);
+  }
+  assert.ok(body.data.components.schemas.ZiweiRequest.properties.birthLatitude);
 });
 
 test('公开 API 八字双盘应返回交叉证据与完整提示词', async () => {
@@ -382,6 +427,7 @@ test('公开 API 八字双盘应返回交叉证据与完整提示词', async () 
       compatType: 'career',
       person1Name: '甲方',
       person2Name: '乙方',
+      detailMode: 'full',
       schools: ['ziping', 'mangpai', 'xinpai'],
       responseMode: 'full',
     }),
@@ -391,6 +437,14 @@ test('公开 API 八字双盘应返回交叉证据与完整提示词', async () 
   assert.match(prompted.body.data.prompt, /【双盘关系资料】/);
   assert.match(prompted.body.data.prompt, /请分析双方是否适合长期合作/);
   assert.match(prompted.body.data.prompt, /甲方.*乙方/);
+  const promptedCompatibility = prompted.body.data.result.compatibility;
+  assert.deepEqual(promptedCompatibility, compatibility);
+  assert.ok(prompted.body.data.prompt.includes(compatibility.dayMasterRelation.promptText));
+  assert.ok(
+    compatibility.crossPillarRelations.every((relation: { promptText: string }) =>
+      prompted.body.data.prompt.includes(relation.promptText),
+    ),
+  );
   assert.match(prompted.body.data.prompt, /【多派合参】/);
   assert.match(prompted.body.data.prompt, /子平派/);
   assert.match(prompted.body.data.prompt, /盲派/);

@@ -629,6 +629,47 @@ const DIVINATION_REQUEST_PROPERTIES = {
   },
 };
 
+const ZIWEI_BIRTH_REQUEST_PROPERTIES = {
+  name: { type: 'string' },
+  gender: { enum: ['male', 'female'] },
+  dateType: { enum: ['solar', 'lunar'] },
+  year: { type: 'string' },
+  month: { type: 'string' },
+  day: { type: 'string' },
+  timeIndex: {
+    type: 'integer',
+    minimum: 0,
+    maximum: 12,
+    description: '传统时辰索引；提供完整出生小时和分钟后从钟表时间推导，可省略本字段。',
+  },
+  isLeapMonth: { type: 'boolean' },
+  useTrueSolarTime: { type: 'boolean' },
+  birthHour: {
+    type: ['integer', 'string'],
+    description: '出生小时，整数或数字字符串；与 birthMinute 成对提供。',
+  },
+  birthMinute: {
+    type: ['integer', 'string'],
+    description: '出生分钟，整数或数字字符串；与 birthHour 成对提供。',
+  },
+  birthSecond: {
+    type: ['integer', 'string'],
+    minimum: 0,
+    maximum: 59,
+    description: '出生秒数；提供时分后可省略，省略按 00 秒计算。',
+  },
+  birthPlace: { type: 'string' },
+  birthLongitude: { type: 'string' },
+  timezone: { type: 'number', minimum: -12, maximum: 14 },
+  timeZoneId: { type: 'string', example: 'America/New_York' },
+  applyChinaDst: { type: 'boolean' },
+  algorithm: {
+    enum: ['default', 'zhongzhou'],
+    description:
+      '紫微安星口径：default 为传统通行安星法，zhongzhou 为中州派安星法；它改变底层排盘，不等同于提示词解读流派。',
+  },
+} as const;
+
 export function getPublicApiOpenApiDocument(
   runtime: PublicApiRuntime = DEFAULT_PUBLIC_API_RUNTIME,
 ) {
@@ -2716,18 +2757,13 @@ export function getPublicApiOpenApiDocument(
           type: 'object',
           required: ['gender', 'dateType', 'year', 'month', 'day'],
           properties: {
-            name: { type: 'string' },
-            gender: { enum: ['male', 'female'] },
-            dateType: { enum: ['solar', 'lunar'] },
-            year: { type: 'string' },
-            month: { type: 'string' },
-            day: { type: 'string' },
-            timeIndex: {
-              type: 'integer',
-              minimum: 0,
-              maximum: 12,
-              description: '传统时辰索引；提供完整出生小时和分钟后从钟表时间推导，可省略本字段。',
+            ...ZIWEI_BIRTH_REQUEST_PROPERTIES,
+            birthSecond: {
+              ...ZIWEI_BIRTH_REQUEST_PROPERTIES.birthSecond,
+              description:
+                '出生秒数；普通排盘提供时分后可省略，省略按 00 秒计算；出生区间模式需与起点时间一致。',
             },
+            birthLatitude: { type: 'number', minimum: -90, maximum: 90 },
             promptScope: {
               enum: [...ZIWEI_PROMPT_SCOPES],
               description:
@@ -2743,34 +2779,6 @@ export function getPublicApiOpenApiDocument(
               minimum: 0,
               maximum: 12,
               description: '目标运限时辰：0=早子、1=丑、…、12=晚子；省略时使用当前时辰。',
-            },
-            isLeapMonth: { type: 'boolean' },
-            useTrueSolarTime: { type: 'boolean' },
-            birthHour: {
-              type: ['integer', 'string'],
-              description: '出生小时，整数或数字字符串；与 birthMinute 成对提供。',
-            },
-            birthMinute: {
-              type: ['integer', 'string'],
-              description: '出生分钟，整数或数字字符串；与 birthHour 成对提供。',
-            },
-            birthSecond: {
-              type: ['integer', 'string'],
-              minimum: 0,
-              maximum: 59,
-              description:
-                '出生秒数；普通排盘提供时分后可省略，省略按 00 秒计算；出生区间模式需与起点时间一致。',
-            },
-            birthPlace: { type: 'string' },
-            birthLongitude: { type: 'string' },
-            birthLatitude: { type: 'number', minimum: -90, maximum: 90 },
-            timezone: { type: 'number', minimum: -12, maximum: 14 },
-            timeZoneId: { type: 'string', example: 'America/New_York' },
-            applyChinaDst: { type: 'boolean' },
-            algorithm: {
-              enum: ['default', 'zhongzhou'],
-              description:
-                '紫微安星口径：default 为传统通行安星法，zhongzhou 为中州派安星法；它改变底层排盘，不等同于提示词解读流派。',
             },
             birthTimeRange: {
               $ref: '#/components/schemas/BirthTimeRange',
@@ -2843,12 +2851,19 @@ export function getPublicApiOpenApiDocument(
             },
           ],
         },
+        ZiweiCompatibilityPerson: {
+          type: 'object',
+          description: '紫微双盘的一方出生资料；双方均按本命盘计算关系。',
+          required: ['gender', 'dateType', 'year', 'month', 'day'],
+          properties: ZIWEI_BIRTH_REQUEST_PROPERTIES,
+        },
         ZiweiCompatibilityRequest: {
           type: 'object',
+          description: '由双方出生资料计算本命盘关系；scope 仅指定解读任务范围。',
           required: ['person1', 'person2'],
           properties: {
-            person1: { $ref: '#/components/schemas/ZiweiRequest' },
-            person2: { $ref: '#/components/schemas/ZiweiRequest' },
+            person1: { $ref: '#/components/schemas/ZiweiCompatibilityPerson' },
+            person2: { $ref: '#/components/schemas/ZiweiCompatibilityPerson' },
             person1Name: {
               type: 'string',
               description: '第一人称呼；未传时优先使用 person1.name。',
@@ -2860,7 +2875,10 @@ export function getPublicApiOpenApiDocument(
             question: { type: 'string', maxLength: MAX_PUBLIC_API_TEXT_FIELD_LENGTH },
             topicId: { type: 'string', description: '统一解读主题 ID。' },
             subtopicId: { type: 'string', description: '统一解读主题细项 ID。' },
-            scope: { enum: [...PROMPT_SCOPE_IDS], description: '统一分析范围。' },
+            scope: {
+              enum: [...PROMPT_SCOPE_IDS],
+              description: '双盘提示词的解读任务范围；双方盘面固定为本命盘。',
+            },
             promptTopic: {
               enum: [...ZIWEI_PROMPT_TOPICS],
               description: '关系分析主题；只影响提示词任务范围。',
@@ -5873,6 +5891,7 @@ function buildBaziCompatibilityPromptApi(input: JsonRecord) {
       isCustomQuestion: readEnum(input, 'promptMode', PROMPT_MODES, 'framework') === 'custom',
       person1Name: readString(input, 'person1Name', ''),
       person2Name: readString(input, 'person2Name', ''),
+      compatibility: result.compatibility,
     },
   );
   const rawPrompt = [promptParts.system, promptParts.user].filter(Boolean).join('\n\n');

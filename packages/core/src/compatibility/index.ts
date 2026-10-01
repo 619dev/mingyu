@@ -142,10 +142,19 @@ function createChartOptions(
   systems: CompatibilitySystem[],
   options: CompatibilityBundleOptions,
 ): BirthChartBundleOptions {
+  const ziwei = options.chart?.ziwei;
+  if (systems.includes('ziwei') && ziwei?.independentBatch) {
+    if (ziwei.independentBatch === 'fortune' || ziwei.scopes?.[0] !== 'origin') {
+      throw new RangeError('紫微合盘需要双方本命 origin 资料，不能使用不含本命盘的独立批次。');
+    }
+  }
   return {
     ...options.chart,
     systems,
     signal: options.signal ?? options.chart?.signal,
+    ...(systems.includes('ziwei') && ziwei?.scopes?.length && !ziwei.independentBatch
+      ? { ziwei: { ...ziwei, scopes: Array.from(new Set(['origin' as const, ...ziwei.scopes])) } }
+      : {}),
   };
 }
 
