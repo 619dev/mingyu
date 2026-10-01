@@ -575,6 +575,16 @@ const DEFAULT_KANGXI_GLYPHS: Readonly<Record<string, string>> = {
   台: '台',
   复: '複',
   钟: '鐘',
+  于: '于',
+  准: '准',
+  斗: '斗',
+  余: '余',
+};
+const DEFAULT_KANGXI_REFERENCE_POSITIONS: Readonly<Record<string, readonly [string, string]>> = {
+  复: ['申集下', '衣字部'],
+  里: ['申集下', '衣字部'],
+  云: ['戌集中', '雨字部'],
+  叶: ['申集上', '艸字部'],
 };
 const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
   ([
@@ -610,8 +620,8 @@ const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
         : kangxiStrokes
       : traditionalStrokes,
     structure,
-    kangxiVolume: simplified === '复' ? '申集下' : kangxiVolume,
-    kangxiSection: simplified === '复' ? '衣字部' : kangxiSection,
+    kangxiVolume: DEFAULT_KANGXI_REFERENCE_POSITIONS[simplified]?.[0] ?? kangxiVolume,
+    kangxiSection: DEFAULT_KANGXI_REFERENCE_POSITIONS[simplified]?.[1] ?? kangxiSection,
     ...(CHARACTER_STROKE_NOTES[simplified]
       ? { strokeNote: CHARACTER_STROKE_NOTES[simplified] }
       : {}),
@@ -661,6 +671,42 @@ const explicitTraditionalVariants: CharacterDetail[] = [
     radical: '金',
     wuxing: null,
     definition: '敲击发声的金属乐器；计时器，如时钟、闹钟。',
+    common: false,
+  },
+  {
+    ...characterData['里'],
+    char: '裏',
+    radical: '衣',
+    wuxing: null,
+    definition: '衣服的内层；里面、内部，与外相对。',
+    structure: '上中下',
+    strokeNote: undefined,
+    kangxiVolume: '申集下',
+    kangxiSection: '衣字部',
+    common: false,
+  },
+  {
+    ...characterData['云'],
+    char: '雲',
+    radical: '雨',
+    wuxing: null,
+    definition: '空中由水汽凝结而成的云；也见云汉、云孙等传统用法。',
+    structure: '上下',
+    strokeNote: undefined,
+    kangxiVolume: '戌集中',
+    kangxiSection: '雨字部',
+    common: false,
+  },
+  {
+    ...characterData['叶'],
+    char: '葉',
+    radical: '艹',
+    wuxing: null,
+    definition: '草木的叶；也指书册页，并用作姓氏。',
+    structure: '上下',
+    strokeNote: undefined,
+    kangxiVolume: '申集上',
+    kangxiSection: '艸字部',
     common: false,
   },
 ];

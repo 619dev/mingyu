@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { generateDivinationSession } from '../packages/core/src/divination/session';
-import { formatLiurenOrdinaryTransmissionAdjudication } from '../packages/core/src/prompt/liuren-facts';
+import {
+  formatLiurenLesson,
+  formatLiurenOrdinaryTransmissionAdjudication,
+  formatLiurenTransmission,
+} from '../packages/core/src/prompt/liuren-facts';
 import { formatTaiyiConditionSummary } from '../packages/core/src/taiyi';
 import type { LiurenData, TaiyiResult } from '../packages/core/src/types/divination';
 import type { WuyunLiuqiResult } from '../packages/core/src/wuyun-liuqi';
@@ -46,7 +50,7 @@ test('六壬 aiPrompt 应保留取传与课体判断依据', () => {
   assert.ok(classicalRules.length > 0);
   assert.ok(guaTiFacts.length > 0);
   assert.match(session.aiPrompt, /六壬判断依据：/);
-  assert.ok(session.aiPrompt.includes('取传说明：取传采用'));
+  assert.match(session.aiPrompt, /初传取法：/);
   assert.ok(session.aiPrompt.includes(data.transmissionRule));
   for (const rule of classicalRules) {
     assert.ok(session.aiPrompt.includes(rule.summary));
@@ -57,8 +61,9 @@ test('六壬 aiPrompt 应保留取传与课体判断依据', () => {
       assert.ok(session.aiPrompt.includes(condition));
     }
   }
+  assert.match(session.aiPrompt, /取用定位：/);
   for (const item of data.focusEvidence ?? []) {
-    assert.ok(session.aiPrompt.includes(`，${item.level}：`));
+    assert.ok(session.aiPrompt.includes(`${item.role}${item.target}（${item.level}）`));
     for (const evidence of item.evidence.filter(Boolean)) {
       assert.ok(session.aiPrompt.includes(evidence));
     }
@@ -67,12 +72,54 @@ test('六壬 aiPrompt 应保留取传与课体判断依据', () => {
     }
   }
   assert.ok(data.evidenceAnalysis!.counterEvidenceFacts.length > 0);
+  assert.match(session.aiPrompt, /课传反证：/);
   for (const fact of data.evidenceAnalysis!.counterEvidenceFacts) {
-    assert.ok(session.aiPrompt.includes(fact.promptText));
+    if (session.aiPrompt.includes(fact.promptText)) continue;
+    if (fact.scope === '四课') {
+      const lesson = data.evidenceAnalysis!.lessons.find((item) => item.key === fact.ownerKey);
+      assert.ok(lesson);
+      const lessonLine = formatLiurenLesson(lesson);
+      assert.ok(lessonLine.includes(fact.detail), fact.promptText);
+      assert.ok(session.aiPrompt.includes(lessonLine), fact.promptText);
+      continue;
+    }
+    const index = data.evidenceAnalysis!.transmissions.findIndex(
+      (item) => item.key === fact.ownerKey,
+    );
+    assert.notEqual(index, -1, fact.promptText);
+    const transmission = data.threeTransmissions[index];
+    assert.ok(transmission);
+    if (fact.basis === '相邻传关系' || fact.basis === '旬空') {
+      const transmissionLine = formatLiurenTransmission(data, index);
+      assert.ok(session.aiPrompt.includes(transmissionLine), fact.promptText);
+      assert.ok(
+        fact.basis === '旬空'
+          ? transmissionLine.includes('（空）')
+          : transmissionLine.includes(fact.detail),
+        fact.promptText,
+      );
+    } else if (fact.basis === '月令旺衰') {
+      assert.ok(
+        session.aiPrompt.includes(
+          `${transmission.stage}${transmission.branch}（月令${fact.detail}`,
+        ),
+        fact.promptText,
+      );
+    } else {
+      assert.fail(`三传反证缺少对应盘面事实：${fact.promptText}`);
+    }
   }
   assert.ok(session.aiPrompt.includes(data.evidenceAnalysis!.counterSummaryFact.status));
-  for (const evidence of data.timingEvidence ?? []) {
-    if (evidence) assert.ok(session.aiPrompt.includes(evidence));
+  assert.match(session.aiPrompt, /应期依据：/);
+  const initial = data.threeTransmissions[0];
+  assert.ok(initial?.seasonState);
+  assert.ok(
+    session.aiPrompt.includes(`${initial.stage}${initial.branch}（月令${initial.seasonState}`),
+  );
+  for (const timingFact of data.evidenceAnalysis!.timingFacts) {
+    if (!timingFact.promptText.startsWith('未给出目标期限时')) {
+      assert.ok(session.aiPrompt.includes(timingFact.promptText));
+    }
   }
   for (const lesson of data.fourLessons) {
     assert.ok(
@@ -158,7 +205,9 @@ test('五运六气 aiPrompt 保留岁运五音与年度阶段，不输出未具�
     assert.equal(session.aiPrompt.split(label).length - 1, 1, label);
   }
   assert.doesNotMatch(session.aiPrompt, /平气参考条件：|年度符会：/);
-  assert.match(session.aiPrompt, /岁运五音：/);
+  const chart = session.data as WuyunLiuqiResult;
+  const movementFact = `岁运：${chart.annualMovement.name}（${chart.annualMovement.toneName}），${chart.annualMovement.strength}（${chart.annualMovement.yinYang}干）`;
+  assert.equal(session.aiPrompt.split(movementFact).length - 1, 1);
 });
 
 test('五运六气省略目标年份时按起课时间所在的大寒运气年度排盘', () => {
@@ -169,10 +218,14 @@ test('五运六气省略目标年份时按起课时间所在的大寒运气年�
   });
   const beforeChart = beforeDahan.data as WuyunLiuqiResult;
   assert.equal(beforeChart.input.year, 2025);
-  assert.match(beforeDahan.aiPrompt, /2025年乙巳/);
+  assert.equal(beforeChart.input.yearGanZhi, '乙巳');
+  assert.equal(
+    beforeDahan.aiPrompt.split('年干支：乙巳（公历 2025 年对应的运气年度）').length - 1,
+    1,
+  );
   assert.ok(
     beforeDahan.aiPrompt.includes(
-      `运气年度：${beforeChart.qiSteps[0].boundaryTime?.startBeijing}大寒起，至${beforeChart.qiSteps[5].boundaryTime?.endBeijingExclusive}次年大寒前`,
+      `运气年度：${beforeChart.qiSteps[0].boundaryTime?.startBeijing}大寒节令起，至${beforeChart.qiSteps[5].boundaryTime?.endBeijingExclusive}次年大寒节令前`,
     ),
   );
 

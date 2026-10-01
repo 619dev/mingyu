@@ -50,9 +50,20 @@ test('倍五分相在普通、双盘与即时提示词中只呈现中文关系�
     astrolabe: birth,
   });
   assert.ok(session.summary.lines.join('\n').includes('倍五分相'));
-  assert.match(session.aiPrompt, /星体：太阳/);
-  assert.match(session.aiPrompt, /四轴：上升/);
-  assert.match(session.aiPrompt, /相位：[^\n]*倍五分相，偏差/);
+  const sun = chart.planets.find((point) => point.name === 'Sun');
+  assert.ok(sun);
+  assert.match(session.aiPrompt, /星体位置：\n/);
+  assert.ok(
+    session.aiPrompt.includes(
+      `  ${sun.label}${sun.formatted}${sun.house > 0 ? `，第${sun.house}宫` : ''}`,
+    ),
+  );
+  for (const angle of chart.angles) {
+    assert.ok(session.aiPrompt.includes(`${angle.label}：${angle.formatted}`));
+  }
+  assert.match(session.aiPrompt, /相位明细：\n/);
+  assert.match(compactLine, /倍五分相，目标角144°，实际角距[\d.]+°，偏差[\d.]+°/);
+  assert.equal(session.aiPrompt.split(compactLine).length - 1, 1);
   assert.doesNotMatch(session.aiPrompt, /bQ|\bSun\b|\bAscendant\b/);
   assert.doesNotMatch(session.prompt, /bQ/);
   assert.equal(

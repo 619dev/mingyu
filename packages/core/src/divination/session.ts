@@ -1,5 +1,4 @@
 import { formatLiurenJudgmentFacts } from '../prompt/liuren-judgment';
-import type { WuyunLiuqiResult } from '../wuyun-liuqi';
 import type { DivinationMethodId } from './config';
 import { generateAlmanacSelection } from './algorithms/almanac';
 import { generateAstrolabe } from './algorithms/astrolabe';
@@ -48,13 +47,11 @@ import type {
   AlmanacTopic,
   AlmanacWeekendPreference,
   AstrolabeBirthInput,
-  AstrolabeData,
   DivinationData,
   JinkoujueDivinationMethod,
   LenormandData,
   LenormandSpreadType,
   LiurenData,
-  LiuyaoData,
   MeihuaSettings,
   SupplementaryInfo,
   TarotData,
@@ -265,12 +262,8 @@ function formatAiChart(
   summary: ReturnType<typeof getDivinationSummaryBlocks>,
   currentTime: Date,
   question: string,
+  liuyaoTemplate?: DivinationPromptOptions['liuyaoTemplate'],
 ) {
-  const base = [
-    summary.title,
-    summary.tags.filter(Boolean).join('；'),
-    ...(method === 'taiyi' ? [] : summary.lines),
-  ].filter(Boolean);
   if (method === 'xiaoliuren') {
     const item = data as XiaoliurenData;
     return formatDivinationInfo(method, data, '', undefined, {
@@ -279,39 +272,41 @@ function formatAiChart(
         Math.floor(item.timestamp / 60_000) === Math.floor(currentTime.getTime() / 60_000),
     });
   }
-  if (method === 'jinkoujue') return formatDivinationInfo(method, data);
-  if (method === 'qimen') return formatDivinationInfo(method, data, question);
-  if (method === 'almanac') return formatDivinationInfo(method, data, question);
-  if (method === 'liuyao') {
-    const item = data as LiuyaoData;
-    base.push(
-      '六爻明细：',
-      ...item.yaosDetail.map(
-        (yao) =>
-          `第${yao.position}爻：${yao.yaoType}爻，${yao.sixGod}${yao.sixRelative}${yao.najiaDizhi}${yao.wuxing}${yao.isWorld ? '，世爻' : ''}${yao.isResponse ? '，应爻' : ''}${yao.isChanging ? `，动爻${yao.changedYao ? `化${yao.changedYao.liuqin}${yao.changedYao.dizhi}${yao.changedYao.wuxing}` : ''}` : ''}${yao.isVoid ? '，空亡' : ''}`,
-      ),
-    );
-  } else if (method === 'astrolabe') {
-    const item = data as AstrolabeData;
-    base.push(
-      `出生资料：${item.birth.dateTime}，${item.birth.location}`,
-      `星体：${item.planets.map((point) => `${point.label}${point.formatted}`).join('；')}`,
-      `四轴：${item.angles.map((point) => `${point.label}${point.formatted}`).join('；')}`,
-      `宫位：${item.houses.map((point) => `第${point.house}宫宫头${point.formatted}`).join('；')}`,
-      `相位：${item.aspects.map((aspect) => `${aspect.body1}与${aspect.body2}：${aspect.type}，偏差${aspect.orb.toFixed(2)}°`).join('；') || '无'}`,
-    );
-  } else if (method === 'wuyun') {
-    const item = data as WuyunLiuqiResult;
-    base.push(`岁运五音：${item.annualMovement.toneName}`);
-  } else if (method === 'liuren') {
-    base.push(
-      '六壬判断依据：',
-      ...formatLiurenJudgmentFacts(data as LiurenData, { includeOrdinaryAdjudication: false }),
-    );
-  } else if (method === 'taiyi') {
-    base.push('太乙判断依据：', ...formatTaiyiJudgmentFacts(data as TaiyiResult));
+  if (
+    method === 'jinkoujue' ||
+    method === 'qimen' ||
+    method === 'almanac' ||
+    method === 'meihua' ||
+    method === 'wuyun' ||
+    method === 'tarot' ||
+    method === 'lenormand' ||
+    method === 'liuyao' ||
+    method === 'astrolabe'
+  ) {
+    return formatDivinationInfo(method, data, question, undefined, { liuyaoTemplate });
   }
-  return base.join('\n');
+  if (method === 'liuren') {
+    return [
+      formatDivinationInfo(method, data, question),
+      '六壬判断依据：',
+      ...formatLiurenJudgmentFacts(data as LiurenData, {
+        includeOrdinaryAdjudication: false,
+        chartFactsIncluded: true,
+      }),
+    ].join('\n');
+  }
+  if (method === 'taiyi') {
+    const item = data as TaiyiResult;
+    return [
+      summary.title,
+      `${item.ganZhi}；${item.yinYang}${item.bureau}局；太乙在${item.taiyiPosition}（第${item.taiyiPalace}宫）`,
+      '太乙判断依据：',
+      ...formatTaiyiJudgmentFacts(item),
+    ].join('\n');
+  }
+  return [summary.title, summary.tags.filter(Boolean).join('；'), ...summary.lines]
+    .filter(Boolean)
+    .join('\n');
 }
 
 const RANDOM_METHODS: DivinationSessionMethod[] = [
@@ -630,7 +625,14 @@ export function generateDivinationSession(request: DivinationRequest): Divinatio
           question,
           currentTime,
           supplementaryInfo: request.supplementaryInfo,
-          chartText: formatAiChart(method, data, summary, currentTime, question),
+          chartText: formatAiChart(
+            method,
+            data,
+            summary,
+            currentTime,
+            question,
+            promptOptions.liuyaoTemplate,
+          ),
           data,
         });
   const aiPrompt = aiPromptDocument.text;

@@ -152,8 +152,9 @@ test('统一占法会话应保留手工六爻输入并支持随机牌阵种子',
   });
   assert.deepEqual(liuyao.data.yaoArray, [7, 8, 9, 6, 7, 8]);
   assert.doesNotMatch(liuyao.aiPrompt, /；；|、、|世应：、|、$/m);
-  assert.match(liuyao.aiPrompt, /主轴：世应：世爻第\d爻，应爻第\d爻/);
-  assert.doesNotMatch(liuyao.aiPrompt, /^世应：/m);
+  assert.match(liuyao.aiPrompt, /^世应：世爻第\d爻.*应爻第\d爻/m);
+  assert.match(liuyao.aiPrompt, /六爻全表：/);
+  assert.equal((liuyao.aiPrompt.match(/^世应：/gm) ?? []).length, 1);
 
   const tarot = generateDivinationSession({
     method: 'tarot',
