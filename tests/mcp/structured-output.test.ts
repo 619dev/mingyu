@@ -1300,7 +1300,10 @@ test('MCP 排盘工具应返回 structuredContent，文本兼容输出不重复�
         assert.equal(direction.summaryFact.status, '映射稳定');
         assert.equal(direction.summaryFact.directionFactCount, direction.directionFacts.length);
         assert.equal(direction.summaryFact.limitationFactCount, direction.limitationFacts.length);
-        assert.match(direction.promptText, /不自动推断或补造磁偏角/);
+        assert.match(direction.promptText, /【任务】[\s\S]*【罗盘资料】[\s\S]*【传统依据】/);
+        assert.match(direction.promptText, /向山：午，属离卦\n坐山：0°；子，属坎卦/);
+        assert.match(direction.promptText, /实际北向基准（真北或磁北）、磁偏角与仪器误差待核定/);
+        assert.doesNotMatch(direction.promptText, /计算步骤|证据汇总|来源：|限制：|不自动/);
       }
       if (name === 'foundation_shensha') {
         const analysis = result.structuredContent.result as {

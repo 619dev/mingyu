@@ -1482,7 +1482,24 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
   assert.equal(direction.body.data.facingBagua, '离');
   assert.equal(direction.body.data.sitBagua, '坎');
   assert.equal(direction.body.data.summaryFact.status, '映射稳定');
-  assert.match(direction.body.data.promptText, /不自动推断或补造磁偏角/);
+  assert.match(
+    direction.body.data.promptText,
+    /【任务】[\s\S]*【罗盘资料】[\s\S]*【传统依据】[\s\S]*【输出要求】/,
+  );
+  assert.ok(
+    direction.body.data.promptText.includes(
+      [
+        '朝向度数：180°',
+        '向山：午，属离卦',
+        '坐山：0°；子，属坎卦',
+        '测量资料：实际北向基准（真北或磁北）、磁偏角与仪器误差待核定。',
+      ].join('\n'),
+    ),
+  );
+  assert.doesNotMatch(
+    direction.body.data.promptText,
+    /计算步骤\d+项|方位事实\d+项|限制\d+项|证据汇总|来源：|限制：|不得|不应|不单独证明|不自动推断/,
+  );
 
   const boundaryDirection = await callApi('foundation/direction', {
     method: 'POST',
@@ -1492,6 +1509,14 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
   assert.equal(boundaryDirection.response.status, 200);
   assert.equal(boundaryDirection.body.data.status, '存在分界线');
   assert.equal(boundaryDirection.body.data.summaryFact.status, '坐向均位于分界线');
+  assert.ok(
+    boundaryDirection.body.data.promptText.includes(
+      [
+        '向山：子、癸分界；均属坎卦；山位待复测核定',
+        '坐山：187.5°；午、丁分界；均属离卦；山位待复测核定',
+      ].join('\n'),
+    ),
+  );
 
   const shensha = await callApi('foundation/shensha', {
     method: 'POST',
@@ -6423,7 +6448,7 @@ test('公开 API 七政省略坐标时标出北京参考地点', async () => {
   assert.doesNotMatch(promptResponse.body.data.prompt, /出生地点：纬度39\.9°，经度116\.4°/);
 });
 
-test('公开 API 排盘入口拒绝显式传入的空白 IANA 时区', async () => {
+test('公开 API 排盘入口拒绝空白 IANA 时区与矛盾 UTC 偏移', async () => {
   const astrolabe = {
     name: '本人',
     gender: '女',
@@ -6517,6 +6542,30 @@ test('公开 API 排盘入口拒绝显式传入的空白 IANA 时区', async () 
     assert.equal(response.status, 400, path);
     assert.match(body.error.message, /timeZoneId 不能为空/u, path);
   }
+
+  const offsetConflict = await callApi('divination/qimen/lifetime', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      birthDateTime: '2024-02-04T03:27:00+08:00',
+      timezone: -5,
+    }),
+  });
+  assert.equal(offsetConflict.response.status, 400);
+  assert.equal(offsetConflict.body.ok, false);
+  assert.equal(offsetConflict.body.error.code, 'BAD_REQUEST');
+  assert.match(offsetConflict.body.error.message, /出生时刻的 UTC 偏移与 timezone 不一致/);
+
+  const offsetOnly = await callApi('divination/qimen/lifetime', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      birthDateTime: '2024-02-04T03:27:00+08:00',
+      detailMode: 'compact',
+    }),
+  });
+  assert.equal(offsetOnly.response.status, 200);
+  assert.equal(offsetOnly.body.data.basis.timeZoneUsed, 'UTC+08:00');
 });
 
 test('公开 API 太乙应返回年计七十二局立成结果', async () => {

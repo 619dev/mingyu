@@ -26,17 +26,20 @@ test('罗盘朝向度数应自动换算二十四山坐向', () => {
   assert.equal(evidence.status, '已换算');
   assert.equal(evidence.facingBagua, '离');
   assert.equal(evidence.sitBagua, '坎');
-  assert.equal(evidence.calculationSteps.length, 4);
-  assert.deepEqual(
-    evidence.calculationChain,
-    evidence.calculationSteps.map((item) => item.promptText),
-  );
-  assert.equal(evidence.directionFacts.length, 4);
   assert.equal(evidence.summaryFact.status, '映射稳定');
-  assert.equal(evidence.summaryFact.directionFactCount, evidence.directionFacts.length);
-  assert.equal(evidence.summaryFact.limitationFactCount, evidence.limitationFacts.length);
+  assert.match(
+    evidence.promptText,
+    /【任务】[\s\S]*【罗盘资料】[\s\S]*【传统依据】[\s\S]*【输出要求】/,
+  );
+  assert.match(evidence.promptText, /朝向度数：180°\n向山：午，属离卦\n坐山：0°；子，属坎卦/);
   assert.match(evidence.promptText, /正北0°顺时针/);
-  assert.doesNotMatch(evidence.promptText, /风水吉凶已确定|成功率[：=]?\d|本项目|API|MCP/);
+  assert.match(evidence.promptText, /实际北向基准（真北或磁北）、磁偏角与仪器误差待核定/);
+  assert.doesNotMatch(
+    evidence.promptText,
+    /计算步骤|方位事实|证据汇总|来源：|限制：|不应|不得|不自动|本项目|API|MCP/,
+  );
+  assert.equal(evidence.promptText.split('子，属坎卦').length - 1, 1);
+  assert.match(analyzeCompassDirection(360).promptText, /朝向度数：360°（归一化为0°）/);
 });
 
 test('罗盘二十四山分界线应明确标记，不得静默当成普通度数', () => {
@@ -50,7 +53,8 @@ test('罗盘二十四山分界线应明确标记，不得静默当成普通度�
   assert.equal(evidence.summaryFact.status, '坐向均位于分界线');
   assert.equal(evidence.facing.isBoundary, true);
   assert.equal(evidence.sit.isBoundary, true);
-  assert.match(evidence.promptText, /不应静默采用单一山位/);
+  assert.match(evidence.promptText, /向山：子、癸分界；均属坎卦；山位待复测核定/);
+  assert.match(evidence.promptText, /坐山：187.5°；午、丁分界；均属离卦；山位待复测核定/);
 });
 
 test('跨卦分界线应保留两侧八卦候选，同卦分界线仍可确定八卦', () => {
@@ -61,7 +65,9 @@ test('跨卦分界线应保留两侧八卦候选，同卦分界线仍可确定�
   assert.equal(crossFact?.status, '位于分界线');
   assert.match(crossFact?.promptText ?? '', /向卦候选为艮、震/);
   assert.match(crossFact?.promptText ?? '', /坐卦候选为坤、兑/);
-  assert.match(crossBagua.promptText, /向卦候选为艮、震/);
+  assert.match(crossBagua.promptText, /向山：寅、甲分界；寅属艮卦、甲属震卦/);
+  assert.match(crossBagua.promptText, /坐山：247.5°；申、庚分界；申属坤卦、庚属兑卦/);
+  assert.doesNotMatch(crossBagua.promptText, /当前按庚山甲向归位/);
 
   const sameBagua = analyzeCompassDirection(7.5);
   const sameFact = sameBagua.directionFacts.find((fact) => fact.type === '八卦归属');

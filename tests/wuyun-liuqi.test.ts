@@ -14,6 +14,15 @@ import {
 import { SIXTY_CYCLE } from '@core/ganzhi';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
+const cycleResults = new Map<string, ReturnType<typeof calculateWuyunLiuqi>>();
+function getCycleResult(yearGanZhi: string) {
+  const cached = cycleResults.get(yearGanZhi);
+  if (cached) return cached;
+  const result = calculateWuyunLiuqi({ yearGanZhi });
+  cycleResults.set(yearGanZhi, result);
+  return result;
+}
+
 test('五运六气天干化运与太过不及应覆盖六十甲子', () => {
   const expected: Record<string, readonly [string, string]> = {
     甲: ['土', '太过'],
@@ -29,7 +38,7 @@ test('五运六气天干化运与太过不及应覆盖六十甲子', () => {
   };
 
   SIXTY_CYCLE.forEach((yearGanZhi) => {
-    const result = calculateWuyunLiuqi({ yearGanZhi });
+    const result = getCycleResult(yearGanZhi);
     assert.deepEqual(
       [result.annualMovement.element, result.annualMovement.strength],
       expected[yearGanZhi[0]],
@@ -54,7 +63,7 @@ test('五运六气司天在泉应覆盖十二支固定配对', () => {
   };
 
   SIXTY_CYCLE.forEach((yearGanZhi) => {
-    const result = calculateWuyunLiuqi({ yearGanZhi });
+    const result = getCycleResult(yearGanZhi);
     assert.deepEqual([result.sitian.name, result.zaiquan.name], expected[yearGanZhi[1]]);
     assert.equal(result.qiSteps[2].guestQi.name, result.sitian.name);
     assert.equal(result.qiSteps[2].guestRole, '司天');
@@ -118,7 +127,7 @@ test('五步主运应固定木火土金水，并由中运推定五音太少', ()
   ];
 
   cases.forEach(({ yearGanZhi, annualTone, hostTones, guestTones }) => {
-    const result = calculateWuyunLiuqi({ yearGanZhi });
+    const result = getCycleResult(yearGanZhi);
     assert.equal(result.annualMovement.toneName, annualTone);
     assert.deepEqual(
       result.movementSteps.map((step) => step.hostMovement.toneName),
@@ -135,7 +144,7 @@ test('五步主运应固定木火土金水，并由中运推定五音太少', ()
 
 test('五步客运应以中运起步相生轮转，并按太少相生逐步交替', () => {
   SIXTY_CYCLE.forEach((yearGanZhi) => {
-    const result = calculateWuyunLiuqi({ yearGanZhi });
+    const result = getCycleResult(yearGanZhi);
     assert.equal(result.movementSteps.length, 5);
     assert.deepEqual(
       result.movementSteps.map((step) => step.hostMovement.element),
@@ -208,7 +217,7 @@ test('五步交司应保留古籍日期序号，不伪装成精确时刻', () =>
 test('气运相临应在六十甲子中各得十二年同气、顺化、天刑、小逆与不和', () => {
   const counts = new Map<string, number>();
   SIXTY_CYCLE.forEach((yearGanZhi) => {
-    const kind = calculateWuyunLiuqi({ yearGanZhi }).annualRelation.kind;
+    const kind = getCycleResult(yearGanZhi).annualRelation.kind;
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   });
   ['同气', '顺化', '天刑', '小逆', '不和'].forEach((kind) => {
@@ -219,7 +228,7 @@ test('气运相临应在六十甲子中各得十二年同气、顺化、天刑�
 test('天符岁会等五类符会应按通行六十年固定集合核验', () => {
   type ConformityField = 'tianfu' | 'suihui' | 'taiyiTianfu' | 'tongTianfu' | 'tongSuihui';
   const results = new Map(
-    SIXTY_CYCLE.map((yearGanZhi) => [yearGanZhi, calculateWuyunLiuqi({ yearGanZhi })] as const),
+    SIXTY_CYCLE.map((yearGanZhi) => [yearGanZhi, getCycleResult(yearGanZhi)] as const),
   );
   const expected: Record<ConformityField, string[]> = {
     tianfu: [
@@ -392,7 +401,7 @@ test('五运六气跨节气精度范围保留完整年度结构并省略计算�
 
 test('六十甲子二火加临保留君臣顺逆并与五行同气分别表达', () => {
   for (const yearGanZhi of SIXTY_CYCLE) {
-    const result = calculateWuyunLiuqi({ yearGanZhi });
+    const result = getCycleResult(yearGanZhi);
     for (const step of result.qiSteps) {
       const expected =
         '子午'.includes(yearGanZhi[1]) && step.order === 3
@@ -438,7 +447,7 @@ test('运气要诀六十年正对化与南北政按各自年支年干分类', ()
     '北政',
   ];
   for (let index = 0; index < SIXTY_CYCLE.length; index += 1) {
-    const result = calculateWuyunLiuqi({ yearGanZhi: SIXTY_CYCLE[index] });
+    const result = getCycleResult(SIXTY_CYCLE[index]);
     assert.equal(result.annualClassification.sitianTransformation, transformations[index % 12]);
     assert.equal(result.annualClassification.governance, governance[index % 10]);
     assert.ok(

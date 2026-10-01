@@ -47,4 +47,15 @@ test('丙午年保留运克气、客生主与客克主的施受双方', () => {
   assert.match(prompt, /客气太阳寒水（水）生主气厥阴风木（木）/);
   assert.match(prompt, /客气少阳相火（火）克主气阳明燥金（金）/);
   assert.doesNotMatch(prompt, /司天少阴君火（火）克中运（水）/);
+  assert.match(prompt, /三之气.*主客关系同气；二火加临：君位臣则顺/);
+  assert.doesNotMatch(prompt, /主客关系同气（/);
+});
+
+test('丁亥年同气事实只列一次，平气参考条件仍保持独立', () => {
+  const result = calculateWuyunLiuqi({ yearGanZhi: '丁亥' });
+  assert.equal(result.annualRelation.kind, '同气');
+  assert.equal(result.movementSteps[0].hostGuestRelation.kind, '同气');
+  assert.match(result.prompt, /中运（木）与司天厥阴风木（木）同气；/);
+  assert.match(result.prompt, /平气参考条件：厥阴风木司天与木运同气，资助岁运不及/);
+  assert.doesNotMatch(result.prompt, /同气（同气）|主客关系同气（/);
 });

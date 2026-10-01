@@ -3893,12 +3893,8 @@ test('奇门三奇游六仪应按当旬值符所带六仪加地盘三奇判定',
 });
 
 test('奇门天辅时主口径应按宝鉴六甲时识别，别传口径单独标注', () => {
-  const names = (time: string) =>
-    generateQimen(new Date(time)).classicPatterns?.map((pattern) => pattern.name) ?? [];
-
   const sixJiaCase = generateQimen(new Date('2025-01-25T19:00:00+08:00'));
   assert.equal(sixJiaCase.ganzhi.hour, '甲戌');
-  assert.ok(names('2025-01-25T19:00:00+08:00').includes('天辅时'));
   assert.ok(
     sixJiaCase.classicPatterns?.some(
       (pattern) => pattern.name === '天辅时' && pattern.summary.includes('甲戌时'),
@@ -3906,8 +3902,9 @@ test('奇门天辅时主口径应按宝鉴六甲时识别，别传口径单独�
   );
 
   const variantCase = generateQimen(new Date('2025-01-05T09:00:00+08:00'));
-  assert.ok(!names('2025-01-05T09:00:00+08:00').includes('天辅时'));
-  assert.ok(names('2025-01-05T09:00:00+08:00').includes('天辅时（别传）'));
+  const variantNames = variantCase.classicPatterns?.map((pattern) => pattern.name) ?? [];
+  assert.ok(!variantNames.includes('天辅时'));
+  assert.ok(variantNames.includes('天辅时（别传）'));
   assert.ok(
     variantCase.classicPatterns?.some(
       (pattern) => pattern.name === '天辅时（别传）' && pattern.summary.includes('《遁甲演义》'),

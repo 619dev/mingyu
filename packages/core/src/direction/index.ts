@@ -361,6 +361,16 @@ export function analyzeCompassDirection(facingDegree: number): CompassDirectionA
   };
   const source =
     '采用正北0°顺时针、子山中心0°、二十四山每山15°、坐向相差180°及公共二十四山所属后天八卦表';
+  const mountainText = (position: CompassMountainPosition, bagua: string, candidates: string[]) =>
+    position.isBoundary
+      ? `${position.boundaryMountains!.join('、')}分界；${
+          candidates.length === 1
+            ? `均属${bagua}卦`
+            : position
+                .boundaryMountains!.map((mountain) => `${mountain}属${getHouseTrigram(mountain)}卦`)
+                .join('、')
+        }；山位待复测核定`
+      : `${position.mountain}，属${bagua}卦`;
 
   return {
     key: `foundation:direction:${position.facing.degree}`,
@@ -379,7 +389,19 @@ export function analyzeCompassDirection(facingDegree: number): CompassDirectionA
     limitations,
     limitationFacts,
     source,
-    promptText: `罗盘换算：${calculationSteps.map((item) => item.promptText).join(' → ')}。证据汇总：${summaryFact.promptText}。来源：${source}。限制：${limitations.map((item) => item.replace(/[。；]+$/, '')).join('；')}。`,
+    promptText: [
+      '【任务】',
+      '请依据以下罗盘资料，解释坐向、二十四山与后天八卦的对应关系。',
+      '【罗盘资料】',
+      `朝向度数：${facingDegree}°${facingDegree !== position.facing.degree ? `（归一化为${position.facing.degree}°）` : ''}`,
+      `向山：${mountainText(position.facing, facingBagua, facingBaguaCandidates)}`,
+      `坐山：${position.sit.degree}°；${mountainText(position.sit, sitBagua, sitBaguaCandidates)}`,
+      '测量资料：实际北向基准（真北或磁北）、磁偏角与仪器误差待核定。',
+      '【传统依据】',
+      '采用正北0°顺时针、子山中心0°、二十四山每山15°及坐向相差180°的罗盘口径。',
+      '【输出要求】',
+      '说明上述坐向与八卦归属；存在分界时分别保留两侧候选，并说明复测所需资料。',
+    ].join('\n'),
   };
 }
 

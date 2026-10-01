@@ -136,6 +136,42 @@ test('奇门终身局 P0：时间标准化与真太阳时校正', () => {
   }, /启用真太阳时必须提供出生地经度/);
 });
 
+test('奇门终身局显式出生偏移与时区必须指向同一真实瞬时', () => {
+  const birthDateTime = '2024-02-04T03:27:08+08:00';
+  const implicit = normalizeQimenLifetimeTime({ birthDateTime });
+  assert.equal(implicit.referenceDate.toISOString(), '2024-02-03T19:27:08.000Z');
+  assert.equal(implicit.basis.timeZoneUsed, 'UTC+08:00');
+  const chart = calculateQimenLifetime({ birthDateTime, timezone: 8 });
+  assert.equal(chart.baseChart.timestamp, Date.parse(birthDateTime));
+  assert.equal(chart.basis.timeZoneUsed, 'UTC+08:00');
+  assert.equal(chart.baseChart.timeInfo.solarTerm, '大寒');
+  assert.equal(chart.baseChart.ganzhi.year, '癸卯');
+
+  const otherInstant = calculateQimenLifetime({
+    birthDateTime: '2024-02-04T03:27:08',
+    timezone: -5,
+  });
+  assert.equal(
+    new Date(otherInstant.baseChart.timestamp).toISOString(),
+    '2024-02-04T08:27:08.000Z',
+  );
+  assert.equal(otherInstant.baseChart.timeInfo.solarTerm, '立春');
+  assert.equal(otherInstant.baseChart.ganzhi.year, '甲辰');
+
+  const quarter = normalizeQimenLifetimeTime({ birthDateTime: '2024-02-04T03:27:00+05:45' });
+  assert.equal(quarter.referenceDate.toISOString(), '2024-02-03T21:42:00.000Z');
+  assert.equal(quarter.basis.timeZoneUsed, 'UTC+05:45');
+
+  assert.throws(
+    () => calculateQimenLifetime({ birthDateTime, timezone: -5 }),
+    /出生时刻的 UTC 偏移与 timezone 不一致/u,
+  );
+  assert.throws(
+    () => normalizeQimenLifetimeTime({ birthDateTime: '2024-02-04T03:27:00+08:60', timezone: 9 }),
+    /出生时刻的 UTC 偏移分钟无效/u,
+  );
+});
+
 test('奇门终身局应沿用固定非东八区的 civil 与真实瞬时点', () => {
   const input = {
     birthDateTime: '1990-05-15T14:30:00',
