@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { handlePublicApiRequest } from '../../src/lib/public-api/handler';
+import { assertNoEngineeringPromptText, assertNoPromptPlaceholders } from '../prompt-assertions';
 
 type BirthInput = Record<string, unknown>;
 
@@ -29,6 +30,58 @@ function assertSuccess(result: Awaited<ReturnType<typeof callApi>>) {
   assert.equal(result.status, 200, JSON.stringify(result.body));
   return result.body.data;
 }
+
+test('姓名与起名四个HTTP入口保留当地出生钟表和实际时区', async () => {
+  for (const clock of [
+    { timezone: -4, timeZoneId: 'America/New_York', label: 'America/New_York，UTC-04:00' },
+    { timezone: 5.75, timeZoneId: undefined, label: 'UTC+05:45' },
+  ]) {
+    const input = {
+      ...birth,
+      month: 7,
+      birthHour: 1,
+      birthMinute: 30,
+      timezone: clock.timezone,
+      ...(clock.timeZoneId ? { timeZoneId: clock.timeZoneId } : {}),
+    };
+    const bazi = assertSuccess(await callApi('bazi/calculate', input));
+    const expectedPillars = ['year', 'month', 'day', 'hour'].map((key) => bazi.pillars[key].ganZhi);
+    const analyze = assertSuccess(
+      await callApi('name/analyze', { fullName: '李清和', birth: input }),
+    );
+    const analysisPrompt = assertSuccess(
+      await callApi('name/analyze/prompt', { fullName: '李清和', birth: input }),
+    );
+    const generated = assertSuccess(
+      await callApi('name/generate', { surname: '李', limit: 1, birth: input }),
+    );
+    const generationPrompt = assertSuccess(
+      await callApi('name/generate/prompt', { surname: '李', limit: 1, birth: input }),
+    );
+    assert.equal(generated.length, 1);
+    assert.equal(generationPrompt.candidates.length, 1);
+    for (const context of [
+      analyze.birthContext,
+      analysisPrompt.analysis.birthContext,
+      generated[0].analysis.birthContext,
+      generationPrompt.candidates[0].analysis.birthContext,
+    ]) {
+      assert.equal(context.timeBasis.inputTime, '01:30');
+      assert.equal(context.timeBasis.calculatedTime, '01:30');
+      assert.equal(context.timeBasis.mode, '当地钟表时间（精确到分）');
+      assert.equal(context.timeBasis.timezone, clock.timezone);
+      assert.equal(context.timeBasis.timeZoneId, clock.timeZoneId ?? null);
+      assert.deepEqual(context.pillars, expectedPillars);
+    }
+    for (const { prompt } of [analysisPrompt, generationPrompt]) {
+      assert.ok(prompt.includes(`时间口径：当地钟表时间（精确到分）；时区：${clock.label}`));
+      assert.ok(prompt.includes(`四柱：${expectedPillars.join(' ')}`));
+      assert.doesNotMatch(prompt, /标准北京时间|地点记录：未提供|真太阳时校正经度/);
+      assertNoPromptPlaceholders(prompt);
+      assertNoEngineeringPromptText(prompt);
+    }
+  }
+});
 
 test('无秒钟表按零秒统一八字、紫微单盘与合参时辰', async () => {
   for (const [birthHour, birthMinute] of [

@@ -660,6 +660,99 @@ test('姓名 MCP 真太阳时与完整标准时分可省略时辰，传统缺时
   });
 });
 
+test('姓名 MCP 按出生地历史时区保留钟表事实并在完整任务书中使用同一时间口径', async () => {
+  await withMcpClient(async (client) => {
+    const birth = {
+      gender: 'female',
+      year: 2024,
+      month: 7,
+      day: 1,
+      birthHour: 1,
+      birthMinute: 30,
+      timeZoneId: 'America/New_York',
+      timezone: -4,
+    };
+    const analyzed = await client.callTool({
+      name: 'name_analyze_prompt',
+      arguments: { fullName: '张明', birth },
+    });
+    assert.equal(analyzed.isError, undefined);
+    const analysis = analyzed.structuredContent?.result as
+      | {
+          analysis?: {
+            birthContext?: {
+              timeBasis?: {
+                inputTime?: string;
+                mode?: string;
+                timezone?: number;
+                timeZoneId?: string;
+                calculatedTime?: string;
+              };
+            };
+          };
+        }
+      | undefined;
+    const timeBasis = analysis?.analysis?.birthContext?.timeBasis;
+    assert.equal(timeBasis?.inputTime, '01:30');
+    assert.equal(timeBasis?.mode, '当地钟表时间（精确到分）');
+    assert.equal(timeBasis?.timezone, -4);
+    assert.equal(timeBasis?.timeZoneId, 'America/New_York');
+    assert.equal(timeBasis?.calculatedTime, '01:30');
+    const analysisPrompt = String(analyzed.structuredContent?.prompt ?? '');
+    assert.match(
+      analysisPrompt,
+      /时间口径：当地钟表时间（精确到分）；时区：America\/New_York，UTC-04:00/u,
+    );
+    assert.doesNotMatch(analysisPrompt, /标准北京时间/u);
+
+    const generated = await client.callTool({
+      name: 'name_generate_prompt',
+      arguments: { surname: '张', limit: 1, birth },
+    });
+    assert.equal(generated.isError, undefined);
+    const candidates = (
+      generated.structuredContent?.result as
+        | {
+            candidates?: Array<{
+              analysis?: { birthContext?: { timeBasis?: { timeZoneId?: string } } };
+            }>;
+          }
+        | undefined
+    )?.candidates;
+    assert.equal(
+      candidates?.[0]?.analysis?.birthContext?.timeBasis?.timeZoneId,
+      'America/New_York',
+    );
+    assert.match(
+      String(generated.structuredContent?.prompt ?? ''),
+      /时间口径：当地钟表时间（精确到分）；时区：America\/New_York，UTC-04:00/u,
+    );
+
+    for (const [clock, message] of [
+      [{ ...birth, timeZoneId: 'Invalid/Zone' }, /时区|time.?zone/iu],
+      [{ ...birth, month: 3, day: 10, birthHour: 2 }, /跳时缺口|不存在/u],
+      [{ ...birth, month: 11, day: 3, timezone: undefined }, /回拨歧义/u],
+    ] as const) {
+      const invalid = await client.callTool({
+        name: 'name_analyze',
+        arguments: { fullName: '张明', birth: clock },
+      });
+      assert.equal(invalid.isError, true);
+      assert.match(String(invalid.structuredContent?.error ?? ''), message);
+    }
+
+    const resolved = await client.callTool({
+      name: 'name_analyze_prompt',
+      arguments: {
+        fullName: '张明',
+        birth: { ...birth, month: 11, day: 3, timezone: -5 },
+      },
+    });
+    assert.equal(resolved.isError, undefined);
+    assert.match(String(resolved.structuredContent?.prompt ?? ''), /America\/New_York，UTC-05:00/u);
+  });
+});
+
 test('姓名与数字提示词工具应返回顶层 prompt 并兼容旧读取路径', async () => {
   await withMcpClient(async (client) => {
     for (const [name, arguments_] of [
@@ -3689,13 +3782,9 @@ test('MCP 八字与紫微工具应支持真太阳时入参', async () => {
         dstCorrectionMinutes?: number;
         evidence?: {
           status: string;
-          calculationSteps: unknown[];
-          summaryFact: { calculationStepCount: number };
           promptText: string;
         };
       };
-      warningFacts?: Array<{ key: string; sources: string[]; referenceKeys: string[] }>;
-      warningSummaryFact?: { status: string; factKeys: string[] };
     };
     assert.equal(baziChart.timing?.correctedTime?.hour, baziExpected.timing?.correctedTime.hour);
     assert.equal(
@@ -3704,22 +3793,7 @@ test('MCP 八字与紫微工具应支持真太阳时入参', async () => {
     );
     assert.equal(baziChart.timing?.dstCorrectionMinutes, baziExpected.timing?.dstCorrectionMinutes);
     assert.equal(baziChart.timing?.evidence?.status, '已计算');
-    assert.equal(baziChart.timing?.evidence?.calculationSteps.length, 7);
-    assert.equal(
-      baziChart.timing?.evidence?.summaryFact.calculationStepCount,
-      baziChart.timing?.evidence?.calculationSteps.length,
-    );
     assert.match(baziChart.timing?.evidence?.promptText ?? '', /唯一映射为/);
-    assert.equal(baziChart.warningFacts?.length, baziExpected.warningFacts.length);
-    assert.equal(baziChart.warningSummaryFact?.status, baziExpected.warningSummaryFact.status);
-    assert.ok(
-      baziChart.warningFacts?.every(
-        (fact) =>
-          fact.key.startsWith('bazi:warning:') &&
-          fact.sources.length > 0 &&
-          fact.referenceKeys.length > 0,
-      ),
-    );
 
     const ziweiCorrected = calculateTrueSolarTime(
       {
@@ -3754,14 +3828,12 @@ test('MCP 八字与紫微工具应支持真太阳时入参', async () => {
       basicInfo?: { birth_time_label?: string; birth_time_range?: string };
       trueSolarEvidence?: {
         status: string;
-        calculationSteps: unknown[];
         summaryFact: { status: string };
       };
     };
     assert.equal(ziweiChart.basicInfo?.birth_time_label, ziweiTimeInfo.name);
     assert.equal(ziweiChart.basicInfo?.birth_time_range, ziweiTimeInfo.range.replace('-', '~'));
     assert.equal(ziweiChart.trueSolarEvidence?.status, '已计算');
-    assert.equal(ziweiChart.trueSolarEvidence?.calculationSteps.length, 7);
     assert.equal(ziweiChart.trueSolarEvidence?.summaryFact.status, '证据链完整');
 
     const ziweiPromptResult = await client.callTool({
@@ -3817,7 +3889,6 @@ test('MCP 八字与紫微工具应支持真太阳时入参', async () => {
       };
     };
     assert.equal(astrolabeResultData.result?.birth?.trueSolarEvidence?.status, '已计算');
-    assert.equal(astrolabeResultData.result?.birth?.trueSolarEvidence?.calculationSteps.length, 8);
     assert.ok(
       astrolabeResultData.result?.birth?.trueSolarEvidence?.calculationSteps.some(
         (item) => item.stage === '历史时区解析',

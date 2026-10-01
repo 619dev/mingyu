@@ -14,7 +14,11 @@ import {
 } from '../bazi/input';
 import { baziCalculator } from '../bazi/baziCalculator';
 import { formatUsefulGodFunctions } from '../bazi/baziAnalysisFormatter';
-import { formatFixedTimezoneOffset, getCivilDateTimeAtFixedOffset } from '../calendar/civil-time';
+import {
+  formatFixedTimezoneOffset,
+  getCivilDateTimeAtFixedOffset,
+  resolveCivilTime,
+} from '../calendar/civil-time';
 import { checkChinaDst } from '../calendar/china-dst';
 import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
 import { resolveBirthPlace } from '../location';
@@ -92,21 +96,19 @@ function formatNamingClock(input: NamingBirthInput, includeSeconds: boolean) {
   return `${hour}:${minute}:${String(second).padStart(2, '0')}`;
 }
 
-function correctedChinaDstClock(input: NamingBirthInput): string | null {
-  if (input.applyChinaDst !== true || input.useTrueSolarTime === true || !hasNamingClock(input)) {
+function correctedChinaDstClock(
+  input: NamingBirthInput,
+  clock: ReturnType<typeof resolveBirthCalendarClockTime>,
+  timezone: number,
+): string | null {
+  if (
+    input.useTrueSolarTime === true ||
+    !hasNamingClock(input) ||
+    (input.applyChinaDst !== true && !(input.timeZoneId === 'Asia/Shanghai' && timezone === 9))
+  ) {
     return null;
   }
   const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
-  const clock = resolveBirthCalendarClockTime({
-    dateType: input.dateType === 'lunar' ? 'lunar' : 'solar',
-    year: Number(input.year),
-    month: Number(input.month),
-    day: Number(input.day),
-    hour: Number(input.birthHour),
-    minute: Number(input.birthMinute),
-    second: hasInputSecond ? Number(input.birthSecond) : 0,
-    isLeapMonth: input.isLeapMonth,
-  });
   const dst = checkChinaDst(clock.year, clock.month, clock.day, clock.hour, clock.minute);
   if (!dst.inDst) return null;
   const corrected = new Date(
@@ -142,7 +144,40 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
   const hasStandardClock = input.useTrueSolarTime !== true && hasNamingClock(input);
   const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
   const inputClock = formatNamingClock(input, hasInputSecond);
-  const chinaDstClock = hasStandardClock ? correctedChinaDstClock(input) : null;
+  const standardCalendarClock = hasStandardClock
+    ? resolveBirthCalendarClockTime({
+        dateType: input.dateType === 'lunar' ? 'lunar' : 'solar',
+        year: Number(input.year),
+        month: Number(input.month),
+        day: Number(input.day),
+        hour: Number(input.birthHour),
+        minute: Number(input.birthMinute),
+        second: hasInputSecond ? Number(input.birthSecond) : 0,
+        isLeapMonth: input.isLeapMonth,
+      })
+    : null;
+  const standardCivilTime = standardCalendarClock
+    ? resolveCivilTime(
+        {
+          ...standardCalendarClock,
+          timezone: input.timezone,
+          timeZoneId: input.timeZoneId || undefined,
+        },
+        { defaultTimezone: 8 },
+      )
+    : null;
+  const chinaDstClock =
+    standardCalendarClock && standardCivilTime
+      ? correctedChinaDstClock(input, standardCalendarClock, standardCivilTime.timezone)
+      : null;
+  const standardClockIsBeijing = standardCivilTime?.timezone === 8 && !standardCivilTime.timeZoneId;
+  const standardClockMode = chinaDstClock
+    ? standardClockIsBeijing || standardCivilTime?.timeZoneId === 'Asia/Shanghai'
+      ? '中国历史夏令时钟表时间（已回拨为标准北京时间）'
+      : '当地钟表时间（按中国历史夏令时规则已回拨一小时）'
+    : standardClockIsBeijing
+      ? `标准北京时间（精确到${hasInputSecond ? '秒' : '分'}）`
+      : `当地钟表时间（精确到${hasInputSecond ? '秒' : '分'}）`;
   const calculatedClock = chart.timing
     ? `${String(chart.timing.correctedTime.hour).padStart(2, '0')}:${String(chart.timing.correctedTime.minute).padStart(2, '0')}${input.birthSecond !== undefined && input.birthSecond !== '' ? `:${String(chart.timing.correctedTime.second).padStart(2, '0')}` : ''}`
     : null;
@@ -178,16 +213,14 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
         : input.useTrueSolarTime
           ? '真太阳时'
           : hasStandardClock
-            ? chinaDstClock
-              ? '中国历史夏令时钟表时间（已回拨为标准北京时间）'
-              : `标准北京时间（精确到${hasInputSecond ? '秒' : '分'}）`
+            ? standardClockMode
             : '时辰',
       place,
       longitude,
       locationLevel: matchedResolvedPlace?.level ?? null,
       coordinateAccuracy: matchedResolvedPlace?.coordinateAccuracy ?? null,
-      timezone: input.useTrueSolarTime ? (chart.timing?.timezone ?? 8) : null,
-      timeZoneId: input.useTrueSolarTime ? (chart.timing?.timeZoneId ?? null) : null,
+      timezone: chart.timing?.timezone ?? standardCivilTime?.timezone ?? null,
+      timeZoneId: chart.timing?.timeZoneId ?? standardCivilTime?.timeZoneId ?? null,
       calculatedTime: chart.timing
         ? calculatedClock!
         : hasStandardClock && inputClock
@@ -1469,9 +1502,16 @@ function formatBirthContext(
           : '',
       ].filter(Boolean)
     : [`四柱：${context.pillars.join(' ')}`];
+  const timeZoneText =
+    context.timeBasis.longitude !== null
+      ? `；${formatNamingLocationTimeBasis(context.timeBasis)}`
+      : context.timeBasis.timezone !== null &&
+          (context.timeBasis.timeZoneId !== null || context.timeBasis.timezone !== 8)
+        ? `；时区：${formatNamingTimeZone(context.timeBasis)}`
+        : '';
   return [
     `出生记录：${context.timeBasis.inputDate} ${context.timeBasis.inputTime}`,
-    `时间口径：${context.timeBasis.mode}${context.timeBasis.longitude !== null ? `；${formatNamingLocationTimeBasis(context.timeBasis)}` : ''}`,
+    `时间口径：${context.timeBasis.mode}${timeZoneText}`,
     `排盘公历：${context.solarDate} ${context.timeBasis.calculatedTime}`,
     `农历：${context.lunarDate}`,
     ...pillarLines,
@@ -1542,10 +1582,12 @@ function formatNamingLocationTimeBasis(timeBasis: NamingBirthPointContext['timeB
       : timeBasis.coordinateAccuracy === 'province-approximation'
         ? '（省级近似坐标）'
         : '';
-  const timezone = timeBasis.timezone ?? 8;
-  const offset = `UTC${formatFixedTimezoneOffset(timezone)}`;
-  const timezoneLabel = timeBasis.timeZoneId ? `${timeBasis.timeZoneId}，${offset}` : offset;
-  return `地点记录：${timeBasis.place || '未提供'}；真太阳时校正经度：${timeBasis.longitude}°${representativePointLabel}；时区：${timezoneLabel}`;
+  return `地点记录：${timeBasis.place || '未提供'}；真太阳时校正经度：${timeBasis.longitude}°${representativePointLabel}；时区：${formatNamingTimeZone(timeBasis)}`;
+}
+
+function formatNamingTimeZone(timeBasis: NamingBirthPointContext['timeBasis']): string {
+  const offset = `UTC${formatFixedTimezoneOffset(timeBasis.timezone ?? 8)}`;
+  return timeBasis.timeZoneId ? `${timeBasis.timeZoneId}，${offset}` : offset;
 }
 
 function formatNameAnalysis(result: ReturnType<typeof analyzeChineseName>) {
