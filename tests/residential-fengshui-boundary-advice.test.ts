@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 import { generateResidentialFengshui } from '../packages/core/src/residential_fengshui/index.ts';
+import { MetaphysicsPanel } from '../src/components/MetaphysicsPanel';
 
 test('候选宅卦改变命宅关系时建议复测坐向而非补充已提供资料', () => {
   const result = generateResidentialFengshui({
@@ -54,6 +57,70 @@ test('候选宅卦同属东四宅时证据仍标明中心宅卦及另一候选�
   );
   assert.match(result.evidencePromptText, /宅卦震（中心读数；候选震宅、巽宅），命宅关系相合/);
   assert.match(result.prompt, /候选坐向：乙山辛向（震宅、命宅相合）、辰山戌向（巽宅、命宅相合）/);
+});
+
+test('北向基准未声明时命宅与宅运只按原始读数暂列，已校正磁北可改变结论', () => {
+  const input = {
+    year: 2008,
+    birthYear: 2000,
+    birthMonth: 6,
+    birthDay: 1,
+    gender: 'male' as const,
+    doorToInteriorDegree: 70,
+  };
+  const unspecified = generateResidentialFengshui(input);
+  assert.equal(unspecified.inputSummary.northReferenceUnspecified, true);
+  assert.equal(unspecified.bazhai?.mingGua, '离');
+  assert.equal(unspecified.bazhai?.houseGua, '震');
+  assert.equal(unspecified.bazhai?.match, '相合');
+  assert.ok(unspecified.agreements.every((item) => item.level !== '一致关注'));
+  assert.match(unspecified.agreements[0].detail, /暂按命宅关系相合/);
+  assert.match(unspecified.advice.join('\n'), /暂按命宅关系相合/);
+  assert.match(unspecified.advice.join('\n'), /核定坐向读数的北向基准/);
+  assert.match(unspecified.bazhai?.matchAdvice ?? '', /按原始读数暂列/);
+  assert.match(unspecified.prompt, /命宅配合：暂按相合/);
+  assert.match(unspecified.prompt, /坐向北向基准未声明；玄空角度盘按原始读数暂排/);
+  assert.match(unspecified.evidencePromptText, /暂按命宅关系相合/);
+
+  const html = renderToStaticMarkup(
+    createElement(MetaphysicsPanel, {
+      method: 'residential',
+      birthData: { year: 2000, month: 6, day: 1, gender: 'male' },
+      initialHouseYear: '2008',
+      initialFacingDegree: '70',
+    }),
+  );
+  assert.match(html, /坐向按原始读数暂列，待核定北向基准。/);
+  assert.match(html, /<span>命宅关系<\/span><strong>相合（暂按）<\/strong>/);
+
+  const houseOnlyHtml = renderToStaticMarkup(
+    createElement(MetaphysicsPanel, {
+      method: 'residential',
+      initialHouseYear: '2008',
+      initialFacingDegree: '70',
+    }),
+  );
+  assert.match(houseOnlyHtml, /坐向按原始读数暂列，待核定北向基准。/);
+  assert.match(houseOnlyHtml, /<span>命宅关系<\/span><strong>仅宅运<\/strong>/);
+
+  assert.throws(
+    () => generateResidentialFengshui({ ...input, northReference: 'magnetic' }),
+    /必须提供当地磁偏角/,
+  );
+  const magnetic = generateResidentialFengshui({
+    ...input,
+    northReference: 'magnetic',
+    magneticDeclinationDegrees: -20,
+  });
+  assert.equal(magnetic.bazhai?.houseGua, '艮');
+  assert.equal(magnetic.bazhai?.match, '相冲');
+  assert.ok(magnetic.agreements.some((item) => item.level === '口径不同需分述'));
+  assert.match(magnetic.prompt, /命宅配合：相冲/);
+
+  const trueNorth = generateResidentialFengshui({ ...input, northReference: 'true' });
+  assert.equal(trueNorth.inputSummary.northReferenceUnspecified, false);
+  assert.ok(trueNorth.agreements.some((item) => item.level === '一致关注'));
+  assert.match(trueNorth.prompt, /命宅配合：相合/);
 });
 
 test('住宅合参按实际边界区分候选山向与下卦替卦起法', () => {

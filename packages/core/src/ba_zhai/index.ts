@@ -428,6 +428,7 @@ function resolveMingGua(input: BaZhaiInput): {
 function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMeasurement): string {
   const lines: string[] = [];
   const houseUnstable = measurement?.stability === '宅卦不稳定';
+  const northReferenceUnspecified = measurement?.northReference === 'unspecified';
   lines.push('【任务】');
   lines.push(
     r.houseGua
@@ -468,7 +469,7 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
   if (r.houseGua) {
     lines.push(`宅卦：${r.houseGua}（${r.houseGroup}${houseUnstable ? '，中心读数' : ''}）`);
     lines.push(
-      `命宅配合：${r.match}${r.birthYearBoundaryStatus === '待复核' ? '（暂按命卦）' : ''}${houseUnstable ? '（中心读数）' : ''}`,
+      `命宅配合：${northReferenceUnspecified ? '暂按' : ''}${r.match}${r.birthYearBoundaryStatus === '待复核' ? '（暂按命卦）' : ''}${houseUnstable ? '（中心读数）' : ''}`,
     );
   }
   if (r.mingPalace?.length) {
@@ -659,11 +660,19 @@ function analyzeBaZhaiByMeasurement(
       .join('\n'),
   };
   const { prompt: _prompt, evidenceAnalysis: _evidenceAnalysis, ...resultFacts } = result;
-  const evidenceAnalysis = analyzeBaZhaiEvidence(resultFacts, directionMeasurement);
+  const measuredFacts = {
+    ...resultFacts,
+    matchAdvice:
+      measurement.reference === 'unspecified' && resultFacts.matchAdvice
+        ? `按原始读数暂列：${resultFacts.matchAdvice}`
+        : resultFacts.matchAdvice,
+  };
+  const evidenceAnalysis = analyzeBaZhaiEvidence(measuredFacts, directionMeasurement);
   return {
     ...result,
+    matchAdvice: measuredFacts.matchAdvice,
     evidenceAnalysis,
-    prompt: buildPrompt({ ...resultFacts, evidenceAnalysis }, directionMeasurement),
+    prompt: buildPrompt({ ...measuredFacts, evidenceAnalysis }, directionMeasurement),
     directionMeasurement,
   };
 }

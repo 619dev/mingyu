@@ -65,6 +65,8 @@ export interface ResidentialFengshuiResult {
   inputSummary: {
     hasPerson: boolean;
     hasHouseOrientation: boolean;
+    /** 度数读数未声明北向基准时，宅卦与宅运按原始读数暂列。 */
+    northReferenceUnspecified?: boolean;
     houseYear: number | null;
     orientationText: string;
     xuankongStatus: '已排盘' | '缺少山向' | '缺少建造年或起运年';
@@ -235,6 +237,7 @@ function buildAgreements(
   bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null,
   xuankong: XuanKongResult | null,
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'],
+  northReferenceUnspecified: boolean,
 ): ResidentialFengshuiAgreement[] {
   const items: ResidentialFengshuiAgreement[] = [];
 
@@ -283,18 +286,19 @@ function buildAgreements(
     items.push({
       level: '可互补',
       title: '宅运与人宅分层并观',
-      detail: `玄空见${periodLabel}、${xuankong.daoShanXiang.summary}${xuankongBoundarySensitive ? '（中心读数盘，待复测核定）' : ''}；八宅${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${bazhai.mingGua}、${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
+      detail: `玄空见${periodLabel}、${northReferenceUnspecified ? '按原始读数暂列的' : ''}${xuankong.daoShanXiang.summary}${xuankongBoundarySensitive ? '（中心读数盘，待复测核定）' : ''}；八宅${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${bazhai.mingGua}、${bazhai.birthYearBoundaryStatus === '待复核' || northReferenceUnspecified ? '暂按' : ''}${matchChangesWithOrientation ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${bazhai.match}`}。宅运结构与人宅适配分层并列。`,
     });
 
     if (matchChangesWithOrientation) {
       items.push({
         level: '资料不足',
         title: '命宅关系随候选坐向变化',
-        detail: `测量误差范围内，${candidateDirections.map((item) => `${item.label}命宅${item.match}`).join('、')}；需复测坐向后确定命宅关系。`,
+        detail: `${northReferenceUnspecified ? '按原始读数暂列：' : ''}测量误差范围内，${candidateDirections.map((item) => `${item.label}命宅${item.match}`).join('、')}；需${northReferenceUnspecified ? '核定北向基准并' : ''}复测坐向后确定命宅关系。`,
       });
     } else if (
       bazhai.match === '相合' &&
       !xuankongBoundarySensitive &&
+      !northReferenceUnspecified &&
       bazhai.birthYearBoundaryStatus !== '待复核'
     ) {
       items.push({
@@ -305,6 +309,7 @@ function buildAgreements(
     } else if (
       bazhai.match === '相冲' &&
       !xuankongBoundarySensitive &&
+      !northReferenceUnspecified &&
       bazhai.birthYearBoundaryStatus !== '待复核'
     ) {
       items.push({
@@ -345,11 +350,12 @@ function buildAdvice(
   xuankong: XuanKongResult | null,
   agreements: ResidentialFengshuiAgreement[],
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'],
+  northReferenceUnspecified: boolean,
 ): string[] {
   const advice: string[] = [];
   if (xuankong) {
     advice.push(
-      `先看宅运：${xuankong.period.boundaryStatus ? '暂按' : ''}${xuankong.period.label}，坐${xuankong.sitMountain}向${xuankong.facingMountain}，${xuankong.guaType}，${xuankong.daoShanXiang.summary}${xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}${xuankong.period.boundaryStatus ? '；需按建造或起运日期核定运期' : ''}。`,
+      `先看宅运：${xuankong.period.boundaryStatus ? '暂按' : ''}${xuankong.period.label}，坐${xuankong.sitMountain}向${xuankong.facingMountain}，${xuankong.guaType}，${xuankong.daoShanXiang.summary}${xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}${northReferenceUnspecified ? '（坐向按原始读数暂列）' : ''}${xuankong.period.boundaryStatus ? '；需按建造或起运日期核定运期' : ''}。`,
     );
   }
   if (bazhai) {
@@ -365,7 +371,7 @@ function buildAdvice(
       .map((item) => `${item.direction}${item.label}`)
       .join('、');
     advice.push(
-      `再看人宅：${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${bazhai.mingGua}（${bazhai.mingGroup}），${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}${matchText}${
+      `再看人宅：${bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${bazhai.mingGua}（${bazhai.mingGroup}），${bazhai.birthYearBoundaryStatus === '待复核' || northReferenceUnspecified ? '暂按' : ''}${matchText}${
         lucky ? `；命卦较利方位可参考 ${lucky}` : ''
       }。`,
     );
@@ -384,6 +390,11 @@ function buildAdvice(
   }
   if (agreements.some((item) => item.level === '口径不同需分述')) {
     advice.push('两边有分歧时，分别保留宅运结构与个人方位依据，不硬统一成一个总分。');
+  }
+  if (northReferenceUnspecified) {
+    advice.push(
+      '请核定坐向读数的北向基准；若采用磁北，还需提供当地磁偏角，再复核宅卦、命宅关系与宅运盘。',
+    );
   }
   if (agreements.some((item) => item.level === '资料不足')) {
     const mountainBoundarySensitive =
@@ -426,7 +437,7 @@ function buildEvidencePrompt(params: {
     items.push({
       level: '主证',
       title: '玄空宅运层',
-      detail: `${params.xuankong.period.boundaryStatus ? '暂按' : ''}${params.xuankong.period.label}；坐${params.xuankong.sitMountain}向${params.xuankong.facingMountain}；${params.xuankong.guaType}；${params.xuankong.daoShanXiang.summary}${params.xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}${params.xuankong.period.boundaryNote ? `；${params.xuankong.period.boundaryNote}` : ''}`,
+      detail: `${params.xuankong.period.boundaryStatus ? '暂按' : ''}${params.xuankong.period.label}；${params.northReferenceUnspecified ? '按原始读数暂列' : ''}坐${params.xuankong.sitMountain}向${params.xuankong.facingMountain}；${params.xuankong.guaType}；${params.xuankong.daoShanXiang.summary}${params.xuankong.measurement?.stability === '山向边界敏感' ? '（中心读数盘，待复测核定）' : ''}${params.xuankong.period.boundaryNote ? `；${params.xuankong.period.boundaryNote}` : ''}`,
       source: '玄空飞星 v1',
     });
   }
@@ -449,7 +460,7 @@ function buildEvidencePrompt(params: {
     items.push({
       level: '主证',
       title: '八宅人宅层',
-      detail: `${params.bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${params.bazhai.mingGua}，宅卦${params.bazhai.houseGua ?? '未定'}${houseUnstable ? `（中心读数；候选${candidateHouseGuas.map((gua) => `${gua}宅`).join('、')}）` : ''}，${params.bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}${candidateMatches.size > 1 ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${params.bazhai.match}`}`,
+      detail: `${params.bazhai.birthYearBoundaryStatus === '待复核' ? '暂按' : ''}命卦${params.bazhai.mingGua}，${params.northReferenceUnspecified ? '暂按原始读数列' : ''}宅卦${params.bazhai.houseGua ?? '未定'}${houseUnstable ? `（中心读数；候选${candidateHouseGuas.map((gua) => `${gua}宅`).join('、')}）` : ''}，${params.bazhai.birthYearBoundaryStatus === '待复核' || params.northReferenceUnspecified ? '暂按' : ''}${candidateMatches.size > 1 ? `候选命宅关系${[...candidateMatches].join('或')}` : `命宅关系${params.bazhai.match}`}`,
       source: '八宅大游年',
     });
   }
@@ -565,20 +576,26 @@ export function generateResidentialFengshui(
   const orientation = resolveResidentialOrientation(input);
   const bazhai = buildBazhai(input, orientation);
   const xuankong = buildXuanKong(input, orientation);
+  const northReferenceUnspecified =
+    hasDegreeMeasurement(input) && (input.northReference ?? 'unspecified') === 'unspecified';
 
   const xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'] = xuankong
     ? '已排盘'
     : hasOrientationInput(input)
       ? '缺少建造年或起运年'
       : '缺少山向';
-  const agreements = buildAgreements(bazhai, xuankong, xuankongStatus);
-  const advice = buildAdvice(bazhai, xuankong, agreements, xuankongStatus);
+  const agreements = buildAgreements(bazhai, xuankong, xuankongStatus, northReferenceUnspecified);
+  const advice = buildAdvice(
+    bazhai,
+    xuankong,
+    agreements,
+    xuankongStatus,
+    northReferenceUnspecified,
+  );
   const houseYear = xuankong ? xuankong.period.year : (input.year ?? null);
   const orientationText = orientation
     ? `坐${orientation.sitMountain}向${orientation.facingMountain}`
     : '未提供山向';
-  const northReferenceUnspecified =
-    hasDegreeMeasurement(input) && (input.northReference ?? 'unspecified') === 'unspecified';
   const evidencePromptText = buildEvidencePrompt({
     bazhai,
     xuankong,
@@ -601,6 +618,7 @@ export function generateResidentialFengshui(
     inputSummary: {
       hasPerson: Boolean(bazhai),
       hasHouseOrientation: Boolean(xuankong || bazhai?.houseGua),
+      northReferenceUnspecified,
       houseYear,
       orientationText,
       xuankongStatus,

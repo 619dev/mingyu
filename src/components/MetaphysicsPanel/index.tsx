@@ -381,6 +381,7 @@ export function MetaphysicsPanel({
   const bazhai = result?.bazhai ?? null;
   const xuankong = result?.xuankong ?? null;
   const mingGuaTentative = bazhai?.birthYearBoundaryStatus === '待复核';
+  const northReferenceUnspecified = result?.inputSummary.northReferenceUnspecified === true;
   const birthBoundaryHint = !bazhai?.calculationInput.birthMonth
     ? '待核对出生日期。'
     : bazhai.calculationInput.birthHour === undefined
@@ -407,6 +408,11 @@ export function MetaphysicsPanel({
                     : '个人八宅方位'
                   : '人宅与宅运分层排盘'}
             </h2>
+            {northReferenceUnspecified ? (
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                坐向按原始读数暂列，待核定北向基准。
+              </p>
+            ) : null}
           </div>
           <div className="result-chip-row">
             {bazhai ? (
@@ -451,7 +457,7 @@ export function MetaphysicsPanel({
               {bazhai && measurement
                 ? matchVariesWithOrientation
                   ? '待复测'
-                  : mingGuaTentative
+                  : mingGuaTentative || northReferenceUnspecified
                     ? `${bazhai.match}（暂按）`
                     : bazhai.match
                 : bazhai

@@ -2084,7 +2084,7 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
         baziCompatibilityText,
         ziweiCompatibilityText,
         question: finalQuestion || question,
-        currentSampleContext: formatCurrentBirthSampleContext(baziBirthRange.page),
+        currentSampleContext: formatCurrentBirthSampleContext(baziBirthRange.page, false),
       });
     }
 

@@ -181,6 +181,20 @@ test('八字合盘喜忌覆盖不复述已在个人盘面呈现的功能事实',
   }
 });
 
+test('合参任务书保留喜忌待判方向及另一人的已核覆盖', () => {
+  const result1 = getOrdinaryZhengyinResult();
+  const result2 = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
+  const facts = formatBaziCompatibilityFacts(result1, result2);
+  const prompt = getCompatibilityPrompt('请分析双方关系。', result1, result2).user;
+
+  assert.equal(result1.analysis.usefulGod.incrementStatus, '待判');
+  assert.match(facts, /喜忌五行对应：第一人增补喜忌五行待判/);
+  assert.match(facts, /无法核验第二人盘面的增补喜忌覆盖/);
+  assert.match(facts, /第一人盘面命中第二人喜用五行水、木/);
+  assert.ok(prompt.includes(`【双盘关系资料】\n${facts}`));
+  assertNoEngineeringPromptText(prompt);
+});
+
 test('八字紫微合参只复用双方关系事实，不嵌套整份八字合盘任务书', () => {
   const { result1, result2 } = createCompatibilityBaziResults();
   const facts = formatBaziCompatibilityFacts(result1, result2);

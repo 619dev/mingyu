@@ -2,21 +2,19 @@ import {
   analyzeBaziCompatibility,
   formatBaziUsefulGodCoverageForPrompt,
   type BaziChartResult,
+  type BaziCompatibilityEvidenceResult,
 } from 'mingyu-core/bazi';
 
 /** 合盘提示词与八字紫微合参共用的双方关系事实。 */
-export function formatBaziCompatibilityFacts(
-  result1: BaziChartResult,
-  result2: BaziChartResult,
-  options: { person1Name?: string; person2Name?: string } = {},
+export function formatCalculatedBaziCompatibilityFacts(
+  relation: BaziCompatibilityEvidenceResult,
 ): string {
-  const relation = analyzeBaziCompatibility(result1, result2, options);
   const relationLines = relation.crossPillarRelations.map((item) => item.promptText);
   const combinationLines = relation.crossBranchCombinations.map((item) => item.promptText);
   const tenGodLines = relation.tenGodMappings.map((item) => item.promptText);
-  const coverageLines = relation.usefulGodCoverage
-    .filter((item) => item.status === '已计算')
-    .map((item) => formatBaziUsefulGodCoverageForPrompt(item));
+  const coverageLines = relation.usefulGodCoverage.map((item) =>
+    formatBaziUsefulGodCoverageForPrompt(item),
+  );
 
   return [
     `日主关系：${relation.dayMasterRelation.promptText}。`,
@@ -27,4 +25,14 @@ export function formatBaziCompatibilityFacts(
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+export function formatBaziCompatibilityFacts(
+  result1: BaziChartResult,
+  result2: BaziChartResult,
+  options: { person1Name?: string; person2Name?: string } = {},
+): string {
+  return formatCalculatedBaziCompatibilityFacts(
+    analyzeBaziCompatibility(result1, result2, options),
+  );
 }

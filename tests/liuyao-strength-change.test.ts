@@ -15,7 +15,7 @@ import {
 import { buildTimeInfoText, formatEnhancedDivinationInfo } from 'mingyu-core/prompt';
 import type { LiuyaoYaoDetail } from 'mingyu-core/types';
 
-// 2025-01-01 农历为丙子月（子月：水旺木相金休土囚火死）、丙寅日（日支寅）
+// 子月：水旺木相金休土囚火死。
 // 该日期的卦象固定，用于回归月令旺衰、暗动、回头生克冲的字段输出。
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
 const SHAN_HUO_BI_YAOS = [7, 8, 7, 8, 8, 7] as const;
@@ -55,26 +55,26 @@ function generateSampleLiuyao(yaos: readonly number[] = SHAN_HUO_BI_YAOS) {
   return generateLiuyao(SAMPLE_DATE, { yaos });
 }
 
-test('六爻：各爻输出月令旺相休囚死状态', () => {
+test('六爻：山火贲的子月旺衰、三刑与静卦状态按实际纳支呈现', () => {
   const data = generateSampleLiuyao();
   const monthBranch = data.ganzhi.month.slice(1);
   assert.equal(monthBranch, '子', '样本日期应为子月');
 
-  for (const yao of data.yaosDetail) {
-    assert.ok(yao.seasonState, `第${yao.position}爻应输出 seasonState，实际 ${yao.seasonState}`);
-    // 子月水旺，水爻应为"旺"
-    if (yao.wuxing === '水') {
-      assert.equal(yao.seasonState, '旺', `第${yao.position}爻水在子月应旺`);
-    }
-    // 子月火死（令克火，水克火），火爻应为"死"
-    if (yao.wuxing === '火') {
-      assert.equal(yao.seasonState, '死', `第${yao.position}爻火在子月应死`);
-    }
-    // 子月土囚（土克令水，我克令者囚），土爻应为"囚"
-    if (yao.wuxing === '土') {
-      assert.equal(yao.seasonState, '囚', `第${yao.position}爻土在子月应囚`);
-    }
-  }
+  assert.equal(data.originalName, '山火贲');
+  assert.deepEqual(
+    data.yaosDetail.map((yao) => yao.najiaDizhi),
+    ['卯', '丑', '亥', '戌', '子', '寅'],
+  );
+  assert.deepEqual(
+    data.yaosDetail.map((yao) => yao.seasonState),
+    ['相', '囚', '旺', '囚', '旺', '相'],
+  );
+  assert.ok(
+    data.sanxingInYaos?.some(
+      (item) => item.type === '恃势之刑' && item.branches.join('') === '丑戌',
+    ),
+  );
+  assert.deepEqual(data.fanfuRelations, { fanyin: [], fuyin: [], labels: [] });
 });
 
 test('六爻：月建为墓库支时不得直接判作入月墓', () => {
@@ -165,21 +165,6 @@ test('六爻：单个辰土爻发动不因自身辰支判作入动墓', () => {
   assert.equal(movingYao.isRuMu, false);
   assert.ok(!lineFact?.constraints.includes('入动墓'));
   assert.doesNotMatch(lineFact?.promptText ?? '', /入动墓|动爻生旺墓绝第3爻辰墓/);
-});
-
-test('六爻：爻内三刑汇总应按共享三刑口径识别两支互见', () => {
-  const data = generateSampleLiuyao();
-
-  assert.equal(data.originalName, '山火贲');
-  assert.deepEqual(
-    data.yaosDetail.map((yao) => yao.najiaDizhi),
-    ['卯', '丑', '亥', '戌', '子', '寅'],
-  );
-  assert.ok(
-    data.sanxingInYaos?.some(
-      (item) => item.type === '恃势之刑' && item.branches.join('') === '丑戌',
-    ),
-  );
 });
 
 test('六爻：日冲应按旺相静爻、休囚静爻与动爻分别处理', () => {
@@ -327,6 +312,27 @@ test('六爻：进退神按增删卜易明表判定，不按地支循环外推',
 
   assert.equal(getLiuyaoChangeDirection('戌', '丑'), null);
   assert.equal(getLiuyaoChangeDirection('丑', '戌'), null);
+
+  for (const [rawValue, originalName, changedName, originalBranch, changedBranch, direction] of [
+    [6, '天泽履', '乾为天', '丑', '辰', '化进神'],
+    [9, '乾为天', '天泽履', '辰', '丑', '化退神'],
+  ] as const) {
+    const data = generateLiuyao(SAMPLE_DATE, {
+      method: 'manual',
+      yaos: [7, 7, rawValue, 7, 7, 7],
+    });
+    assert.equal(data.originalName, originalName);
+    assert.equal(data.changedName, changedName);
+    assert.deepEqual(
+      data.yaosDetail.filter((yao) => yao.isChanging).map((yao) => yao.position),
+      [3],
+    );
+    assert.equal(data.yaosDetail[2].najiaDizhi, originalBranch);
+    assert.equal(data.yaosDetail[2].changedYao?.dizhi, changedBranch);
+    assert.equal(data.yaosDetail[2].changeDirection, direction);
+    assert.equal(data.evidenceAnalysis?.lineFacts[2]?.changedYao?.direction, direction);
+    assert.match(formatEnhancedDivinationInfo('liuyao', data), new RegExp(direction, 'u'));
+  }
 });
 
 test('六爻：整卦六合六冲应按初四二五三上爻支成组判断', () => {
@@ -392,10 +398,6 @@ test('六爻：反吟伏吟应按卦变和纳甲地支判断', () => {
 
   const staticHexagram = getLiuyaoFanFuRelations('乾为天', '乾为天', false);
   assert.deepEqual(staticHexagram.labels, []);
-
-  const data = generateSampleLiuyao();
-  assert.ok(data.fanfuRelations);
-  assert.ok(Array.isArray(data.fanfuRelations.labels));
 });
 
 test('六爻：八宫卦位应输出首卦一世游魂归魂等卦序', () => {
