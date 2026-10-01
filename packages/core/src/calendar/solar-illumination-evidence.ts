@@ -27,6 +27,13 @@ export interface SolarCrossingEvent {
   utcOffset: string;
 }
 
+export interface SolarNoonEvent {
+  utcTimestamp: number;
+  utcDateTime: string;
+  localDateTime: string;
+  utcOffset: string;
+}
+
 export interface SolarCrossingEvidence {
   key: string;
   name: string;
@@ -136,6 +143,9 @@ export interface SolarIlluminationEvidence {
   solarAzimuthDegrees: number;
   solarDeclinationDegrees: number;
   equationOfTimeMinutes: number;
+  /** 当地民用日期内按 UTC 排序的全部视太阳正午；重历日可能有两次。 */
+  apparentSolarNoonEvents: SolarNoonEvent[];
+  /** 兼容单值读取：选择与参考瞬时最近的当日正午；无当日事件时保留参考估计。 */
   apparentSolarNoonUtcDateTime: string;
   apparentSolarNoonLocalDateTime: string;
   sunriseSunset: SolarCrossingEvidence;
@@ -189,6 +199,50 @@ function formatLocalTimestamp(timestamp: number, timezone: number, timeZoneId?: 
 function normalizeDayMinutes(value: number) {
   const normalized = value % 1440;
   return normalized < 0 ? normalized + 1440 : normalized;
+}
+
+function findSolarNoonEvents(
+  dayStartUtcTimestamp: number,
+  dayEndUtcTimestamp: number,
+  longitude: number,
+  timezone: number,
+  timeZoneId?: string,
+): SolarNoonEvent[] {
+  const start = new Date(dayStartUtcTimestamp);
+  const firstUtcMidnight = Date.UTC(
+    start.getUTCFullYear(),
+    start.getUTCMonth(),
+    start.getUTCDate() - 1,
+  );
+  const events: SolarNoonEvent[] = [];
+  for (
+    let midnight = firstUtcMidnight;
+    midnight < dayEndUtcTimestamp + DAY_MS;
+    midnight += DAY_MS
+  ) {
+    // NOAA 的真太阳时在上中天为 720 分钟；直接按 UTC 日求根，避免回拨日依赖参考时刻的偏移。
+    let timestamp =
+      midnight +
+      (720 - 4 * longitude - solarParameters(midnight + 12 * 3_600_000).equationOfTimeMinutes) *
+        60_000;
+    for (let iteration = 0; iteration < 3; iteration += 1) {
+      timestamp =
+        midnight +
+        (720 - 4 * longitude - solarParameters(timestamp).equationOfTimeMinutes) * 60_000;
+    }
+    if (timestamp < dayStartUtcTimestamp || timestamp >= dayEndUtcTimestamp) continue;
+    const utcTimestamp = Math.round(timestamp);
+    const utcOffsetHours = timeZoneId
+      ? getHistoricalTimezoneOffsetAt(new Date(utcTimestamp), timeZoneId)
+      : timezone;
+    events.push({
+      utcTimestamp,
+      utcDateTime: new Date(utcTimestamp).toISOString(),
+      localDateTime: formatLocalTimestamp(utcTimestamp, timezone, timeZoneId),
+      utcOffset: formatFixedTimezoneOffset(utcOffsetHours),
+    });
+  }
+  return events.sort((left, right) => left.utcTimestamp - right.utcTimestamp);
 }
 
 function formatTimezoneContext(timezone: number, timeZoneId?: string) {
@@ -408,6 +462,34 @@ export function calculateSolarIlluminationEvidence(
     720 - 4 * input.longitude - daily.equationOfTimeMinutes + timezone * 60,
   );
   const solarNoonTimestamp = nominalMidnightUtcTimestamp + solarNoonMinutes * 60_000;
+  const apparentSolarNoonEvents = findSolarNoonEvents(
+    localMidnightUtcTimestamp,
+    localDayEndUtcTimestamp,
+    input.longitude,
+    timezone,
+    timeZoneId,
+  );
+  const selectedSolarNoon = apparentSolarNoonEvents.reduce<SolarNoonEvent | undefined>(
+    (closest, event) =>
+      !closest ||
+      Math.abs(event.utcTimestamp - referenceTimestamp) <
+        Math.abs(closest.utcTimestamp - referenceTimestamp)
+        ? event
+        : closest,
+    undefined,
+  );
+  const selectedSolarNoonTimestamp = selectedSolarNoon?.utcTimestamp ?? solarNoonTimestamp;
+  const showSolarNoonOffsets =
+    new Set(apparentSolarNoonEvents.map((event) => event.utcOffset)).size > 1;
+  const solarNoonText = apparentSolarNoonEvents.length
+    ? apparentSolarNoonEvents
+        .map((event) =>
+          showSolarNoonOffsets
+            ? `${event.localDateTime}（UTC${event.utcOffset}）`
+            : event.localDateTime,
+        )
+        .join('、')
+    : '当日无上中天交点';
   const eventArgs = [
     input.latitude,
     input.longitude,
@@ -486,14 +568,15 @@ export function calculateSolarIlluminationEvidence(
         timezone,
       },
       result: {
-        apparentSolarNoonUtcDateTime: new Date(solarNoonTimestamp).toISOString(),
+        apparentSolarNoonUtcDateTime: new Date(selectedSolarNoonTimestamp).toISOString(),
         apparentSolarNoonLocalDateTime: formatLocalTimestamp(
-          solarNoonTimestamp,
+          selectedSolarNoonTimestamp,
           timezone,
           timeZoneId,
         ),
+        apparentSolarNoonCount: apparentSolarNoonEvents.length,
       },
-      promptText: `按经度、时区与时间方程求视太阳正午：当地${formatLocalTimestamp(solarNoonTimestamp, timezone, timeZoneId)}`,
+      promptText: `按经度与时间方程求该民用日的视太阳正午：${solarNoonText}`,
       sources: [...CROSSING_SOURCES],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -644,8 +727,13 @@ export function calculateSolarIlluminationEvidence(
     solarAzimuthDegrees: Number(solarAzimuthDegrees.toFixed(4)),
     solarDeclinationDegrees: Number(radiansToDegrees(reference.declinationRadians).toFixed(6)),
     equationOfTimeMinutes: Number(reference.equationOfTimeMinutes.toFixed(4)),
-    apparentSolarNoonUtcDateTime: new Date(solarNoonTimestamp).toISOString(),
-    apparentSolarNoonLocalDateTime: formatLocalTimestamp(solarNoonTimestamp, timezone, timeZoneId),
+    apparentSolarNoonEvents,
+    apparentSolarNoonUtcDateTime: new Date(selectedSolarNoonTimestamp).toISOString(),
+    apparentSolarNoonLocalDateTime: formatLocalTimestamp(
+      selectedSolarNoonTimestamp,
+      timezone,
+      timeZoneId,
+    ),
     astronomicalTime,
     sunriseSunset,
     civilTwilight,
@@ -661,6 +749,6 @@ export function calculateSolarIlluminationEvidence(
     summaryFact,
     limitations,
     limitationFacts,
-    promptText: `太阳光照证据：${localDate}，纬度${input.latitude}°、经度${input.longitude}°，参考当地时间${astronomicalTime.localDateTime}太阳高度${solarAltitudeDegrees.toFixed(2)}°、方位角${solarAzimuthDegrees.toFixed(2)}°（真北起顺时针），视太阳正午${formatLocalTimestamp(solarNoonTimestamp, timezone, timeZoneId)}；计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}；${crossings.map(formatCrossing).join('；')}。交点汇总：${crossingSummaryFact.promptText}。证据汇总：${summaryFact.promptText}。方法：${method}。来源：${source}。假设：${assumptions.join('；')}。限制：${limitations.join('；')}`,
+    promptText: `太阳光照证据：${localDate}，纬度${input.latitude}°、经度${input.longitude}°，参考当地时间${astronomicalTime.localDateTime}太阳高度${solarAltitudeDegrees.toFixed(2)}°、方位角${solarAzimuthDegrees.toFixed(2)}°（真北起顺时针）；计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}；${crossings.map(formatCrossing).join('；')}。交点汇总：${crossingSummaryFact.promptText}。证据汇总：${summaryFact.promptText}。方法：${method}。来源：${source}。假设：${assumptions.join('；')}。限制：${limitations.join('；')}`,
   };
 }

@@ -67,6 +67,11 @@ test('北京夏至应给出可复核的日出日落、太阳高度与曙暮光',
   assert.ok(evidence.solarAzimuthDegrees > 160 && evidence.solarAzimuthDegrees < 180);
   assert.equal(evidence.sunriseSunset.status, '正常交点');
   assert.equal(evidence.sunriseSunset.crossings.length, 2);
+  assert.equal(evidence.apparentSolarNoonEvents.length, 1);
+  assert.equal(
+    evidence.apparentSolarNoonEvents[0].utcDateTime,
+    evidence.apparentSolarNoonUtcDateTime,
+  );
   assert.doesNotMatch(evidence.sunriseSunset.promptText, /UTC[+-]\d\d:\d\d|\d{4}-\d\d-\d\dT\d\d:/);
   assert.match(evidence.sunriseSunset.morningLocalDateTime ?? '', /2024-06-21 04:4\d:/);
   assert.match(evidence.sunriseSunset.eveningLocalDateTime ?? '', /2024-06-21 19:4\d:/);
@@ -152,10 +157,12 @@ test('高纬冬夏应明确表达极夜无日出和极昼无日落', () => {
   });
 
   assert.equal(winter.sunriseSunset.status, '全天低于阈值');
+  assert.equal(winter.apparentSolarNoonEvents.length, 1);
   assert.deepEqual(winter.sunriseSunset.crossings, []);
   assert.equal(winter.sunriseSunset.morningUtcDateTime, null);
   assert.match(winter.sunriseSunset.calculation, /全天低于阈值/);
   assert.equal(summer.sunriseSunset.status, '全天高于阈值');
+  assert.equal(summer.apparentSolarNoonEvents.length, 1);
   assert.deepEqual(summer.sunriseSunset.crossings, []);
   assert.equal(summer.civilTwilight.status, '全天高于阈值');
   assert.match(summer.sunriseSunset.calculation, /全天高于阈值/);
@@ -284,6 +291,23 @@ test('重历民用日保留47小时内四个完整升落交点及各自历史偏
     47,
   );
   assert.deepEqual(first.sunriseSunset.crossings, events);
+  assert.deepEqual(first.apparentSolarNoonEvents, second.apparentSolarNoonEvents);
+  assert.equal(first.apparentSolarNoonEvents.length, 2);
+  assert.deepEqual(
+    first.apparentSolarNoonEvents.map((event) => event.utcOffset),
+    ['+11:00', '-12:00'],
+  );
+  assert.ok(
+    first.apparentSolarNoonEvents[0].utcTimestamp > events[0].utcTimestamp &&
+      first.apparentSolarNoonEvents[0].utcTimestamp < events[1].utcTimestamp &&
+      first.apparentSolarNoonEvents[1].utcTimestamp > events[2].utcTimestamp &&
+      first.apparentSolarNoonEvents[1].utcTimestamp < events[3].utcTimestamp,
+  );
+  assert.equal(first.apparentSolarNoonUtcDateTime, first.apparentSolarNoonEvents[0].utcDateTime);
+  assert.equal(second.apparentSolarNoonUtcDateTime, second.apparentSolarNoonEvents[1].utcDateTime);
+  assert.match(first.promptText, /11:39:05（UTC\+11:00）.*12:38:45（UTC-12:00）/);
+  assert.equal(first.promptText.match(/1969-09-30 11:39:05（UTC\+11:00）/g)?.length, 1);
+  assert.equal(first.promptText.match(/1969-09-30 12:38:45（UTC-12:00）/g)?.length, 1);
   assert.deepEqual(
     events.map((event) => event.direction),
     ['上行', '下行', '上行', '下行'],

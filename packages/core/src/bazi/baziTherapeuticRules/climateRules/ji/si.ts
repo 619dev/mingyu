@@ -25,7 +25,7 @@ export const JI_SI_CLIMATE_RULES: ClimateRule[] = [
   },
   {
     id: 'si-month-ji-bing-gui-first',
-    label: '己日巳月先丙后癸规则',
+    label: '己日巳月先癸后丙规则',
     description: '己土生巳月，夏燥土焦，传统多以癸水润燥、丙火暖局，先后有序。',
     priority: 120,
     months: ['巳'],

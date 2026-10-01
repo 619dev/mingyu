@@ -7990,7 +7990,7 @@ const testCases: Array<{
         mode: 'reference',
         status: '满足',
         adopted: false,
-        order: ['水', '木'],
+        order: ['木', '火', '水'],
       },
     },
   },

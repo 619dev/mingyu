@@ -693,6 +693,8 @@ console.log(qizhengChart.positionSources); // 现代天文与传统均速来源�
 
 `qizhengChart.calculationContext.solarIllumination.sunriseSunset` 保存所在民用日的实际起止 UTC 时刻（`dayStartUtcDateTime`、`dayEndUtcDateTimeExclusive`，终点不含）及按时间排序的全部 `crossings`。每个交点包含上行或下行方向、UTC 时间戳与文本、当地时间和当时的 UTC 偏移；夏令时及日期线变更造成的短日、长日均按实际时段列出交点。原有 `morning*`、`evening*` 字段仍是各方向的首个交点；跳过的民用日没有可计算的结果，会报错。
 
+`solarIllumination.apparentSolarNoonEvents` 按 UTC 顺序列出该民用日的全部视太阳正午，每项包含 UTC 时间戳、UTC 文本、当地时间和事件发生时的偏移。日期线回拨形成的重历日可能有两次正午。原有 `apparentSolarNoonUtcDateTime`、`apparentSolarNoonLocalDateTime` 选择与参考瞬时最近的当日正午；没有当日事件时仍返回参考估计。需要完整事件列表的调用方应读取新数组。
+
 单独调用 `qizheng.evaluateQizhengEnNan` 时，可直接复用同一七政盘的日光照资料和本命星曜：
 
 ```typescript
@@ -729,6 +731,8 @@ const luckDir = buildLuckDirectionProfile('male', '庚'); // { direction:'顺行
 ```
 
 `analyzeTenGodStructure` 分别返回透干、藏支和合计次数；状态只标记“缺位、仅藏、透出、透藏并见”，不再用隐藏权重推断“有力”或“偏重”。
+
+调候月令基础规则及荐干顺序按《穷通宝鉴》对应月令校核，条件取用仍由条件分支表达。`analysis.usefulGod.decisionEvidence.climateCandidates` 中的基础规则继续以 `reference` 模式返回，作为调候参考，不自动替代扶抑决策。读取规则标识的调用方需注意：丙亥无条件规则 `hai-month-bing-wu-xin-first` 已删除；庚戌统一使用 `xu-month-geng-jia-ren`，原重复规则 `xu-month-geng-ding-jia-first` 已删除。
 
 ### 历法工具
 

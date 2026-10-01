@@ -482,7 +482,14 @@ function formatLiuyaoInfo(
     : null;
   return [
     '占法：六爻',
-    ...(data.generation?.method === 'yarrow' ? evidenceAnalysis.generationFacts : []),
+    ...(data.generation?.method === 'time'
+      ? [
+          `起卦时刻（UTC）：${new Date(data.timestamp).toISOString()}`,
+          ...evidenceAnalysis.generationFacts,
+        ]
+      : data.generation?.method === 'yarrow'
+        ? evidenceAnalysis.generationFacts
+        : []),
     `核心结构：主卦${data.originalName}${data.palace?.name ? `（${data.palace.name}宫）` : ''}；变卦${data.changingYaos.length ? data.changedName || '未列' : '无'}；互卦${data.interName || '无'}${data.specialPattern ? `；卦式${data.specialPattern}${formatLiuyaoSpecialAdvice(data) ? `：${formatLiuyaoSpecialAdvice(data)}` : ''}` : ''}`,
     coverageText,
     data.palaceStage ? `八宫卦位：${data.palaceStage}` : '',

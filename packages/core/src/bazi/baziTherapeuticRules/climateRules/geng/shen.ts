@@ -3,16 +3,15 @@ import type { ClimateRule } from '../../types';
 export const GENG_SHEN_CLIMATE_RULES: ClimateRule[] = [
   {
     id: 'shen-month-geng-jia-bing-first',
-    label: '庚日申月丁甲丙先庚规则',
-    description:
-      '庚金生申月，秋金得令，传统多先丁火锻炼，次甲木裁抑，丙火为佐，较一般秋金喜水更合原法。',
+    label: '庚日申月丁煅甲引规则',
+    description: '庚金生申月，金刚锐，专用丁火煅炼，次取甲木引丁。',
     priority: 120,
     months: ['申'],
     dayMasters: ['金'],
     dayStems: ['庚'],
     usefulWuxing: '火',
     favorableOrder: ['火', '木'],
-    hint: '庚金申月，先丁次甲，丙火为佐',
+    hint: '庚金申月，丁火煅炼，甲木引丁',
   },
   {
     id: 'shen-month-geng-ding-jia-visible',

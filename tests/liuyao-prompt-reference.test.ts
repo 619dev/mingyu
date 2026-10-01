@@ -3,6 +3,35 @@ import test from 'node:test';
 import { generateLiuyao } from 'mingyu-core/divination/liuyao';
 import { formatEnhancedDivinationInfo, getDivinationSummaryBlocks } from 'mingyu-core/prompt';
 import { formatEnhancedDivinationInfo as formatSourceLiuyaoPrompt } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { buildDivinationPrompt as buildSourceDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
+
+test('六爻时间起卦提示词保留精确占时与实际三钱计算样本', () => {
+  const dates = [
+    new Date('2026-05-19T10:30:01.234+08:00'),
+    new Date('2026-05-19T10:30:59.876+08:00'),
+  ];
+  const prompts = dates.map((date) => {
+    const data = generateLiuyao(date, { method: 'time' });
+    const prompt = buildSourceDivinationPrompt({ method: 'liuyao', data, currentTime: date });
+    return { data, date, prompt };
+  });
+
+  const displayedClockTimes = prompts.map(
+    ({ prompt }) => prompt.match(/【当前时间】\n([^\n]+)/u)?.[1],
+  );
+  assert.equal(displayedClockTimes[0], displayedClockTimes[1]);
+
+  for (const { data, date, prompt } of prompts) {
+    assert.ok(prompt.includes(`起卦时刻（UTC）：${date.toISOString()}`));
+    assert.ok(prompt.includes('起卦方式：时间起卦'));
+    assert.equal(data.generation?.method, 'time');
+    const coinThrows = data.generation?.coinThrows ?? [];
+    assert.equal(coinThrows.length, 6);
+    for (const [index, item] of coinThrows.entries()) {
+      assert.ok(prompt.includes(`第${index + 1}爻计算样本：${item.coins.join('+')}=${item.total}`));
+    }
+  }
+});
 
 test('六爻静卦不把未变化的本卦写成变卦', () => {
   const staticData = generateLiuyao(new Date('2025-01-01T08:00:00+08:00'), {
