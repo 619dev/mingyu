@@ -169,7 +169,7 @@ function buildDivinationAiPrompt(options: {
   chartText: string;
   data: DivinationData;
 }) {
-  if (options.method === 'ssgw') {
+  if (options.method === 'ssgw' || options.method === 'zhuge' || options.method === 'kongming') {
     return buildDivinationPromptDocument({
       method: options.method,
       data: options.data,

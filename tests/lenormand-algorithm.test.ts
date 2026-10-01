@@ -417,21 +417,64 @@ test('雷诺曼非时间牌阵按牌位并列合读，三牌事件线保留先�
   assert.match(eventLine.combinations?.[0]?.meaning ?? '', /前后相接，先按[\s\S]*再看/u);
 });
 
-test('雷诺曼在线提示词使用重算后的关系牌阵组合事实', () => {
+test('雷诺曼在线任务书保留关系牌阵完整牌位事实与并列组合口径', () => {
   const session = generateDivinationSession({
     method: 'lenormand',
     question: '我和对方目前的关系如何？',
     currentTime: new Date('2026-09-28T00:00:00+08:00'),
     lenormand: { spread: 'relationship', manualCardIds: [1, 2, 3, 4, 5] },
   });
-  const first = session.data.combinations?.[0];
-  assert.equal(first?.position1, '你的状态');
-  assert.equal(first?.position2, '对方状态');
-  assert.match(
-    session.aiPrompt,
-    /相邻合读 骑士\+三叶草：相邻牌骑士\+三叶草通过你的状态与对方状态的牌序相邻形成消息、到来、进展、机会、短暂好运、轻松的合读范围/u,
+  assert.equal(session.data.spreadName, '关系牌阵');
+  assert.deepEqual(
+    session.data.combinations?.map((item) => [
+      item.position1,
+      item.card1,
+      item.position2,
+      item.card2,
+      item.relation,
+    ]),
+    [
+      ['你的状态', '骑士', '对方状态', '三叶草', '牌序相邻'],
+      ['对方状态', '三叶草', '关系纽带', '船', '牌序相邻'],
+      ['关系纽带', '船', '隐藏因素', '房子', '牌序相邻'],
+      ['隐藏因素', '房子', '后续走向', '树', '牌序相邻'],
+    ],
   );
+  assert.ok(
+    session.data.combinations?.every(
+      (item) =>
+        item.source === '相邻牌义合读' &&
+        item.meaning.includes('牌序相邻的两组线索，可按各自牌位并读') &&
+        !/前后相接|先按|再看/u.test(item.meaning),
+    ),
+  );
+  assert.match(session.aiPrompt, /核心结构：牌阵关系牌阵；共5张牌/u);
+  assert.match(session.aiPrompt, /牌位明细：/u);
+  for (const cardLine of [
+    '你的状态：骑士；关键词：消息、到来、进展；基础牌义：传统单牌骑士以消息、到来、进展为解释范围',
+    '对方状态：三叶草；关键词：机会、短暂好运、轻松；基础牌义：传统单牌三叶草以机会、短暂好运、轻松为解释范围',
+    '关系纽带：船；关键词：远方、变化、出行；基础牌义：传统单牌船以远方、变化、出行为解释范围',
+    '隐藏因素：房子；关键词：家庭、稳定、根基；基础牌义：传统单牌房子以家庭、稳定、根基为解释范围',
+    '后续走向：树；关键词：成长、健康、长期；基础牌义：传统单牌树以成长、健康、长期为解释范围',
+  ]) {
+    assert.ok(session.aiPrompt.includes(`  ${cardLine}`), `任务书应完整保留牌位事实：${cardLine}`);
+  }
+  assert.match(session.aiPrompt, /按实际牌序、布局语法、邻牌关系/u);
+  assert.doesNotMatch(session.aiPrompt, /^相邻合读\s/u);
+  assert.doesNotMatch(session.aiPrompt, /骑士\+三叶草/u);
   assert.doesNotMatch(session.aiPrompt, /前后相接|先按|再看/u);
+
+  const fixedCombinationSession = generateDivinationSession({
+    method: 'lenormand',
+    question: '我和对方目前的关系如何？',
+    currentTime: new Date('2026-09-28T00:00:00+08:00'),
+    lenormand: { spread: 'relationship', manualCardIds: [24, 25, 1, 2, 3] },
+  });
+  assert.equal(fixedCombinationSession.data.combinations?.[0]?.source, '固定组合');
+  assert.equal(fixedCombinationSession.data.combinations?.[0]?.card1, '心');
+  assert.equal(fixedCombinationSession.data.combinations?.[0]?.card2, '戒指');
+  assert.match(fixedCombinationSession.aiPrompt, /固定组合：\n  心\+戒指：传统固定组合/u);
+  assert.match(fixedCombinationSession.aiPrompt, /关系承诺、契约或婚约议题/u);
 });
 
 test('雷诺曼关系牌阵旧版组合文案可核验并在证据输出中重算', () => {
