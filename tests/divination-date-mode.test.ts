@@ -123,6 +123,44 @@ test('四柱时间模式必须保留秒、使用北京时间并把候选区间�
   assert.doesNotMatch(session.prompt, /真太阳时/);
 });
 
+test('六种时间起局在真太阳时跨晚子时保留原秒、校正秒与实际时柱', async () => {
+  const clockTimestamp = Date.parse('2025-02-01T23:13:42+08:00');
+  const correctedTimestamp = Date.parse('2025-02-01T23:00:01+08:00');
+  for (const method of [
+    'liuyao',
+    'meihua',
+    'xiaoliuren',
+    'jinkoujue',
+    'qimen',
+    'liuren',
+  ] as const) {
+    const session = await generateDivinationSession(
+      buildDraft({
+        method,
+        divinationTimeMode: 'custom',
+        customDivinationDate: '2025-02-01',
+        customDivinationTime: '23:13:42',
+        divinationTimeStandard: 'true-solar',
+        birthPlace: '测试地点',
+        birthLongitude: '120',
+      }),
+    );
+    const data = session.data as {
+      timestamp: number;
+      ganzhi: { day: string; hour: string };
+    };
+    assert.equal(session.timeContext?.clockDateTime, '2025-02-01T23:13:42', method);
+    assert.equal(session.timeContext?.effectiveDateTime, '2025-02-01T23:00:01', method);
+    assert.equal(Date.parse(`${session.timeContext?.clockDateTime}+08:00`), clockTimestamp, method);
+    assert.equal(data.timestamp, correctedTimestamp, method);
+    assert.equal(data.ganzhi.day, '壬寅', method);
+    assert.equal(data.ganzhi.hour, '庚子', method);
+    assert.match(session.prompt, /当地钟表时间：2025-02-01 23:13:42/u, method);
+    assert.match(session.prompt, /采用真太阳时：2025-02-01 23:00:01/u, method);
+    assert.match(session.prompt, /干支：甲辰年 丁丑月 壬寅日 庚子时/u, method);
+  }
+});
+
 test('四柱模式在来源失效后不能继续提交旧代表日期', async () => {
   await assert.rejects(
     generateDivinationSession(

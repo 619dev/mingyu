@@ -1096,9 +1096,8 @@ function formatCorrectionMinutes(value: number) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(1)} 分钟`;
 }
 
-function buildBeijingWallClockDateTime(date: Date, preserveSeconds = false) {
-  const parts = TimeManager.getWallClockParts(date);
-  return formatSolarDateTimeParts({ ...parts, second: preserveSeconds ? parts.second : 0 });
+function buildBeijingWallClockDateTime(date: Date) {
+  return formatSolarDateTimeParts(TimeManager.getWallClockParts(date));
 }
 
 function supportsTrueSolarTime(
@@ -1114,10 +1113,7 @@ function resolveDivinationTimeContext(
   baseDate: Date,
 ): { date: Date; context: DivinationTimeContext } {
   const isBaziReverseTime = draft.divinationTimeMode === 'pillars';
-  const clockDateTime = buildBeijingWallClockDateTime(
-    baseDate,
-    isBaziReverseTime || method === 'taiyi',
-  );
+  const clockDateTime = buildBeijingWallClockDateTime(baseDate);
   if (
     isBaziReverseTime ||
     draft.divinationTimeStandard !== 'true-solar' ||

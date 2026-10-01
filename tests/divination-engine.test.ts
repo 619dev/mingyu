@@ -3997,19 +3997,46 @@ test('占卜时间格式化遇到无效时间戳时应明确报错，不得静�
   );
 });
 
-test('前端占卜草稿可把自定北京时间传给按时间起卦的方法', async () => {
+test('前端占卜草稿保留北京时间秒数与六爻时间起卦种子', async () => {
   const session = await generateDivinationSession(
     buildDraft({
       method: 'qimen',
       divinationTimeMode: 'custom',
       customDivinationDate: '2025-01-01',
-      customDivinationTime: '08:30',
+      customDivinationTime: '08:30:42',
     }),
   );
 
   assert.equal(session.method, 'qimen');
-  assert.equal(session.data.timestamp, new Date('2025-01-01T08:30:00+08:00').getTime());
+  assert.equal(session.timeContext?.clockDateTime, '2025-01-01T08:30:42');
+  assert.equal(session.data.timestamp, new Date('2025-01-01T08:30:42+08:00').getTime());
   assert.match(session.prompt, /2025年1月1日 8时30分/);
+  assert.match(session.prompt, /采用时间：2025-01-01 08:30:42/u);
+
+  const atMinute = await generateDivinationSession(
+    buildDraft({
+      method: 'liuyao',
+      liuyaoMethod: 'time',
+      divinationTimeMode: 'custom',
+      customDivinationDate: '2025-01-01',
+      customDivinationTime: '08:30:00',
+    }),
+  );
+  const atSecond = await generateDivinationSession(
+    buildDraft({
+      method: 'liuyao',
+      liuyaoMethod: 'time',
+      divinationTimeMode: 'custom',
+      customDivinationDate: '2025-01-01',
+      customDivinationTime: '08:30:42',
+    }),
+  );
+  const minuteData = atMinute.data as ReturnType<typeof generateLiuyao>;
+  const secondData = atSecond.data as ReturnType<typeof generateLiuyao>;
+  assert.equal(secondData.timestamp, new Date('2025-01-01T08:30:42+08:00').getTime());
+  assert.deepEqual(minuteData.yaoArray, [6, 8, 9, 7, 8, 7]);
+  assert.deepEqual(secondData.yaoArray, [9, 7, 8, 6, 7, 8]);
+  assert.match(atSecond.prompt, /采用时间：2025-01-01 08:30:42/u);
 });
 
 test('按时间起局的占问应使用地点经度校正真太阳时并写入提示词', async () => {

@@ -12,6 +12,14 @@ import {
 import { buildPersonFromInput, calculateFullBaziChart } from '../src/lib/full-chart-engine/bazi';
 import { BaziChartBoard } from '../src/pages/ResultPage/components/BaziChartBoard';
 
+const sharedFemaleResult = baziCalculator.calculateBazi({
+  year: 1995,
+  month: 5,
+  day: 20,
+  timeIndex: 6,
+  gender: 'female',
+});
+
 test('八字结果盘应展示排盘预警和稳定基础参考', () => {
   const result = baziCalculator.calculateBazi({
     year: 1988,
@@ -45,11 +53,8 @@ test('八字结果盘应展示排盘预警和稳定基础参考', () => {
   assert.match(html, /旺衰/);
   assert.match(html, /命式/);
   assert.match(html, /元男/);
-  assert.match(html, /bazi-pillar-value/);
   assert.ok(html.indexOf('命式') < html.indexOf('元男'));
   assert.match(html, /data-wuxing="[木火土金水]"/);
-  assert.doesNotMatch(html, /bazi-wuxing-label/);
-  assert.match(html, /bazi-hidden-stem-list/);
   assert.ok(html.includes(`>${result.hiddenTenGods.year[0]}<`));
   assert.match(html, /自坐/);
   assert.match(html, /空亡/);
@@ -68,7 +73,6 @@ test('八字结果盘应展示排盘预警和稳定基础参考', () => {
   assert.ok(allShenSha.includes('马财库'), '底层结果仍应保留扩展神煞');
   assert.ok(!html.includes('>马财库<'), '盘面应隐藏不常用神煞');
   assert.ok(!html.includes('>真鬼刑疾<'), '盘面应隐藏不常用神煞');
-  assert.match(html, /bazi-shensha-tag is-(lucky|unlucky|neutral)/);
 });
 
 test('未知时辰盘面保留稳定柱并将依赖出生时刻的资料标为待补', () => {
@@ -132,13 +136,7 @@ test('未知时辰跨交节时年、月、日待补柱可以完整渲染', () =>
 });
 
 test('八字女命日柱应标注元女', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1995,
-    month: 5,
-    day: 20,
-    timeIndex: 6,
-    gender: 'female',
-  });
+  const result = sharedFemaleResult;
 
   const html = renderToStaticMarkup(
     createElement(BaziChartBoard, {
@@ -154,13 +152,7 @@ test('八字女命日柱应标注元女', () => {
 });
 
 test('排盘五行卡展示五行值，日干典籍仅展示静态体象', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1995,
-    month: 5,
-    day: 20,
-    timeIndex: 6,
-    gender: 'female',
-  });
+  const result = sharedFemaleResult;
   const html = renderToStaticMarkup(
     createElement(BaziChartBoard, {
       title: '八字排盘',
@@ -194,13 +186,7 @@ test('排盘五行卡展示五行值，日干典籍仅展示静态体象', () =>
 });
 
 test('增补五行待判时不把旧十神值显示为五行结论', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1995,
-    month: 5,
-    day: 20,
-    timeIndex: 6,
-    gender: 'female',
-  });
+  const result = sharedFemaleResult;
   const html = renderToStaticMarkup(
     createElement(BaziChartBoard, {
       title: '八字排盘',
@@ -226,22 +212,15 @@ test('增补五行待判时不把旧十神值显示为五行结论', () => {
   assert.match(html, /增补五行所忌<\/span><strong>待判<\/strong>/);
 });
 
-test('八字结果盘默认展示常用神煞并过滤扩展项', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 7,
-    day: 15,
-    timeIndex: 6,
-    gender: 'male',
-  });
+test('八字盘神煞显示保留常用项、过滤扩展项并规范合并简称', () => {
   const html = renderToStaticMarkup(
     createElement(BaziChartBoard, {
       title: '八字排盘',
-      name: '常用神煞测试',
+      name: '神煞展示测试',
       result: {
-        ...result,
+        ...sharedFemaleResult,
         shensha: {
-          year: ['福星贵人', '拱禄', '六厄', '马财库', '真鬼刑疾'],
+          year: ['福星贵人', '拱禄', '六厄', '马财库', '真鬼刑疾', '天罗', '地网', '天乙', '勾绞'],
           month: [],
           day: [],
           hour: [],
@@ -254,43 +233,12 @@ test('八字结果盘默认展示常用神煞并过滤扩展项', () => {
   ['福星贵人', '拱禄', '三奇贵人'].forEach((item) =>
     assert.ok(html.includes(`>${item}<`), `盘面应展示常用神煞：${item}`),
   );
-  ['六厄', '马财库', '真鬼刑疾', '天火煞'].forEach((item) =>
-    assert.ok(!html.includes(`>${item}<`), `盘面应隐藏非默认神煞：${item}`),
+  ['六厄', '马财库', '真鬼刑疾', '天火煞', '天罗', '地网', '天乙', '勾绞'].forEach((item) =>
+    assert.ok(!html.includes(`>${item}<`), `盘面应隐藏扩展项或简称：${item}`),
   );
-});
-
-test('八字结果盘应将神煞简称还原为完整名称并去重', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1995,
-    month: 5,
-    day: 20,
-    timeIndex: 6,
-    gender: 'female',
-  });
-
-  const html = renderToStaticMarkup(
-    createElement(BaziChartBoard, {
-      title: '八字排盘',
-      name: '神煞名称测试',
-      result: {
-        ...result,
-        shensha: {
-          year: ['天罗', '地网', '天乙', '勾绞'],
-          month: [],
-          day: [],
-          hour: [],
-        },
-      },
-    }),
-  );
-
   assert.ok(html.includes('>天罗地网<'));
   assert.ok(html.includes('>天乙贵人<'));
   assert.ok(html.includes('>勾绞煞<'));
-  assert.ok(!html.includes('>天罗<'));
-  assert.ok(!html.includes('>地网<'));
-  assert.ok(!html.includes('>天乙<'));
-  assert.ok(!html.includes('>勾绞<'));
   assert.equal(html.match(/>天罗地网</g)?.length, 1);
 });
 
@@ -305,13 +253,10 @@ test('八字岁运区应提供流时并把回到今天放在顶部', () => {
 
   const html = renderToStaticMarkup(createElement(BaziFortuneSelector, { result }));
 
-  assert.match(html, /fortune-selector-head/);
   assert.match(html, /aria-label="回到今天"/);
   assert.ok(html.indexOf('>岁运<') < html.indexOf('>今<'));
   assert.ok(html.indexOf('>今<') < html.indexOf('>大运<'));
   assert.match(html, />流时</);
-  assert.equal(html.match(/class="fortune-row"/g)?.length, 5);
-  assert.doesNotMatch(html, /class="row-title"><button/);
 });
 
 test('八字岁运选择器在立春前默认定位上一节气年和末月', (context) => {

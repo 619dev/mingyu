@@ -126,7 +126,7 @@ test('逐秒排盘保留规则偏好并冻结批次口径，合参沿用同一�
   assert.equal(sample.ziwei!.payloadByScope.origin.calculation_config.fix_leap, true);
 });
 
-test('出生区间默认逐秒分页、可按 nextIndex 续取末尾且不返回代表盘', async () => {
+test('出生区间逐秒分页与单点资料一致，保留秒级证据和起运变化', async () => {
   const first = asRangeBundle(await calculateBirthChartBundle(PROFILE, { systems: ['bazi'] }));
 
   assert.deepEqual(first.systems, ['bazi']);
@@ -173,17 +173,8 @@ test('出生区间默认逐秒分页、可按 nextIndex 续取末尾且不返回
     samples[0]!.bundle.bazi?.pillars.hour.ganZhi,
     samples[1]!.bundle.bazi?.pillars.hour.ganZhi,
   );
-});
 
-test('每秒出生结果与对应单点重算一致，并保留秒级证据和起运变化', async () => {
-  const range = asRangeBundle(
-    await calculateBirthChartBundle(PROFILE, {
-      systems: ['bazi'],
-      rangeBatch: { limit: 3 },
-    }),
-  );
-
-  for (const sample of range.range.samples) {
+  for (const sample of samples) {
     const point = await calculateBirthChartBundle(sample.bundle.profile, { systems: ['bazi'] });
     if (point.range) throw new Error('单点档案不应返回出生区间结果。');
 
@@ -200,8 +191,8 @@ test('每秒出生结果与对应单点重算一致，并保留秒级证据和�
     );
   }
 
-  const firstStart = range.range.samples[1]!.bundle.bazi!.luckInfo.cycles[0]?.startSolarTime;
-  const secondStart = range.range.samples[2]!.bundle.bazi!.luckInfo.cycles[0]?.startSolarTime;
+  const firstStart = samples[1]!.bundle.bazi!.luckInfo.cycles[0]?.startSolarTime;
+  const secondStart = samples[2]!.bundle.bazi!.luckInfo.cycles[0]?.startSolarTime;
   assert.ok(firstStart);
   assert.ok(secondStart);
   assert.notEqual(solarTimestamp(firstStart), solarTimestamp(secondStart));
