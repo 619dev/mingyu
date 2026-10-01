@@ -195,7 +195,9 @@ export function buildLuRules(ctx: RuleContext): ShenShaRuleMap {
   const riYiMa = getYiMa(riZhi);
   const forwardBranch = (branch: string, offset: number) => {
     const index = zhiIdx(branch);
-    return index < 0 ? '' : cdz[(index + offset) % cdz.length];
+    if (index < 0) return '';
+    const wrappedIndex = (((index + offset) % cdz.length) + cdz.length) % cdz.length;
+    return cdz[wrappedIndex];
   };
   const mingWeiMaPillar = (stem: string, yiMaBranch: string) =>
     `${FOOD_GOD_BY_STEM[stem] ?? ''}${yiMaBranch}`;

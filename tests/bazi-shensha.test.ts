@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
 import {
   COMMON_BAZI_SHENSHA_NAMES,
   filterCommonBaziShenSha,
   ShenShaCalculator as CoreShenShaCalculator,
 } from '../packages/core/src/bazi/baziShenSha';
+import { formatBaziForPrompt } from '../packages/core/src/bazi/baziAnalysisFormatter';
 import { ShenShaCalculator as AppShenShaCalculator } from '@core/bazi/baziShenSha';
 
 class ShenShaCalculator extends AppShenShaCalculator {
@@ -1325,6 +1327,41 @@ test('五行精纪命天庭禄九天禄九地应按命前与禄后定支取用',
         .flat()
         .some((name) => ['命天庭', '禄九天', '禄九地'].includes(name)),
     );
+  }
+});
+
+test('癸干禄位逆数跨子支仍命中禄九地、禄九天和离祖杀', () => {
+  const samples = [
+    { timeIndex: 10, hourPillar: '壬戌', shenSha: ['禄九地'] },
+    { timeIndex: 11, hourPillar: '癸亥', shenSha: ['禄九天', '离祖杀'] },
+  ] as const;
+
+  for (const sample of samples) {
+    const chart = baziCalculator.calculateBazi({
+      year: 2024,
+      month: 1,
+      day: 10,
+      timeIndex: sample.timeIndex,
+      gender: 'male',
+      shenShaScope: 'all',
+    });
+
+    assert.equal(chart.pillars.year.ganZhi, '癸卯');
+    assert.equal(chart.pillars.day.ganZhi, '癸酉');
+    assert.equal(chart.pillars.hour.ganZhi, sample.hourPillar);
+    for (const name of sample.shenSha) {
+      assert.ok(chart.shensha.hour.includes(name), `${sample.hourPillar} 应列出${name}`);
+    }
+
+    const promptLines = formatBaziForPrompt(chart).split('\n');
+    const hourLineIndex = promptLines.findIndex((line) =>
+      line.startsWith(`时柱: ${sample.hourPillar}`),
+    );
+    assert.notEqual(hourLineIndex, -1);
+    const hourFacts = promptLines.slice(hourLineIndex + 1, hourLineIndex + 5).join('\n');
+    for (const name of sample.shenSha) {
+      assert.ok(hourFacts.includes(name), `提示词时柱事实应列出${name}`);
+    }
   }
 });
 

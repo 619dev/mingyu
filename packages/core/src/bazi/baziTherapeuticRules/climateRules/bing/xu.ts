@@ -31,17 +31,18 @@ export const BING_XU_CLIMATE_RULES: ClimateRule[] = [
     id: 'xu-month-bing-geng-wu-trap-jia-ren',
     label: '丙日戌月庚戊困木水庸才规则',
     description:
-      '丙火生戌月，若甲木壬癸本可为用，却又见庚戊同透困其水木，传统多断庸才，不宜仍按甲壬并透上格直断。',
+      '丙火生戌月，若局中有甲木与壬癸水，又见庚戊同透困其水木，传统多断庸才，不宜仍按甲壬并透上格直断。',
     priority: 124,
     months: ['戌'],
     dayMasters: ['火'],
     dayStems: ['丙'],
-    requiredVisibleStems: ['庚', '戊', '甲'],
+    requiredVisibleStems: ['庚', '戊'],
+    minStemTotalCounts: { 甲: 1 },
     distinctStemGroupCounts: [
       {
         stems: ['壬', '癸'],
         minDistinctCount: 1,
-        scope: 'visible',
+        scope: 'total',
       },
     ],
     usefulWuxing: '木',

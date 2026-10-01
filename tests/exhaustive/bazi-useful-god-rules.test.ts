@@ -1965,7 +1965,7 @@ const testCases: Array<{
     expected: { ruleNotHas: 'xu-month-bing-hidden-ren-gui-page' },
   },
   {
-    name: '调候候选分层：xu-month-bing-geng-wu-trap-jia-ren（满足，reference，不覆盖扶抑基线，场景1）',
+    name: '丙日戌月庚戊明透、水木透藏时仅作调候参考',
     args: [
       '身强',
       { pattern: '食神格', isSpecial: false },
@@ -1974,7 +1974,8 @@ const testCases: Array<{
       undefined,
       '丙',
       {
-        visibleStems: ['丙', '甲', '壬', '庚', '戊'],
+        visibleStems: ['壬', '庚', '丙', '戊'],
+        hiddenStems: ['戊', '辛', '丁', '戊', '辛', '丁', '甲', '丙', '戊', '癸'],
         wuxingCounts: { 木: 1, 火: 1, 土: 3, 金: 1, 水: 2 },
       },
     ],
@@ -2003,6 +2004,7 @@ const testCases: Array<{
       '丙',
       {
         visibleStems: ['丙', '甲', '庚', '戊'],
+        hiddenStems: [],
         wuxingCounts: { 木: 1, 火: 1, 土: 3, 金: 1, 水: 0 },
       },
     ],
