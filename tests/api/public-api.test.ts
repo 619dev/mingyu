@@ -6998,6 +6998,86 @@ test('公开 API 太乙应支持月日时四计', async () => {
   }
 });
 
+test('公开 API 太乙阴遁局式与完整任务书共用主客算、宫目和将参事实', async () => {
+  for (const example of [
+    {
+      input: { year: 2026, month: 6, day: 27, hour: 16, minute: 30 },
+      instant: '2026-06-27T08:30:00.000Z',
+      bureau: 33,
+      wenChangPosition: '子',
+      shiJiPosition: '艮',
+      lordCount: 26,
+      guestCount: 38,
+      lordGeneral: 6,
+      lordAssistant: 8,
+      guestGeneral: 8,
+      guestAssistant: 4,
+    },
+    {
+      input: { year: 2026, month: 6, day: 30, hour: 22, minute: 30 },
+      instant: '2026-06-30T14:30:00.000Z',
+      bureau: 72,
+      wenChangPosition: '艮',
+      shiJiPosition: '亥',
+      lordCount: 31,
+      guestCount: 25,
+      lordGeneral: 1,
+      lordAssistant: 3,
+      guestGeneral: 5,
+      guestAssistant: 5,
+    },
+  ] as const) {
+    const input = { scope: 'hour', ...example.input };
+    const calculated = await callApi('metaphysics/taiyi/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    const prompted = await callApi('metaphysics/taiyi/prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, responseMode: 'full' }),
+    });
+    assert.equal(calculated.response.status, 200, example.instant);
+    assert.equal(prompted.response.status, 200, example.instant);
+    for (const result of [calculated.body.data, prompted.body.data.result]) {
+      assert.equal(result.yinYang, '阴遁');
+      for (const key of [
+        'bureau',
+        'wenChangPosition',
+        'shiJiPosition',
+        'lordCount',
+        'guestCount',
+        'lordGeneral',
+        'lordAssistant',
+        'guestGeneral',
+        'guestAssistant',
+      ] as const) {
+        assert.equal(result[key], example[key], `${example.instant}:${key}`);
+      }
+    }
+    const prompt = prompted.body.data.prompt as string;
+    assert.ok(prompt.includes(`文昌（主目）在${example.wenChangPosition}`));
+    assert.ok(prompt.includes(`始击（客目）在${example.shiJiPosition}`));
+    assert.ok(prompt.includes(`主算 ${example.lordCount}`));
+    assert.ok(prompt.includes(`客算 ${example.guestCount}`));
+    const generalLine = prompt.match(/将参：[^\n]+/u)?.[0];
+    assert.ok(generalLine, example.instant);
+    for (const [label, general] of [
+      ['主大将', example.lordGeneral],
+      ['主参将', example.lordAssistant],
+      ['客大将', example.guestGeneral],
+      ['客参将', example.guestAssistant],
+    ] as const) {
+      assert.ok(
+        generalLine.includes(`${label}${general === 5 ? '5中宫' : `${general}宫`}`),
+        `${example.instant}:${label}`,
+      );
+    }
+    assertPromptIsPortableTaskText(prompt);
+  }
+});
+
 test('公开 API 玄空飞星应返回真实下卦局型', async () => {
   const valid = await callApi('metaphysics/xuankong/calculate', {
     method: 'POST',

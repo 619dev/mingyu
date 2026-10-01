@@ -12,6 +12,7 @@ import type {
   MingluTOCItem,
 } from './types';
 import type { Wuxing } from '../bazi';
+import { SolarDay } from 'tyme4ts';
 import {
   buildBeginnerGuide,
   buildEnhancedFiveElementsSection,
@@ -206,32 +207,53 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
   // 6. 元数据组装
   const gender =
     baziResult.gender === 'male' || baziResult.gender === 'female' ? baziResult.gender : '';
+  const timing = baziResult.timing?.enabled ? baziResult.timing : undefined;
+  const birthClock = unknownTime ? undefined : (baziResult.birthClockTime ?? timing?.standardTime);
+  const birthSolarDay = birthClock
+    ? SolarDay.fromYmd(birthClock.year, birthClock.month, birthClock.day)
+    : undefined;
+  const birthLunarDay = birthSolarDay?.getLunarDay();
+  const showBirthSecond =
+    !unknownTime &&
+    (person.birthSecond !== undefined || (birthClock !== undefined && birthClock.second !== 0));
+  const correctedClock = timing?.correctedTime;
+  const correctedCrossesDate =
+    birthClock !== undefined &&
+    correctedClock !== undefined &&
+    (birthClock.year !== correctedClock.year ||
+      birthClock.month !== correctedClock.month ||
+      birthClock.day !== correctedClock.day);
   const metadata: MingluMetadata = {
     subjectName: person.name || '命主',
     gender,
     genderLabel: gender === 'male' ? '乾造 (男命)' : gender === 'female' ? '坤造 (女命)' : '未指定',
-    solarDateStr: `${baziResult.solarDate.year}年${baziResult.solarDate.month}月${baziResult.solarDate.day}日`,
-    lunarDateStr: `农历${baziResult.lunarDate.monthName}${baziResult.lunarDate.dayName}`,
+    solarDateStr: birthClock
+      ? `${birthClock.year}年${birthClock.month}月${birthClock.day}日`
+      : `${baziResult.solarDate.year}年${baziResult.solarDate.month}月${baziResult.solarDate.day}日`,
+    lunarDateStr: birthLunarDay
+      ? `农历${birthLunarDay.getLunarMonth().getName()}${birthLunarDay.getName()}`
+      : `农历${baziResult.lunarDate.monthName}${baziResult.lunarDate.dayName}`,
     shichenName: baziResult.timeInfo.name,
-    exactBirthTime:
-      person.birthHour !== undefined && person.birthMinute !== undefined
-        ? `${String(person.birthHour).padStart(2, '0')}:${String(person.birthMinute).padStart(2, '0')}${
-            person.birthSecond === undefined
-              ? ''
-              : `:${String(person.birthSecond).padStart(2, '0')}`
-          }`
-        : undefined,
-    ...(person.birthSecond === undefined ? {} : { birthSecond: person.birthSecond }),
-    birthPlace: person.birthPlace,
-    longitude: person.birthLongitude,
+    exactBirthTime: unknownTime
+      ? undefined
+      : birthClock
+        ? `${String(birthClock.hour).padStart(2, '0')}:${String(birthClock.minute).padStart(2, '0')}${showBirthSecond ? `:${String(birthClock.second).padStart(2, '0')}` : ''}`
+        : person.birthHour !== undefined && person.birthMinute !== undefined
+          ? `${String(person.birthHour).padStart(2, '0')}:${String(person.birthMinute).padStart(2, '0')}${
+              person.birthSecond === undefined
+                ? ''
+                : `:${String(person.birthSecond).padStart(2, '0')}`
+            }`
+          : undefined,
+    ...(showBirthSecond ? { birthSecond: birthClock?.second ?? person.birthSecond } : {}),
+    birthPlace: timing ? timing.birthPlace : person.birthPlace,
+    longitude: timing ? timing.birthLongitude : person.birthLongitude,
     latitude: person.birthLatitude,
-    timezone: person.timezone,
-    timeZoneId: person.timeZoneId,
-    isTrueSolarTime: person.useTrueSolarTime ?? false,
-    trueSolarTimeStr: baziResult.timing
-      ? `${baziResult.timing.correctedTime.hour}时${baziResult.timing.correctedTime.minute}分${
-          person.birthSecond === undefined ? '' : `${baziResult.timing.correctedTime.second}秒`
-        }`
+    timezone: timing ? timing.timezone : person.timezone,
+    timeZoneId: timing ? timing.timeZoneId : person.timeZoneId,
+    isTrueSolarTime: timing?.enabled === true,
+    trueSolarTimeStr: correctedClock
+      ? `${correctedCrossesDate ? `${correctedClock.year}年${correctedClock.month}月${correctedClock.day}日 ` : ''}${correctedClock.hour}时${correctedClock.minute}分${person.birthSecond !== undefined || correctedClock.second !== 0 ? `${correctedClock.second}秒` : ''}`
       : undefined,
     baziFourPillars: {
       year: baziResult.pillars.year.ganZhi || (unknownTime ? '待补时' : ''),
@@ -244,8 +266,18 @@ export function buildMingluArticle(options: BuildMingluOptions): MingluArticle {
       wuxing: (baziResult.dayMaster.element || (unknownTime ? '待补时' : '')) as Wuxing,
       yinYang: (baziResult.dayMaster.yinYang || (unknownTime ? '待补时' : '')) as '阴' | '阳',
     },
-    zodiac: baziResult.zodiac,
-    constellation: baziResult.constellation,
+    zodiac: birthLunarDay
+      ? birthLunarDay
+          .getLunarMonth()
+          .getLunarYear()
+          .getSixtyCycle()
+          .getEarthBranch()
+          .getZodiac()
+          .getName()
+      : baziResult.zodiac,
+    constellation: birthSolarDay
+      ? birthSolarDay.getConstellation().getName()
+      : baziResult.constellation,
     mingGua: baziResult.mingGua
       ? {
           gua: baziResult.mingGua.gua,

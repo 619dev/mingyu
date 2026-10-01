@@ -71,7 +71,6 @@ const CLASSIC_PATTERNS: ClassicPattern[] = [
       dayStems: ['甲', '丙', '戊', '庚', '壬'],
       monthBranch: ['卯', '午', '酉', '子'],
       exactMonthBranchMap: { 甲: '卯', 丙: '午', 戊: '午', 庚: '酉', 壬: '子' },
-      otherConditions: ['羊刃透出', '羊刃当令'],
       excludePatterns: ['从财格', '从杀格', '从儿格', '从势格'],
     },
     favorableWuxing: ['官', '杀'],

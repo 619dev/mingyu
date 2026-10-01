@@ -72,6 +72,15 @@ test('写明三支的三合三会条件只接受本局，不借别局冒认', ()
   assert.equal(checkCondition('亥子丑三会水局', '辛', metalMeeting, hidden), false);
 });
 
+test('未登记的羊刃透出和当令条件不由通用匹配器猜测成立', () => {
+  const pillars = makePillars(['甲辰', '丁卯', '甲戌', '甲子']);
+  const hidden: HiddenStems = { year: [], month: [], day: [], hour: [] };
+
+  assert.equal(checkCondition('羊刃透出', '甲', pillars, hidden), false);
+  assert.equal(checkCondition('羊刃当令', '甲', pillars, hidden), false);
+  assert.equal(checkCondition('当令', '甲', pillars, hidden), true);
+});
+
 test('庚日只有木局时不输出声称申子辰齐全的井栏叉候选', () => {
   const woodCombination = makePillars(['乙亥', '己卯', '庚戌', '癸未']);
   const waterCombination = makePillars(['甲申', '戊子', '庚辰', '癸丑']);

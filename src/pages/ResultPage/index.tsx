@@ -708,7 +708,7 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
             month: Number(inputState.month),
             day: Number(inputState.day),
           }
-        : baziResult.solarDate),
+        : (baziResult.birthClockTime ?? baziResult.solarDate)),
       hour: selectedBirthTime?.hour ?? 12,
       minute: selectedBirthTime?.minute ?? 0,
       second: inputState.birthSecond === '' ? 0 : Number(inputState.birthSecond),
@@ -2573,18 +2573,19 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
             hour: Number(inputState.birthHour),
             minute: inputState.birthMinute === '' ? 0 : Number(inputState.birthMinute),
           }
-        : inputState.timeIndex !== ''
-          ? BIRTH_TIME_OPTIONS[Number(inputState.timeIndex)]
-          : undefined;
+        : undefined;
 
     const person = {
       name: inputState.name || '命主',
       gender: inputState.gender,
-      birthYear: baziResult.solarDate.year,
-      birthMonth: baziResult.solarDate.month,
-      birthDay: baziResult.solarDate.day,
+      birthYear: baziResult.birthClockTime?.year ?? baziResult.solarDate.year,
+      birthMonth: baziResult.birthClockTime?.month ?? baziResult.solarDate.month,
+      birthDay: baziResult.birthClockTime?.day ?? baziResult.solarDate.day,
       birthHour: birthTime?.hour,
       birthMinute: birthTime?.minute,
+      ...(birthTime && inputState.birthSecond !== ''
+        ? { birthSecond: Number(inputState.birthSecond) }
+        : {}),
       birthPlace: inputState.birthPlace,
       birthLongitude: inputState.birthLongitude ? Number(inputState.birthLongitude) : undefined,
       birthLatitude: inputState.birthLatitude ? Number(inputState.birthLatitude) : undefined,
@@ -2608,11 +2609,11 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
     inputState.birthLatitude,
     inputState.birthLongitude,
     inputState.birthMinute,
+    inputState.birthSecond,
     inputState.birthReverseSource,
     inputState.birthPlace,
     inputState.gender,
     inputState.name,
-    inputState.timeIndex,
     inputState.useTrueSolarTime,
     qizhengCalculation.data,
     ziweiRuntime,

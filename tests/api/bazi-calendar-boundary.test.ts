@@ -41,3 +41,111 @@ test('真太阳时公开换算传递支持年份边界的跨年结果', async ()
   assert.equal(body.data.crossesDate, true);
   assert.match(body.data.promptText, /1899-12-31/);
 });
+
+test('八字公开完整结果区分历史夏令时出生钟表与校正后的排盘日期', async () => {
+  const birthClockTime = {
+    year: 1988,
+    month: 6,
+    day: 1,
+    hour: 0,
+    minute: 30,
+    second: 42,
+  };
+  const input = {
+    gender: 'male',
+    dateType: 'solar',
+    year: 1988,
+    month: 6,
+    day: 1,
+    birthHour: 0,
+    birthMinute: 30,
+    birthSecond: 42,
+  };
+  for (const mode of [{ applyChinaDst: true }, { timeZoneId: 'Asia/Shanghai' }]) {
+    const full = await post('bazi/calculate', { ...input, ...mode, detailMode: 'full' });
+    assert.equal(full.status, 200);
+    assert.deepEqual(full.body.data.birthClockTime, birthClockTime);
+    assert.deepEqual(full.body.data.solarDate, { year: 1988, month: 5, day: 31 });
+
+    const prompted = await post('bazi/prompt', {
+      ...input,
+      ...mode,
+      question: '请解读本命盘。',
+      baziFortuneScope: 'natal',
+      responseMode: 'full',
+    });
+    assert.equal(prompted.status, 200);
+    assert.deepEqual(prompted.body.data.result.birthClockTime, birthClockTime);
+    assert.deepEqual(prompted.body.data.result.solarDate, { year: 1988, month: 5, day: 31 });
+  }
+
+  const compact = await post('bazi/calculate', {
+    ...input,
+    applyChinaDst: true,
+    detailMode: 'compact',
+  });
+  assert.equal(compact.status, 200);
+  assert.equal(Object.hasOwn(compact.body.data, 'birthClockTime'), false);
+  assert.deepEqual(compact.body.data.solarDate, { year: 1988, month: 5, day: 31 });
+
+  const promptSummary = await post('bazi/prompt', {
+    ...input,
+    applyChinaDst: true,
+    question: '请解读本命盘。',
+    baziFortuneScope: 'natal',
+    responseMode: 'summary',
+  });
+  assert.equal(promptSummary.status, 200);
+  assert.equal(Object.hasOwn(promptSummary.body.data.resultSummary, 'birthClockTime'), false);
+});
+
+test('八字公开结果在农历精确真太阳时输入中保留换算后的原始公历钟表', async () => {
+  const input = {
+    gender: 'male',
+    dateType: 'lunar',
+    year: 2024,
+    month: 4,
+    day: 12,
+    birthHour: 0,
+    birthMinute: 30,
+    birthSecond: 42,
+    useTrueSolarTime: true,
+    birthLongitude: 75,
+    timezone: 8,
+  };
+  const full = await post('bazi/calculate', { ...input, detailMode: 'full' });
+  assert.equal(full.status, 200);
+  assert.deepEqual(full.body.data.birthClockTime, {
+    year: 2024,
+    month: 5,
+    day: 19,
+    hour: 0,
+    minute: 30,
+    second: 42,
+  });
+  assert.deepEqual(full.body.data.timing.standardTime, full.body.data.birthClockTime);
+  assert.deepEqual(full.body.data.solarDate, { year: 2024, month: 5, day: 18 });
+  assert.deepEqual(full.body.data.timing.correctedTime, {
+    year: 2024,
+    month: 5,
+    day: 18,
+    hour: 21,
+    minute: 34,
+    second: 20,
+  });
+
+  const compact = await post('bazi/calculate', { ...input, detailMode: 'compact' });
+  assert.equal(compact.status, 200);
+  assert.equal(Object.hasOwn(compact.body.data, 'birthClockTime'), false);
+  assert.deepEqual(compact.body.data.solarDate, full.body.data.solarDate);
+});
+
+test('八字公开完整结果的传统时辰与未知时辰均不出现虚构精确出生钟表', async () => {
+  const input = { gender: 'male', dateType: 'solar', year: 2024, month: 5, day: 19 };
+  for (const timeIndex of [1, -1]) {
+    const result = await post('bazi/calculate', { ...input, timeIndex, detailMode: 'full' });
+    assert.equal(result.status, 200, String(timeIndex));
+    assert.equal(Object.hasOwn(result.body.data, 'birthClockTime'), false, String(timeIndex));
+    assert.equal(result.body.data.isThreePillars, timeIndex === -1);
+  }
+});

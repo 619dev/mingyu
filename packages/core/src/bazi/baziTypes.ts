@@ -571,9 +571,11 @@ export interface InternalBaziChartResult extends BaziChartResult {
 export interface BaziChartResult {
   /** 性别：male / female */
   gender: string;
-  /** 公历出生日期；未知时辰时保留录入日期对应的公历日，候选实际历日见 unknownTimeAnalysis。 */
+  /** 排盘采用的公历日期；未知时辰时保留录入日期对应的公历日，候选实际历日见 unknownTimeAnalysis。 */
   solarDate: { year: number; month: number; day: number };
-  /** 农历出生日期（含月名和日名）；未知时辰如历日待定，此处为录入日期的参考值。 */
+  /** 精确出生输入对应的原始公历钟表时刻，保留真太阳时或夏令时校正前的日期与时间。 */
+  birthClockTime?: SolarDateTimeInfo;
+  /** 排盘采用的农历日期（含月名和日名）；未知时辰如历日待定，此处为录入日期的参考值。 */
   lunarDate: { year: number; month: number; day: number; monthName: string; dayName: string };
   /** 出生时间完整信息（干支、节气、生肖等） */
   timeInfo: TimeInfo;

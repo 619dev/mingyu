@@ -22,6 +22,28 @@ test('太乙四计在线任务书的传统依据与本计积数一致', () => {
   }
 });
 
+test('太乙阴遁实际局式的主客算和宫目进入完整在线任务书', () => {
+  for (const [instant, bureau, guestCount, wenChang, shiJi] of [
+    ['2026-06-27T08:30:00Z', 33, 38, '子', '艮'],
+    ['2026-06-30T14:30:00Z', 72, 25, '艮', '亥'],
+  ] as const) {
+    const data = generateTaiyi({ scope: 'hour', date: new Date(instant) });
+    const facts = formatTaiyiInfo(data);
+    const prompt = buildDivinationPrompt({ method: 'taiyi', data, question: '请解读此盘。' });
+    assert.equal(data.bureau, bureau);
+    assert.equal(data.guestCount, guestCount);
+    for (const text of [
+      `文昌（主目）：${wenChang}；始击（客目）：${shiJi}`,
+      `主算${data.lordCount}`,
+      `客算${guestCount}`,
+      `主大${data.lordGeneral}、主参${data.lordAssistant}；客大${data.guestGeneral}、客参${data.guestAssistant}`,
+    ]) {
+      assert.ok(facts.includes(text), `${instant}:资料缺少${text}`);
+      assert.ok(prompt.includes(text), `${instant}:任务书缺少${text}`);
+    }
+  }
+});
+
 test('太乙月日时计正文保留实际东八区起局时刻，与外层当前时间分别呈现', () => {
   for (const [scope, label] of [
     ['month', '月计'],

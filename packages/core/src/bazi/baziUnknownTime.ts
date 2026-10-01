@@ -698,6 +698,7 @@ export function finalizeUnknownBirthTime(
   };
   result.timeInfo = { index: -1, name: '时辰未知', range: '待补时', hour: -1, minute: -1 };
   result.timing = undefined;
+  result.birthClockTime = undefined;
   result.warnings = [...retainedWarnings, summary];
   result.warningFacts = retainedWarningFacts;
   result.warningSummaryFact = {

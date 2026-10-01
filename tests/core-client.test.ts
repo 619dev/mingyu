@@ -33,6 +33,42 @@ test('统一客户端应提供出生盘、占法、能力发现和稳定序列�
   assert.equal(client.serialize({ b: 2, a: 1 }), '{"a":1,"b":2}');
 });
 
+test('统一客户端八字结果保留真实出生钟表且传统时辰不生成精确钟表', async () => {
+  const client = createMingyuClient();
+  const birthProfile: BirthProfile = {
+    gender: 'male',
+    calendarType: 'solar',
+    year: 1988,
+    month: 6,
+    day: 1,
+    hour: 0,
+    minute: 30,
+    second: 42,
+    applyChinaDst: true,
+    location: { longitude: 116.4, latitude: 39.9, timezone: 8 },
+  };
+  const precise = await client.birth(birthProfile, { systems: ['bazi'] });
+  assert.deepEqual(precise.bazi?.birthClockTime, {
+    year: 1988,
+    month: 6,
+    day: 1,
+    hour: 0,
+    minute: 30,
+    second: 42,
+  });
+  assert.deepEqual(precise.bazi?.solarDate, { year: 1988, month: 5, day: 31 });
+  assert.deepEqual(
+    JSON.parse(client.serialize(precise.bazi)).birthClockTime,
+    precise.bazi?.birthClockTime,
+  );
+
+  const traditional = await client.birth(
+    { ...birthProfile, hour: undefined, minute: undefined, second: undefined, timeIndex: 1 },
+    { systems: ['bazi'] },
+  );
+  assert.equal(traditional.bazi?.birthClockTime, undefined);
+});
+
 test('统一客户端应提供无性别的即时排盘与安全调用', async () => {
   const client = createMingyuClient();
   const request = {

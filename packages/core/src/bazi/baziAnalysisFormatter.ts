@@ -314,8 +314,9 @@ function formatSolarDateTime(value: {
   day: number;
   hour: number;
   minute: number;
+  second?: number;
 }) {
-  return `${value.year}年${value.month}月${value.day}日 ${value.hour}:${String(value.minute).padStart(2, '0')}`;
+  return `${value.year}年${value.month}月${value.day}日 ${value.hour}:${String(value.minute).padStart(2, '0')}${value.second ? `:${String(value.second).padStart(2, '0')}` : ''}`;
 }
 
 function formatPromptLuckOverview(baziResult: BaziChartResult): string {
@@ -414,11 +415,20 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
 
   let result = '【命盘】\n';
   const isMale = baziResult.gender === 'male';
+  const birthClock =
+    baziResult.birthClockTime ??
+    (baziResult.timing?.enabled ? baziResult.timing.standardTime : undefined);
+  const calendarCorrected =
+    baziResult.timing?.enabled ||
+    (birthClock &&
+      (birthClock.year !== solarDate.year ||
+        birthClock.month !== solarDate.month ||
+        birthClock.day !== solarDate.day));
   result += `基本信息: ${isMale ? '乾造' : '坤造'} | ${solarDate.year}年${solarDate.month}月${solarDate.day}日 ${timeInfo.name}\n`;
-  if (baziResult.timing?.enabled) {
-    result += `出生钟表时间: ${formatSolarDateTime(baziResult.timing.standardTime)}\n`;
+  if (birthClock) {
+    result += `出生钟表时间: ${formatSolarDateTime(birthClock)}\n`;
   }
-  result += `${baziResult.timing?.enabled ? '排盘历法' : '出生历法'}: 阳历${solarDate.year}年${solarDate.month}月${solarDate.day}日 | 农历${formatLunarDate(baziResult)} | 生肖:${baziResult.zodiac}\n`;
+  result += `${calendarCorrected ? '排盘历法' : '出生历法'}: 阳历${solarDate.year}年${solarDate.month}月${solarDate.day}日 | 农历${formatLunarDate(baziResult)} | 生肖:${baziResult.zodiac}\n`;
   if (baziResult.timing?.enabled && baziResult.timing.correctedTime) {
     result += `真太阳时: ${formatSolarDateTime(baziResult.timing.correctedTime)}`;
     if (baziResult.timing.birthPlace) {

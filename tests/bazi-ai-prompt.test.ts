@@ -54,6 +54,36 @@ function createBaziResult(overrides: Partial<BaziInput> = {}) {
   return baziCalculator.calculateBazi({ ...base, ...overrides });
 }
 
+test('夏令时跨日任务书分别列原始出生钟表与排盘历法，时辰盘不虚构精确时刻', () => {
+  for (const mode of [{ applyChinaDst: true }, { timeZoneId: 'Asia/Shanghai' }]) {
+    const result = baziCalculator.calculateBazi({
+      year: 1988,
+      month: 6,
+      day: 1,
+      birthHour: 0,
+      birthMinute: 30,
+      birthSecond: 42,
+      gender: 'male',
+      ...mode,
+    });
+    for (const prompt of [
+      buildBaziPrompt({ result, fortuneScope: 'natal' }),
+      buildBaziPromptForResult({ result, fortuneScope: 'natal' }),
+    ]) {
+      assert.match(prompt, /出生钟表时间: 1988年6月1日 0:30:42/);
+      assert.match(prompt, /排盘历法: 阳历1988年5月31日/);
+      assert.doesNotMatch(prompt, /出生历法: 阳历1988年5月31日/);
+      assert.equal(prompt.split('出生钟表时间:').length - 1, 1);
+      assertNoEngineeringPromptText(prompt);
+    }
+  }
+
+  const shichen = buildBaziPrompt({ result: createBaziResult(), fortuneScope: 'natal' });
+  assert.doesNotMatch(shichen, /出生钟表时间:/);
+  const unknown = baziCalculator.calculateBazi({ year: 2024, month: 5, day: 19, gender: 'male' });
+  assert.doesNotMatch(buildBaziPrompt({ result: unknown, fortuneScope: 'natal' }), /出生钟表时间:/);
+});
+
 function createCompatibilityBaziResults() {
   return {
     result1: createBaziResult({

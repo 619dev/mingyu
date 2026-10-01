@@ -372,19 +372,24 @@ export class BaziCalculator {
       termSolarTime = solarTime;
     }
 
+    const originalClockTime = {
+      year: solarTime.getYear(),
+      month: solarTime.getMonth(),
+      day: solarTime.getDay(),
+      hour: solarTime.getHour(),
+      minute: solarTime.getMinute(),
+      second: solarTime.getSecond(),
+    };
+    const birthClockTime =
+      !isThreePillars && (useTrueSolarTimeEnabled || hasPreciseStandardTime)
+        ? originalClockTime
+        : undefined;
     const applyChinaDst = person.applyChinaDst === true;
     const warnings: string[] = [];
     let ianaTermSolarTime: SolarTimeInstance | undefined;
 
     if (useTrueSolarTimeEnabled) {
-      const standardTime = {
-        year: solarTime.getYear(),
-        month: solarTime.getMonth(),
-        day: solarTime.getDay(),
-        hour: solarTime.getHour(),
-        minute: solarTime.getMinute(),
-        second: solarTime.getSecond(),
-      };
+      const standardTime = originalClockTime;
 
       const trueSolarResult = resolveTrueSolarBirthTime({
         dateType: isLunarEnabled ? 'lunar' : 'solar',
@@ -645,6 +650,7 @@ export class BaziCalculator {
         month: solarTime.getSolarDay().getMonth(),
         day: solarTime.getSolarDay().getDay(),
       },
+      birthClockTime,
       lunarDate: {
         year: lunarHour.getLunarDay().getLunarMonth().getLunarYear().getYear(),
         month: lunarHour.getLunarDay().getLunarMonth().getMonth(),
