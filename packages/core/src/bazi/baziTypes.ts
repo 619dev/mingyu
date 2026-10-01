@@ -571,9 +571,9 @@ export interface InternalBaziChartResult extends BaziChartResult {
 export interface BaziChartResult {
   /** 性别：male / female */
   gender: string;
-  /** 公历出生日期 */
+  /** 公历出生日期；未知时辰时保留录入日期对应的公历日，候选实际历日见 unknownTimeAnalysis。 */
   solarDate: { year: number; month: number; day: number };
-  /** 农历出生日期（含月名和日名） */
+  /** 农历出生日期（含月名和日名）；未知时辰如历日待定，此处为录入日期的参考值。 */
   lunarDate: { year: number; month: number; day: number; monthName: string; dayName: string };
   /** 出生时间完整信息（干支、节气、生肖等） */
   timeInfo: TimeInfo;
@@ -586,6 +586,8 @@ export interface BaziChartResult {
     status: '待补时';
     summary: string;
     uncertainPillars: Array<'year' | 'month' | 'day'>;
+    /** 候选实际排盘历日不一致；输入日期仍由顶层 solarDate 保留。 */
+    uncertainCalendarDates?: Array<'solar' | 'lunar'>;
     /** 远程按候选续取时标识当前页；完整本地计算不带此字段。 */
     batch?: BaziUnknownTimeBatchMetadata;
     scenarios: Array<{
@@ -606,6 +608,10 @@ export interface BaziChartResult {
       };
       timeIndex: number;
       timeName: string;
+      /** 本候选按实际出生时刻换算的公历日期。 */
+      solarDate?: BaziChartResult['solarDate'];
+      /** 本候选按实际出生时刻换算的农历日期。 */
+      lunarDate?: BaziChartResult['lunarDate'];
       pillars: Pillars;
       strength: DayMasterStrengthStatus;
       pattern: string;

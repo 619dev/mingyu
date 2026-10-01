@@ -174,6 +174,29 @@ test('中国历史夏令时未知时辰候选跳过不存在时刻并展开回�
   }
 });
 
+test('夏令时跨标准日期的分页仍标明全日历日待定，并保留当前候选的实际历日', () => {
+  const person: Person = {
+    year: 1988,
+    month: 5,
+    day: 1,
+    gender: 'female',
+    applyChinaDst: true,
+  };
+  const full = baziCalculator.calculateBazi(person);
+  const scenarios = full.unknownTimeAnalysis?.scenarios ?? [];
+  for (const index of [
+    scenarios.findIndex((scenario) => scenario.source === 'day-start'),
+    scenarios.findIndex((scenario) => scenario.inputClockTime === '12:00:00'),
+  ]) {
+    assert.ok(index >= 0);
+    const page = baziCalculator.calculateBaziUnknownTimeBatch(person, { startIndex: index });
+    assert.deepEqual(page.result.unknownTimeAnalysis?.uncertainCalendarDates, ['solar', 'lunar']);
+    assert.deepEqual(page.result.unknownTimeAnalysis?.scenarios, [scenarios[index]]);
+    assert.deepEqual(page.result.solarDate, full.solarDate);
+    assert.deepEqual(page.result.lunarDate, full.lunarDate);
+  }
+});
+
 test('重复民用日的未知时辰先选有效占位，保留两个偏移的午时候选与分页身份', () => {
   const person: Person = {
     year: 1969,

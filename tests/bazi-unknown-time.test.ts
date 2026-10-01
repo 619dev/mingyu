@@ -18,6 +18,7 @@ test('缺时辰不把午时当成出生事实，完整判断只出现在候选�
   assert.equal(result.mingGong, '');
   assert.deepEqual(result.shenShaAnalysis.hour, []);
   assert.equal(result.unknownTimeAnalysis?.scenarios.length, 15);
+  assert.deepEqual(result.unknownTimeAnalysis?.uncertainCalendarDates, []);
   const chou = result.unknownTimeAnalysis?.scenarios.find((scenario) => scenario.timeIndex === 1);
   assert.equal(chou?.pillars.hour.ganZhi, '乙丑');
   const explicit = baziCalculator.calculateBazi({
@@ -88,6 +89,33 @@ test('未知时辰的晚子日柱与立春交界柱保留为待定', () => {
   assert.doesNotMatch(prompt, /【已确定的柱】|^(?:年|月|日)柱：/mu);
   assert.match(prompt, /【待补时判断】/u);
   assert.equal(prompt.match(/候选喜用/g)?.length, result.unknownTimeAnalysis?.scenarios.length);
+});
+
+test('夏令时日初跨标准日期时农历历日随候选保留，不把午时占位日写成所有候选事实', () => {
+  const result = baziCalculator.calculateBazi({
+    year: 1988,
+    month: 5,
+    day: 1,
+    gender: 'female',
+    applyChinaDst: true,
+  });
+  assert.deepEqual(result.solarDate, { year: 1988, month: 5, day: 1 });
+  assert.equal(result.lunarDate.dayName, '十六');
+  assert.deepEqual(result.unknownTimeAnalysis?.uncertainCalendarDates, ['solar', 'lunar']);
+  const scenarios = result.unknownTimeAnalysis?.scenarios ?? [];
+  const dayStart = scenarios.find((scenario) => scenario.source === 'day-start');
+  const noon = scenarios.find((scenario) => scenario.inputClockTime === '12:00:00');
+  assert.ok(dayStart);
+  assert.ok(noon);
+  assert.deepEqual(dayStart.solarDate, { year: 1988, month: 4, day: 30 });
+  assert.equal(dayStart.lunarDate?.dayName, '十五');
+  assert.deepEqual(noon.solarDate, { year: 1988, month: 5, day: 1 });
+  assert.equal(noon.lunarDate?.dayName, '十六');
+  assert.deepEqual(result.unknownTimeAnalysis?.uncertainPillars, []);
+  const prompt = formatBaziForPrompt(result);
+  assert.match(prompt, /输入日期对应公历1988年5月1日，参考农历1988年三月十六/u);
+  assert.match(prompt, /日初00:00:00候选：排盘历日公历1988年4月30日、农历1988年三月十五/u);
+  assert.doesNotMatch(prompt, /午时候选：排盘历日/u);
 });
 
 test('明确丑时仍返回唯一完整命盘，不产生缺时辰候选', () => {

@@ -787,25 +787,33 @@ export class BaziCalculator {
     const candidateResult = this.calculateBaziInternal(candidate.person, {
       section: 'natal',
     }).result;
-    const pillarCache = new Map<string, Pillars>();
+    const coreCache = new Map<
+      string,
+      Pick<BaziChartResult, 'pillars' | 'solarDate' | 'lunarDate'>
+    >();
     const toClockKey = (item: (typeof candidates)[number]) => {
       const { year, month, day, birthHour, birthMinute, birthSecond, timezone } = item.person;
       return `${year}:${month}:${day}:${birthHour}:${birthMinute}:${birthSecond}:${timezone ?? ''}`;
     };
-    pillarCache.set(toClockKey(candidate), candidateResult.pillars);
-    const candidatePillars = [
-      candidateResult.pillars,
+    coreCache.set(toClockKey(candidate), candidateResult);
+    const candidateCores = [
+      candidateResult,
       ...selectUnknownTimePillarCheckCandidates(candidates).map((pillarCandidate) => {
         const clockKey = toClockKey(pillarCandidate);
-        const cached = pillarCache.get(clockKey);
+        const cached = coreCache.get(clockKey);
         if (cached) return cached;
-        const pillars = this.calculateCoreBaziInternal(pillarCandidate.person, undefined, 'pillars')
-          .result.pillars;
-        pillarCache.set(clockKey, pillars);
-        return pillars;
+        const core = this.calculateCoreBaziInternal(
+          pillarCandidate.person,
+          undefined,
+          'pillars',
+        ).result;
+        coreCache.set(clockKey, core);
+        return core;
       }),
     ];
-    const uncertainPillars = getUnknownTimeUncertainPillars(candidatePillars);
+    const uncertainPillars = getUnknownTimeUncertainPillars(
+      candidateCores.map(({ pillars }) => pillars),
+    );
     const batch: BaziUnknownTimeBatchMetadata = {
       unit: 'candidate',
       startIndex: request.startIndex,
@@ -822,6 +830,10 @@ export class BaziCalculator {
     const result = finalizeUnknownBirthTime(candidateResult, [scenario], uncertainPillars, {
       batch,
       inputResult: baseResult,
+      candidateCalendarDates: candidateCores.map(({ solarDate, lunarDate }) => ({
+        solarDate,
+        lunarDate,
+      })),
     });
     return { result, batch };
   }

@@ -262,3 +262,78 @@ test('HTTP 重复民用日保留两个正午候选的钟表时刻、偏移与续
     );
   }
 });
+
+test('HTTP 中国夏令时跨标准日期的未知时辰保留输入日期与逐候选实际历日', async () => {
+  const request = {
+    dateType: 'solar' as const,
+    gender: 'female' as const,
+    year: 1988,
+    month: 5,
+    day: 1,
+    timeIndex: -1,
+    applyChinaDst: true,
+    question: '核对候选出生日期。',
+  };
+  const full = new BaziCalculator().calculateBazi(request);
+  assert.deepEqual(full.unknownTimeAnalysis?.uncertainCalendarDates, ['solar', 'lunar']);
+  const scenarios = full.unknownTimeAnalysis!.scenarios;
+  const noonIndex = scenarios.findIndex(
+    (scenario) =>
+      scenario.source === 'shichen-representative' && scenario.inputClockTime === '12:00:00',
+  );
+  assert.ok(noonIndex > 0);
+  const firstResponse = await handlePublicApiRequest(
+    new Request('https://example.test/api/v1/bazi/prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...request, responseMode: 'full' }),
+    }),
+  );
+  assert.equal(firstResponse.status, 200);
+  const first = (await firstResponse.json()) as {
+    data: {
+      result: BaziChartResult;
+      prompt: string;
+      batch: { unknownTimeBatch: { contextKey: string } };
+    };
+  };
+  const contextKey = first.data.batch.unknownTimeBatch.contextKey;
+
+  for (const [index, expectedSolar, expectedLunar] of [
+    [0, { year: 1988, month: 4, day: 30 }, { monthName: '三月', dayName: '十五' }],
+    [noonIndex, { year: 1988, month: 5, day: 1 }, { monthName: '三月', dayName: '十六' }],
+  ] as const) {
+    let data = first.data;
+    if (index !== 0) {
+      const response = await handlePublicApiRequest(
+        new Request('https://example.test/api/v1/bazi/prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...request,
+            responseMode: 'full',
+            unknownTimeBatch: { startIndex: index, contextKey },
+          }),
+        }),
+      );
+      assert.equal(response.status, 200);
+      data = ((await response.json()) as typeof first).data;
+    }
+    const result = data.result;
+    const scenario = result.unknownTimeAnalysis!.scenarios[0]!;
+    assert.deepEqual(result.unknownTimeAnalysis?.uncertainCalendarDates, ['solar', 'lunar']);
+    assert.deepEqual(result.solarDate, { year: 1988, month: 5, day: 1 });
+    assert.deepEqual(scenario, scenarios[index]);
+    assert.deepEqual(scenario.solarDate, expectedSolar);
+    assert.equal(scenario.lunarDate?.monthName, expectedLunar.monthName);
+    assert.equal(scenario.lunarDate?.dayName, expectedLunar.dayName);
+    assert.match(data.prompt, /输入日期对应公历1988年5月1日，参考农历1988年三月十六/);
+    if (index === 0) {
+      assert.match(data.prompt, /日初00:00:00候选：排盘历日公历1988年4月30日、农历1988年三月十五/);
+    } else {
+      assert.match(data.prompt, /午时候选：/);
+      assert.doesNotMatch(data.prompt, /午时候选：排盘历日/);
+      assert.equal(data.prompt.match(/农历1988年三月十六/g)?.length, 1);
+    }
+  }
+});

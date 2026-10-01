@@ -493,6 +493,8 @@ export function buildUnknownTimeScenario(
       : {}),
     timeIndex: chart.timeInfo.index,
     timeName: point.timeName,
+    solarDate: { ...chart.solarDate },
+    lunarDate: { ...chart.lunarDate },
     pillars: chart.pillars,
     strength: chart.analysis.dayMasterStrength.status,
     pattern: chart.analysis.mingGe.pattern,
@@ -508,6 +510,23 @@ export function getUnknownTimeUncertainPillars(
   if (!pillars.length) throw new Error('未知时辰候选目录为空。');
   return (['year', 'month', 'day'] as const).filter((key) =>
     pillars.some((item) => item[key].ganZhi !== pillars[0]![key].ganZhi),
+  );
+}
+
+export function getUnknownTimeUncertainCalendarDates(
+  dates: Array<Pick<BaziChartResult, 'solarDate' | 'lunarDate'>>,
+): Array<'solar' | 'lunar'> {
+  if (!dates.length) throw new Error('未知时辰候选目录为空。');
+  const solarDateKey = (date: BaziChartResult['solarDate']) =>
+    `${date.year}-${date.month}-${date.day}`;
+  const lunarDateKey = (date: BaziChartResult['lunarDate']) =>
+    `${date.year}-${date.month}-${date.day}-${date.monthName}-${date.dayName}`;
+  return (['solar', 'lunar'] as const).filter((calendar) =>
+    dates.some((item) =>
+      calendar === 'solar'
+        ? solarDateKey(item.solarDate) !== solarDateKey(dates[0]!.solarDate)
+        : lunarDateKey(item.lunarDate) !== lunarDateKey(dates[0]!.lunarDate),
+    ),
   );
 }
 
@@ -589,8 +608,15 @@ export function finalizeUnknownBirthTime(
   options: {
     batch?: BaziUnknownTimeBatchMetadata;
     inputResult?: BaziChartResult;
+    candidateCalendarDates?: Array<Pick<BaziChartResult, 'solarDate' | 'lunarDate'>>;
   } = {},
 ): BaziChartResult {
+  if (!options.candidateCalendarDates?.length) {
+    throw new Error('未知时辰需要完整候选历日资料。');
+  }
+  const uncertainCalendarDates = getUnknownTimeUncertainCalendarDates(
+    options.candidateCalendarDates,
+  );
   if (options.inputResult) restoreUnknownInputFacts(result, options.inputResult);
   result.pillars = copyPillars(result.pillars);
   const retainedWarnings = result.warnings.filter(
@@ -605,6 +631,7 @@ export function finalizeUnknownBirthTime(
     status: '待补时',
     summary,
     uncertainPillars,
+    uncertainCalendarDates,
     scenarios,
     ...(options.batch ? { batch: options.batch } : {}),
   };
@@ -705,6 +732,12 @@ export function applyUnknownBirthTime(
     firstChart,
     calculated.map(({ chart, candidate }) => buildUnknownTimeScenario(chart, candidate)),
     getUnknownTimeUncertainPillars(calculated.map(({ chart }) => chart.pillars)),
-    { inputResult: result },
+    {
+      inputResult: result,
+      candidateCalendarDates: calculated.map(({ chart }) => ({
+        solarDate: chart.solarDate,
+        lunarDate: chart.lunarDate,
+      })),
+    },
   );
 }

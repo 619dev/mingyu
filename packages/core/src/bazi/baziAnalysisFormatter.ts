@@ -347,13 +347,34 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
   if (!baziResult) return '无法获取八字数据。';
   if (baziResult.isThreePillars) {
     const { solarDate, unknownTimeAnalysis } = baziResult;
+    const calendarDateUncertain = Boolean(unknownTimeAnalysis?.uncertainCalendarDates?.length);
+    const scenarioCalendarDate = (
+      scenario: NonNullable<BaziChartResult['unknownTimeAnalysis']>['scenarios'][number],
+    ): string => {
+      if (!calendarDateUncertain || !scenario.solarDate || !scenario.lunarDate) return '';
+      const actualSolar = scenario.solarDate;
+      const actualLunar = scenario.lunarDate;
+      if (
+        actualSolar.year === solarDate.year &&
+        actualSolar.month === solarDate.month &&
+        actualSolar.day === solarDate.day &&
+        actualLunar.year === baziResult.lunarDate.year &&
+        actualLunar.month === baziResult.lunarDate.month &&
+        actualLunar.day === baziResult.lunarDate.day &&
+        actualLunar.monthName === baziResult.lunarDate.monthName &&
+        actualLunar.dayName === baziResult.lunarDate.dayName
+      ) {
+        return '';
+      }
+      return `排盘历日公历${actualSolar.year}年${actualSolar.month}月${actualSolar.day}日、农历${actualLunar.year}年${actualLunar.monthName}${actualLunar.dayName}；`;
+    };
     const knownPillarLines = (['year', 'month', 'day'] as const).flatMap((key, index) => {
       const ganZhi = baziResult.pillars[key].ganZhi;
       return ganZhi ? [`${['年柱', '月柱', '日柱'][index]}：${ganZhi}`] : [];
     });
     return [
       '【命盘】',
-      `公历${solarDate.year}年${solarDate.month}月${solarDate.day}日，${baziResult.gender === 'male' ? '男命' : '女命'}，出生时辰未知。`,
+      `${calendarDateUncertain ? `输入日期对应公历${solarDate.year}年${solarDate.month}月${solarDate.day}日，参考农历${formatLunarDate(baziResult)}` : `公历${solarDate.year}年${solarDate.month}月${solarDate.day}日`}，${baziResult.gender === 'male' ? '男命' : '女命'}，出生时辰未知。`,
       ...(knownPillarLines.length ? ['【已确定的柱】', ...knownPillarLines] : []),
       '【待补时判断】',
       unknownTimeAnalysis?.summary ?? '旺衰、格局与喜忌待出生时分确定后再判。',
@@ -362,7 +383,7 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
         : '【时辰候选比较】',
       ...(unknownTimeAnalysis?.scenarios ?? []).map(
         (scenario) =>
-          `${scenario.timeName}：${Object.values(scenario.pillars)
+          `${scenario.timeName}：${scenarioCalendarDate(scenario)}${Object.values(scenario.pillars)
             .map((pillar) => pillar.ganZhi)
             .join(
               ' ',
