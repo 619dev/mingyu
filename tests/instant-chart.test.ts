@@ -75,38 +75,18 @@ test('北京时间即时盘应保留秒数并用于节气临界点排盘', async
   assert.equal(response.result.pillars.month.ganZhi, direct.pillars.month.ganZhi);
 });
 
-test('八字即时盘不返回性别、大运和命卦等个人字段', async () => {
-  const response = await calculateInstantChart({
-    type: 'bazi',
-    customDate: fixedInstant,
-    timeStandard: 'beijing',
-  });
-  const result = response.result as unknown as Record<string, unknown>;
-
-  assert.equal(response.generatedAt, fixedInstant.toISOString());
-  assert.equal(response.timeStandard, 'beijing');
-  assert.equal('gender' in result, false);
-  assert.equal('luckInfo' in result, false);
-  assert.equal('mingGua' in result, false);
-  assert.equal('liunian' in result, false);
-  assert.equal(typeof response.result.pillars.hour.ganZhi, 'string');
-});
-
-test('紫微即时盘只返回无性别的共通宫位资料', async () => {
-  const response = await calculateInstantChart({
-    type: 'ziwei',
-    customDate: fixedInstant,
-  });
-
-  assert.equal('gender' in response.result.basicInfo, false);
-  assert.equal(response.result.palaces.length, 12);
-  assert.equal('changsheng12' in response.result.palaces[0], false);
-  assert.equal('boshi12' in response.result.palaces[0], false);
-  assert.equal('ages' in response.result.palaces[0], false);
-});
-
-test('即时八字与紫微公开字段不随底层技术性性别参数改变', async () => {
+test('即时八字与紫微不暴露性别专属字段且盘面不随技术性性别改变', async () => {
   const bazi = await calculateInstantChart({ type: 'bazi', customDate: fixedInstant });
+  const baziResult = bazi.result as unknown as Record<string, unknown>;
+
+  assert.equal(bazi.generatedAt, fixedInstant.toISOString());
+  assert.equal(bazi.timeStandard, 'beijing');
+  assert.equal('gender' in baziResult, false);
+  assert.equal('luckInfo' in baziResult, false);
+  assert.equal('mingGua' in baziResult, false);
+  assert.equal('liunian' in baziResult, false);
+  assert.equal(typeof bazi.result.pillars.hour.ganZhi, 'string');
+
   const femaleBazi = calculateBaziChartFromInput({
     gender: 'female',
     year: 2026,
@@ -124,6 +104,12 @@ test('即时八字与紫微公开字段不随底层技术性性别参数改变',
   }
 
   const ziwei = await calculateInstantChart({ type: 'ziwei', customDate: fixedInstant });
+  assert.equal('gender' in ziwei.result.basicInfo, false);
+  assert.equal(ziwei.result.palaces.length, 12);
+  assert.equal('changsheng12' in ziwei.result.palaces[0], false);
+  assert.equal('boshi12' in ziwei.result.palaces[0], false);
+  assert.equal('ages' in ziwei.result.palaces[0], false);
+
   const femaleInput = buildZiweiChartInput({
     name: '紫微即时盘',
     gender: 'female',

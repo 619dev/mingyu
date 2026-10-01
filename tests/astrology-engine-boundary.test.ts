@@ -226,15 +226,22 @@ test('相位拒绝非有限位置速度和非法容许度强度', () => {
   }
 });
 
-test('显式未指定相位容许度沿用默认值并保持有限强度', () => {
+test('显式未指定相位容许度采用默认值并返回可核对的相位强度', () => {
   const bodies = [
     { name: '甲', longitude: 0 },
     { name: '乙', longitude: 61 },
   ];
-  assert.deepEqual(
-    calculateAspects(bodies, { orbs: { [AspectType.Sextile]: undefined } }),
-    calculateAspects(bodies),
-  );
+  const sextile = calculateAspects(bodies, {
+    orbs: { [AspectType.Sextile]: undefined },
+  }).aspects.find((aspect) => aspect.type === AspectType.Sextile);
+
+  assert.ok(sextile);
+  assert.equal(sextile.angle, 60);
+  assert.equal(sextile.deviation, 1);
+  assert.equal(sextile.orb, 6);
+  assert.equal(sextile.isApplying, null);
+  assert.ok(Number.isFinite(sextile.strength));
+  assert.ok(Math.abs(sextile.strength - 83.33333333333333) < 1e-10);
 });
 
 test('非整星座跨度的精确谐波相位不误标越星座相位', () => {

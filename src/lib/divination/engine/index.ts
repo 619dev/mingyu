@@ -561,6 +561,62 @@ export function buildDivinationPrompt(
     .join('\n\n');
 }
 
+/** 北京时间旧会话以保存盘面的实际占时恢复秒级时间事实。 */
+function alignSavedBeijingTimeContext(
+  session: DivinationSession,
+  data: DivinationData,
+): DivinationTimeContext | undefined {
+  const context = session.timeContext;
+  if (
+    !context ||
+    context.standard !== 'beijing' ||
+    !isTimeBasedDivinationMethod(session.method) ||
+    session.xiaoliurenRange ||
+    session.liurenRange ||
+    session.jinkoujueRange ||
+    session.meihuaRange ||
+    session.qimenRange ||
+    session.liuyaoRange ||
+    session.taiyiRange ||
+    session.huangjiRange
+  ) {
+    return context;
+  }
+
+  let boardClock: string | undefined;
+  if (
+    'timestamp' in data &&
+    typeof data.timestamp === 'number' &&
+    Number.isFinite(data.timestamp)
+  ) {
+    boardClock = formatSolarDateTimeParts(
+      TimeManager.getWallClockParts(new Date(data.timestamp), 480),
+    );
+  } else {
+    const civilTime =
+      session.method === 'taiyi' && (data as TaiyiResult).scope !== 'year'
+        ? (data as TaiyiResult).dateTime
+        : session.method === 'huangji'
+          ? (data as HuangjiJingshiResult).dateTimeForecast?.civilTime.dateTime
+          : undefined;
+    const parts =
+      /^([0-9]{1,4}-[0-9]{2}-[0-9]{2}) ([0-9]{2}:[0-9]{2}:[0-9]{2})(?:\.[0-9]{3})?$/u.exec(
+        civilTime ?? '',
+      );
+    if (parts) boardClock = `${parts[1]}T${parts[2]}`;
+  }
+  if (!boardClock || !/^采用时间：[^\r\n]*$/mu.test(context.promptText)) return context;
+  return {
+    ...context,
+    clockDateTime: boardClock,
+    effectiveDateTime: boardClock,
+    promptText: context.promptText.replace(
+      /^采用时间：[^\r\n]*$/mu,
+      `采用时间：${formatReadableDateTime(boardClock)}`,
+    ),
+  };
+}
+
 /** 只从保存的盘面和输入重建所选历史任务书，不重新起盘。 */
 export function rebuildSavedDivinationSession(
   session: DivinationSession,
@@ -593,6 +649,7 @@ export function rebuildSavedDivinationSession(
     }
   }
   const question = session.question || recordQuestion || draft.question;
+  const timeContext = alignSavedBeijingTimeContext(session, data);
   const selection = session.selection;
   const scope =
     selection?.scope ??
@@ -629,8 +686,8 @@ export function rebuildSavedDivinationSession(
             buildHuangjiRangePrompt(session.huangjiRange, question),
             selection,
           )
-        : session.timeContext?.promptText
-          ? insertTimeContextIntoPrompt(huangjiPrompt, session.timeContext.promptText)
+        : timeContext?.promptText
+          ? insertTimeContextIntoPrompt(huangjiPrompt, timeContext.promptText)
           : huangjiPrompt
       : buildDivinationPrompt(
           method,
@@ -642,7 +699,7 @@ export function rebuildSavedDivinationSession(
             liuyaoTemplate: draft.liuyaoTemplate,
             liurenTemplate: draft.liurenTemplate,
             astrolabeTopic: draft.astrolabeTopic,
-            timeContextText: session.timeContext?.promptText,
+            timeContextText: timeContext?.promptText,
             xiaoliurenRangeText:
               session.xiaoliurenRange?.status === 'conditional'
                 ? formatXiaoliurenRangeFacts(session.xiaoliurenRange)
@@ -664,7 +721,7 @@ export function rebuildSavedDivinationSession(
           },
         );
 
-  return { ...session, question, data, prompt };
+  return { ...session, question, data, prompt, ...(timeContext ? { timeContext } : {}) };
 }
 
 function buildSupplementaryInfo(draft: DivinationDraft): SupplementaryInfo | undefined {

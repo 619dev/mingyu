@@ -6,6 +6,7 @@ import {
   updateAlmanacParticipantField,
 } from '../src/lib/divination/almanac-participants';
 import { generateDivinationSession, type DivinationDraft } from '../src/lib/divination/engine';
+import { addDivinationHistory, getDivinationHistoryById } from '../src/lib/history-records';
 import type { BaziReverseResolvedInput, BaziReverseSource } from '../src/lib/bazi-reverse-input';
 
 const SOURCE: BaziReverseSource = {
@@ -158,6 +159,84 @@ test('六种时间起局在真太阳时跨晚子时保留原秒、校正秒与�
     assert.match(session.prompt, /当地钟表时间：2025-02-01 23:13:42/u, method);
     assert.match(session.prompt, /采用真太阳时：2025-02-01 23:00:01/u, method);
     assert.match(session.prompt, /干支：甲辰年 丁丑月 壬寅日 庚子时/u, method);
+  }
+});
+
+test('旧占问恢复以保存盘面的秒级占时重建北京时间任务书，真太阳旧盘仍用原盘时刻', async () => {
+  const values = new Map<string, string>();
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      },
+      dispatchEvent: () => true,
+    },
+  });
+  try {
+    for (const method of ['qimen', 'taiyi', 'huangji'] as const) {
+      const draft = buildDraft({
+        method,
+        ...(method === 'taiyi' ? { taiyiScope: 'hour' } : {}),
+        ...(method === 'huangji' ? { huangjiMethod: 'standard' } : {}),
+        divinationTimeMode: 'custom',
+        customDivinationDate: '2025-01-01',
+        customDivinationTime: '08:30:42',
+      });
+      const session = await generateDivinationSession(draft);
+      const saved = addDivinationHistory(draft, {
+        ...session,
+        timeContext: {
+          ...session.timeContext!,
+          clockDateTime: '2025-01-01T08:30:00',
+          effectiveDateTime: '2025-01-01T08:30:00',
+          promptText: '时间口径：北京时间\n采用时间：2025-01-01 08:30',
+        },
+        prompt: session.prompt.replace(
+          '采用时间：2025-01-01 08:30:42',
+          '采用时间：2025-01-01 08:30',
+        ),
+      });
+      assert.ok(saved);
+      const restored = getDivinationHistoryById(saved.id)?.session;
+      assert.ok(restored);
+      assert.deepEqual(restored.data, JSON.parse(JSON.stringify(session.data)), method);
+      assert.equal(restored.timeContext?.clockDateTime, '2025-01-01T08:30:42', method);
+      assert.equal(restored.timeContext?.effectiveDateTime, '2025-01-01T08:30:42', method);
+      assert.match(restored.prompt, /采用时间：2025-01-01 08:30:42/u, method);
+    }
+
+    const draft = buildDraft({
+      method: 'qimen',
+      divinationTimeMode: 'custom',
+      customDivinationDate: '2025-02-01',
+      customDivinationTime: '23:13:42',
+      divinationTimeStandard: 'true-solar',
+      birthPlace: '测试地点',
+      birthLongitude: '120',
+    });
+    const minuteBasedOldChart = await generateDivinationSession({
+      ...draft,
+      customDivinationTime: '23:13:00',
+    });
+    const saved = addDivinationHistory(draft, minuteBasedOldChart);
+    assert.ok(saved);
+    const restored = getDivinationHistoryById(saved.id)?.session;
+    assert.ok(restored);
+    assert.deepEqual(restored.data, JSON.parse(JSON.stringify(minuteBasedOldChart.data)));
+    assert.equal(restored.timeContext?.effectiveDateTime, '2025-02-01T22:59:19');
+    assert.equal(
+      (restored.data as { timestamp: number }).timestamp,
+      Date.parse('2025-02-01T22:59:19+08:00'),
+    );
+    assert.match(restored.prompt, /采用真太阳时：2025-02-01 22:59:19/u);
+    assert.doesNotMatch(restored.prompt, /采用真太阳时：2025-02-01 23:00:01/u);
+  } finally {
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
   }
 });
 

@@ -6,7 +6,7 @@ export function isRepeatedZiweiCoLocationCondition(
   condition: string,
   displayedPalaces: readonly PalaceFact[],
 ) {
-  const match = /^(.+?)(?:同守|同坐|同宫)(.+宫)$/u.exec(condition);
+  const match = /^(.+?)(?:同守|同坐|同宫)(.+宫)?$/u.exec(condition);
   if (!match) return false;
 
   const starText = match[1];
@@ -20,15 +20,21 @@ export function isRepeatedZiweiCoLocationCondition(
     return false;
   }
 
-  const palaceName = match[2].replace(/宫$/u, '');
-  if (!pattern.palace_names.some((name) => name.replace(/宫$/u, '') === palaceName)) {
+  const palaceName = match[2]?.replace(/宫$/u, '');
+  if (palaceName && !pattern.palace_names.some((name) => name.replace(/宫$/u, '') === palaceName)) {
+    return false;
+  }
+  if (!palaceName && (pattern.palace_indexes.length !== 1 || pattern.palace_names.length !== 1)) {
     return false;
   }
 
   const targetPalaces = pattern.palace_indexes
     .map((index) =>
       displayedPalaces.find(
-        (palace) => palace.index === index && palace.name.replace(/宫$/u, '') === palaceName,
+        (palace) =>
+          palace.index === index &&
+          palace.name.replace(/宫$/u, '') ===
+            (palaceName ?? pattern.palace_names[0].replace(/宫$/u, '')),
       ),
     )
     .filter((palace): palace is PalaceFact => Boolean(palace));

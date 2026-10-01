@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { calculateFullZiweiChart, buildZiweiChartInput } from '../src/lib/full-chart-engine/ziwei';
 import { EARTHLY_BRANCHES } from '../packages/core/src/ganzhi/data';
 import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
 import { buildFocusTaskBundle } from '../packages/core/src/ziwei/prompt/focus';
@@ -278,6 +279,75 @@ test('紫微同宫去重保留含独立限定的复合条件', () => {
     ]),
     false,
   );
+
+  const travelPalace = createPalace(6, '迁移', ['天马', '旬空']);
+  const voidPattern = {
+    palace_indexes: [6],
+    palace_names: ['迁移'],
+    star_names: ['天马', '旬空'],
+  };
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(voidPattern, '天马与旬空同宫', [travelPalace]),
+    true,
+  );
+  assert.equal(isRepeatedZiweiCoLocationCondition(voidPattern, '天马与旬空同宫', []), false);
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(voidPattern, '天马与旬空同宫', [
+      { ...travelPalace, major_stars: travelPalace.major_stars.slice(0, 1) },
+    ]),
+    false,
+  );
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(voidPattern, '天马与旬空同宫', [
+      { ...travelPalace, index: 7 },
+    ]),
+    false,
+  );
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(voidPattern, '天马与旬空同宫，禄曜会照', [travelPalace]),
+    false,
+  );
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(
+      { ...voidPattern, palace_indexes: [6, 0], palace_names: ['迁移', '命宫'] },
+      '天马与旬空同宫',
+      [travelPalace],
+    ),
+    false,
+  );
+});
+
+test('真实马落空亡盘在完整宫位已列天马与旬空时不重复同宫条件', async () => {
+  const runtime = await calculateFullZiweiChart(
+    buildZiweiChartInput({
+      name: '格局条件核验',
+      gender: 'male',
+      dateType: 'solar',
+      year: '1993',
+      month: '4',
+      day: '8',
+      timeIndex: '',
+      isLeapMonth: false,
+      useTrueSolarTime: true,
+      birthHour: '23',
+      birthMinute: '34',
+      birthLongitude: '103.8198',
+    }),
+  );
+  const payload = runtime.payloadByScope.origin;
+  const pattern = payload.patterns.find((item) => item.name === '马落空亡');
+  assert.deepEqual(pattern?.palace_names, ['迁移']);
+  assert.deepEqual(pattern?.star_names, ['天马', '旬空']);
+
+  const prompt = formatZiweiPayloadForPrompt(payload);
+  assert.match(prompt, /迁移宫（来因宫）；[^\n]*辅曜：[^\n]*天马[^\n]*旬空/u);
+  const patternText = prompt.split('格局：马落空亡\n')[1]?.split('\n\n')[0] ?? '';
+  assert.match(patternText, /涉及宫位：迁移/u);
+  assert.match(patternText, /古籍依据：《紫微斗数全书》卷一/u);
+  assert.doesNotMatch(patternText, /命中条件：天马与旬空同宫/u);
+
+  const focused = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
+  assert.match(focused, /格局：马落空亡[\s\S]*?命中条件：天马与旬空同宫/u);
 });
 
 test('紫微单宫定位条件仅在宫位中已有同一星曜事实时省略', () => {

@@ -15,7 +15,7 @@ import { generateDivinationSession, type DivinationDraft } from '../src/lib/divi
 import { getDivinationSessionSummary } from '../src/lib/divination/summary';
 import { addDivinationHistory, getDivinationHistoryById } from '../src/lib/history-records';
 
-function createDraft(day = 19): DivinationDraft {
+function findCandidate(day: 19 | 20) {
   const dateText = `2024-02-${day}`;
   const timestamp = Date.parse(`${dateText}T12:00:00+08:00`);
   const pillars = getDivinationTime(new Date(timestamp), 480).ganzhi;
@@ -23,6 +23,14 @@ function createDraft(day = 19): DivinationDraft {
     (item) => item.start.text.startsWith(dateText),
   );
   assert.ok(candidate);
+  return candidate;
+}
+
+const rainWaterCandidate = findCandidate(19);
+const stableCandidate = findCandidate(20);
+
+function createDraft(day: 19 | 20 = 19): DivinationDraft {
+  const candidate = day === 19 ? rainWaterCandidate : stableCandidate;
   const selection = resolveBaziReverseCandidate(candidate);
   assert.ok(selection);
   return {
