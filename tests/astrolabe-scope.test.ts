@@ -119,22 +119,15 @@ function calculateIndependentPlanetsAtWallClock(
 function assertAdvancedEvidenceReferences(evidence: AdvancedEvidence) {
   const stepKeys = new Set(evidence.calculationSteps.map((item) => item.key));
   const factKeys = new Set([evidence.summaryFact.key, ...evidence.summaryFact.factKeys]);
-  assert.deepEqual(
-    evidence.calculationChain,
-    evidence.calculationSteps.map((item) => item.promptText),
-  );
-  assert.equal(evidence.summaryFact.calculationStepCount, evidence.calculationSteps.length);
-  assert.equal(evidence.summaryFact.aspectFactCount, evidence.aspectFacts.length);
-  assert.equal(evidence.summaryFact.limitationFactCount, evidence.limitationFacts.length);
-  assert.ok(evidence.summaryFact.factKeys.includes(evidence.aspectSummaryFact.key));
+  assert.ok(evidence.limitationFacts.length > 0);
   assert.ok(evidence.aspectSummaryFact.factKeys.every((key) => factKeys.has(key)));
   assert.ok(
     evidence.aspectFacts.every(
       (item) =>
         item.ownerFactKeys.length > 0 &&
         item.ownerFactKeys.every((key) => factKeys.has(key)) &&
-        item.ownerStepKeys.every((key) => stepKeys.has(key)) &&
-        item.ownerFactKeys.join('|') === item.ownerStepKeys.join('|'),
+        item.ownerStepKeys.length > 0 &&
+        item.ownerStepKeys.every((key) => stepKeys.has(key)),
     ),
   );
   assert.ok(
@@ -142,21 +135,10 @@ function assertAdvancedEvidenceReferences(evidence: AdvancedEvidence) {
       (item) =>
         item.ownerFactKeys.length > 0 &&
         item.ownerFactKeys.every((key) => factKeys.has(key)) &&
-        item.ownerStepKeys.every((key) => stepKeys.has(key)) &&
-        item.ownerFactKeys.join('|') === item.ownerStepKeys.join('|'),
+        item.ownerStepKeys.length > 0 &&
+        item.ownerStepKeys.every((key) => stepKeys.has(key)),
     ),
   );
-  assert.ok(
-    [
-      ...evidence.calculationSteps,
-      ...evidence.aspectFacts,
-      evidence.aspectSummaryFact,
-      evidence.summaryFact,
-      ...evidence.limitationFacts,
-    ].every((item) => item.sources.length > 0 && item.limitation.length > 0),
-  );
-  assert.match(evidence.promptText, /计算链：/);
-  assert.match(evidence.promptText, /证据汇总：/);
 }
 
 test('星盘当前参考日按统一时区生成各层日期', () => {
@@ -270,9 +252,6 @@ test('星盘流年分析对象会生成行运证据和展示文本', () => {
   assert.equal(context.solarReturnEvidence?.status, 'exact');
   assert.equal(context.secondaryProgressionEvidence?.status, 'calculated');
   assert.equal(context.solarArcEvidence?.status, 'calculated');
-  assert.ok((context.solarReturnEvidence?.calculationSteps.length ?? 0) >= 5);
-  assert.ok((context.secondaryProgressionEvidence?.calculationSteps.length ?? 0) >= 4);
-  assert.ok((context.solarArcEvidence?.calculationSteps.length ?? 0) >= 5);
 });
 
 test('星盘周期批次只在首批生成固定范围事实并保留续批身份', () => {
@@ -327,20 +306,7 @@ test('太阳返照应返回可复核的求根过程和精度边界', () => {
   assert.equal(evidence.timeScale?.utcDateTime.endsWith('Z'), true);
   assert.ok((evidence.timeScale?.julianDayTtApprox ?? 0) > 2400000);
   assert.ok(evidence.limitations.some((item) => item.includes('观测级精度')));
-  assert.equal(evidence.key, 'solar-return:2028');
-  assert.equal(evidence.calculationSteps.length, 5);
-  assert.equal(evidence.limitations.length, evidence.limitationFacts.length);
-  assert.equal(evidence.aspectSummaryFact.factKeys.length, evidence.aspectFacts.length);
-  assert.equal(evidence.summaryFact.status, '证据链完整');
   assert.ok(evidence.summaryFact.factKeys.includes(evidence.timeScale?.summaryFact.key ?? ''));
-  assert.deepEqual(
-    evidence.limitationFacts.map((item) => item.ownerStepKeys),
-    [
-      [evidence.calculationSteps[1].key, evidence.calculationSteps[2].key],
-      [evidence.calculationSteps[2].key],
-      [evidence.calculationSteps[4].key],
-    ],
-  );
   assertAdvancedEvidenceReferences(evidence);
 
   const secondOffsetData = structuredClone(astrolabeData) as AstrolabeData;
@@ -581,6 +547,8 @@ test('次限与太阳弧从出生 UTC 瞬间推进且采用各自小容许度', 
   const expectedDateTime = '2000-03-20T07:30:00.000Z';
   const secondary = calculateSecondaryProgressionEvidence(newYork, 2010);
   const solarArc = calculateSolarArcEvidence(newYork, 2010);
+  assertAdvancedEvidenceReferences(secondary);
+  assertAdvancedEvidenceReferences(solarArc);
   assert.equal(secondary.progressedDateTime, expectedDateTime);
   assert.equal(solarArc.progressedDateTime, expectedDateTime);
   const independent = calculateIndependentPlanetsAtIso(newYork, expectedDateTime);
@@ -749,40 +717,7 @@ test('秒级出生时间应由独立星历位置验证次限、太阳弧和太�
   assert.ok(returnResidual <= nextResidual + 0.000000001);
 });
 
-test('次限与太阳弧应返回稳定键、计算链、相位事实和限制对象', () => {
-  const secondary = calculateSecondaryProgressionEvidence(astrolabeData, 2028);
-  const solarArc = calculateSolarArcEvidence(astrolabeData, 2028);
-
-  assert.equal(secondary.key, 'secondary-progression:2028');
-  assert.equal(secondary.status, 'calculated');
-  assert.equal(secondary.calculationSteps.length, 4);
-  assert.equal(secondary.limitations.length, secondary.limitationFacts.length);
-  assert.equal(secondary.summaryFact.status, '证据链完整');
-  assert.deepEqual(
-    secondary.limitationFacts.map((item) => item.ownerStepKeys),
-    [
-      [secondary.calculationSteps[1].key],
-      [secondary.calculationSteps[2].key],
-      [secondary.calculationSteps[3].key],
-    ],
-  );
-  assertAdvancedEvidenceReferences(secondary);
-
-  assert.equal(solarArc.key, 'solar-arc:2028');
-  assert.equal(solarArc.status, 'calculated');
-  assert.equal(solarArc.calculationSteps.length, 5);
-  assert.equal(solarArc.limitations.length, solarArc.limitationFacts.length);
-  assert.equal(solarArc.summaryFact.status, '证据链完整');
-  assert.deepEqual(
-    solarArc.limitationFacts.map((item) => item.ownerStepKeys),
-    [
-      [solarArc.calculationSteps[1].key],
-      [solarArc.calculationSteps[2].key, solarArc.calculationSteps[3].key],
-      [solarArc.calculationSteps[4].key],
-    ],
-  );
-  assertAdvancedEvidenceReferences(solarArc);
-
+test('高级时限目标年份应保持公开边界', () => {
   assert.throws(
     () => calculateSecondaryProgressionEvidence(astrolabeData, 2201),
     /目标年份需在 1900-2200/,

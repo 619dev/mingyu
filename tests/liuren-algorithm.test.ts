@@ -1400,26 +1400,15 @@ test('大六壬涉害同深按所临地盘取孟仲季，不按上神自身支�
   );
 });
 
-test('大六壬涉害深度较大时应优先取深，不被孟位浅害改取', () => {
-  const result = buildReferenceLiurenPlate({
-    day: '庚午',
-    hour: '庚寅',
-    monthLeader: '子',
-  });
-
-  assert.equal(result.initial.rule, '涉害法');
-  assert.deepEqual(result.branches, ['寅', '子', '戌']);
-});
-
-test('大六壬涉害深度较大时应优先取深，不被孟位浅害改取戌', () => {
-  const result = buildReferenceLiurenPlate({
-    day: '庚午',
-    hour: '庚辰',
-    monthLeader: '子',
-  });
-
-  assert.equal(result.initial.rule, '涉害法');
-  assert.deepEqual(result.branches, ['子', '申', '辰']);
+test('大六壬涉害优先取深，不被两种浅害孟位改取', () => {
+  for (const { hour, branches } of [
+    { hour: '庚寅', branches: ['寅', '子', '戌'] },
+    { hour: '庚辰', branches: ['子', '申', '辰'] },
+  ]) {
+    const result = buildReferenceLiurenPlate({ day: '庚午', hour, monthLeader: '子' });
+    assert.equal(result.initial.rule, '涉害法', hour);
+    assert.deepEqual(result.branches, branches, hour);
+  }
 });
 
 test('大六壬无上下克时不会把四课比和误判为比用法', () => {
@@ -1438,8 +1427,8 @@ test('大六壬无上下克时不会把四课比和误判为比用法', () => {
   assert.equal(result.initial, '申');
 });
 
-test('大六壬多候选遥克比用仍保留蒿矢方向标签', () => {
-  const result = resolveInitialTransmission(
+test('大六壬多候选遥克比用保留蒿矢与弹射各自方向标签', () => {
+  const haoShi = resolveInitialTransmission(
     [
       createLesson('寅', '亥'),
       createLesson('申', '子'),
@@ -1449,13 +1438,11 @@ test('大六壬多候选遥克比用仍保留蒿矢方向标签', () => {
     createResolveContext({ dayStem: '甲' }),
   );
 
-  assert.equal(result.rule, '遥克比用法');
-  assert.equal(result.tag, '蒿矢');
-  assert.equal(result.initial, '申');
-});
+  assert.equal(haoShi.rule, '遥克比用法');
+  assert.equal(haoShi.tag, '蒿矢');
+  assert.equal(haoShi.initial, '申');
 
-test('大六壬多候选遥克比用仍保留弹射方向标签', () => {
-  const result = resolveInitialTransmission(
+  const tanShe = resolveInitialTransmission(
     [
       createLesson('午', '寅'),
       createLesson('寅', '子'),
@@ -1465,9 +1452,9 @@ test('大六壬多候选遥克比用仍保留弹射方向标签', () => {
     createResolveContext({ dayStem: '庚' }),
   );
 
-  assert.equal(result.rule, '遥克比用法');
-  assert.equal(result.tag, '弹射');
-  assert.equal(result.initial, '寅');
+  assert.equal(tanShe.rule, '遥克比用法');
+  assert.equal(tanShe.tag, '弹射');
+  assert.equal(tanShe.initial, '寅');
 });
 
 test('大六壬遥克只看二三四课，不把一课上神误作遥克发用', () => {

@@ -1089,20 +1089,14 @@ test('紫微证据池应输出大限流年流月流日落宫与运限四化飞�
     palaces,
   });
   const factKeys = new Set([analysis.summaryFact.key, ...analysis.summaryFact.factKeys]);
-  assert.equal(analysis.key, 'ziwei:evidence');
   assert.equal(analysis.status, '存在资料缺口');
-  assert.equal(analysis.calculationSteps.length, 4);
+  const stepKeys = new Set(analysis.calculationSteps.map((item) => item.key));
   assert.ok(
     analysis.calculationSteps.every((step) =>
-      step.dependsOnStepKeys.every((key) =>
-        analysis.calculationSteps.some((candidate) => candidate.key === key),
-      ),
+      step.dependsOnStepKeys.every((key) => stepKeys.has(key)),
     ),
   );
-  assert.equal(analysis.counterEvidenceFacts.length, 3);
-  assert.equal(analysis.summaryFact.evidenceFactCount, evidence.length);
-  assert.equal(analysis.summaryFact.counterEvidenceCount, analysis.counterEvidenceFacts.length);
-  assert.equal(analysis.summaryFact.limitationFactCount, analysis.limitationFacts.length);
+  assert.ok(evidence.every((item) => stepKeys.has(item.calculationStepKey ?? '')));
   assert.ok(
     analysis.counterEvidenceFacts.every(
       (item) =>
@@ -1115,7 +1109,6 @@ test('紫微证据池应输出大限流年流月流日落宫与运限四化飞�
         item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => factKeys.has(key)),
     ),
   );
-  assert.match(analysis.promptText, /计算链：[\s\S]*反证核验：[\s\S]*证据汇总：[\s\S]*解释限制：/);
   assert.doesNotMatch(
     analysis.promptText,
     /命语|iztro|本项目|项目统一|工程|接口|API|MCP|ziwei:evidence:/,

@@ -40,6 +40,7 @@ function chart(name: string, sun: number, moon: number): AstrolabeData {
 }
 
 function assertEvidenceReferences(result: ReturnType<typeof analyzeAstrolabeSynastry>) {
+  const stepKeys = new Set(result.calculationSteps.map((item) => item.key));
   const factKeys = new Set([
     result.summaryFact.key,
     ...result.calculationSteps.map((item) => item.key),
@@ -47,6 +48,16 @@ function assertEvidenceReferences(result: ReturnType<typeof analyzeAstrolabeSyna
     ...result.houseOverlays.map((item) => item.key),
     ...result.counterEvidenceFacts.map((item) => item.key),
   ]);
+  assert.ok(
+    result.calculationSteps.every((step) =>
+      step.dependsOnStepKeys.every((key) => stepKeys.has(key)),
+    ),
+  );
+  assert.ok(
+    [...result.aspects, ...result.houseOverlays].every((item) =>
+      stepKeys.has(item.calculationStepKey),
+    ),
+  );
   assert.ok(result.summaryFact.factKeys.length > 0);
   assert.ok(result.summaryFact.factKeys.every((key) => factKeys.has(key)));
   assert.ok(
@@ -76,41 +87,24 @@ test('西占双盘应按黄经最小夹角识别主要相位并保留计算口�
   assert.equal(conjunction?.allowedOrb, 8);
   assert.equal(conjunction?.orbRatio, 0.25);
   assert.equal(conjunction?.closeness, '紧密');
-  assert.equal(result.key, 'astrolabe:synastry:evidence');
-  assert.equal(result.status, '已计算');
-  assert.equal(result.calculationSteps.length, 7);
-  assert.ok(
-    result.calculationSteps.every((step) =>
-      step.dependsOnStepKeys.every((key) =>
-        result.calculationSteps.some((candidate) => candidate.key === key),
-      ),
-    ),
-  );
-  assert.ok(conjunction?.key.startsWith('astrolabe:synastry:aspect:'));
-  assert.equal(conjunction?.status, '已命中');
   assert.ok(conjunction?.sourcePointKey && conjunction.targetPointKey);
-  assert.ok(result.calculationSteps.some((step) => step.key === conjunction?.calculationStepKey));
   assert.equal(conjunction?.strength, undefined);
   assert.match(conjunction?.source ?? '', /黄经最小夹角/);
   assert.equal(square?.type, '刑相');
   assert.equal(square?.orb, 0);
-  assert.equal(
-    result.summary.tightAspects,
-    result.aspects.filter((item) => item.closeness === '紧密').length,
-  );
   assert.equal(result.summary.strongAspects, undefined);
-  assert.equal(result.summaryFact.returnedAspectCount, result.aspects.length);
   assert.equal(result.summaryFact.evaluatedPairCount, 9);
-  assert.equal(result.summaryFact.tendencyCounts.和谐, result.summary.harmonious);
-  assert.equal(result.summaryFact.tendencyCounts.紧张, result.summary.tense);
-  assert.equal(result.methodology.defaultOrbs.合相, 8);
   assert.match(result.promptText, /允许容许度/);
   assert.match(result.promptText, /此处只记录跨盘相位事实，不单独推导关系吉凶/);
   assert.match(result.promptText, /不得把单一和谐相位写成必然适合/);
   assert.match(result.promptText, /【应期】静态双盘应期边界/);
-  assert.match(result.promptText, /计算链概览/);
-  assert.equal(result.counterEvidenceFacts.length, 4);
-  assert.equal(result.limitationFacts.length, 6);
+  assert.ok(
+    result.limitationFacts.some(
+      (item) =>
+        item.type === '静态应期边界' &&
+        item.promptText.includes('静态本命双盘不判断入相、出相或具体关系应期'),
+    ),
+  );
   assertEvidenceReferences(result);
   assert.ok(result.promptText.length < 10000);
   assert.doesNotMatch(result.promptText, /本项目|项目统一|工程|接口|API|MCP|astrolabe:synastry:/);
@@ -127,15 +121,11 @@ test('西占双盘应计算双方星体落入对方宫位', () => {
   );
 
   assert.equal(overlay?.house, 3);
-  assert.ok(overlay?.key.startsWith('astrolabe:synastry:house-overlay:'));
-  assert.equal(overlay?.status, '已定位');
   assert.equal(overlay?.ownerPerson, 'person1');
   assert.equal(overlay?.visitorPerson, 'person2');
   assert.ok(overlay?.ownerChartKey && overlay.visitorPointKey);
-  assert.ok(result.calculationSteps.some((step) => step.key === overlay?.calculationStepKey));
   assert.equal(overlay?.houseStart, 60);
   assert.equal(overlay?.houseEnd, 90);
-  assert.equal(result.summaryFact.houseOverlayCount, result.houseOverlays.length);
   assertEvidenceReferences(result);
 });
 

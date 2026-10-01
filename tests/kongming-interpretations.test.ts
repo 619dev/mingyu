@@ -40,6 +40,19 @@ test('孔明32卦均有与本卦诗句对应的独立释义及转机条件', () 
 });
 
 test('孔明阴阳输入按硬币摆放顺序保留而非逆序或排序', () => {
+  assert.throws(() => castKongmingHexagram(''), /卦象需由五个阴阳结果组成/);
+  assert.throws(() => castKongmingHexagram('  \t  '), /卦象需由五个阴阳结果组成/);
+  for (const [pattern, number, name] of [
+    ['●●●●●', 1, '星震卦'],
+    ['●○○○○', 2, '从革卦'],
+    ['○●○○○', 3, '曲直卦'],
+    ['●○●●●', 31, '后吉卦'],
+    ['○○○○○', 32, '无数卦'],
+  ] as const) {
+    const result = castKongmingHexagram(pattern);
+    assert.equal(result.number, number, pattern);
+    assert.equal(result.name, name, pattern);
+  }
   const first = castKongmingHexagram('10000');
   const last = castKongmingHexagram('00001');
   assert.equal(first.number, 2);

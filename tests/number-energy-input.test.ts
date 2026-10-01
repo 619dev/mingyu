@@ -37,7 +37,11 @@ test('提示词完整保留首尾及仅含0和5的序列位置', () => {
   assert.match(prompt, /第1位：0；头部/);
   assert.match(prompt, /第4位：5；尾部/);
   assert.doesNotMatch(prompt, /0（隐藏）|5（增强）/);
-  const modifiersOnly = buildNumberEnergyPrompt({ analysis: analyzeNumber('０５０') });
+  const modifiersOnlyAnalysis = analyzeNumber('０５０');
+  assert.equal(modifiersOnlyAnalysis.energyPairs.length, 0);
+  assert.deepEqual(modifiersOnlyAnalysis.dominantFields, []);
+  assert.equal(modifiersOnlyAnalysis.modifiers.length, 3);
+  const modifiersOnly = buildNumberEnergyPrompt({ analysis: modifiersOnlyAnalysis });
   assert.match(modifiersOnly, /第2位：5；独立/);
   assert.doesNotMatch(modifiersOnly, /0（隐藏）|5（增强）/);
   assert.match(modifiersOnly, /不足以形成八星磁场组合/);

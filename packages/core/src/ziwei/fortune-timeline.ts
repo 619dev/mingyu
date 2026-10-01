@@ -815,10 +815,12 @@ export async function buildZiweiFortuneTimelineFromAstrolabe(
     verifiedBatch?: VerifiedDecadalTimelineBatch;
   },
 ): Promise<ZiweiFortuneTimeline> {
-  const context = options.dateStr
-    ? { dateStr: options.dateStr, hourIndex: options.hourIndex ?? input.birthTimeIndex }
-    : getDefaultHoroscopeContext();
-  const hourIndex = options.hourIndex ?? context.hourIndex;
+  const defaultContext = getDefaultHoroscopeContext();
+  const context = {
+    dateStr: options.dateStr ?? defaultContext.dateStr,
+    hourIndex: options.hourIndex ?? defaultContext.hourIndex,
+  };
+  const hourIndex = context.hourIndex;
   assertHourIndex(hourIndex);
   parseDateParts(context.dateStr);
   const resolveHoroscope =

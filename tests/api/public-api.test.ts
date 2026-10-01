@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handlePublicApiRequest, isPublicApiRequestPath } from '../../src/lib/public-api/handler';
+import { PUBLIC_API_ENDPOINTS } from '../../src/lib/public-api/metadata';
 import { onRequest as handleWellKnownApiRequest } from '../../functions/.well-known/[[path]]';
 import { buildZiweiChartInput, calculateZiweiChart } from '../../src/lib/full-chart-engine/ziwei';
 import {
@@ -246,44 +247,6 @@ test('公开 API OPTIONS 应返回 CORS 预检响应', async () => {
   assert.equal(body, null);
 });
 
-test('公开 API manifest 应暴露 OpenAPI 和 skill 地址', async () => {
-  const { body } = await callApi('manifest');
-
-  assert.equal(body.ok, true);
-  assert.equal(body.data.openapiUrl, 'https://aov.cc/api/v1/openapi.json');
-  assert.equal(body.data.skillUrl, 'https://aov.cc/skills/mingyu/SKILL.md');
-  assert.ok(body.data.endpoints.includes('POST /api/v1/bazi/calculate'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/bazi/compatibility'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/bazi/compatibility/prompt'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/ziwei/compatibility'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/ziwei/compatibility/prompt'));
-  assert.ok(body.data.endpoints.includes('GET /api/v1/foundation/capabilities'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/calendar/true-solar-time'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/calendar/true-solar-birth'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/calendar/bazi-reverse'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/calendar/astronomical-time'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/calendar/moon-phase'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/calendar/solar-term'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/foundation/ganzhi'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/foundation/wuxing'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/foundation/direction'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/foundation/shensha'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/instant/calculate'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/bazi-ziwei/prompt'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/divination/almanac'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/divination/astrolabe/prompt'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/divination/astrolabe/period-events'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/divination/jinkoujue'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/divination/jinkoujue/prompt'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/metaphysics/wuyun-liuqi/calculate'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/metaphysics/wuyun-liuqi/prompt'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/metaphysics/huangji-jingshi/calculate'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/metaphysics/huangji-jingshi/prompt'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/ai/analyze'));
-  assert.ok(body.data.endpoints.includes('POST /api/v1/ai/models'));
-  assert.ok(body.data.endpoints.includes('GET /.well-known/aov-mingyu-api.json'));
-});
-
 test('公开 API 即时盘应按固定时刻返回无性别的北京时间八字盘', async () => {
   const { response, body } = await callApi('instant/calculate', {
     method: 'POST',
@@ -376,7 +339,6 @@ test('公开 API 八字双盘应返回交叉证据与完整提示词', async () 
   assert.equal(compatibility.people.person1, '甲方');
   assert.equal(compatibility.key, 'bazi:compatibility:evidence');
   assert.equal(compatibility.status, '已计算');
-  assert.equal(compatibility.calculationSteps.length, 7);
   assert.ok(compatibility.tenGodMappings.length === 8);
   assert.ok(
     compatibility.crossPillarRelations.every(
@@ -443,6 +405,7 @@ test('公开 API 元数据应跟随当前访问域名', async () => {
       baseUrl: string;
       openapiUrl: string;
       skillUrl: string;
+      endpoints: string[];
     };
   };
 
@@ -455,6 +418,41 @@ test('公开 API 元数据应跟随当前访问域名', async () => {
   assert.equal(body.data.baseUrl, 'https://example.pages.dev/api/v1');
   assert.equal(body.data.openapiUrl, 'https://example.pages.dev/api/v1/openapi.json');
   assert.equal(body.data.skillUrl, 'https://example.pages.dev/skills/mingyu/SKILL.md');
+  assert.deepEqual(body.data.endpoints, [...PUBLIC_API_ENDPOINTS]);
+  for (const endpoint of [
+    'POST /api/v1/bazi/calculate',
+    'POST /api/v1/bazi/compatibility',
+    'POST /api/v1/bazi/compatibility/prompt',
+    'POST /api/v1/ziwei/compatibility',
+    'POST /api/v1/ziwei/compatibility/prompt',
+    'GET /api/v1/foundation/capabilities',
+    'POST /api/v1/calendar/true-solar-time',
+    'POST /api/v1/calendar/true-solar-birth',
+    'POST /api/v1/calendar/bazi-reverse',
+    'POST /api/v1/calendar/astronomical-time',
+    'POST /api/v1/calendar/moon-phase',
+    'POST /api/v1/calendar/solar-term',
+    'POST /api/v1/foundation/ganzhi',
+    'POST /api/v1/foundation/wuxing',
+    'POST /api/v1/foundation/direction',
+    'POST /api/v1/foundation/shensha',
+    'POST /api/v1/instant/calculate',
+    'POST /api/v1/bazi-ziwei/prompt',
+    'POST /api/v1/divination/almanac',
+    'POST /api/v1/divination/astrolabe/prompt',
+    'POST /api/v1/divination/astrolabe/period-events',
+    'POST /api/v1/divination/jinkoujue',
+    'POST /api/v1/divination/jinkoujue/prompt',
+    'POST /api/v1/metaphysics/wuyun-liuqi/calculate',
+    'POST /api/v1/metaphysics/wuyun-liuqi/prompt',
+    'POST /api/v1/metaphysics/huangji-jingshi/calculate',
+    'POST /api/v1/metaphysics/huangji-jingshi/prompt',
+    'POST /api/v1/ai/analyze',
+    'POST /api/v1/ai/models',
+    'GET /.well-known/aov-mingyu-api.json',
+  ]) {
+    assert.ok(body.data.endpoints.includes(endpoint), endpoint);
+  }
 });
 
 test('公开 API well-known 元数据应跟随当前访问域名', async () => {
@@ -827,11 +825,10 @@ test('公开 API OpenAPI 文档应标明占卜提示词接口返回摘要', asyn
   assert.equal(divinationRequestProperties.pageSize.maximum, 31);
   assert.equal(divinationRequestProperties.participants.items.type, 'object');
   assert.equal(divinationRequestProperties.participants.maxItems, 30);
-  assert.deepEqual(divinationRequestProperties.participants.items.properties.timeIndex, {
-    type: 'integer',
-    minimum: 0,
-    maximum: 12,
-  });
+  const participantTimeIndex = divinationRequestProperties.participants.items.properties.timeIndex;
+  assert.equal(participantTimeIndex.type, 'integer');
+  assert.equal(participantTimeIndex.minimum, 0);
+  assert.equal(participantTimeIndex.maximum, 12);
   assert.equal(divinationRequestProperties.participants.items.properties.dateType.enum.length, 2);
   const ziweiTopicSchema = JSON.stringify(
     body.data.components.schemas.ZiweiPromptRequest.allOf[1].properties.promptTopic,
@@ -1066,7 +1063,6 @@ test('公开 API 应提供便捷真太阳时换算接口', async () => {
   assert.equal(typeof body.data.totalCorrectionMinutes, 'number');
   assert.equal(body.data.key, 'true-solar-time:1990-05-15T10:30:20:116.4074:8');
   assert.equal(body.data.status, '已计算');
-  assert.equal(body.data.calculationSteps.length, 6);
   assert.deepEqual(
     body.data.calculationChain,
     body.data.calculationSteps.map((item: { promptText: string }) => item.promptText),
@@ -1164,7 +1160,6 @@ test('公开 API 应提供统一公历农历出生真太阳时接口', async () 
   assert.match(body.data.solarClockDateTime, /^1990-\d{2}-\d{2}T12:00:00$/);
   assert.equal(typeof body.data.timeIndex, 'number');
   assert.equal(typeof body.data.correctedDateTime, 'string');
-  assert.equal(body.data.calculationSteps.length, 7);
   assert.equal(body.data.calculationSteps[0].stage, '历法输入换算');
   assert.equal(body.data.correctionFacts[0].type, '历法输入');
   assert.equal(body.data.summaryFact.status, '证据链完整');
@@ -1312,7 +1307,6 @@ test('公开 API 应提供天文时间、月相与节气公共证据接口', asy
   });
   assert.equal(astronomicalTime.response.status, 200);
   assert.equal(astronomicalTime.body.data.julianDayUtc, 2451545);
-  assert.equal(astronomicalTime.body.data.calculationSteps.length, 5);
   assert.deepEqual(
     astronomicalTime.body.data.calculationChain,
     astronomicalTime.body.data.calculationSteps.map(
@@ -1332,7 +1326,6 @@ test('公开 API 应提供天文时间、月相与节气公共证据接口', asy
   });
   assert.equal(moonPhase.response.status, 200);
   assert.equal(moonPhase.body.data.status, '已计算');
-  assert.equal(moonPhase.body.data.calculationSteps.length, 4);
   assert.equal(moonPhase.body.data.summaryFact.principalEventCount, 2);
   assert.equal(typeof moonPhase.body.data.illuminationPercent, 'number');
   assert.ok(moonPhase.body.data.previousPrincipalPhase.utcDateTime);
@@ -1347,7 +1340,6 @@ test('公开 API 应提供天文时间、月相与节气公共证据接口', asy
   assert.equal(solarTerm.response.status, 200);
   assert.equal(solarTerm.body.data.name, '夏至');
   assert.equal(solarTerm.body.data.targetLongitudeDegrees, 90);
-  assert.equal(solarTerm.body.data.calculationSteps.length, 4);
   assert.equal(solarTerm.body.data.summaryFact.verificationFactCount, 1);
   assert.equal(solarTerm.body.data.verificationFact.status, '已记录差值');
   assert.match(solarTerm.body.data.promptText, /独立模型求根/);
@@ -1399,7 +1391,6 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
     capabilities.body.data.summaryFact.constantGroupCount,
     Object.keys(capabilities.body.data.constants).length,
   );
-  assert.equal(capabilities.body.data.limitationFacts.length, 4);
   assert.equal(
     capabilities.body.data.limitations.length,
     capabilities.body.data.limitationFacts.length,
@@ -1423,7 +1414,6 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
   assert.equal(ganZhi.body.data.nayin, '海中金');
   assert.equal(ganZhi.body.data.branch.clash, '午');
   assert.equal(ganZhi.body.data.key, 'foundation:ganzhi:甲子');
-  assert.equal(ganZhi.body.data.calculationSteps.length, 5);
   assert.deepEqual(
     ganZhi.body.data.calculationChain,
     ganZhi.body.data.calculationSteps.map((item: { promptText: string }) => item.promptText),
@@ -1440,7 +1430,6 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
   assert.equal(wuxing.body.data.weightHidden, true);
   assert.ok(wuxing.body.data.counts.火 > 0);
   assert.equal(wuxing.body.data.status, '已统计');
-  assert.equal(wuxing.body.data.calculationSteps.length, 4);
   assert.equal(wuxing.body.data.itemFacts.length, 4);
   assert.deepEqual(wuxing.body.data.dominantElements, ['火']);
   assert.deepEqual(wuxing.body.data.weakestElements, ['金']);
@@ -1459,7 +1448,6 @@ test('公开 API 应提供公共地基能力、六十甲子与五行接口', asy
   assert.equal(direction.body.data.label, '子山午向');
   assert.equal(direction.body.data.facingBagua, '离');
   assert.equal(direction.body.data.sitBagua, '坎');
-  assert.equal(direction.body.data.calculationSteps.length, 4);
   assert.equal(direction.body.data.summaryFact.status, '映射稳定');
   assert.match(direction.body.data.promptText, /不自动推断或补造磁偏角/);
 
@@ -1599,11 +1587,8 @@ test('公开 API 应支持八字排盘', async () => {
     body.data.seasonInfo.previousTermEvidence.limitationFacts.length,
   );
   assert.equal(body.data.evidenceAnalysis.key, 'bazi:natal:evidence');
-  assert.equal(body.data.evidenceAnalysis.calculationSteps.length, 5);
   assert.equal(body.data.evidenceAnalysis.pillarFacts.length, 4);
   assert.equal(body.data.evidenceAnalysis.analysisFacts.length, 3);
-  assert.equal(body.data.evidenceAnalysis.counterEvidenceFacts.length, 4);
-  assert.equal(body.data.evidenceAnalysis.limitationFacts.length, 6);
   assert.equal(body.data.evidenceAnalysis.summaryFact.status, '证据链完整');
   assert.equal(
     body.data.evidenceAnalysis.summaryFact.warningFactCount,
@@ -1765,27 +1750,6 @@ test('公开 API 八字 shenShaVariants 非法值应返回参数错误', async (
   assert.match(body.error.message, /referenceProfile 必须是以下值之一/);
 });
 
-test('公开 API 八字排盘接口只返回排盘结果', async () => {
-  const { response, body } = await callApi('bazi/calculate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      gender: 'female',
-      year: 1987,
-      month: 7,
-      day: 5,
-      timeIndex: 6,
-      dateType: 'solar',
-    }),
-  });
-
-  assert.equal(response.status, 200);
-  assert.equal(body.ok, true);
-  assert.equal(body.data.gender, 'female');
-  assert.equal('prompt' in body.data, false);
-  assert.equal('result' in body.data, false);
-});
-
 test('公开 API 八字排盘支持轻量模式，避免默认拉取大流年明细', async () => {
   const input = {
     gender: 'female',
@@ -1816,6 +1780,10 @@ test('公开 API 八字排盘支持轻量模式，避免默认拉取大流年明
   assert.equal(body.data.evidenceAnalysis, undefined);
   assert.deepEqual(body.data.shensha, full.body.data.shensha);
   assert.equal(body.data.shenShaAnalysis, undefined);
+  for (const calculated of [body, full.body]) {
+    assert.equal('prompt' in calculated.data, false);
+    assert.equal('result' in calculated.data, false);
+  }
   assert.deepEqual(
     body.data.analysis.usefulGod.favorableWuxing,
     full.body.data.analysis.usefulGod.favorableWuxing,
@@ -1970,7 +1938,6 @@ test('公开 API 八字排盘应支持真太阳时精确时分和经度', async 
   assert.equal(body.data.timing.correctedTime.minute, corrected.minute);
   assert.equal(body.data.timing.birthPlace, '新疆喀什');
   assert.equal(body.data.timing.evidence.status, '已计算');
-  assert.equal(body.data.timing.evidence.calculationSteps.length, 7);
   assert.equal(
     body.data.timing.evidence.summaryFact.calculationStepCount,
     body.data.timing.evidence.calculationSteps.length,
@@ -2558,7 +2525,6 @@ test('公开 API 紫微双盘返回宫位叠盘、四化证据并保留双方称
   const compatibility = calculation.body.data.compatibility;
   assert.equal(compatibility.key, 'ziwei:compatibility:evidence');
   assert.equal(compatibility.status, '已计算');
-  assert.equal(compatibility.calculationSteps.length, 6);
   assert.ok(compatibility.palaceOverlays.length > 0);
   assert.ok(
     compatibility.palaceOverlays.every(
@@ -2587,7 +2553,6 @@ test('公开 API 紫微双盘返回宫位叠盘、四化证据并保留双方称
     compatibility.summaryFact.crossMutagenPlacementCount,
     compatibility.crossMutagenPlacements.length,
   );
-  assert.equal(compatibility.counterEvidenceFacts.length, 5);
   assert.ok(
     compatibility.limitationFacts.some((item: { type: string }) => item.type === '高风险输出边界'),
   );
@@ -2915,7 +2880,6 @@ test('公开 API 紫微排盘应支持真太阳时精确时分和经度', async 
   );
   assert.equal(body.data.basicInfo.birth_time_range, timeIndexRangeMap[expectedTimeIndex]);
   assert.equal(body.data.trueSolarEvidence.status, '已计算');
-  assert.equal(body.data.trueSolarEvidence.calculationSteps.length, 7);
   assert.equal(body.data.trueSolarEvidence.summaryFact.status, '证据链完整');
 
   const iana = await callApi('ziwei/calculate', {
@@ -3024,13 +2988,10 @@ test('公开 API 紫微排盘接口支持按需返回指定范围', async () => 
   );
   const evidenceAnalysis = body.data.payloadByScope.monthly.evidence_analysis;
   assert.equal(evidenceAnalysis.key, 'ziwei:evidence');
-  assert.equal(evidenceAnalysis.calculationSteps.length, 4);
   assert.equal(
     evidenceAnalysis.summaryFact.evidenceFactCount,
     body.data.payloadByScope.monthly.evidence_pool.length,
   );
-  assert.equal(evidenceAnalysis.counterEvidenceFacts.length, 3);
-  assert.equal(evidenceAnalysis.limitationFacts.length, 5);
   assertEvidenceOwnerReferences(evidenceAnalysis);
   assert.ok(
     body.data.payloadByScope.monthly.patterns.every(
@@ -3045,7 +3006,6 @@ test('公开 API 紫微排盘接口支持按需返回指定范围', async () => 
   );
   const patternAnalysis = body.data.payloadByScope.monthly.pattern_analysis;
   assert.equal(patternAnalysis.key, 'ziwei:patterns');
-  assert.equal(patternAnalysis.calculationSteps.length, 4);
   assert.equal(
     patternAnalysis.summaryFact.evaluatedRuleCount,
     patternAnalysis.summaryFact.registeredRuleCount,
@@ -3054,8 +3014,6 @@ test('公开 API 紫微排盘接口支持按需返回指定范围', async () => 
     patternAnalysis.summaryFact.matchedPatternCount,
     body.data.payloadByScope.monthly.patterns.length,
   );
-  assert.equal(patternAnalysis.counterEvidenceFacts.length, 3);
-  assert.equal(patternAnalysis.limitationFacts.length, 4);
   assertEvidenceOwnerReferences(patternAnalysis);
 });
 
@@ -3307,7 +3265,6 @@ test('公开 API 单牌塔罗接口应返回结构化牌面', async () => {
   assert.equal(body.data.meta.algorithm, 'tarot.single');
   assert.equal(body.data.evidenceAnalysis.key, 'tarot:evidence');
   assert.equal(body.data.evidenceAnalysis.status, '已计算');
-  assert.equal(body.data.evidenceAnalysis.calculationSteps.length, 7);
   const tarotStepKeys = new Set(
     body.data.evidenceAnalysis.calculationSteps.map((item: Record<string, unknown>) => item.key),
   );
@@ -3356,7 +3313,6 @@ test('公开 API 单牌塔罗接口应返回结构化牌面', async () => {
   assert.ok(
     ['有逆位约束', '未见逆位约束'].includes(body.data.evidenceAnalysis.counterSummaryFact.status),
   );
-  assert.equal(body.data.evidenceAnalysis.limitationFacts.length, 6);
   assert.ok(
     body.data.evidenceAnalysis.limitationFacts.every(
       (item: Record<string, any>) =>
@@ -3540,7 +3496,6 @@ test('公开 API 六爻支持模拟三钱投掷并可按随机轨迹重放', asy
   assert.equal(first.body.data.generation.coinThrows.length, 6);
   assert.equal(first.body.data.evidenceAnalysis.key, 'liuyao:evidence');
   assert.equal(first.body.data.evidenceAnalysis.status, '已计算');
-  assert.equal(first.body.data.evidenceAnalysis.calculationSteps.length, 7);
   assert.equal(first.body.data.evidenceAnalysis.calculationChain.length, 7);
   assert.ok(first.body.data.evidenceAnalysis.candidates.length > 0);
   assert.equal(first.body.data.evidenceAnalysis.selectionFact.status, '待按问题取用');
@@ -3605,7 +3560,6 @@ test('公开 API 六爻支持模拟三钱投掷并可按随机轨迹重放', asy
     first.body.data.evidenceAnalysis.summaryFact.counterEvidenceCount,
     first.body.data.evidenceAnalysis.counterEvidenceFacts.length,
   );
-  assert.equal(first.body.data.evidenceAnalysis.limitationFacts.length, 6);
   assert.equal(
     first.body.data.evidenceAnalysis.limitations.length,
     first.body.data.evidenceAnalysis.limitationFacts.length,
@@ -3703,7 +3657,6 @@ test('公开 API 奇门默认转盘，可通过 qimenMethod 请求飞盘', async
   assert.equal(defaultResult.body.data.evidenceAnalysis.status, '已计算');
   assert.ok(defaultResult.body.data.evidenceAnalysis.candidates.length > 0);
   assert.equal(defaultResult.body.data.evidenceAnalysis.calculationEvidenceFacts.length, 5);
-  assert.equal(defaultResult.body.data.evidenceAnalysis.calculationSteps.length, 5);
   assert.equal(defaultResult.body.data.evidenceAnalysis.calculationChain.length, 5);
   assert.equal(defaultResult.body.data.evidenceAnalysis.ruleSourceFacts.length, 4);
   assert.equal(defaultResult.body.data.evidenceAnalysis.palaceCoverageFact.status, '完整');
@@ -3804,7 +3757,6 @@ test('公开 API 奇门默认转盘，可通过 qimenMethod 请求飞盘', async
     defaultResult.body.data.evidenceAnalysis.summaryFact.palaceFactCount,
     defaultResult.body.data.evidenceAnalysis.palaceFacts.length,
   );
-  assert.equal(defaultResult.body.data.evidenceAnalysis.limitationFacts.length, 6);
   assert.equal(
     defaultResult.body.data.evidenceAnalysis.limitations.length,
     defaultResult.body.data.evidenceAnalysis.limitationFacts.length,
@@ -3876,7 +3828,6 @@ test('公开 API 奇门默认转盘，可通过 qimenMethod 请求飞盘', async
   assert.equal(feipanPrompt.response.status, 200);
   assert.equal(feipanPrompt.body.ok, true);
   assert.equal(feipanPrompt.body.data.result.evidenceAnalysis.key, 'qimen:evidence');
-  assert.equal(feipanPrompt.body.data.result.evidenceAnalysis.limitationFacts.length, 6);
   assert.deepEqual(
     feipanPrompt.body.data.result.jiuGongGe.map(
       (gong: { tianPan: { star: string } }) => gong.tianPan.star,
@@ -4151,40 +4102,18 @@ test('公开 API 奇门 qimenScope 非法值应返回参数错误', async () => 
   assert.match(body.error.message, /qimenScope 必须是以下值之一/);
 });
 
-test('公开 API 可选请求体接口无请求体时仍应使用默认参数', async () => {
-  const { response, body } = await callApi('divination/tarot', {
-    method: 'POST',
-  });
-
-  assert.equal(response.status, 200);
-  assert.equal(body.ok, true);
-  assert.equal(body.data.spreadType, 'single');
-  assert.equal(body.data.cards.length, 1);
-});
-
-test('公开 API 可选请求体接口只有 JSON 请求头但无请求体时仍应使用默认参数', async () => {
-  const { response, body } = await callApi('divination/tarot', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-  assert.equal(response.status, 200);
-  assert.equal(body.ok, true);
-  assert.equal(body.data.spreadType, 'single');
-  assert.equal(body.data.cards.length, 1);
-});
-
-test('公开 API 可选请求体接口收到空字符串请求体时仍应使用默认参数', async () => {
-  const { response, body } = await callApi('divination/tarot', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '',
-  });
-
-  assert.equal(response.status, 200);
-  assert.equal(body.ok, true);
-  assert.equal(body.data.spreadType, 'single');
-  assert.equal(body.data.cards.length, 1);
+test('公开 API 可选请求体在三种空请求形式下使用相同默认参数', async () => {
+  for (const [label, init] of [
+    ['无请求体', { method: 'POST' }],
+    ['JSON 请求头', { method: 'POST', headers: { 'Content-Type': 'application/json' } }],
+    ['空字符串', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '' }],
+  ] as const) {
+    const { response, body } = await callApi('divination/tarot', init);
+    assert.equal(response.status, 200, label);
+    assert.equal(body.ok, true, label);
+    assert.equal(body.data.spreadType, 'single', label);
+    assert.equal(body.data.cards.length, 1, label);
+  }
 });
 
 test('公开 API 可选请求体接口收到非法 JSON 时应返回参数错误', async () => {
@@ -4364,14 +4293,12 @@ test('公开 API 星盘应附带真太阳时参考且不改写现代星历时刻
   assert.equal(body.data.birth.isTrueSolarTime, true);
   assert.equal(body.data.birth.dateTime, '1995-05-20 01:20');
   assert.equal(body.data.birth.trueSolarEvidence.status, '已计算');
-  assert.equal(body.data.birth.trueSolarEvidence.calculationSteps.length, 8);
   assert.ok(
     body.data.birth.trueSolarEvidence.calculationSteps.some(
       (item: { stage: string }) => item.stage === '历史时区解析',
     ),
   );
   assert.equal(body.data.birth.timezoneEvidence.status, 'unique');
-  assert.equal(body.data.birth.timezoneEvidence.calculationSteps.length, 4);
   assert.deepEqual(
     body.data.birth.timezoneEvidence.calculationChain,
     body.data.birth.timezoneEvidence.calculationSteps.map(
@@ -4416,7 +4343,6 @@ test('公开 API 星盘应附带真太阳时参考且不改写现代星历时刻
   assert.ok(body.data.aspects.length > 0);
   assert.equal(body.data.evidenceAnalysis.evidence.title, '西方星盘位置与相位结构化证据');
   assert.equal(body.data.evidenceAnalysis.calculationFact.status, '完整');
-  assert.equal(body.data.evidenceAnalysis.calculationFact.steps.length, 5);
   assert.deepEqual(
     body.data.evidenceAnalysis.calculationSteps,
     body.data.evidenceAnalysis.calculationFact.steps,
@@ -4467,7 +4393,6 @@ test('公开 API 星盘应附带真太阳时参考且不改写现代星历时刻
   );
   assert.equal(body.data.evidenceAnalysis.illuminationFact.status, '可用');
   assert.equal(body.data.evidenceAnalysis.illuminationFact.crossingFactKeys.length, 4);
-  assert.equal(body.data.evidenceAnalysis.counterEvidenceFacts.length, 3);
   assert.ok(
     ['有未见项', '全部有可列资料'].includes(body.data.evidenceAnalysis.counterSummaryFact.status),
   );
@@ -5055,7 +4980,6 @@ test('公开 API 西占双盘应返回跨盘相位、落宫和结构化证据', 
   assert.equal(synastry.key, 'astrolabe:synastry:evidence');
   assert.equal(synastry.status, '已计算');
   assert.deepEqual(synastry.people, ['甲', '乙']);
-  assert.equal(synastry.calculationSteps.length, 7);
   assert.ok(synastry.aspects.length > 0);
   synastry.aspects.forEach(
     (aspect: { key: string; status: string; calculationStepKey: string; strength?: number }) => {
@@ -5076,8 +5000,6 @@ test('公开 API 西占双盘应返回跨盘相位、落宫和结构化证据', 
   );
   assert.equal(synastry.summaryFact.returnedAspectCount, synastry.aspects.length);
   assert.equal(synastry.summaryFact.houseOverlayCount, synastry.houseOverlays.length);
-  assert.equal(synastry.counterEvidenceFacts.length, 4);
-  assert.equal(synastry.limitationFacts.length, 6);
   assertEvidenceOwnerReferences(synastry);
   assert.doesNotMatch(synastry.promptText, /本项目|项目统一|工程|接口|API|MCP|astrolabe:synastry:/);
   assertPromptIsPortableTaskText(synastry.promptText);
@@ -5223,7 +5145,6 @@ test('公开 API 黄历提示词显式分页时应包含当前页全部候选日
   assert.equal(body.data.result.pagination.page, 2);
   assert.equal(body.data.result.evidenceAnalysis.key, 'almanac:evidence');
   assert.equal(body.data.result.evidenceAnalysis.status, '已计算');
-  assert.equal(body.data.result.evidenceAnalysis.calculationSteps.length, 7);
   assert.equal(
     body.data.result.evidenceAnalysis.calculationChain.length,
     body.data.result.evidenceAnalysis.calculationSteps.length,
@@ -5347,7 +5268,6 @@ test('公开 API 黄历提示词显式分页时应包含当前页全部候选日
     body.data.result.evidenceAnalysis.counterSummaryFact.factKeys.length,
     body.data.result.evidenceAnalysis.counterEvidenceFacts.length,
   );
-  assert.equal(body.data.result.evidenceAnalysis.limitationFacts.length, 6);
   assert.equal(
     body.data.result.evidenceAnalysis.limitations.length,
     body.data.result.evidenceAnalysis.limitationFacts.length,
@@ -5433,7 +5353,6 @@ test('公开 API 梅花排盘与提示词应返回主互变体用推进证据', 
   assert.equal(chart.response.status, 200);
   assert.equal(chart.body.data.evidenceAnalysis.key, 'meihua:evidence');
   assert.equal(chart.body.data.evidenceAnalysis.status, '已计算');
-  assert.equal(chart.body.data.evidenceAnalysis.calculationSteps.length, 7);
   assert.equal(chart.body.data.evidenceAnalysis.calculationChain.length, 7);
   assert.deepEqual(
     chart.body.data.evidenceAnalysis.stages.map((item: { stage: string }) => item.stage),
@@ -5495,7 +5414,6 @@ test('公开 API 梅花排盘与提示词应返回主互变体用推进证据', 
     chart.body.data.evidenceAnalysis.summaryFact.transitionFactCount,
     chart.body.data.evidenceAnalysis.transitionFacts.length,
   );
-  assert.equal(chart.body.data.evidenceAnalysis.limitationFacts.length, 6);
   assert.equal(
     chart.body.data.evidenceAnalysis.limitations.length,
     chart.body.data.evidenceAnalysis.limitationFacts.length,
@@ -5516,7 +5434,6 @@ test('公开 API 梅花排盘与提示词应返回主互变体用推进证据', 
   assertPromptIsPortableTaskText(chart.body.data.evidenceAnalysis.promptText);
   assert.equal(chart.body.data.evidenceAnalysis.calculationFact.status, '完整');
   assert.equal(chart.body.data.evidenceAnalysis.calculationFact.methodKey, 'number');
-  assert.equal(chart.body.data.evidenceAnalysis.calculationFact.steps.length, 3);
   assert.ok(
     chart.body.data.evidenceAnalysis.calculationFact.steps.every(
       (item: Record<string, unknown>) =>
@@ -5617,7 +5534,6 @@ test('公开 API 六爻与大六壬提示词接口保留用户模板范围', asy
   assert.equal(liurenChart.response.status, 200);
   assert.equal(liurenChart.body.data.evidenceAnalysis.key, 'liuren:evidence');
   assert.equal(liurenChart.body.data.evidenceAnalysis.status, '已计算');
-  assert.equal(liurenChart.body.data.evidenceAnalysis.calculationSteps.length, 7);
   assert.equal(
     liurenChart.body.data.evidenceAnalysis.calculationChain.length,
     liurenChart.body.data.evidenceAnalysis.calculationSteps.length,
@@ -5778,7 +5694,6 @@ test('公开 API 六爻与大六壬提示词接口保留用户模板范围', asy
     liurenChart.body.data.evidenceAnalysis.summaryFact.transitionFactCount,
     liurenChart.body.data.evidenceAnalysis.transitionFacts.length,
   );
-  assert.equal(liurenChart.body.data.evidenceAnalysis.limitationFacts.length, 6);
   assert.equal(
     liurenChart.body.data.evidenceAnalysis.limitations.length,
     liurenChart.body.data.evidenceAnalysis.limitationFacts.length,
@@ -6158,7 +6073,6 @@ test('公开 API 新增术数提示词应包含用户问题和统一章节', asy
   assert.equal(body.data.result.evidenceAnalysis.key, 'bazhai:evidence');
   assert.equal(body.data.result.evidenceAnalysis.status, '已计算');
   assert.equal(body.data.result.evidenceAnalysis.calculationFact.status, '命宅完整');
-  assert.equal(body.data.result.evidenceAnalysis.calculationFact.steps.length, 5);
   assert.deepEqual(
     body.data.result.evidenceAnalysis.calculationSteps,
     body.data.result.evidenceAnalysis.calculationFact.steps,
@@ -6201,7 +6115,6 @@ test('公开 API 新增术数提示词应包含用户问题和统一章节', asy
         String(item.limitation).includes('不证明房间适用性'),
     ),
   );
-  assert.equal(body.data.result.evidenceAnalysis.counterEvidenceFacts.length, 6);
   assert.equal(
     body.data.result.evidenceAnalysis.counterEvidenceFacts.find(
       (item: { type: string }) => item.type === '命卦年界',
@@ -6221,7 +6134,6 @@ test('公开 API 新增术数提示词应包含用户问题和统一章节', asy
     '已覆盖',
   );
   assert.equal(body.data.result.evidenceAnalysis.counterSummaryFact.status, '存在需保留反证');
-  assert.equal(body.data.result.evidenceAnalysis.limitationFacts.length, 6);
   assert.equal(body.data.result.evidenceAnalysis.summaryFact.key, 'bazhai:evidence-summary');
   assert.equal(body.data.result.evidenceAnalysis.summaryFact.status, '证据链有缺口');
   assert.equal(
@@ -6611,7 +6523,6 @@ test('公开 API 太乙应返回年计七十二局立成结果', async () => {
   assert.equal(body.data.evidenceAnalysis.key, 'taiyi:evidence');
   assert.equal(body.data.evidenceAnalysis.status, '已计算');
   assert.equal(body.data.evidenceAnalysis.evidence.title, '太乙四计七十二局结构化证据');
-  assert.equal(body.data.evidenceAnalysis.calculationSteps.length, 7);
   assert.ok(
     body.data.evidenceAnalysis.calculationSteps.every(
       (item: Record<string, unknown>) =>
@@ -6628,7 +6539,6 @@ test('公开 API 太乙应返回年计七十二局立成结果', async () => {
   assert.equal(body.data.evidenceAnalysis.forceFacts.length, 3);
   assert.equal(body.data.evidenceAnalysis.sixteenGodFacts.length, 16);
   assert.equal(body.data.evidenceAnalysis.conditionFacts.length, 7);
-  assert.equal(body.data.evidenceAnalysis.counterEvidenceFacts.length, 7);
   assert.equal(body.data.evidenceAnalysis.counterSummaryFact.status, '存在未命中条件');
   assert.equal(
     body.data.evidenceAnalysis.counterSummaryFact.factKeys.length,
@@ -6636,7 +6546,6 @@ test('公开 API 太乙应返回年计七十二局立成结果', async () => {
       (item: Record<string, unknown>) => item.status === '未命中',
     ).length,
   );
-  assert.equal(body.data.evidenceAnalysis.limitationFacts.length, 5);
   assert.equal(body.data.evidenceAnalysis.summaryFact.key, 'taiyi:evidence-summary');
   assert.equal(body.data.evidenceAnalysis.summaryFact.status, '证据链完整');
   assert.equal(

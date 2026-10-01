@@ -387,6 +387,12 @@ const TAIYI_TRUTH: TaiyiTruthRow[] = [
 ];
 
 test('太乙年计 1950-2021 七十二局与独立真值全对拍', () => {
+  const bureaus = new Set(TAIYI_TRUTH.map((row) => row[2]));
+  assert.equal(bureaus.size, 72);
+  for (let bureau = 1; bureau <= 72; bureau += 1) {
+    assert.ok(bureaus.has(bureau), `真值表缺少第 ${bureau} 局`);
+  }
+
   for (const row of TAIYI_TRUTH) {
     const [
       year,
@@ -414,14 +420,6 @@ test('太乙年计 1950-2021 七十二局与独立真值全对拍', () => {
     assert.equal(result.lordCount, lordCount, `${year} 主算错误`);
     assert.equal(result.guestCount, guestCount, `${year} 客算错误`);
     assert.equal(result.setCount, setCount, `${year} 定算错误`);
-  }
-});
-
-test('太乙独立真值表应覆盖完整七十二局', () => {
-  const bureaus = new Set(TAIYI_TRUTH.map((row) => row[2]));
-  assert.equal(bureaus.size, 72);
-  for (let bureau = 1; bureau <= 72; bureau += 1) {
-    assert.ok(bureaus.has(bureau), `真值表缺少第 ${bureau} 局`);
   }
 });
 

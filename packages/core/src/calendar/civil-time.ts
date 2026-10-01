@@ -234,7 +234,7 @@ export function resolveCivilDayStart(
       second: '2-digit',
     });
   } catch {
-    throw new Error(`无法识别 IANA 时区 ${timeZoneId}。`);
+    throw new RangeError(`无法识别 IANA 时区 ${timeZoneId}。`);
   }
   try {
     const midnightEvidence = resolveHistoricalTimezone({ ...midnight, timeZoneId });

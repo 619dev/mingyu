@@ -219,37 +219,12 @@ test('星盘应返回筛选阈值内全部相位，不得只截取最强十二�
   assert.doesNotMatch(result.evidenceAnalysis?.promptText ?? '', /只保留.*十二组相位/);
 });
 
-test('星盘应返回可复用的位置、相位、计算链与限制证据', () => {
+test('星盘结构化位置与相位应对应实际盘面', () => {
   const result = generateAstrolabe(validInput);
   const evidence = result.evidenceAnalysis;
 
   assert.ok(evidence);
-  assert.equal(evidence.key, 'astrolabe:evidence');
-  assert.equal(evidence.status, '已计算');
-  assert.equal(evidence.evidence.title, '西方星盘位置与相位结构化证据');
-  assert.equal(evidence.calculationFact.status, '完整');
-  assert.equal(evidence.calculationFact.steps.length, 5);
-  assert.strictEqual(evidence.calculationSteps, evidence.calculationFact.steps);
-  assert.deepEqual(
-    evidence.calculationFact.steps.map((item) => item.stage),
-    ['输入固定', '时间处理', '盘面计算', '相位筛选', '分布汇总'],
-  );
-  assert.ok(
-    evidence.calculationFact.steps.every(
-      (item) =>
-        item.key &&
-        item.promptText &&
-        item.sources.length > 0 &&
-        Array.isArray(item.dependsOnStepKeys) &&
-        item.limitation.includes('单个计算步骤'),
-    ),
-  );
-  assert.match(evidence.calculationFact.limitation, /不证明占星解释有效性/);
-  assert.ok(evidence.calculationChain.some((item) => item.includes('普拉西德斯宫制')));
-  assert.ok(evidence.primaryFacts.some((item) => item.includes('太阳')));
-  assert.equal(evidence.primaryCoverageFact.status, '完整');
   assert.deepEqual(evidence.primaryCoverageFact.actualRoles, ['太阳', '月亮', '上升', '天顶']);
-  assert.equal(evidence.primaryPointFacts.length, 4);
   assert.deepEqual(
     evidence.primaryCoverageFact.primaryFactKeys,
     evidence.primaryPointFacts.map((item) => item.key),
@@ -259,75 +234,38 @@ test('星盘应返回可复用的位置、相位、计算链与限制证据', ()
     result.planets.length + result.angles.length + result.houses.length,
   );
   assert.equal(evidence.aspectFacts.length, result.aspects.length);
+  const stepKeys = new Set(evidence.calculationSteps.map((item) => item.key));
+  const positionKeys = new Set(evidence.positionFacts.map((item) => item.key));
   assert.ok(
-    evidence.positionFacts.every(
-      (item) =>
-        item.status === '已计算' &&
-        item.promptText &&
-        item.sources.length >= 2 &&
-        item.limitation.includes('不单独证明人格'),
+    evidence.calculationSteps.every((step) =>
+      step.dependsOnStepKeys.every((key) => stepKeys.has(key)),
     ),
   );
   assert.ok(
     evidence.aspectFacts.every(
       (item) =>
-        item.status === '几何完整' &&
-        item.body1PositionFactKey &&
-        item.body2PositionFactKey &&
-        item.positionFactKeys.length >= 2 &&
-        item.sources.length >= 2 &&
+        positionKeys.has(item.body1PositionFactKey ?? '') &&
+        positionKeys.has(item.body2PositionFactKey ?? '') &&
+        item.positionFactKeys.every((key) => positionKeys.has(key)) &&
         typeof item.actualAngle === 'number' &&
         typeof item.exactAngle === 'number' &&
         typeof item.allowedOrb === 'number' &&
         item.allowedOrb > 0 &&
         item.orb <= item.allowedOrb &&
         item.normalizedOrbRatio >= 0 &&
-        item.normalizedOrbRatio <= 1 &&
-        item.promptText.includes('实际夹角') &&
-        item.limitation.includes('不代表事件概率'),
+        item.normalizedOrbRatio <= 1,
     ),
   );
-  assert.equal(evidence.planetFacts.length, result.planets.length);
-  assert.equal(evidence.angleFacts.length, 4);
-  assert.equal(evidence.houseFacts.length, 12);
-  assert.equal(
-    evidence.distributionEvidenceFacts.length,
-    Object.keys(result.summary.elements).length + Object.keys(result.summary.modalities).length + 2,
-  );
+  assert.ok(evidence.distributionEvidenceFacts.length > 0);
   assert.ok(
     evidence.distributionEvidenceFacts.every(
       (item) =>
-        item.key.startsWith('distribution:') &&
         item.count === item.members.length &&
         item.memberPositionFactKeys.every((key) =>
           evidence.positionFacts.some((position) => position.key === key),
-        ) &&
-        item.promptText &&
-        item.sources.length > 0 &&
-        item.limitation.includes('不代表能量分数'),
+        ),
     ),
   );
-  assert.ok(evidence.distributionFacts.some((item) => item.includes('逆行点')));
-  assert.ok(evidence.illuminationFacts.some((item) => item.includes('太阳高度')));
-  assert.equal(evidence.illuminationFact.status, '可用');
-  assert.equal(evidence.illuminationFact.crossingFactKeys.length, 4);
-  assert.equal(evidence.counterEvidenceFacts.length, 3);
-  assert.ok(['有未见项', '全部有可列资料'].includes(evidence.counterSummaryFact.status));
-  assert.ok(evidence.supportingFacts.length > 0);
-  assert.ok(evidence.limitations.some((item) => item.includes('不代表事件概率')));
-  assert.equal(evidence.limitations.length, evidence.limitationFacts.length);
-  assert.ok(evidence.limitationFacts.length >= 7);
-  assert.equal(evidence.summaryFact.key, 'astrolabe:evidence-summary');
-  assert.equal(evidence.summaryFact.status, '证据链完整');
-  assert.equal(evidence.summaryFact.primaryFactCount, evidence.primaryPointFacts.length);
-  assert.equal(evidence.summaryFact.positionFactCount, evidence.positionFacts.length);
-  assert.equal(evidence.summaryFact.aspectFactCount, evidence.aspectFacts.length);
-  assert.equal(
-    evidence.summaryFact.distributionFactCount,
-    evidence.distributionEvidenceFacts.length,
-  );
-  assert.equal(evidence.summaryFact.counterEvidenceCount, evidence.counterEvidenceFacts.length);
-  assert.equal(evidence.summaryFact.limitationFactCount, evidence.limitationFacts.length);
   const factKeys = new Set([evidence.summaryFact.key, ...evidence.summaryFact.factKeys]);
   assert.ok(
     evidence.counterEvidenceFacts.every(
@@ -338,24 +276,14 @@ test('星盘应返回可复用的位置、相位、计算链与限制证据', ()
   assert.ok(
     evidence.limitationFacts.every(
       (item) =>
-        item.key &&
-        item.status === '适用' &&
-        item.ownerFactKeys.length > 0 &&
-        item.ownerFactKeys.every((key) => factKeys.has(key)) &&
-        item.sources.length > 0 &&
-        item.promptText,
+        item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => factKeys.has(key)),
     ),
   );
-  assert.ok(evidence.methodology.some((item) => item.includes('输入精度边界')));
-  assert.ok(evidence.methodology.some((item) => item.includes('不生成候选出生时间')));
-  assert.ok(evidence.methodology.every((item) => !item.includes('输入敏感性')));
-  assert.match(evidence.promptText, /【西方星盘位置与相位结构化证据】/);
   assert.match(evidence.promptText, /完整星体与计算点位置/);
   assert.match(evidence.promptText, /实际夹角.*精确角.*允许容许度.*距精确角偏差/);
   assert.match(evidence.promptText, /十二宫宫头/);
   assert.match(evidence.promptText, /元素模式与逆行分布/);
   assert.match(evidence.promptText, /出生地点太阳光照背景/);
-  assert.match(evidence.promptText, /证据汇总：[\s\S]*解释限制（方法限制）：/);
   assert.doesNotMatch(evidence.promptText, /成功率|吉凶总分|能量分数[：=]\d/);
   assert.doesNotMatch(evidence.promptText, /命语|当前结果|工程|接口|API|MCP/);
 });

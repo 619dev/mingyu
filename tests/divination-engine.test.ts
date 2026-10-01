@@ -209,22 +209,6 @@ function buildClassicPattern(overrides: Partial<ClassicPattern>): ClassicPattern
   };
 }
 
-test('六爻算法会补出伏神结构，供提示词直接引用', () => {
-  const data = generateLiuyao(new Date('2025-01-01T08:00:00+08:00'));
-
-  assert.ok(Array.isArray(data.hiddenSpirits));
-  assert.ok(
-    data.hiddenSpirits.every(
-      (item) =>
-        item.sixRelative &&
-        item.najiaDizhi &&
-        item.wuxing &&
-        typeof item.position === 'number' &&
-        item.underYao,
-    ),
-  );
-});
-
 test('六爻证据应把六亲类象与现实结论分离', () => {
   const data = generateLiuyao(new Date('2025-01-01T08:00:00+08:00'));
   const analysis = analyzeLiuyaoEvidence(data);
@@ -256,18 +240,6 @@ test('六爻证据应把六亲类象与现实结论分离', () => {
     conditionLiuyaoTraditionalText('官鬼持世，主压力、疾病与官非，事体不虚'),
     '官鬼持世，传统类象提示压力、疾病与官非，传统上可作为事项线索',
   );
-});
-
-test('奇门算法会补出时旬空亡与马星落宫', () => {
-  const data = generateQimen(new Date('2025-01-01T08:00:00+08:00'));
-
-  assert.ok(data.voidBranches?.length);
-  assert.ok(data.voidPalaces?.length);
-  assert.ok(data.voidPalaces.every((item) => item.branch && item.palace && item.name));
-  assert.ok(data.horseStar?.branch);
-  assert.ok(data.horseStar?.palace);
-  assert.ok(data.horseStar?.name);
-  assert.ok(data.horseStar?.sourceBranch);
 });
 
 test('奇门五不遇时应按日干克应判断，不只看时辰干支', () => {
@@ -530,8 +502,16 @@ test('奇门应期同宫值符与用神只计一次且格局按用神宫筛选',
   assert.ok(!yingQi.sources.some((source) => source.includes('值符落9宫（阳遁外宫），应期偏缓')));
 });
 
-test('奇门算法会输出节令背景与复合格局结构', () => {
+test('奇门算法会输出旬空马星、节令背景与复合格局结构', () => {
   const data = generateQimen(new Date('2025-01-01T08:00:00+08:00'));
+
+  assert.ok(data.voidBranches?.length);
+  assert.ok(data.voidPalaces?.length);
+  assert.ok(data.voidPalaces.every((item) => item.branch && item.palace && item.name));
+  assert.ok(data.horseStar?.branch);
+  assert.ok(data.horseStar?.palace);
+  assert.ok(data.horseStar?.name);
+  assert.ok(data.horseStar?.sourceBranch);
 
   assert.ok(data.seasonality);
   assert.equal(typeof data.seasonality.currentJieQi, 'string');
@@ -4503,7 +4483,6 @@ test('塔罗提示词应保留牌面资料且不混入工程证据话术', async
   assert.match(tarotSession.prompt, /占法：塔罗/);
   assert.match(tarotSession.prompt, /牌位明细：/);
   assert.doesNotMatch(tarotSession.prompt, /牌位顺序：/);
-  assert.match(tarotSession.prompt, /牌位明细：/);
   assert.doesNotMatch(tarotSession.prompt, /结构化证据|证据汇总|计算链|解释限制/);
   assert.doesNotMatch(tarotSession.prompt, /成功率为\d|吉凶总分[：=]\d|能量分数[：=]\d/);
   const tarotData = tarotSession.data as TarotData;

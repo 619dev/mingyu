@@ -17,6 +17,15 @@ characterStrokes.set('髮', 15);
 // “为/為”的康熙取数采用十二画。
 characterStrokes.set('为', 12);
 characterStrokes.set('為', 12);
+// 明确输入的原字形按各自《康熙字典》条目取数，不回退到简化对应字。
+characterStrokes.set('纔', 23);
+characterStrokes.set('隻', 10);
+characterStrokes.set('穀', 15);
+characterStrokes.set('佔', 7);
+characterStrokes.set('鬆', 18);
+characterStrokes.set('硃', 11);
+characterStrokes.set('製', 14);
+characterStrokes.set('遊', 16);
 
 const KONGMING_HEXAGRAMS = [
   ['●●●●●', '星震卦', '上上', '彩凤呈祥瑞，麒麟降帝都，祸除迎福到，喜气自然生。'],

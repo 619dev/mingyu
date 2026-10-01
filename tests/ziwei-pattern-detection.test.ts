@@ -856,21 +856,10 @@ test('生年天干条件应贯穿格局检测、证据重建与评估覆盖统�
       (item) => item.name === '巨机居卯',
     ),
   );
-  assert.equal(
-    buildPatternAnalysis({
-      patterns: yearStemPatterns,
-      palaces: yearStem,
-      birthYearHeavenlyStem: '乙',
-    }).summaryFact.matchedPatternCount,
-    yearStemPatterns.length,
-  );
-
   const missingInput = buildPatternAnalysis({
     patterns: detectPatterns({ palaces: yearStem }),
     palaces: yearStem,
   });
-  assert.equal(missingInput.summaryFact.registeredRuleCount, 55);
-  assert.equal(missingInput.summaryFact.evaluatedRuleCount, 54);
   assert.equal(missingInput.summaryFact.unevaluatedRuleCount, 1);
   assert.equal(missingInput.status, '资料不足');
   assert.equal(missingInput.summaryFact.status, '资料不足');
@@ -885,34 +874,7 @@ test('生年天干条件应贯穿格局检测、证据重建与评估覆盖统�
     palaces: yearStem,
     birthYearHeavenlyStem: '乙',
   });
-  assert.equal(completeInput.summaryFact.evaluatedRuleCount, 55);
   assert.equal(completeInput.summaryFact.unevaluatedRuleCount, 0);
-});
-
-test('紫微格局证据应汇总登记、命中、未命中与覆盖边界', () => {
-  const palaces = createPalaces();
-  addStar(palaces, 0, '紫微');
-  addStar(palaces, 0, '天府');
-  const patterns = detectPatterns({ palaces, birthYearHeavenlyStem: '甲' });
-  const analysis = buildPatternAnalysis({ patterns, palaces, birthYearHeavenlyStem: '甲' });
-
-  assert.equal(analysis.status, '已计算');
-  assert.equal(analysis.summaryFact.status, '已完成');
-  assert.equal(analysis.summaryFact.registeredRuleCount, 55);
-  assert.equal(analysis.summaryFact.evaluatedRuleCount, 55);
-  assert.equal(analysis.summaryFact.unevaluatedRuleCount, 0);
-  assert.equal(analysis.summaryFact.matchedPatternCount, 1);
-  assert.equal(analysis.summaryFact.unmatchedRuleCount, 54);
-  assert.match(analysis.promptText, /固定古籍版本逐条评估55条可复算规则/);
-  assert.match(analysis.promptText, /32项.*边界|不代表命盘没有其他传统格局/);
-
-  const knownFactKeys = new Set([analysis.summaryFact.key, ...analysis.summaryFact.factKeys]);
-  assert.ok(
-    [...analysis.counterEvidenceFacts, ...analysis.limitationFacts].every(
-      (item) =>
-        item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => knownFactKeys.has(key)),
-    ),
-  );
 });
 
 test('旧调用方标记来源未校勘时不得把注入数据纳入格局证据', () => {

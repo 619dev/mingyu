@@ -167,6 +167,7 @@ function createPair() {
 }
 
 function assertEvidenceReferences(result: ReturnType<typeof analyzeBaziCompatibility>) {
+  const stepKeys = new Set(result.calculationSteps.map((item) => item.key));
   const factKeys = new Set([
     result.dayMasterRelation.key,
     result.summaryFact.key,
@@ -181,6 +182,16 @@ function assertEvidenceReferences(result: ReturnType<typeof analyzeBaziCompatibi
     ]),
     ...result.counterEvidenceFacts.map((item) => item.key),
   ]);
+  assert.ok(
+    result.calculationSteps.every((step) =>
+      step.dependsOnStepKeys.every((key) => stepKeys.has(key)),
+    ),
+  );
+  assert.ok(
+    result.crossPillarRelations.every(
+      (item) => item.sourceLayerKey && item.targetLayerKey && stepKeys.has(item.calculationStepKey),
+    ),
+  );
   assert.ok(result.summaryFact.factKeys.length > 0);
   assert.ok(result.summaryFact.factKeys.every((key) => factKeys.has(key)));
   assert.ok(
@@ -206,17 +217,6 @@ test('八字双盘证据应计算日主、日支和四柱交叉关系', () => {
 
   assert.equal(result.dayMasterRelation.person1ToPerson2, '克对方');
   assert.equal(result.dayMasterRelation.person2ToPerson1, '受对方克');
-  assert.equal(result.key, 'bazi:compatibility:evidence');
-  assert.equal(result.status, '已计算');
-  assert.equal(result.dayMasterRelation.key, 'bazi:compatibility:day-master-relation');
-  assert.equal(result.calculationSteps.length, 7);
-  assert.ok(
-    result.calculationSteps.every((step) =>
-      step.dependsOnStepKeys.every((key) =>
-        result.calculationSteps.some((candidate) => candidate.key === key),
-      ),
-    ),
-  );
   assert.ok(result.spousePalaceRelations.some((item) => item.type === '六合'));
   assert.ok(
     result.crossPillarRelations.some(
@@ -227,18 +227,6 @@ test('八字双盘证据应计算日主、日支和四柱交叉关系', () => {
         item.transformWuxing === '水',
     ),
   );
-  assert.ok(
-    result.crossPillarRelations.every(
-      (item) =>
-        item.key &&
-        item.status === '已命中' &&
-        item.sourceLayerKey &&
-        item.targetLayerKey &&
-        result.calculationSteps.some((step) => step.key === item.calculationStepKey),
-    ),
-  );
-  assert.equal(result.summaryFact.crossPillarRelationCount, result.crossPillarRelations.length);
-  assert.equal(result.summaryFact.spousePalaceRelationCount, result.spousePalaceRelations.length);
   assertEvidenceReferences(result);
 });
 

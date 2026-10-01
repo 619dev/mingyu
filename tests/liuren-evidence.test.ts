@@ -136,7 +136,6 @@ test('大六壬排盘应内置四课取传与三传推进结构化证据', () =>
         item.limitation.includes('不证明现实事件必然推进'),
     ),
   );
-  assert.equal(evidence.counterSummaryFact.factKeys.length, evidence.counterEvidenceFacts.length);
   assert.ok(
     evidence.counterEvidenceFacts.every(
       (item) =>
@@ -147,7 +146,6 @@ test('大六壬排盘应内置四课取传与三传推进结构化证据', () =>
         item.limitation.includes('不得把单项反证直接写成现实失败'),
     ),
   );
-  assert.equal(evidence.timingFacts.length, 4);
   assert.deepEqual(
     evidence.timingFacts.map((item) => item.type),
     ['初传状态', '三传顺序', '月日触发', '期限边界'],

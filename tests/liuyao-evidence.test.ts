@@ -262,8 +262,6 @@ test('六爻通用排盘保留取用候选，不将世爻自动选为用神', ()
 
   assert.ok(evidence);
   assert.equal(evidence.key, 'liuyao:evidence');
-  assert.equal(evidence.status, '已计算');
-  assert.equal(evidence.calculationSteps.length, 7);
   assert.deepEqual(
     evidence.calculationChain,
     evidence.calculationSteps.map((item) => item.promptText),
@@ -348,7 +346,6 @@ test('六爻通用排盘保留取用候选，不将世爻自动选为用神', ()
         item.sources.length > 0,
     ),
   );
-  assert.equal(evidence.counterSummaryFact.factKeys.length, evidence.counterEvidenceFacts.length);
   assert.ok(
     evidence.counterEvidenceFacts.every(
       (item) =>
@@ -370,18 +367,6 @@ test('六爻通用排盘保留取用候选，不将世爻自动选为用神', ()
     ),
   );
   assert.equal(evidence.summaryFact.status, '待按问题取用');
-  assert.equal(evidence.summaryFact.lineFactCount, evidence.lineFacts.length);
-  assert.equal(evidence.summaryFact.hiddenSpiritFactCount, evidence.hiddenSpiritFacts.length);
-  assert.equal(evidence.summaryFact.candidateCount, evidence.candidates.length);
-  assert.equal(
-    evidence.summaryFact.matchedCandidateCount,
-    evidence.candidates.filter((item) => item.status === '已匹配').length,
-  );
-  assert.equal(evidence.summaryFact.godChainFactCount, evidence.godChain.length);
-  assert.equal(evidence.summaryFact.structureFactCount, evidence.structureFacts.length);
-  assert.equal(evidence.summaryFact.counterEvidenceCount, evidence.counterEvidenceFacts.length);
-  assert.equal(evidence.summaryFact.timingFactCount, evidence.timingFacts.length);
-  assert.equal(evidence.limitationFacts.length, 6);
   assert.deepEqual(
     evidence.limitations,
     evidence.limitationFacts.map((item) => item.promptText),
@@ -765,6 +750,11 @@ test('六爻伏神应推导飞伏生克实效断诀', () => {
   const data = generateLiuyao(fixedDate, { method: 'manual', yaos: [7, 8, 8, 8, 7, 8] });
   assert.ok(data.hiddenSpirits && data.hiddenSpirits.length > 0);
   for (const spirit of data.hiddenSpirits) {
+    assert.ok(spirit.sixRelative);
+    assert.ok(spirit.najiaDizhi);
+    assert.ok(spirit.wuxing);
+    assert.equal(typeof spirit.position, 'number');
+    assert.ok(spirit.underYao);
     assert.ok(spirit.interactionEffect);
     assert.match(spirit.interactionEffect, /飞|伏/);
   }

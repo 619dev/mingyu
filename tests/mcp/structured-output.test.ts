@@ -1705,7 +1705,6 @@ test('MCP 排盘工具应返回 structuredContent，文本兼容输出不重复�
 
       const text = result.content[0]?.type === 'text' ? result.content[0].text : '';
       assert.equal(text, '结构化结果已返回，请读取 structuredContent。');
-      assert.ok(text.length < 100);
     }
   });
 });

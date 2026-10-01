@@ -448,6 +448,8 @@ const DIVINATION_REQUEST_PROPERTIES = {
     maxItems: MAX_ALMANAC_PARTICIPANTS,
     items: {
       type: 'object',
+      required: ['year', 'month', 'day', 'dateType'],
+      anyOf: [{ required: ['timeIndex'] }, { required: ['birthHour', 'birthMinute'] }],
       properties: {
         id: { type: 'string' },
         name: { type: 'string' },
@@ -455,10 +457,39 @@ const DIVINATION_REQUEST_PROPERTIES = {
         year: { type: 'integer', minimum: 1900, maximum: 2100 },
         month: { type: 'integer', minimum: 1, maximum: 12 },
         day: { type: 'integer', minimum: 1, maximum: 31 },
-        timeIndex: { type: 'integer', minimum: 0, maximum: 12 },
-        birthHour: { type: 'integer', minimum: 0, maximum: 23 },
-        birthMinute: { type: 'integer', minimum: 0, maximum: 59 },
-        birthSecond: { type: 'integer', minimum: 0, maximum: 59 },
+        timeIndex: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 12,
+          description: '出生时辰索引；完整出生钟表时分可省略，并存时需对应同一时辰。',
+        },
+        birthHour: { type: 'integer', minimum: 0, maximum: 23, description: '原始出生钟表小时。' },
+        birthMinute: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 59,
+          description: '原始出生钟表分钟。',
+        },
+        birthSecond: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 59,
+          default: 0,
+          description: '原始出生钟表秒数；出生区间需明确提供起点秒数。',
+        },
+        birthPlace: { type: 'string', description: '原始出生地点。' },
+        birthLongitude: { type: 'number', minimum: -180, maximum: 180 },
+        timezone: {
+          type: 'number',
+          minimum: -12,
+          maximum: 14,
+          description: '原始当地钟表时间的固定 UTC 偏移。',
+        },
+        timeZoneId: { type: 'string', description: '原始当地钟表时间的 IANA 历史时区。' },
+        useTrueSolarTime: {
+          type: 'boolean',
+          description: '启用真太阳时需提供原始出生钟表时分和出生经度。',
+        },
         dateType: { enum: ['solar', 'lunar'] },
         isLeapMonth: { type: 'boolean' },
         birthTimeRange: {
@@ -7249,7 +7280,7 @@ function calculateSsgw(input: JsonRecord) {
 function calculateAlmanac(input: JsonRecord) {
   assertNoRandomOptions(input, '黄历择日是确定性计算，不接受 seed 或 replay。');
   const { startDate, endDate } = readAlmanacDateRange(input);
-  return generateAlmanacSelection({
+  const params = {
     topic: readEnum(
       input,
       'topic',
@@ -7270,7 +7301,15 @@ function calculateAlmanac(input: JsonRecord) {
     startDate,
     endDate,
     participants: readAlmanacParticipants(input),
-  });
+  };
+  try {
+    return generateAlmanacSelection(params);
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new ApiError(400, 'BAD_REQUEST', error.message);
+    }
+    throw error;
+  }
 }
 
 function calculateAlmanacApi(input: JsonRecord) {
@@ -8665,7 +8704,7 @@ function readAlmanacParticipants(input: JsonRecord): AlmanacParticipantInput[] {
       year: String(birthDate.year),
       month: String(birthDate.month),
       day: String(birthDate.day),
-      timeIndex: String(readInteger(item, 'timeIndex', 0, 12)),
+      timeIndex: item.timeIndex === undefined ? '' : String(readInteger(item, 'timeIndex', 0, 12)),
       ...(item.birthHour === undefined
         ? {}
         : { birthHour: String(readInteger(item, 'birthHour', 0, 23)) }),
@@ -8675,6 +8714,19 @@ function readAlmanacParticipants(input: JsonRecord): AlmanacParticipantInput[] {
       ...(item.birthSecond === undefined
         ? {}
         : { birthSecond: String(readInteger(item, 'birthSecond', 0, 59)) }),
+      ...(item.birthPlace === undefined ? {} : { birthPlace: readString(item, 'birthPlace', '') }),
+      ...(item.birthLongitude === undefined
+        ? {}
+        : { birthLongitude: String(readNumberLike(item, 'birthLongitude', -180, 180)) }),
+      ...(item.timezone === undefined
+        ? {}
+        : { timezone: readNumberLike(item, 'timezone', -12, 14) }),
+      ...(item.timeZoneId === undefined
+        ? {}
+        : { timeZoneId: readRequiredString(item, 'timeZoneId') }),
+      ...(item.useTrueSolarTime === undefined
+        ? {}
+        : { useTrueSolarTime: readBoolean(item, 'useTrueSolarTime', false) }),
       dateType,
       isLeapMonth: readBoolean(item, 'isLeapMonth', false),
       ...(birthTimeRange ? { birthTimeRange } : {}),

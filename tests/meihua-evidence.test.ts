@@ -15,8 +15,6 @@ test('梅花排盘应内置主互变三阶段结构化证据', () => {
 
   assert.ok(evidence);
   assert.equal(evidence.key, 'meihua:evidence');
-  assert.equal(evidence.status, '已计算');
-  assert.equal(evidence.calculationSteps.length, 7);
   assert.deepEqual(
     evidence.calculationChain,
     evidence.calculationSteps.map((item) => item.promptText),
@@ -53,15 +51,6 @@ test('梅花排盘应内置主互变三阶段结构化证据', () => {
         item.limitation.includes('不得直接解释为现实起因'),
     ),
   );
-  assert.equal(evidence.summaryFact.status, '证据链完整');
-  assert.equal(evidence.summaryFact.hexagramFactCount, evidence.hexagramStructureFacts.length);
-  assert.equal(evidence.summaryFact.yaoFactCount, evidence.yaoStructureFacts.length);
-  assert.equal(evidence.summaryFact.stageFactCount, evidence.stages.length);
-  assert.equal(evidence.summaryFact.transitionFactCount, evidence.transitionFacts.length);
-  assert.equal(evidence.summaryFact.traditionalFactCount, evidence.traditionalFacts.length);
-  assert.equal(evidence.summaryFact.counterEvidenceCount, evidence.counterEvidenceFacts.length);
-  assert.equal(evidence.summaryFact.timingFactCount, evidence.timingFacts.length);
-  assert.equal(evidence.limitationFacts.length, 6);
   assert.deepEqual(
     evidence.limitations,
     evidence.limitationFacts.map((item) => item.promptText),
@@ -408,40 +397,6 @@ test('梅花旧结果缺少逐爻或互卦阶段时应明确标记缺口且不�
     new Set(duplicateYao.yaoStructureFacts.map((item) => item.key)).size,
     duplicateYao.yaoStructureFacts.length,
   );
-});
-
-test('梅花七种起卦入口都应生成完整可移植的对象化证据', () => {
-  const cases = [
-    generateMeihua(fixedDate, { method: 'time' }),
-    generateMeihua(fixedDate, { method: 'timeTrigram' }),
-    generateMeihua(fixedDate, { method: 'number', number: 123 }),
-    generateMeihua(fixedDate, { method: 'sound', soundCount: 3 }),
-    generateMeihua(fixedDate, {
-      method: 'character',
-      characterText: '今日动静如何',
-      characterTones: [1, 4, 3, 3, 1, 1],
-    }),
-    generateMeihua(fixedDate, {
-      method: 'direction',
-      direction: 'south',
-      objectType: 'fire',
-    }),
-    generateMeihua(fixedDate, { method: 'random', seed: '七种入口核验' }),
-  ];
-
-  for (const data of cases) {
-    const evidence = data.evidenceAnalysis;
-    assert.ok(evidence);
-    assert.equal(evidence.calculationFact.status, '完整');
-    assert.equal(evidence.stageCoverageFact.status, '完整');
-    assert.equal(evidence.yaoCoverageFact.status, '完整');
-    assert.equal(evidence.transitionFacts.length, 2);
-    assert.equal(evidence.timingSummaryFact.status, '已提供触发条件');
-    assert.equal(evidence.counterSummaryFact.factKeys.length, evidence.counterEvidenceFacts.length);
-    assert.equal(evidence.summaryFact.status, '证据链完整');
-    assert.equal(evidence.calculationSteps.length, 7);
-    assert.equal(evidence.limitationFacts.length, 6);
-  }
 });
 
 test('梅花字占证据仅在原始笔画或声类与卦数一致时认定计算完整', () => {

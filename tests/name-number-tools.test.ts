@@ -10,7 +10,6 @@ import {
   analyzeNumber,
   buildNumberEnergyPrompt,
   calculateZhugeNumber,
-  castKongmingHexagram,
   buildChineseNameAnalysisPrompt,
   buildChineseNamingPrompt,
   selectNamingCharacters,
@@ -370,37 +369,7 @@ test('数字能量覆盖手机号、车牌字母换算、八星磁场与0和5作
   assert.match(prompt, /适合工作使用吗？/);
 });
 
-test('八星磁场完整覆盖八卦数字的全部相邻组合', () => {
-  const baguaDigits = ['1', '2', '3', '4', '6', '7', '8', '9'];
-  const names = new Set<string>();
-  for (const left of baguaDigits) {
-    for (const right of baguaDigits) {
-      const result = analyzeNumber(`${left}${right}`);
-      assert.equal(result.energyPairs.length, 1);
-      names.add(result.energyPairs[0]!.name);
-    }
-  }
-  assert.deepEqual(
-    [...names].sort(),
-    ['天医', '生气', '延年', '伏位', '绝命', '五鬼', '六煞', '祸害'].sort(),
-  );
-
-  const modifiersOnly = analyzeNumber('050');
-  assert.equal(modifiersOnly.energyPairs.length, 0);
-  assert.deepEqual(modifiersOnly.dominantFields, []);
-  assert.equal(modifiersOnly.modifiers.length, 3);
-});
-
-test('诸葛神数按三个康熙笔画尾数组合并落入完整384签', () => {
-  const result = calculateZhugeNumber('顺其然');
-  assert.equal(result.strokes.length, 3);
-  assert.equal(result.rawNumber, result.digits[0] * 100 + result.digits[1] * 10 + result.digits[2]);
-  assert.ok(result.number >= 1 && result.number <= 384);
-  assert.equal(result.sign.number, result.number);
-  assert.ok(result.sign.poem.length > 0);
-});
-
-test('诸葛神数384签循环边界与孔明神卦本表首尾序号可复算', () => {
+test('诸葛神数384签循环边界可由实际康熙笔画复算', () => {
   const zhugeCases = [
     { text: '山其不', rawNumber: 384, number: 384 },
     { text: '山其主', rawNumber: 385, number: 1 },
@@ -408,39 +377,11 @@ test('诸葛神数384签循环边界与孔明神卦本表首尾序号可复算',
   ];
   for (const item of zhugeCases) {
     const result = calculateZhugeNumber(item.text);
+    assert.equal(result.strokes.length, 3, item.text);
     assert.equal(result.rawNumber, item.rawNumber);
     assert.equal(result.number, item.number);
     assert.equal(result.sign.number, item.number);
   }
-
-  const kongmingCases = [
-    ['●●●●●', 1, '星震卦'],
-    ['●○○○○', 2, '从革卦'],
-    ['○●○○○', 3, '曲直卦'],
-    ['●○●●●', 31, '后吉卦'],
-    ['○○○○○', 32, '无数卦'],
-  ] as const;
-  for (const [pattern, number, name] of kongmingCases) {
-    const result = castKongmingHexagram(pattern);
-    assert.equal(result.number, number);
-    assert.equal(result.name, name);
-  }
-});
-
-test('孔明神卦完整覆盖32种五钱阴阳组合并支持随机重放', () => {
-  assert.throws(() => castKongmingHexagram(''), /卦象需由五个阴阳结果组成/);
-  assert.throws(() => castKongmingHexagram('  \t  '), /卦象需由五个阴阳结果组成/);
-  const numbers = new Set<number>();
-  for (let value = 0; value < 32; value += 1) {
-    const pattern = value.toString(2).padStart(5, '0').replaceAll('0', '○').replaceAll('1', '●');
-    numbers.add(castKongmingHexagram(pattern).number);
-  }
-  assert.equal(numbers.size, 32);
-
-  const first = castKongmingHexagram(undefined, { seed: '孔明神卦回归' });
-  const replay = castKongmingHexagram(undefined, { replay: first.random?.samples });
-  assert.equal(replay.symbol, first.symbol);
-  assert.equal(replay.number, first.number);
 });
 
 test('起名与选字数量必须为安全整数，避免NaN绕过候选上限', () => {

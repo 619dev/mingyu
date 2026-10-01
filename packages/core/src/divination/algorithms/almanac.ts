@@ -361,16 +361,16 @@ function shouldBuildParticipantProfile(item: AlmanacParticipantInput) {
 
 function readParticipantInteger(value: string, label: string, min: number, max: number) {
   if (typeof value !== 'string') {
-    throw new Error(`参与人${label}必须是 ${min}-${max} 的整数`);
+    throw new TypeError(`参与人${label}必须是 ${min}-${max} 的整数`);
   }
   const text = value.trim();
   if (!/^\d+$/.test(text)) {
-    throw new Error(`参与人${label}必须是 ${min}-${max} 的整数`);
+    throw new RangeError(`参与人${label}必须是 ${min}-${max} 的整数`);
   }
 
   const number = Number(text);
   if (!Number.isInteger(number) || number < min || number > max) {
-    throw new Error(`参与人${label}必须是 ${min}-${max} 的整数`);
+    throw new RangeError(`参与人${label}必须是 ${min}-${max} 的整数`);
   }
   return number;
 }
@@ -389,27 +389,27 @@ function readOptionalParticipantNumber(value: string | undefined, label: string)
   if (value === undefined || value.trim() === '') return undefined;
   const number = Number(value.trim());
   if (!Number.isFinite(number) || number < -180 || number > 180) {
-    throw new Error(`参与人${label}必须是 -180 到 180 之间的数字`);
+    throw new RangeError(`参与人${label}必须是 -180 到 180 之间的数字`);
   }
   return number;
 }
 
 function readParticipantBirthInput(item: AlmanacParticipantInput) {
   if (item.gender !== '男' && item.gender !== '女' && item.gender !== '') {
-    throw new Error('参与人性别必须是 男、女 或留空。');
+    throw new RangeError('参与人性别必须是 男、女 或留空。');
   }
   if (item.dateType !== 'solar' && item.dateType !== 'lunar') {
-    throw new Error('参与人日历类型必须是 solar 或 lunar。');
+    throw new RangeError('参与人日历类型必须是 solar 或 lunar。');
   }
   if (item.isLeapMonth !== undefined && typeof item.isLeapMonth !== 'boolean') {
-    throw new Error('参与人isLeapMonth必须是布尔值。');
+    throw new TypeError('参与人isLeapMonth必须是布尔值。');
   }
 
   const year = readParticipantInteger(item.year, '出生年份', 1900, 2100);
   const month = readParticipantInteger(item.month, '出生月份', 1, 12);
   const day = readParticipantInteger(item.day, '出生日期', 1, item.dateType === 'lunar' ? 30 : 31);
   if (item.useTrueSolarTime !== undefined && typeof item.useTrueSolarTime !== 'boolean') {
-    throw new Error('参与人useTrueSolarTime必须是布尔值。');
+    throw new TypeError('参与人useTrueSolarTime必须是布尔值。');
   }
   const birthHour = readOptionalParticipantInteger(item.birthHour, '出生小时', 0, 23);
   const birthMinute = readOptionalParticipantInteger(item.birthMinute, '出生分钟', 0, 59);
@@ -417,7 +417,7 @@ function readParticipantBirthInput(item: AlmanacParticipantInput) {
   const hasPreciseClock =
     birthHour !== undefined || birthMinute !== undefined || birthSecond !== undefined;
   if (hasPreciseClock && (birthHour === undefined || birthMinute === undefined)) {
-    throw new Error('参与人精准出生时间需要同时提供小时和分钟。');
+    throw new RangeError('参与人精准出生时间需要同时提供小时和分钟。');
   }
   const hasBlankTimeIndex = typeof item.timeIndex === 'string' && item.timeIndex.trim() === '';
   const timeIndex =
@@ -427,7 +427,7 @@ function readParticipantBirthInput(item: AlmanacParticipantInput) {
   if (birthHour !== undefined && birthMinute !== undefined && timeIndex !== undefined) {
     const preciseTimeIndex = getTimeIndexFromClock(birthHour, birthMinute);
     if (timeIndex !== preciseTimeIndex) {
-      throw new Error(
+      throw new RangeError(
         `参与人精准出生时间对应时辰索引 ${preciseTimeIndex}，与已提供的时辰索引 ${timeIndex} 不一致。`,
       );
     }
@@ -436,16 +436,16 @@ function readParticipantBirthInput(item: AlmanacParticipantInput) {
     if (hasBlankTimeIndex) {
       readParticipantInteger(item.timeIndex, '出生时辰', 0, 12);
     }
-    throw new Error('参与人需要提供出生时辰或精准出生时间。');
+    throw new RangeError('参与人需要提供出生时辰或精准出生时间。');
   }
   const birthLongitude = readOptionalParticipantNumber(item.birthLongitude, '出生经度');
   const timezone = item.timezone;
   const timeZoneId = item.timeZoneId;
   if (item.useTrueSolarTime === true && (birthHour === undefined || birthMinute === undefined)) {
-    throw new Error('参与人真太阳时需要精准出生小时和分钟。');
+    throw new RangeError('参与人真太阳时需要精准出生小时和分钟。');
   }
   if (item.useTrueSolarTime === true && birthLongitude === undefined) {
-    throw new Error('参与人真太阳时需要出生经度。');
+    throw new RangeError('参与人真太阳时需要出生经度。');
   }
   const validationMessage = getBirthDateValidationMessage({
     year,
@@ -456,7 +456,7 @@ function readParticipantBirthInput(item: AlmanacParticipantInput) {
   });
 
   if (validationMessage) {
-    throw new Error(`参与人出生${validationMessage}`);
+    throw new RangeError(`参与人出生${validationMessage}`);
   }
 
   return {
@@ -480,7 +480,7 @@ function readParticipantText(value: unknown, label: string, fallback: string) {
     return fallback;
   }
   if (typeof value !== 'string') {
-    throw new Error(`参与人${label}必须是文本。`);
+    throw new TypeError(`参与人${label}必须是文本。`);
   }
   return value.trim() || fallback;
 }
@@ -507,7 +507,7 @@ function buildParticipantBirthProfile(
   birthInput: ReturnType<typeof readParticipantBirthInput>,
 ): BirthProfile {
   if (birthInput.birthHour === undefined || birthInput.birthMinute === undefined) {
-    throw new Error('四柱反推参与人必须提供区间起点的精准出生时间。');
+    throw new RangeError('四柱反推参与人必须提供区间起点的精准出生时间。');
   }
   return {
     id: item.id,
@@ -562,7 +562,7 @@ function assertParticipantRangePillars(
   const labels = { year: '年', month: '月', day: '日', hour: '时' } as const;
   for (const key of ['year', 'month', 'day', 'hour'] as const) {
     if (profile.pillars[key] !== expected[key]) {
-      throw new Error(`参与人出生区间${labels[key]}柱与四柱反推来源不一致。`);
+      throw new RangeError(`参与人出生区间${labels[key]}柱与四柱反推来源不一致。`);
     }
   }
 }
@@ -641,7 +641,7 @@ function createRangeParticipantProfile(
       (key) => typeof rawSource.pillars[key] !== 'string' || !rawSource.pillars[key].trim(),
     )
   ) {
-    throw new Error('四柱反推参与人必须提供完整来源四柱。');
+    throw new RangeError('四柱反推参与人必须提供完整来源四柱。');
   }
   const profile = buildParticipantBirthProfile(item, birthInput);
   const source = validateBirthProfileTimeRange(profile, rawSource);
@@ -699,17 +699,17 @@ function createParticipantProfiles(
   participants: AlmanacParticipantInput[],
 ): AlmanacParticipantProfile[] {
   if (!Array.isArray(participants)) {
-    throw new Error('参与人信息必须是数组。');
+    throw new TypeError('参与人信息必须是数组。');
   }
   if (participants.length > MAX_ALMANAC_PARTICIPANTS) {
-    throw new Error(`黄历择日一次最多分析 ${MAX_ALMANAC_PARTICIPANTS} 位参与人，请拆分请求。`);
+    throw new RangeError(`黄历择日一次最多分析 ${MAX_ALMANAC_PARTICIPANTS} 位参与人，请拆分请求。`);
   }
 
   const participantIds = new Set<string>();
   return participants
     .filter((item, index) => {
       if (!item || typeof item !== 'object') {
-        throw new Error(`参与人${index + 1}信息必须是对象。`);
+        throw new TypeError(`参与人${index + 1}信息必须是对象。`);
       }
       return shouldBuildParticipantProfile(item);
     })
@@ -717,7 +717,7 @@ function createParticipantProfiles(
       const birthInput = readParticipantBirthInput(item);
       const id = readParticipantText(item.id, 'id', `participant-${index + 1}`);
       if (participantIds.has(id)) {
-        throw new Error('参与人id必须唯一。');
+        throw new RangeError('参与人id必须唯一。');
       }
       participantIds.add(id);
       const name = readParticipantText(item.name, '姓名', '未命名参与人');
@@ -730,7 +730,7 @@ function createParticipantProfiles(
           item.timeZoneId !== undefined ||
           item.originalTrueSolarProfile !== undefined
         ) {
-          throw new Error('四柱反推参与人必须使用公历、非闰月和标准北京时间。');
+          throw new RangeError('四柱反推参与人必须使用公历、非闰月和标准北京时间。');
         }
         return createRangeParticipantProfile(item, birthInput, id, name);
       }
@@ -761,7 +761,7 @@ function createParticipantProfiles(
       if (item.originalTrueSolarProfile) {
         const source = item.originalTrueSolarProfile;
         if (source.useTrueSolarTime !== true) {
-          throw new Error('择日真太阳时原始出生记录必须启用真太阳时。');
+          throw new RangeError('择日真太阳时原始出生记录必须启用真太阳时。');
         }
         const normalized = normalizeBirthProfile(source);
         const corrected = normalized.effectiveTime;
@@ -778,7 +778,7 @@ function createParticipantProfiles(
             (source.gender === 'male' ? '男' : source.gender === 'female' ? '女' : '') ||
           birthInput.birthLongitude !== normalized.resolvedLocation?.longitude
         ) {
-          throw new Error('择日参与人校正时间与真太阳时原始出生记录不一致。');
+          throw new RangeError('择日参与人校正时间与真太阳时原始出生记录不一致。');
         }
         return calculateParticipantProfileSnapshot(
           item,
