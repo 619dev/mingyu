@@ -579,7 +579,7 @@ test('查询失败保留盘面且明确说明', async () => {
       throw new Error('资料暂不可用');
     },
   });
-  assert.ok(h.notices.length);
+  assert.ok(h.notices.some((notice) => /补充资料.*暂未取得/u.test(notice)));
   assert.match(h.sent[1][0].content, /八字原始资料/);
   assert.match(h.sent.at(-1)![0].content, /“甲”条文未取得：资料暂不可用/);
   assert.equal(h.done(), 1);

@@ -77,14 +77,11 @@ test('干支五行与六合逐项对应《渊海子平》基础表', () => {
     for (const b of branches) {
       assert.equal(isLiuhe(a, b), pairs.includes(a + b) || pairs.includes(b + a), a + b);
     }
-  let valid = 0;
   for (let i = 0; i < 10; i++)
     for (let j = 0; j < 12; j++) {
       const expected = i % 2 === j % 2;
       assert.equal(isValidGanZhi(stems[i] + branches[j]), expected);
-      if (expected) valid++;
     }
-  assert.equal(valid, 60);
 });
 
 test('六十甲子纳音五行逐对符合《碎金》乾象篇', () => {

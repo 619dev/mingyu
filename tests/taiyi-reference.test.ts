@@ -241,14 +241,27 @@ test('太乙在线证据任务书只列本次成立格局且不重复反证与�
     assert.doesNotMatch(result.evidenceAnalysis.promptText, /文昌或主客大小将至少一项/);
   }
 
-  const withoutCoverOrImprison = Array.from({ length: 72 }, (_, offset) =>
-    generateTaiyi({ year: 1950 + offset, scope: 'year' }),
-  ).find((item) =>
-    item.evidenceAnalysis.conditionFacts
-      .filter((fact) => fact.kind === '掩' || fact.kind === '囚')
-      .every((fact) => !fact.matched),
+  // 1950 年阳遁五十一局：太乙乾一、文昌离二、始击坤七、客大将艮三。
+  const withoutCoverOrImprison = generateTaiyi({ year: 1950, scope: 'year' });
+  assert.deepEqual(
+    [
+      withoutCoverOrImprison.bureau,
+      withoutCoverOrImprison.taiyiPalace,
+      withoutCoverOrImprison.wenChangPalace,
+      withoutCoverOrImprison.shiJiPalace,
+      withoutCoverOrImprison.guestGeneral,
+    ],
+    [51, 1, 2, 7, 3],
   );
-  assert.ok(withoutCoverOrImprison);
+  assert.deepEqual(
+    withoutCoverOrImprison.evidenceAnalysis.conditionFacts
+      .filter((fact) => fact.kind === '掩' || fact.kind === '囚')
+      .map((fact) => [fact.kind, fact.matched]),
+    [
+      ['掩', false],
+      ['囚', false],
+    ],
+  );
   assert.doesNotMatch(
     withoutCoverOrImprison.evidenceAnalysis.promptText,
     /掩成立|囚成立|未见掩|未见囚|条件未成立/,
@@ -386,8 +399,20 @@ const TAIYI_TRUTH: TaiyiTruthRow[] = [
   [2021, 10155938, 50, '乾', '巳', '午', '丑', '丑', 16, 15, 15],
 ];
 
+const TAIYI_PALACE_GUA = new Map<number, string>([
+  [1, '乾'],
+  [2, '离'],
+  [3, '艮'],
+  [4, '震'],
+  [6, '兑'],
+  [7, '坤'],
+  [8, '坎'],
+  [9, '巽'],
+]);
+
 test('太乙年计 1950-2021 七十二局与独立真值全对拍', () => {
   const bureaus = new Set(TAIYI_TRUTH.map((row) => row[2]));
+  const palaceGua = new Map<number, string>();
   assert.equal(bureaus.size, 72);
   for (let bureau = 1; bureau <= 72; bureau += 1) {
     assert.ok(bureaus.has(bureau), `真值表缺少第 ${bureau} 局`);
@@ -413,6 +438,12 @@ test('太乙年计 1950-2021 七十二局与独立真值全对拍', () => {
     assert.equal(result.bureau, bureau, `${year} 局数错误`);
     assert.equal(result.yinYang, '阳遁', `${year} 阴阳遁错误`);
     assert.equal(result.taiyiPosition, taiyi, `${year} 太乙落宫错误`);
+    palaceGua.set(result.taiyiPalace, result.taiyiGua);
+    assert.equal(
+      result.taiyiGua,
+      TAIYI_PALACE_GUA.get(result.taiyiPalace),
+      `${year} 太乙宫卦名错误`,
+    );
     assert.equal(result.wenChangPosition, wenChang, `${year} 文昌落宫错误`);
     assert.equal(result.shiJiPosition, shiJi, `${year} 始击落宫错误`);
     assert.equal(result.jiShenPosition, jiShen, `${year} 计神落宫错误`);
@@ -421,6 +452,7 @@ test('太乙年计 1950-2021 七十二局与独立真值全对拍', () => {
     assert.equal(result.guestCount, guestCount, `${year} 客算错误`);
     assert.equal(result.setCount, setCount, `${year} 定算错误`);
   }
+  assert.deepEqual(palaceGua, TAIYI_PALACE_GUA);
 });
 
 test('太乙主客定算逢整十时按九去余定大将宫', () => {

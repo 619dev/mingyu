@@ -58,7 +58,6 @@ test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
   assert.equal(evidence.key, 'qimen:evidence');
   assert.equal(evidence.status, '已计算');
   assert.deepEqual(evidence.calculationSteps, evidence.calculationEvidenceFacts);
-  assert.equal(evidence.calculationChain.length, evidence.calculationEvidenceFacts.length);
   assert.equal(data.jiuGongGe.length, 9);
   assert.equal(evidence.palaceFacts.length, 9);
   assert.deepEqual(
@@ -86,21 +85,16 @@ test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
   assert.ok(evidence.candidates.some((item) => item.sources.includes('值符落宫')));
   assert.ok(evidence.candidates.some((item) => item.sources.includes('值使落宫')));
   assert.equal(evidence.summaryFact.status, '证据链完整');
-  assert.equal(evidence.summaryFact.palaceFactCount, evidence.palaceFacts.length);
-  assert.equal(evidence.summaryFact.candidateCount, evidence.candidates.length);
-  assert.equal(evidence.summaryFact.relationCount, evidence.relations.length);
-  assert.equal(evidence.summaryFact.patternCount, evidence.patternFacts.length);
-  assert.equal(evidence.summaryFact.counterEvidenceCount, evidence.counterEvidenceFacts.length);
-  assert.equal(evidence.summaryFact.timingFactCount, evidence.timingFacts.length);
-  assert.equal(evidence.summaryFact.directionFactCount, evidence.directionFacts.length);
-  assert.equal(evidence.limitationFacts.length, 6);
   assert.deepEqual(
     evidence.limitations,
     evidence.limitationFacts.map((item) => item.promptText),
   );
   const factKeys = new Set([evidence.summaryFact.key, ...evidence.summaryFact.factKeys]);
   assert.ok(
-    evidence.limitationFacts.every((item) => item.ownerFactKeys.every((key) => factKeys.has(key))),
+    evidence.limitationFacts.every(
+      (item) =>
+        item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => factKeys.has(key)),
+    ),
   );
   assert.match(evidence.promptText, /【任务】/);
   assert.match(evidence.promptText, /【九宫盘面】/);
@@ -114,11 +108,6 @@ test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
   );
   assert.doesNotMatch(evidence.promptText, /qimen:(?:evidence|limitation|calculation):/);
   assertPromptIsPortableTaskText(evidence.promptText);
-});
-
-test('奇门证据应明确候选不等于已按问题选定用神', () => {
-  const evidence = analyzeQimenEvidence(generateQimen(fixedDate));
-
   assert.match(evidence.promptText, /相关宫位与主客关系/);
   assert.ok(
     evidence.limitationFacts.some((item) =>

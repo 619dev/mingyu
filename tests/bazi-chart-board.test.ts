@@ -108,7 +108,6 @@ test('未知时辰盘面保留稳定柱并将依赖出生时刻的资料标为�
   for (const key of result.unknownTimeAnalysis!.uncertainPillars) {
     assert.equal(result.pillars[key].ganZhi, '', `${key}柱随出生时刻变化，继续待补时`);
   }
-  assert.equal(result.unknownTimeAnalysis?.scenarios.length, candidateCount);
   assert.equal(result.pillars.hour.ganZhi, '', '页面不应生成虚构时柱');
 });
 

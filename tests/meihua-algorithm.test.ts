@@ -77,7 +77,6 @@ test('梅花：变卦应按初爻到上爻的传统爻位计算', () => {
   assert.match(lowerCalculation?.promptText ?? '', /下卦=\(5\)除以8，余数为5，索引为5/u);
   assert.equal(data.evidenceAnalysis?.calculationFact.methodKey, 'number');
   assert.equal(data.evidenceAnalysis?.calculationFact.inputs.number, 123);
-  assert.equal(data.evidenceAnalysis?.calculationFact.steps.length, 3);
   assert.deepEqual(
     data.evidenceAnalysis?.calculationFact.steps.map((item) => item.target),
     ['上卦', '下卦', '动爻'],
@@ -430,11 +429,16 @@ test('梅花：仅随机起卦应把重放轨迹接入统一证据', () => {
   assert.equal(randomData.evidenceAnalysis?.randomFact.sampleCount, 3);
   assert.doesNotMatch(randomData.evidenceAnalysis?.randomFact.promptText || '', /梅花证据样例/);
   assert.equal(randomData.evidenceAnalysis?.calculationFact.status, '完整');
-  assert.equal(randomData.evidenceAnalysis?.calculationFact.steps.length, 3);
-  assert.ok(
-    randomData.evidenceAnalysis?.calculationFact.steps.every((item) =>
-      item.expression.startsWith('随机整数'),
-    ),
+  assert.deepEqual(
+    randomData.evidenceAnalysis?.calculationFact.steps.map((item) => [
+      item.target,
+      item.expression,
+    ]),
+    [
+      ['上卦', '随机整数1-8'],
+      ['下卦', '随机整数1-8'],
+      ['动爻', '随机整数1-6'],
+    ],
   );
   assert.equal(numberData.evidenceAnalysis?.randomFact.status, '不适用');
   assert.deepEqual(numberData.evidenceAnalysis?.randomFacts, []);

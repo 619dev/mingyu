@@ -88,7 +88,9 @@ test('引用与实际查询条文对照，概括取义不当成引文', () => {
     { key: 'classic', title: '传统条文：庚', text: '原文：庚金带煞，刚健为最。', usable: true },
   ];
   assert.deepEqual(verifyReadingAnswer(chart, '原文：「庚金带煞，刚健为最。」', resources), []);
-  assert.ok(verifyReadingAnswer(chart, '原文：「得火而炼，方成器用。」', resources).length);
+  const citationIssues = verifyReadingAnswer(chart, '原文：「得火而炼，方成器用。」', resources);
+  assert.equal(citationIssues.length, 1);
+  assert.match(citationIssues[0]!, /所标原文.*不一致/u);
   assert.deepEqual(verifyReadingAnswer(chart, '取义为刚健、锻炼成器。', resources), []);
 });
 

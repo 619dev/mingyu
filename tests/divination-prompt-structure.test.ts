@@ -513,6 +513,7 @@ test('各类占卜提示词都使用统一的角色加信息加问题结构', as
     const role = item.method as DivinationPromptGuidanceMethod;
     if (item.method === 'ssgw') {
       assertSsgwPromptStructure(prompt);
+      assertPromptIsPortableTaskText(prompt);
     } else if (item.structure === 'liuren') {
       assertPromptHasSingleRole(prompt, PROMPT_ROLE_TEXT[role]);
       assertLiurenPromptStructure(prompt);
@@ -524,29 +525,6 @@ test('各类占卜提示词都使用统一的角色加信息加问题结构', as
       assertStandardPromptStructure(prompt);
     }
   }
-});
-
-test('占卜输出提示词应是可复制给在线 AI 的独立任务书，不暴露工程提示词', () => {
-  const cases: Array<{
-    method: Exclude<DivinationType, 'tarot_single'>;
-    data: DivinationData;
-    question: string;
-  }> = [
-    { method: 'liuyao', data: createData('liuyao'), question: '这件事接下来该怎么推进？' },
-    { method: 'liuren', data: createData('liuren'), question: '这件事接下来该怎么推进？' },
-    { method: 'ssgw', data: createData('ssgw'), question: '这件事接下来该怎么推进？' },
-    { method: 'almanac', data: createAlmanacData(), question: '这几天哪天适合搬家？' },
-  ];
-
-  cases.forEach((item) => {
-    const prompt = buildDivinationPrompt(
-      item.method,
-      item.question,
-      item.data,
-      createSupplementaryInfo(),
-    );
-    assertPromptIsPortableTaskText(prompt);
-  });
 });
 
 test('非命盘占法不再附加独立的方法论与应期控制段落', () => {

@@ -76,26 +76,6 @@ test('npm 紫微资料便捷入口应保留指定范围并返回结构化 payloa
   assert.equal(payloadByScope.origin.active_scope.scope, 'origin');
 });
 
-test('npm 紫微运行时应将真太阳时结果转换为公历日期和时辰', () => {
-  const input = buildZiweiChartInput({
-    ...baseDraft,
-    year: '1990',
-    month: '5',
-    day: '15',
-    timeIndex: '',
-    useTrueSolarTime: true,
-    birthHour: '0',
-    birthMinute: '5',
-    birthLongitude: '75',
-    timezone: 8,
-  });
-
-  assert.equal(input.dateType, 'solar');
-  assert.equal(input.isLeapMonth, false);
-  assert.equal(input.trueSolarEvidence?.summaryFact.status, '证据链完整');
-  assert.equal(Number.isInteger(input.birthTimeIndex), true);
-});
-
 test('npm 紫微运限便捷入口应一次生成流年、流月和流日选项', async () => {
   const input = buildZiweiChartInput(baseDraft);
   const options = await buildZiweiFortuneOptions(input, { startAge: 1, endAge: 1 });

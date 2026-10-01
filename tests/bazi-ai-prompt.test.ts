@@ -1212,30 +1212,6 @@ test('八字提示词不应把五行构成阈值包装为过强过弱病药断�
   assert.doesNotMatch(prompt.user, /【病药法】|过弱为病|过旺为病/);
 });
 
-test('八字提示词不再附加经典格局长段', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 1,
-    day: 1,
-    timeIndex: 3,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const prompt = buildPromptFromConfig(
-    '请分析整体命局。',
-    { id: 'ai-mingge-zonglun', prompt: '测试', scopeLabel: '通用' },
-    result,
-    null,
-    '通用',
-    { isCustomQuestion: false },
-  );
-
-  assert.doesNotMatch(prompt.user, /【经典格局】/);
-});
-
 test('八字提示词不写入经典格局强断语', () => {
   const result = baziCalculator.calculateBazi({
     year: 1988,

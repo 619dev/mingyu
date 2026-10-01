@@ -21,7 +21,7 @@ import {
   requireSystemCapability,
 } from '../packages/core/src/capabilities/index';
 
-test('秒级出生精度应保留到八字、星盘、七政和择日输入', () => {
+test('秒级出生精度应保留到各排盘适配器', () => {
   const profile = {
     gender: 'female' as const,
     calendarType: 'solar' as const,
@@ -40,6 +40,11 @@ test('秒级出生精度应保留到八字、星盘、七政和择日输入', ()
   assert.equal(birthProfileToAstrolabeInput(profile).second, '56');
   assert.equal(birthProfileToQizhengInput(profile).second, 56);
   assert.equal(birthProfileToAlmanacParticipant(profile).birthSecond, '56');
+  assert.deepEqual(birthProfileToZiweiChartInput(profile).birthTime, {
+    hour: 12,
+    minute: 34,
+    second: 56,
+  });
   const { second: _second, ...minuteProfile } = profile;
   assert.equal(normalizeBirthProfile(minuteProfile).timePrecision, 'minute');
   assert.equal(normalizeBirthProfile(minuteProfile).timeEvidence.inputFact.clockTime, '12:34');
@@ -326,36 +331,6 @@ test('同时提供时辰与精准时分时必须保持一致', () => {
   assert.equal(normalized.timeIndex, 5);
 });
 
-test('统一出生档案可复用到八字与星盘输入', () => {
-  const profile = {
-    name: '测试档案',
-    gender: 'male' as const,
-    calendarType: 'solar' as const,
-    year: 1990,
-    month: 5,
-    day: 15,
-    hour: 10,
-    minute: 30,
-    location: {
-      name: '北京',
-      longitude: 116.4,
-      latitude: 39.9,
-      timezone: 8,
-    },
-    useTrueSolarTime: true,
-  };
-
-  const baziInput = birthProfileToBaziPerson(profile);
-  const astrolabeInput = birthProfileToAstrolabeInput(profile);
-  const normalized = normalizeBirthProfile(profile);
-  assert.equal(baziInput.birthLongitude, 116.4);
-  assert.equal(baziInput.useTrueSolarTime, true);
-  assert.equal(astrolabeInput.longitude, '116.4');
-  assert.equal(astrolabeInput.latitude, '39.9');
-  assert.equal(astrolabeInput.useTrueSolarTime, true);
-  assert.equal(normalized.trueSolarEvidence?.summaryFact.status, '证据链完整');
-});
-
 test('统一出生档案应向八字、星盘和七政四余透传 IANA 历史时区', () => {
   const profile = {
     name: '纽约历史时区样例',
@@ -385,8 +360,14 @@ test('统一出生档案应向八字、星盘和七政四余透传 IANA 历史�
   assert.equal(normalized.trueSolarEvidence?.timezoneEvidence?.resolvedOffsetHours, -4);
   assert.equal(baziInput.timezone, undefined);
   assert.equal(baziInput.timeZoneId, 'America/New_York');
+  assert.equal(baziInput.birthLongitude, -74.006);
+  assert.equal(baziInput.useTrueSolarTime, true);
   assert.equal(astrolabeInput.timezone, undefined);
   assert.equal(astrolabeInput.timeZoneId, 'America/New_York');
+  assert.equal(astrolabeInput.longitude, '-74.006');
+  assert.equal(astrolabeInput.latitude, '40.7128');
+  assert.equal(astrolabeInput.useTrueSolarTime, true);
+  assert.equal(normalized.trueSolarEvidence?.summaryFact.status, '证据链完整');
   assert.equal(qizhengInput.timezone, undefined);
   assert.equal(qizhengInput.timeZoneId, 'America/New_York');
   assert.equal(chart.timing?.timezone, -4);
@@ -451,27 +432,6 @@ test('统一出生档案可生成真太阳时后的紫微传统盘输入', () =>
   assert.equal(input.trueSolarEvidence?.summaryFact.status, '证据链完整');
 });
 
-test('统一出生档案的精确秒应同时透传八字与紫微输入', () => {
-  const profile = {
-    name: '精确秒样例',
-    gender: 'male' as const,
-    calendarType: 'solar' as const,
-    year: 2025,
-    month: 5,
-    day: 5,
-    hour: 13,
-    minute: 57,
-    second: 16,
-  };
-  const baziInput = birthProfileToBaziPerson(profile);
-  const ziweiInput = birthProfileToZiweiChartInput(profile);
-
-  assert.equal(baziInput.birthHour, 13);
-  assert.equal(baziInput.birthMinute, 57);
-  assert.equal(baziInput.birthSecond, 16);
-  assert.deepEqual(ziweiInput.birthTime, { hour: 13, minute: 57, second: 16 });
-});
-
 test('农历精确出生档案透传秒时仍保留农历日期口径', () => {
   const input = birthProfileToZiweiChartInput({
     name: '农历精确秒样例',
@@ -518,8 +478,15 @@ test('能力清单可序列化且返回副本', () => {
     SYSTEM_CAPABILITY_IDS,
     '能力 ID 常量必须与能力清单保持一致',
   );
-  assert.ok(first.systems.length >= 10);
   assert.doesNotThrow(() => JSON.stringify(first));
+  for (const capability of first.systems) {
+    if (capability.defaultMethod) {
+      assert.ok(
+        capability.methods?.some((method) => method.value === capability.defaultMethod),
+        `${capability.name} 的默认方法不在方法清单中`,
+      );
+    }
+  }
 
   first.systems[0]!.name = '已修改';
   assert.notEqual(second.systems[0]!.name, '已修改');

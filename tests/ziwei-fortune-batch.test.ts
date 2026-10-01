@@ -504,7 +504,6 @@ test('紫微normal全范围独立年龄年省略未消费目标运限对象且�
 
   assert.equal('horoscope' in facts, false);
   assert.deepEqual(actualFacts, expectedFacts);
-  assert.equal(JSON.stringify(actualFacts), JSON.stringify(expectedFacts));
   assert.deepEqual(
     {
       solarDate: factsAstrolabe.solarDate,
@@ -600,10 +599,7 @@ test('紫微normal事实入口在失败索引、异时辰及精确配置下保�
     const { horoscope: _horoscope, astrolabe: _legacyAstrolabe, ...legacyFacts } = legacy;
     const { astrolabe: _factsAstrolabe, ...actualFacts } = facts;
     assert.deepEqual(actualFacts, legacyFacts);
-    assert.equal(
-      JSON.stringify(buildSerializableZiweiResult(facts)),
-      JSON.stringify(buildSerializableZiweiResult(legacy)),
-    );
+    assert.deepEqual(buildSerializableZiweiResult(facts), buildSerializableZiweiResult(legacy));
     assert.equal(
       buildPublicZiweiPromptForRuntime({ result: facts, scope: 'full' }),
       buildPublicZiweiPromptForRuntime({ result: legacy, scope: 'full' }),

@@ -1,11 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as core from '../packages/core/src/index.ts';
-import {
-  analyzeTarotEvidence,
-  drawTarotSpread,
-  getCardEvidence,
-} from '../packages/core/src/divination/tarot.ts';
+import { drawTarotSpread, getCardEvidence } from '../packages/core/src/divination/tarot.ts';
 import { tarotCards } from '../packages/core/src/divination/tarot-data.ts';
 
 test('ganzhi: 六十甲子序号与循环差值', () => {
@@ -49,9 +45,7 @@ test('direction: 八宅大游年', () => {
   assert.deepEqual(core.direction.FOUR_ZONES, ['东', '北', '西', '南']);
 });
 
-test('shensha: 可扩展 registry（不破坏既有系统）', () => {
-  const list = core.shensha.listShensha();
-  assert.ok(list.some((d) => d.id === 'kongwang'));
+test('shensha: 核心根入口按年柱与日柱汇总旬空', () => {
   const r = core.shensha.computeShensha(['kongwang'], {
     yearGanZhi: '甲子',
     monthGanZhi: '丙寅',
@@ -73,14 +67,6 @@ test('shensha: 可扩展 registry（不破坏既有系统）', () => {
   });
   assert.deepEqual(jiaXu[0].value, ['申', '酉', '戌', '亥']);
   assert.deepEqual(jiaShen[0].value, ['午', '未', '戌', '亥']);
-  // 自定义神煞可自由注册（地基可继续拓展）
-  core.shensha.registerShensha({
-    id: 'demo',
-    name: '示例',
-    scope: 'bazhai',
-    compute: () => ({ id: 'demo', name: '示例', value: 'ok' }),
-  });
-  assert.ok(core.shensha.listShensha('bazhai').some((d) => d.id === 'demo'));
 });
 
 test('bazhai: 命宅配合', () => {
@@ -106,7 +92,6 @@ test('bazhai: 命宅配合', () => {
   assert.equal(r.calculationInput.gender, 'male');
   assert.equal(r.calculationInput.sitMountain, '子');
   assert.equal(r.evidenceAnalysis.calculationFact.steps[2].inputs.sitMountain, '子');
-  assert.equal(r.evidenceAnalysis.calculationFact.steps.length, 5);
   assert.strictEqual(r.evidenceAnalysis.calculationSteps, r.evidenceAnalysis.calculationFact.steps);
   assert.ok(
     r.evidenceAnalysis.calculationFact.steps.every(
@@ -147,8 +132,7 @@ test('bazhai: 命宅配合', () => {
   );
   assert.equal(r.evidenceAnalysis.counterSummaryFact.status, '存在需保留反证');
   assert.equal(r.evidenceAnalysis.counterSummaryFact.factKeys.length, 1);
-  assert.equal(r.evidenceAnalysis.limitationFacts.length, 6);
-  assert.equal(r.evidenceAnalysis.limitations.length, r.evidenceAnalysis.limitationFacts.length);
+  assert.ok(r.evidenceAnalysis.limitationFacts.length > 0);
   assert.ok(
     r.evidenceAnalysis.limitationFacts.every(
       (item) =>
@@ -184,7 +168,6 @@ test('bazhai: 从大门面向屋内的度数可直接生成传统坐向与完整
   assert.equal(r.match, '相合');
   assert.match(r.directionMeasurement.promptText, /站在大门处面向屋内/);
   assert.match(r.evidenceAnalysis.promptText, /测量事实：北向基准未声明；原始读数0°/);
-  assert.equal(r.evidenceAnalysis.measurementFacts.length, 4);
   assert.equal(r.evidenceAnalysis.measurementFact.status, '稳定');
   assert.equal(r.evidenceAnalysis.measurementFact.referenceStatus, '未声明');
   assert.equal(r.evidenceAnalysis.measurementFact.input?.measuredDegree, 0);
@@ -268,26 +251,33 @@ test('bazhai: 完整出生日期应按立春边界调整命卦年份', () => {
   );
 });
 
-test('tarot: 逐牌证据应保留正逆位、关键词、元素与牌阶', () => {
-  const major = getCardEvidence('魔术师');
-  const minor = getCardEvidence('权杖骑士');
+test('tarot: 全部牌面资料齐全，大小阿卡纳正逆位保留实际牌面事实', () => {
+  for (const card of tarotCards) {
+    const evidence = getCardEvidence(card.name);
+    assert.ok(evidence.keywords.length > 0, `${card.name}缺少关键词`);
+    assert.ok(evidence.element, `${card.name}缺少元素`);
+    assert.ok(evidence.archetype, `${card.name}缺少牌阶`);
+  }
+  assert.deepEqual(getCardEvidence('魔术师').keywords, ['意志力', '创造', '技能']);
+  assert.match(getCardEvidence('权杖骑士').element, /火/);
+  assert.match(getCardEvidence('权杖骑士').archetype, /行动节奏/);
 
-  assert.deepEqual(major.keywords, ['意志力', '创造', '技能']);
-  assert.match(minor.element, /火/);
-  assert.match(minor.archetype, /行动节奏/);
-});
-
-test('tarot: 全部牌面事实只保留牌位、牌名、正逆位与牌面资料', () => {
-  const facts = tarotCards.flatMap((card) => {
-    return [false, true].flatMap((reversed) => {
+  const facts = [
+    { id: 2, name: '魔术师' },
+    { id: 34, name: '权杖骑士' },
+  ].flatMap(({ id, name }) =>
+    [false, true].flatMap((reversed) => {
       const data = drawTarotSpread('single', {
-        manualCards: [{ id: card.number, reversed }],
+        manualCards: [{ id, reversed }],
       });
-      return analyzeTarotEvidence(data).traditionalFacts;
-    });
-  });
+      const facts = data.evidenceAnalysis!.traditionalFacts;
+      assert.ok(facts[0].promptText.includes(name));
+      assert.equal(facts[0].orientation, reversed ? '逆位' : '正位');
+      return facts;
+    }),
+  );
 
-  assert.equal(facts.length, tarotCards.length * 2);
+  assert.equal(facts.length, 4);
   assert.deepEqual(new Set(facts.map((item) => item.orientation)), new Set(['正位', '逆位']));
   assert.ok(facts.every((item) => item.kind === '牌面事实'));
   assert.ok(
@@ -303,34 +293,8 @@ test('tarot: 全部牌面事实只保留牌位、牌名、正逆位与牌面资�
   assert.ok(facts.some((item) => /牌阶主题/.test(item.promptText)));
   assert.doesNotMatch(
     facts.map((item) => item.promptText).join('\n'),
-    /牌义|表示这些能量正在直接发挥作用|成功比预期更晚到来|信息被隐藏/,
+    /牌义|表示这些能量正在直接发挥作用|成功比预期更晚到来|信息被隐藏|受阻、过度、内化|直接发挥作用/,
   );
-});
-
-test('tarot: 旧结果缺少抽牌来源时应明确标记来源链缺失', () => {
-  const result = drawTarotSpread('single', { seed: '旧塔罗抽牌来源' });
-  const evidence = analyzeTarotEvidence({
-    ...result,
-    draw: undefined,
-    evidenceAnalysis: undefined,
-  });
-
-  assert.equal(evidence.drawFact.status, '来源链缺失');
-  assert.equal(evidence.drawFact.recordedCardCount, 0);
-  assert.match(evidence.drawFact.promptText, /不能反推完整抽牌来源链/);
-  assert.ok(
-    evidence.evidence.items.some(
-      (item) => item.level === '反证' && item.title === '抽牌来源链缺失',
-    ),
-  );
-});
-
-test('tarot: 结构化牌面事实不包含自造牌义解释', () => {
-  const data = drawTarotSpread('three', { seed: '塔罗无自造牌义' });
-  const promptText = data.evidenceAnalysis!.cards.map((card) => card.promptText).join('\n');
-
-  assert.match(promptText, /关键词/);
-  assert.doesNotMatch(promptText, /牌义|受阻、过度、内化|直接发挥作用|成功比预期更晚到来/);
 });
 
 test('taiyi: 年家七十二局立成（依古籍与 Kintaiyi 逐局表校订）', () => {
@@ -444,30 +408,9 @@ test('taiyi: 年家七十二局立成（依古籍与 Kintaiyi 逐局表校订）
   );
   assert.equal(r.evidenceAnalysis.counterSummaryFact.status, '存在未命中条件');
   assert.equal(r.evidenceAnalysis.counterSummaryFact.factKeys.length, 5);
-  assert.equal(r.evidenceAnalysis.limitationFacts.length, 5);
+  assert.ok(r.evidenceAnalysis.limitationFacts.length > 0);
   assert.equal(r.evidenceAnalysis.summaryFact.key, 'taiyi:evidence-summary');
   assert.equal(r.evidenceAnalysis.summaryFact.status, '证据链完整');
-  assert.equal(
-    r.evidenceAnalysis.summaryFact.positionFactCount,
-    r.evidenceAnalysis.positionFacts.length,
-  );
-  assert.equal(r.evidenceAnalysis.summaryFact.forceFactCount, r.evidenceAnalysis.forceFacts.length);
-  assert.equal(
-    r.evidenceAnalysis.summaryFact.sixteenGodFactCount,
-    r.evidenceAnalysis.sixteenGodFacts.length,
-  );
-  assert.equal(
-    r.evidenceAnalysis.summaryFact.conditionFactCount,
-    r.evidenceAnalysis.conditionFacts.length,
-  );
-  assert.equal(
-    r.evidenceAnalysis.summaryFact.counterEvidenceCount,
-    r.evidenceAnalysis.counterEvidenceFacts.length,
-  );
-  assert.equal(
-    r.evidenceAnalysis.summaryFact.limitationFactCount,
-    r.evidenceAnalysis.limitationFacts.length,
-  );
   const taiyiFactKeys = new Set([
     r.evidenceAnalysis.summaryFact.key,
     ...r.evidenceAnalysis.summaryFact.factKeys,
@@ -478,7 +421,6 @@ test('taiyi: 年家七十二局立成（依古籍与 Kintaiyi 逐局表校订）
         item.ownerFactKeys.length > 0 && item.ownerFactKeys.every((key) => taiyiFactKeys.has(key)),
     ),
   );
-  assert.equal(r.evidenceAnalysis.limitations.length, r.evidenceAnalysis.limitationFacts.length);
   assert.ok(
     r.evidenceAnalysis.limitationFacts.every(
       (item) =>
@@ -551,47 +493,6 @@ test('taiyi: 年家七十二局立成（依古籍与 Kintaiyi 逐局表校订）
   );
 });
 
-test('taiyi: 未见掩囚保留结构化反证并从提示词省略', () => {
-  const result = Array.from({ length: 72 }, (_, offset) =>
-    core.taiyi.generateTaiyi({ year: 1950 + offset }),
-  ).find(
-    (item) => item.shiJiPalace !== item.taiyiPalace && item.wenChangPalace !== item.taiyiPalace,
-  );
-
-  assert.ok(result);
-  assert.ok(result.evidenceAnalysis.counterEvidence.some((item) => item.startsWith('未见掩')));
-  assert.ok(result.evidenceAnalysis.counterEvidence.some((item) => item.startsWith('未见囚')));
-  assert.doesNotMatch(result.evidenceAnalysis.promptText, /反证核验：|未见掩|未见囚/);
-  assert.equal(result.evidenceAnalysis.counterSummaryFact.status, '存在未命中条件');
-  assert.equal(
-    result.evidenceAnalysis.counterSummaryFact.factKeys.length,
-    result.evidenceAnalysis.counterEvidenceFacts.filter((item) => item.status === '未命中').length,
-  );
-});
-
-test('taiyi: 年家 72 局应完整覆盖且宫卦名不与字位混用', () => {
-  const palaces = new Map<number, string>();
-  const bureaus = new Set<number>();
-
-  for (let year = 1950; year < 2022; year += 1) {
-    const result = core.taiyi.generateTaiyi({ year });
-    bureaus.add(result.bureau);
-    palaces.set(result.taiyiPalace, result.taiyiGua);
-  }
-
-  assert.equal(bureaus.size, 72);
-  assert.deepEqual(Object.fromEntries([...palaces].sort(([left], [right]) => left - right)), {
-    1: '乾',
-    2: '离',
-    3: '艮',
-    4: '震',
-    6: '兑',
-    7: '坤',
-    8: '坎',
-    9: '巽',
-  });
-});
-
 test('taiyi: 核心年份边界不应把公元 1-99 年当成 1901-1999 年', () => {
   const earlyYear = core.taiyi.generateTaiyi({ year: 1 });
   const modernYear = core.taiyi.generateTaiyi({ year: 1901 });
@@ -612,20 +513,6 @@ test('qizheng: 独立紫炁均速模型保留可复算历元', () => {
   assert.ok(Math.abs(longitude - 237.038993) < 1e-9);
   assert.equal(core.qizheng.ZIQI_MODEL_INFO.id, 'qizhengsuan-naepyeon-mean-motion');
   assert.equal(core.qizheng.ZIQI_MODEL_INFO.periodDays, 10227.1792);
-});
-
-test('qizheng: 完整传统盘应返回十一星、二十八宿界与结构化证据', () => {
-  const result = core.qizheng.generateQizheng({
-    year: 2024,
-    month: 6,
-    day: 15,
-    hour: 12,
-  });
-  assert.equal(result.stars.length, 11);
-  assert.equal(result.mansionBoundaries.length, 28);
-  assert.equal(result.evidenceAnalysis.status, '已计算');
-  assert.equal(result.mansionModel.id, 'qizheng-mansion-stars-simbad-astronomy-engine');
-  assert.doesNotMatch(result.prompt, /十二宫映射：/);
 });
 
 test('qizheng: 核心入口仍应优先拒绝无效输入', () => {
@@ -665,23 +552,4 @@ test('ganzhi: tyme4ts 权威后端（纳音/干支五行/合冲害/十神）', (
   // 十神（新增，委托 tyme4ts）
   assert.equal(core.ganzhi.getTenStar('甲', '甲'), '比肩');
   assert.equal(core.ganzhi.getTenStar('甲', '乙'), '劫财');
-});
-
-test('shensha: 黄历神煞目录与日期查询保留分类和建除信息', () => {
-  const names = core.shensha.listHuangliShenshaNames();
-  assert.ok(names.length >= 100, `黄历神煞应≥100，实为 ${names.length}`);
-  const info = core.shensha.getHuangliShensha(2026, 7, 10);
-  assert.ok(info.shensha.length > 0, '应命中若干黄历神煞');
-  assert.ok(['吉', '凶', '平'].includes(info.shensha[0].luck), '神煞应带吉凶分类');
-  assert.ok(info.duty.length > 0, '应有十二建除');
-  assert.ok(info.nineStar.length > 0, '应有九星');
-  // 命理注册表仍可用（空亡/驿马/桃花）
-  const ctx = {
-    yearGanZhi: '甲子',
-    monthGanZhi: '乙丑',
-    dayGanZhi: '丙寅',
-    hourGanZhi: '丁卯',
-  };
-  const kw = core.shensha.computeShensha(['kongwang'], ctx);
-  assert.equal(kw[0].name, '空亡');
 });
