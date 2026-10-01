@@ -123,7 +123,7 @@ export function buildTenGodCategoryCounts(
   stems: string[] | undefined,
   excludeDayStemSelf: boolean,
 ): Record<string, number> | null {
-  if (!dayStem || !stems || stems.length === 0) {
+  if (!dayStem || !stems) {
     return null;
   }
 
@@ -165,7 +165,7 @@ export function buildTenGodCategoryDistinctStemSets(
   stems: string[] | undefined,
   excludeDayStemSelf: boolean,
 ): Record<string, Set<string>> | null {
-  if (!dayStem || !stems || stems.length === 0) {
+  if (!dayStem || !stems) {
     return null;
   }
 
@@ -186,7 +186,7 @@ export function buildTenGodCategoryDistinctStemSets(
     return sets;
   }, {});
 
-  return Object.keys(categoryStemSets).length > 0 ? categoryStemSets : null;
+  return categoryStemSets;
 }
 
 export function buildTenGodCategoryDistinctStemCounts(

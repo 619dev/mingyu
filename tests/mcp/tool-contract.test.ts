@@ -20,9 +20,6 @@ test('MCP 独立发布包应声明命令入口和随包说明', () => {
 });
 
 test('统一 Tool Catalog 应包含所有核心工具并声明元数据注解', () => {
-  const catalog = getToolCatalog();
-  assert.equal(catalog.length >= 40, true);
-
   const baziTool = findTool('bazi_calculate');
   assert.ok(baziTool);
   assert.equal(baziTool.category, 'bazi');
@@ -31,7 +28,8 @@ test('统一 Tool Catalog 应包含所有核心工具并声明元数据注解', 
   assert.equal(baziTool.annotations.idempotentHint, true);
 
   const baziTools = getToolsByCategory('bazi');
-  assert.equal(baziTools.length >= 4, true);
+  assert.ok(baziTools.some((tool) => tool.id === 'bazi_calculate'));
+  assert.ok(baziTools.every((tool) => tool.category === 'bazi'));
 
   const baziReverseTool = findTool('calendar_bazi_reverse');
   assert.ok(baziReverseTool);

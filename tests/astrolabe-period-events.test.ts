@@ -12,6 +12,7 @@ import {
   rankAstrolabeAspects,
   resolveAstrolabePeriodWindow,
   validateAstrolabePeriodContext,
+  type AstrolabePeriodEvent,
 } from 'mingyu-core/divination/astrolabe-scope';
 import { generateAstrolabe } from 'mingyu-core/divination/astrolabe';
 import { formatAstrolabeForPrompt, formatAstrolabeInfo } from 'mingyu-core/prompt';
@@ -30,6 +31,15 @@ const astrolabeData = generateAstrolabe({
   timezone: '8',
   locationName: '北京',
 });
+
+let june2028Monthly: ReturnType<typeof buildAstrolabePeriodEvents> | undefined;
+function getJune2028Monthly() {
+  return (june2028Monthly ??= buildAstrolabePeriodEvents(astrolabeData, 'monthly', {
+    year: 2028,
+    month: 6,
+    day: 15,
+  }));
+}
 
 test('圣地亚哥春季跳时日的周期从实际 01:00 起算', () => {
   const context = { ...buildAstrolabePeriodContext(astrolabeData), timeZoneId: 'America/Santiago' };
@@ -197,11 +207,7 @@ test('流年应列出周期内动态点的精准相位、停逆、换座、朔�
 });
 
 test('流月应补齐内行星天象，流日应补齐月亮动态点', () => {
-  const monthly = buildAstrolabePeriodEvents(astrolabeData, 'monthly', {
-    year: 2028,
-    month: 6,
-    day: 15,
-  });
+  const monthly = getJune2028Monthly();
   const daily = buildAstrolabePeriodEvents(astrolabeData, 'daily', {
     year: 2028,
     month: 6,
@@ -228,11 +234,7 @@ test('流月应补齐内行星天象，流日应补齐月亮动态点', () => {
 });
 
 test('流月相邻半开批次合并后与完整月份事件一致', () => {
-  const complete = buildAstrolabePeriodEvents(astrolabeData, 'monthly', {
-    year: 2028,
-    month: 6,
-    day: 15,
-  });
+  const complete = getJune2028Monthly();
   const first = buildAstrolabePeriodEvents(
     astrolabeData,
     'monthly',
@@ -430,6 +432,54 @@ test('逆行越过狭窄宫位的宫头时进入紧邻的前一宫', () => {
   assert.ok(crossing.julianDate < nextCrossing.julianDate);
 });
 
+test('同一日停逆前后两次越过本命点与同一宫头应完整列出', () => {
+  // 木星 2028-01-12 先越过 177.5121° 再停驻折返；每日首尾都落在界线前。
+  const cusp = 177.5121;
+  const context = validateAstrolabePeriodContext({
+    timezone: 0,
+    points: [
+      { name: 'Sun', longitude: cusp },
+      { name: 'Moon', longitude: 20 },
+      { name: 'Ascendant', longitude: 40 },
+    ],
+    houseCusps: Array.from({ length: 12 }, (_, index) => (cusp + index * 30) % 360),
+  });
+  const target = { year: 2028, month: 1, day: 12 };
+  const events = buildAstrolabePeriodEventsFromContext(context, 'yearly', target, {
+    batch: { start: target, endExclusive: { year: 2028, month: 1, day: 13 } },
+  }).events;
+  const conjunctions = events.filter(
+    (event) =>
+      event.kind === '行运相位' &&
+      event.movingPoint === '木星' &&
+      event.targetPoint === '本命太阳' &&
+      event.aspectName === '合相',
+  );
+  const houseChanges = events.filter(
+    (event) => event.kind === '换宫' && event.movingPoint === '木星',
+  );
+  const stations = events.filter((event) => event.kind === '停逆' && event.movingPoint === '木星');
+
+  assert.deepEqual(
+    conjunctions.map((event) => event.dateTime),
+    ['2028-01-12 03:23', '2028-01-12 14:23'],
+  );
+  assert.deepEqual(
+    houseChanges.map((event) => event.house),
+    [1, 12],
+  );
+  assert.deepEqual(
+    stations.map((event) => event.stationDirection),
+    ['逆行'],
+  );
+  assert.ok(conjunctions[0].julianDate < stations[0].julianDate);
+  assert.ok(stations[0].julianDate < conjunctions[1].julianDate);
+  for (const event of conjunctions) {
+    const position = getApparentPosition('jupiter', event.julianDate);
+    assert.ok(Math.abs(position.longitude - cusp) < 0.0001);
+  }
+});
+
 test('纽约夏令时流年批次的结果时区取父范围起点', () => {
   const newYorkData = generateAstrolabe({
     name: '本人',
@@ -492,23 +542,28 @@ test('固定时区周期标签保留历史秒级偏移', () => {
 });
 
 test('合并周期星象应按时刻去重排序', () => {
-  const yearly = buildAstrolabePeriodEvents(astrolabeData, 'yearly', {
-    year: 2028,
-    month: 7,
-    day: 1,
-  });
-  const monthly = buildAstrolabePeriodEvents(astrolabeData, 'monthly', {
-    year: 2028,
-    month: 6,
-    day: 15,
-  });
-  const merged = mergeAstrolabePeriodEvents([yearly.events, monthly.events, yearly.events]);
-
-  assert.ok(merged.length >= yearly.events.length);
-  assert.equal(new Set(merged.map((item) => item.key)).size, merged.length);
-  for (let index = 1; index < merged.length; index += 1) {
-    assert.ok(merged[index].julianDate >= merged[index - 1].julianDate);
-  }
+  const first: AstrolabePeriodEvent = {
+    key: '换座:太阳:先',
+    kind: '换座',
+    julianDate: unixToJulianDate(Date.parse('2028-06-01T00:00:00Z')),
+    dateTime: '2028-06-01 08:00',
+    promptText: '太阳进入双子座',
+    movingPoint: '太阳',
+    signName: '双子座',
+  };
+  const second: AstrolabePeriodEvent = {
+    ...first,
+    key: '换座:太阳:后',
+    julianDate: unixToJulianDate(Date.parse('2028-06-02T00:00:00Z')),
+    dateTime: '2028-06-02 08:00',
+  };
+  assert.deepEqual(
+    mergeAstrolabePeriodEvents([
+      [second, first],
+      [second, first],
+    ]),
+    [first, second],
+  );
 });
 
 test('星盘流年分析对象应写入周期关键星象资料', () => {
@@ -617,18 +672,15 @@ test('本命相位应按紧密等级与日月轴点排序，不得只取数组�
 });
 
 test('行运精准相位时刻应落在目标黄经附近', () => {
-  const collection = buildAstrolabePeriodEvents(astrolabeData, 'monthly', {
-    year: 2028,
-    month: 6,
-    day: 15,
-  });
-  const transit = collection.events.find(
-    (item) => item.kind === '行运相位' && item.movingPoint === '太阳' && item.aspectName === '合相',
+  const transit = getJune2028Monthly().events.find(
+    (item) =>
+      item.kind === '行运相位' &&
+      item.movingPoint === '太阳' &&
+      item.targetPoint === '本命水星' &&
+      item.aspectName === '合相',
   );
-  if (!transit) {
-    assert.ok(collection.events.some((item) => item.kind === '行运相位'));
-    return;
-  }
+  assert.ok(transit);
+  assert.equal(transit.dateTime, '2028-06-08 06:08');
 
   const natalName = transit.targetPoint?.replace(/^本命/, '');
   const natal = [...astrolabeData.planets, ...astrolabeData.angles].find(

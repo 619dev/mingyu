@@ -628,6 +628,23 @@ function crossingsFromSamples(
   return hits;
 }
 
+function insertTurningSamples(
+  samples: Sample[],
+  turningTimes: number[],
+  positionAt: (jd: number) => BodyPosition,
+) {
+  const first = samples[0]?.jd;
+  const last = samples[samples.length - 1]?.jd;
+  if (first === undefined || last === undefined) return samples;
+  const knownTimes = new Set(samples.map((sample) => sample.jd));
+  const additions = turningTimes
+    .filter((jd) => jd > first && jd < last && !knownTimes.has(jd))
+    .map((jd) => ({ jd, ...positionAt(jd) }));
+  return additions.length
+    ? [...samples, ...additions].sort((left, right) => left.jd - right.jd)
+    : samples;
+}
+
 function sampleBody(
   name: MovingBodyName,
   startJd: number,
@@ -1140,8 +1157,26 @@ function buildAstrolabePeriodEventsInternal(
     ? alignBatchSampleEnd(window.scopeStartJd, window.endJd, window.scopeEndJd, step)
     : window.endJd;
   const samples = new Map<MovingBodyName, Sample[]>();
+  const stationAwareSamples = new Map<MovingBodyName, Sample[]>();
+  const stationTimes = new Map<MovingBodyName, number[]>();
   for (const body of bodies) {
-    samples.set(body, sampleBody(body, sampleStartJd, sampleEndJd, step, cachedPositionOf));
+    const bodySamples = sampleBody(body, sampleStartJd, sampleEndJd, step, cachedPositionOf);
+    samples.set(body, bodySamples);
+    if (body === 'Sun' || body === 'Moon') {
+      stationAwareSamples.set(body, bodySamples);
+      continue;
+    }
+    const turns = crossingsFromSamples(
+      bodySamples,
+      (sample) => sample.speed,
+      (jd) => cachedPositionOf(body, jd).speed,
+    );
+    stationTimes.set(body, turns);
+    // 停逆前后可能在同一原采样段内两次越过本命点、星座或宫头。
+    stationAwareSamples.set(
+      body,
+      insertTurningSamples(bodySamples, turns, (jd) => cachedPositionOf(body, jd)),
+    );
   }
 
   const events: AstrolabePeriodEvent[] = [];
@@ -1167,7 +1202,7 @@ function buildAstrolabePeriodEventsInternal(
   };
 
   for (const body of bodies) {
-    const bodySamples = samples.get(body);
+    const bodySamples = stationAwareSamples.get(body);
     if (!bodySamples) continue;
     const movingLabel = labelOf(body);
 
@@ -1194,9 +1229,7 @@ function buildAstrolabePeriodEventsInternal(
     }
 
     if (body !== 'Sun' && body !== 'Moon' && body !== 'North Node') {
-      const residualAt = (sample: Sample) => sample.speed;
-      const exactAt = (jd: number) => cachedPositionOf(body, jd).speed;
-      for (const jd of crossingsFromSamples(bodySamples, residualAt, exactAt)) {
+      for (const jd of stationTimes.get(body) ?? []) {
         const speedAfter = cachedPositionOf(body, jd + MINUTE_IN_DAYS).speed;
         const direction: '逆行' | '顺行' = speedAfter < 0 ? '逆行' : '顺行';
         pushEvent({
@@ -1262,13 +1295,25 @@ function buildAstrolabePeriodEventsInternal(
       if ((first === 'Sun' && second === 'Moon') || (first === 'Moon' && second === 'Sun')) {
         continue;
       }
+      const relativeTurns = crossingsFromSamples(
+        firstSamples,
+        (sample, index) => sample.speed - secondSamples[index].speed,
+        (jd) => cachedPositionOf(first, jd).speed - cachedPositionOf(second, jd).speed,
+      );
+      // 两颗流曜的相对经度也可能在双方均未停逆时转向。
+      const firstPairSamples = insertTurningSamples(firstSamples, relativeTurns, (jd) =>
+        cachedPositionOf(first, jd),
+      );
+      const secondPairSamples = insertTurningSamples(secondSamples, relativeTurns, (jd) =>
+        cachedPositionOf(second, jd),
+      );
       for (const aspect of MAJOR_ASPECTS) {
         for (const offset of aspectTargets(aspect.angle)) {
           const residualAt = (sample: Sample, index: number) =>
-            wrap180(sample.longitude - secondSamples[index].longitude - offset);
+            wrap180(sample.longitude - secondPairSamples[index].longitude - offset);
           const exactAt = (jd: number) =>
             wrap180(cachedLongitudeOf(first, jd) - cachedLongitudeOf(second, jd) - offset);
-          for (const jd of crossingsFromSamples(firstSamples, residualAt, exactAt)) {
+          for (const jd of crossingsFromSamples(firstPairSamples, residualAt, exactAt)) {
             pushEvent({
               kind: '天象相位',
               julianDate: jd,

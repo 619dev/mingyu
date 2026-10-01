@@ -524,32 +524,105 @@ test('各类占卜提示词都使用统一的角色加信息加问题结构', as
       assertPromptHasSingleRole(prompt, PROMPT_ROLE_TEXT[role]);
       assertStandardPromptStructure(prompt);
     }
-  }
-});
 
-test('非命盘占法不再附加独立的方法论与应期控制段落', () => {
-  const cases: Array<{
-    method: Exclude<DivinationType, 'tarot_single' | 'astrolabe'>;
-    data: DivinationData;
-  }> = [
-    { method: 'liuyao', data: createData('liuyao') },
-    { method: 'meihua', data: createData('meihua') },
-    { method: 'qimen', data: createData('qimen') },
-    { method: 'liuren', data: createData('liuren') },
-    { method: 'tarot', data: createData('tarot') },
-    { method: 'ssgw', data: createData('ssgw') },
-    { method: 'almanac', data: createAlmanacData() },
-  ];
+    if (item.method !== 'astrolabe' && item.method !== 'taiyi') {
+      assert.doesNotMatch(prompt, /【应期判断方法】|【解读方法】|取证顺序|回答口径|证据边界/);
+    }
 
-  for (const item of cases) {
-    const prompt = buildDivinationPrompt(
-      item.method,
-      item.method === 'almanac' ? '' : '这件事接下来该怎么推进？',
-      item.data,
-      createSupplementaryInfo(),
-    );
-
-    assert.doesNotMatch(prompt, /【应期判断方法】|【解读方法】|取证顺序|回答口径|证据边界/);
+    if (item.method === 'qimen') {
+      assert.doesNotMatch(prompt, /【输出要求】|使用简体中文|现实建议|行动建议|行动清单/);
+      assert.doesNotMatch(prompt, /【分析思路】/);
+    } else if (item.method === 'liuyao') {
+      assert.match(prompt, /核心结构：主卦/);
+      assert.match(prompt, /世应：世爻第2爻子孙寅木；应爻第5爻官鬼戌土/);
+      assert.match(prompt, /六爻全表：[\s\S]*第1爻兄弟子水[^\n]*动[^\n]*化官鬼未土（回头克）/);
+      assert.doesNotMatch(prompt, /^动变：/m);
+      assert.match(
+        prompt,
+        /旬空子、丑；命中第1爻兄弟子水（本爻空亡；本爻子逢值，午冲子）、第6爻兄弟子水/,
+      );
+      assert.match(
+        prompt,
+        /明伏分布：本卦明爻6爻，六亲为兄弟、子孙、官鬼、父母；伏神1爻：妻财伏第3爻午火，伏于官鬼辰土下/,
+      );
+      assert.doesNotMatch(prompt, /兄弟持世，主竞争、破财、朋友/);
+      assert.doesNotMatch(prompt, /取用评分表|权重\d/);
+      assert.match(
+        prompt,
+        /月日触发：月建、日辰午：未直接同支入爻，冲第1爻兄弟子水、第6爻兄弟子水/,
+      );
+      assert.match(prompt, /用神主线：事项用神待按具体问题取用/);
+      assert.doesNotMatch(prompt, /应期资料：|组合时机：|六亲持世：|应爻与动变：/);
+      assert.doesNotMatch(prompt, /结构化证据|证据汇总|解释边界|只使用上方/);
+      assert.doesNotMatch(prompt, /课传|盘局|牌阵|签诗|牌位/);
+    } else if (item.method === 'meihua') {
+      assert.doesNotMatch(prompt, /【分析思路】/);
+      assert.match(prompt, /核心结构：主卦火风鼎；互卦泽天夬；变卦火山旅/);
+      assert.match(prompt, /体用：体卦离（火）；用卦巽（木）；动爻第2爻；体用关系用生体/);
+      assert.match(prompt, /互卦：泽天夬；体互兑（金）；用互乾（金）；原体克体互；原体克用互/);
+      assert.match(prompt, /变卦火山旅：体卦离火，用卦艮土，关系体生用/);
+      assert.match(prompt, /月令作用：子月令水克变后体卦离火，变后体卦为死/);
+      assert.match(prompt, /月令作用：变后用卦艮土克子月令水，卦气耗用，变后用卦为囚/);
+      assert.match(prompt, /主卦体用月令条件：体卦月令死、用卦月令相/);
+      assert.match(prompt, /起卦法：数字起卦法/);
+      assert.match(
+        prompt,
+        /起卦取数：数字123除8取余得上卦数3；时支辰序数5除8取余得下卦数5；数字123与时支序数相加除6取余得动爻2/,
+      );
+      assert.match(prompt, /动爻变化：主卦第2爻阳变阴；动爻位于下卦，用卦随之变化，体卦保持/);
+      assert.doesNotMatch(prompt, /应期线索：/);
+      assert.match(prompt, /主卦卦辞：火风鼎，元吉，亨/);
+      assert.match(prompt, /动爻爻辞：第2爻，鼎有实，我仇有疾/);
+      assert.doesNotMatch(prompt, /卦辞分类：|动爻传统资料：/);
+      assert.doesNotMatch(prompt, /未发动，不展开爻辞解释/);
+      assert.doesNotMatch(prompt, /第1爻（静，属体）：阳爻|结构明细：/);
+      assert.doesNotMatch(prompt, /结构化证据|证据汇总|解释边界/);
+      assert.doesNotMatch(prompt, /体用评分：|类象权重：|\d+日内|\d+月左右/);
+    } else if (item.method === 'tarot') {
+      assert.match(prompt, /核心结构：牌阵/);
+      assert.match(prompt, /牌位明细：/);
+      assert.doesNotMatch(prompt, /牌位顺序：/);
+      assert.match(prompt, /过去：恋人（正位）；关键词：/);
+      assert.match(prompt, /现在：战车（逆位）；关键词：/);
+      assert.match(prompt, /未来：力量（正位）；关键词：/);
+      assert.match(prompt, /牌组属性：/);
+      assert.match(prompt, /正逆位口径：逆位表示该牌主题可能受阻、过度、内化或方向偏离/);
+      assert.doesNotMatch(prompt, /元素主题：|牌阶主题：/);
+      assert.match(prompt, /基础牌义：/);
+      assert.doesNotMatch(prompt, /断牌口径|现实边界|结构化证据|证据汇总|解释边界/);
+      assert.doesNotMatch(
+        prompt,
+        /牌组层级|宫廷人物|叙事权重|元素数字|表示这些能量正在直接发挥作用|信息被隐藏/,
+      );
+      assert.match(prompt, /【补充信息】\n求测人：男；出生年份：1995/);
+      assert.doesNotMatch(prompt, /起卦方式：数字起卦|起卦数字：123/);
+    } else if (item.method === 'almanac') {
+      const data = item.data as AlmanacData;
+      assert.match(prompt, /候选日期：2026-06-01 至 2026-06-02/);
+      assert.match(prompt, /核心结构：择日事项：搬家入宅/);
+      assert.doesNotMatch(prompt, /事项范围：|日期结论：/);
+      assert.doesNotMatch(prompt, /事项未限定|按通用.*口径|当前首列候选/);
+      assert.doesNotMatch(prompt, /岁支十二神方位|全年方位神|岁支方位避|可参考太阳|可参考福德/);
+      assert.match(prompt, /第1日：2026-06-01/);
+      assert.match(prompt, /第2日：2026-06-02/);
+      assert.ok(data.days.some((day) => prompt.includes(day.avoids.join('、'))));
+      assert.ok(prompt.includes(data.days[0].recommends.join('、')));
+      assert.ok(prompt.includes(data.days[0].avoids.join('、')));
+      assert.doesNotMatch(prompt, /事项权重|优先匹配宜项|事项忌项命中|评分42|高分日期/);
+      assert.doesNotMatch(prompt, /结构化证据|证据汇总|反证|解释边界/);
+    } else if (item.method === 'ssgw') {
+      assert.match(prompt, /签号：第18签/);
+      assert.match(prompt, /签题：《刘备借荆州》/);
+      assert.match(prompt, /签诗：前路迢迢莫强求，且看云开月自明。/);
+      assert.match(prompt, /吉凶级别：中平签/);
+      assert.match(prompt, /典故：刘备向东吴借取荆州。/);
+      assert.match(prompt, /基础解签：事情仍有转圜空间，宜结合现况审慎研判。/);
+      assert.match(prompt, /补充解释：暂缓推进。留意反复。/);
+      assert.doesNotMatch(
+        prompt,
+        /【当前时间】|【问题】|【任务】|占法：|行动建议|风险提醒|掷筊|签谱状态|来源状态|证据汇总/,
+      );
+    }
   }
 });
 
@@ -567,23 +640,6 @@ test('自定义占卜问题不强塞应期判断方法', () => {
   assert.match(prompt, /【问题】/);
   assert.match(prompt, /【任务】\n依据体用、互卦、变卦与四时旺衰回答【问题】。/);
   assert.doesNotMatch(prompt, /【应期判断方法】/);
-});
-
-test('择日提示词保留候选日期、事项和参与人资料', () => {
-  const data = createAlmanacData();
-  const prompt = buildDivinationPrompt('almanac', '', data, createSupplementaryInfo());
-
-  assert.match(prompt, /占法：黄历择日/);
-  assert.match(prompt, /候选日期：2026-06-01 至 2026-06-02/);
-  assert.match(prompt, /核心结构：择日事项：搬家入宅/);
-  assert.doesNotMatch(prompt, /事项范围：|日期结论：/);
-  assert.doesNotMatch(prompt, /事项未限定|按通用.*口径|当前首列候选/);
-  assert.doesNotMatch(prompt, /岁支十二神方位|全年方位神|岁支方位避|可参考太阳|可参考福德/);
-  assert.match(prompt, /第1日：2026-06-01/);
-  assert.match(prompt, /第2日：2026-06-02/);
-  assert.ok((data as AlmanacData).days.some((day) => prompt.includes(day.avoids.join('、'))));
-  assert.doesNotMatch(prompt, /事项权重|优先匹配宜项|事项忌项命中|评分42|高分日期/);
-  assert.doesNotMatch(prompt, /结构化证据|证据汇总|反证|解释边界/);
 });
 
 test('旧黄历正午历法事实失配时不进入在线提示词', () => {
@@ -616,14 +672,6 @@ test('旧黄历伪造宜项或事项结论时不进入在线提示词', () => {
   assert.throws(() => buildDivinationPrompt('almanac', '', data), /事项匹配.*请重新排盘/);
 });
 
-test('择日保留事项匹配之外的完整当日宜忌', () => {
-  const data = createAlmanacData() as AlmanacData;
-  const day = data.days[0];
-  const prompt = buildDivinationPrompt('almanac', '', data);
-  assert.ok(prompt.includes(day.recommends.join('、')));
-  assert.ok(prompt.includes(day.avoids.join('、')));
-});
-
 test('择日提示词在有补充诉求时输出问题，空时不强制输出问题 section', () => {
   const prompt = buildDivinationPrompt(
     'almanac',
@@ -637,31 +685,6 @@ test('择日提示词在有补充诉求时输出问题，空时不强制输出�
     findPromptSectionHeadingIndex(prompt, '【问题】') >
       findPromptSectionHeadingIndex(prompt, '【任务】'),
   );
-});
-
-test('占卜提示词不写入输出要求或行动建议', async () => {
-  const session = buildDivinationPrompt(
-    'qimen',
-    '这件事接下来该怎么推进？',
-    createData('qimen'),
-    createSupplementaryInfo(),
-  );
-
-  assert.doesNotMatch(session, /【输出要求】|使用简体中文|现实建议|行动建议|行动清单/);
-  assert.match(session, /【任务】/);
-});
-
-test('通用占法保留求测人基本资料但不混入梅花设置', () => {
-  const prompt = buildDivinationPrompt(
-    'tarot',
-    '这件事接下来该怎么推进？',
-    createData('tarot'),
-    createSupplementaryInfo(),
-  );
-
-  assert.match(prompt, /【占卜信息】/);
-  assert.match(prompt, /【补充信息】\n求测人：男；出生年份：1995/);
-  assert.doesNotMatch(prompt, /起卦方式：数字起卦|起卦数字：123/);
 });
 
 test('大六壬提示词保留用户补充的现实信息', () => {
@@ -821,35 +844,6 @@ test('奇门提示词不再根据问题词表输出问事参考', () => {
   assert.match(prompt, /值符值使与时干：值符天蓬落坎一宫；值使休门落坎一宫/);
 });
 
-test('六爻提示词会保留世应、动变、空亡、伏神和月日资料', () => {
-  const prompt = buildDivinationPrompt(
-    'liuyao',
-    '这件事接下来该怎么推进？',
-    createData('liuyao'),
-    createSupplementaryInfo(),
-  );
-
-  assert.match(prompt, /核心结构：主卦/);
-  assert.match(prompt, /世应：世爻第2爻子孙寅木；应爻第5爻官鬼戌土/);
-  assert.match(prompt, /六爻全表：[\s\S]*第1爻兄弟子水[^\n]*动[^\n]*化官鬼未土（回头克）/);
-  assert.doesNotMatch(prompt, /^动变：/m);
-  assert.match(
-    prompt,
-    /旬空子、丑；命中第1爻兄弟子水（本爻空亡；本爻子逢值，午冲子）、第6爻兄弟子水/,
-  );
-  assert.match(
-    prompt,
-    /明伏分布：本卦明爻6爻，六亲为兄弟、子孙、官鬼、父母；伏神1爻：妻财伏第3爻午火，伏于官鬼辰土下/,
-  );
-  assert.doesNotMatch(prompt, /兄弟持世，主竞争、破财、朋友/);
-  assert.doesNotMatch(prompt, /取用评分表|权重\d/);
-  assert.match(prompt, /月日触发：月建、日辰午：未直接同支入爻，冲第1爻兄弟子水、第6爻兄弟子水/);
-  assert.match(prompt, /用神主线：事项用神待按具体问题取用/);
-  assert.doesNotMatch(prompt, /应期资料：|组合时机：|六亲持世：|应爻与动变：/);
-  assert.doesNotMatch(prompt, /结构化证据|证据汇总|解释边界|只使用上方/);
-  assert.doesNotMatch(prompt, /课传|盘局|牌阵|签诗|牌位/);
-});
-
 test('六爻提示词不再按问题词表补充取用参考', () => {
   const prompt = buildDivinationPrompt(
     'liuyao',
@@ -993,52 +987,6 @@ test('六爻未知专项模板应回落到通用断卦，避免输出 undefined'
   assert.doesNotMatch(prompt, /undefined|null/);
 });
 
-test('梅花提示词会保留体用、互卦、变卦与起卦细节', () => {
-  const prompt = buildDivinationPrompt(
-    'meihua',
-    '这件事接下来该怎么推进？',
-    createData('meihua'),
-    createSupplementaryInfo(),
-  );
-
-  assert.match(prompt, /核心结构：主卦火风鼎；互卦泽天夬；变卦火山旅/);
-  assert.match(prompt, /体用：体卦离（火）；用卦巽（木）；动爻第2爻；体用关系用生体/);
-  assert.match(prompt, /互卦：泽天夬；体互兑（金）；用互乾（金）；原体克体互；原体克用互/);
-  assert.match(prompt, /变卦火山旅：体卦离火，用卦艮土，关系体生用/);
-  assert.match(prompt, /月令作用：子月令水克变后体卦离火，变后体卦为死/);
-  assert.match(prompt, /月令作用：变后用卦艮土克子月令水，卦气耗用，变后用卦为囚/);
-  assert.match(prompt, /体用关系用生体/);
-  assert.match(prompt, /主卦体用月令条件：体卦月令死、用卦月令相/);
-  assert.match(prompt, /起卦法：数字起卦法/);
-  assert.match(
-    prompt,
-    /起卦取数：数字123除8取余得上卦数3；时支辰序数5除8取余得下卦数5；数字123与时支序数相加除6取余得动爻2/,
-  );
-  assert.match(prompt, /动爻变化：主卦第2爻阳变阴；动爻位于下卦，用卦随之变化，体卦保持/);
-  assert.doesNotMatch(prompt, /应期线索：/);
-  assert.match(prompt, /主卦卦辞：火风鼎，元吉，亨/);
-  assert.match(prompt, /动爻爻辞：第2爻，鼎有实，我仇有疾/);
-  assert.doesNotMatch(prompt, /卦辞分类：|动爻传统资料：/);
-  assert.doesNotMatch(prompt, /未发动，不展开爻辞解释/);
-  assert.doesNotMatch(prompt, /第1爻（静，属体）：阳爻|结构明细：/);
-  assert.doesNotMatch(prompt, /结构化证据|证据汇总|解释边界/);
-  assert.doesNotMatch(prompt, /体用评分：|类象权重：|\d+日内|\d+月左右/);
-});
-
-test('梅花、奇门不再输出隐藏专项分析思路', () => {
-  for (const method of ['meihua', 'qimen'] as const) {
-    const prompt = buildDivinationPrompt(
-      method,
-      '这件事接下来该怎么推进？',
-      createData(method),
-      createSupplementaryInfo(),
-    );
-
-    assert.doesNotMatch(prompt, /【分析思路】/);
-    assert.match(prompt, /【任务】/);
-  }
-});
-
 test('大六壬模板只写入简短问题范围', () => {
   const prompt = buildDivinationPrompt(
     'liuren',
@@ -1129,31 +1077,6 @@ test('大六壬未知专项模板应回落到通用断课，避免输出 undefin
   assert.doesNotMatch(prompt, /undefined|null/);
 });
 
-test('塔罗提示词保留牌阵、牌位、正逆位、关键词与可靠牌组属性', () => {
-  const prompt = buildDivinationPrompt(
-    'tarot',
-    '这件事接下来该怎么推进？',
-    createData('tarot'),
-    createSupplementaryInfo(),
-  );
-
-  assert.match(prompt, /核心结构：牌阵/);
-  assert.match(prompt, /牌位明细：/);
-  assert.doesNotMatch(prompt, /牌位顺序：/);
-  assert.match(prompt, /过去：恋人（正位）；关键词：/);
-  assert.match(prompt, /现在：战车（逆位）；关键词：/);
-  assert.match(prompt, /未来：力量（正位）；关键词：/);
-  assert.match(prompt, /牌组属性：/);
-  assert.match(prompt, /正逆位口径：逆位表示该牌主题可能受阻、过度、内化或方向偏离/);
-  assert.doesNotMatch(prompt, /元素主题：|牌阶主题：/);
-  assert.match(prompt, /基础牌义：/);
-  assert.doesNotMatch(prompt, /断牌口径|现实边界|结构化证据|证据汇总|解释边界/);
-  assert.doesNotMatch(
-    prompt,
-    /牌组层级|宫廷人物|叙事权重|元素数字|表示这些能量正在直接发挥作用|信息被隐藏/,
-  );
-});
-
 test('小六壬提示词保留可复核顺数，并明确只有时宫承担主证', () => {
   const data = generateXiaoliuren({ customDate: new Date('2026-05-19T10:30:00+08:00') });
   const prompt = buildDivinationPrompt(
@@ -1230,27 +1153,6 @@ test('雷诺曼提示词保留逐牌基础牌义与真实布局，不扩写普�
   assert.ok(firstGrandTableauCard);
   assert.match(firstGrandTableauCard, /第1排第1列/);
   assert.doesNotMatch(firstGrandTableauCard, /落骑士宫/);
-});
-
-test('灵签提示词保留完整签谱资料', () => {
-  const prompt = buildDivinationPrompt(
-    'ssgw',
-    '这件事接下来该怎么推进？',
-    createData('ssgw'),
-    createSupplementaryInfo(),
-  );
-
-  assert.match(prompt, /签号：第18签/);
-  assert.match(prompt, /签题：《刘备借荆州》/);
-  assert.match(prompt, /签诗：前路迢迢莫强求，且看云开月自明。/);
-  assert.match(prompt, /吉凶级别：中平签/);
-  assert.match(prompt, /典故：刘备向东吴借取荆州。/);
-  assert.match(prompt, /基础解签：事情仍有转圜空间，宜结合现况审慎研判。/);
-  assert.match(prompt, /补充解释：暂缓推进。留意反复。/);
-  assert.doesNotMatch(
-    prompt,
-    /【当前时间】|【问题】|【任务】|占法：|行动建议|风险提醒|掷筊|签谱状态|来源状态|证据汇总/,
-  );
 });
 
 test('灵签提示词合并重复典故并保留基础解签', () => {

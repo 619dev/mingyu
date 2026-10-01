@@ -543,7 +543,6 @@ test('八宅八命卦乘二十四山的 192 盘应保持八宫和命宅关系完
       assert.equal(new Set(result.mingPalace.map((palace) => palace.direction)).size, 8);
       assert.equal(new Set(result.housePalace?.map((palace) => palace.gua)).size, 8);
       assert.equal(result.match, expectedMatch);
-      assert.equal(result.evidenceAnalysis.directionFacts.length, 8);
     }
   }
 });

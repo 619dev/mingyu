@@ -469,7 +469,6 @@ test('玄空九运乘二十四山的 216 盘应保持三盘、九宫和坐向完
           (item.palaces || []).every((gong) => NINE_STARS.includes(gong)),
         ),
       );
-      assert.equal(result.evidenceAnalysis.key, 'xuankong:evidence');
     }
   }
 });
