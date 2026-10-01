@@ -59,40 +59,11 @@ const toolCalls: Array<[string, Record<string, unknown>]> = [
     },
   ],
   [
-    'calendar_true_solar_time',
-    { localDateTime: '1990-05-15T10:30:00', longitude: 116.4074, timezone: 8 },
-  ],
-  [
-    'calendar_true_solar_birth',
-    {
-      dateType: 'solar',
-      year: 1990,
-      month: 5,
-      day: 15,
-      hour: 10,
-      minute: 30,
-      longitude: 116.4074,
-      timezone: 8,
-    },
-  ],
-  [
     'calendar_bazi_reverse',
     {
       pillars: { year: '甲辰', month: '丙寅', day: '己亥', hour: '甲子' },
       startYear: 2024,
       endYear: 2024,
-    },
-  ],
-  [
-    'calendar_solar_illumination',
-    {
-      year: 2024,
-      month: 6,
-      day: 21,
-      hour: 12,
-      latitude: 39.9042,
-      longitude: 116.4074,
-      timezone: 8,
     },
   ],
   ['calendar_astronomical_time', { year: 2000, month: 1, day: 1, hour: 12, timezone: 0 }],
@@ -1982,6 +1953,13 @@ test('MCP 真太阳时工具应返回换算资料并拒绝带时区后缀的钟�
       arguments: { localDateTime: '1990-05-15T10:30:20', longitude: 116.4074 },
     });
     assert.equal(success.isError, undefined);
+    assert.ok(success.structuredContent);
+    assert.equal(success.content[0]?.type, 'text');
+    assert.equal('prompt' in success.structuredContent, false);
+    assert.equal(
+      success.content[0]?.type === 'text' ? success.content[0].text : '',
+      '结构化结果已返回，请读取 structuredContent。',
+    );
     assert.equal(success.structuredContent?.result.standardMeridian, 120);
     assert.equal(success.structuredContent?.result.shichen.name, '巳时');
     assert.equal(success.structuredContent?.result.status, '已计算');
@@ -2072,6 +2050,13 @@ test('MCP 统一出生真太阳时工具应支持农历与跨日资料', async (
       },
     });
     assert.equal(result.isError, undefined);
+    assert.ok(result.structuredContent);
+    assert.equal(result.content[0]?.type, 'text');
+    assert.equal('prompt' in result.structuredContent, false);
+    assert.equal(
+      result.content[0]?.type === 'text' ? result.content[0].text : '',
+      '结构化结果已返回，请读取 structuredContent。',
+    );
     assert.equal(result.structuredContent?.result.inputDateType, 'lunar');
     assert.equal(typeof result.structuredContent?.result.solarClockDateTime, 'string');
     assert.equal(typeof result.structuredContent?.result.timeIndex, 'number');
@@ -2097,6 +2082,13 @@ test('MCP 太阳光照工具应返回日出日落与曙暮光结构化证据', a
       },
     });
     assert.equal(result.isError, undefined);
+    assert.ok(result.structuredContent);
+    assert.equal(result.content[0]?.type, 'text');
+    assert.equal('prompt' in result.structuredContent, false);
+    assert.equal(
+      result.content[0]?.type === 'text' ? result.content[0].text : '',
+      '结构化结果已返回，请读取 structuredContent。',
+    );
     assert.equal(result.structuredContent?.result.sunriseSunset.status, '正常交点');
     assert.match(String(result.structuredContent?.result.sunriseSunset.key), /^光照交点:/);
     assert.ok(result.structuredContent?.result.sunriseSunset.sources.length >= 2);

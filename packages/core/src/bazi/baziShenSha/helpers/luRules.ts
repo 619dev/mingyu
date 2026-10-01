@@ -202,7 +202,7 @@ export function buildLuRules(ctx: RuleContext): ShenShaRuleMap {
   const mingWeiMaPillar = (stem: string, yiMaBranch: string) =>
     `${FOOD_GOD_BY_STEM[stem] ?? ''}${yiMaBranch}`;
   // 名位禄「禄上带食神」：食神天干 + 日/年干本身的禄支（如甲人见丙寅，丙为甲食神、寅为甲禄）。
-  // 因阳干禄居阳支、阴干禄居阴支而食神与日干同阴阳，实际仅甲乙庚辛四干可组成六十甲子。
+  // 食神与日干同阴阳；其天干与禄支阴阳相合时才是有效干支，此处仅甲乙庚辛四干成立。
   const mingWeiLuPillar = (stem: string) =>
     `${FOOD_GOD_BY_STEM[stem] ?? ''}${LU_BRANCH_BY_STEM[stem] ?? ''}`;
 

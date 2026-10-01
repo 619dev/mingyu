@@ -1,6 +1,6 @@
 import { BASIC_MAPPINGS } from '../baziDefinitions';
 import type { ShenShaResult } from '../baziTypes';
-import { assertBaziGender, assertEarthlyBranch, assertHeavenlyStem } from '../baziUtils';
+import { assertBaziGender, assertGanZhiPair } from '../baziUtils';
 import { buildNobleRules } from './helpers/nobleRules';
 import { buildLuRules } from './helpers/luRules';
 import { buildDayRules } from './helpers/dayRules';
@@ -91,8 +91,7 @@ export class ShenShaCalculator {
         throw new Error(`第 ${index + 1} 柱格式无效。`);
       }
 
-      assertHeavenlyStem(pillar[0], `第 ${index + 1} 柱天干`);
-      assertEarthlyBranch(pillar[1], `第 ${index + 1} 柱地支`);
+      assertGanZhiPair(pillar[0], pillar[1], `第 ${index + 1} 柱`);
     });
   }
 
