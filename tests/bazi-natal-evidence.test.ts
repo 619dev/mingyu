@@ -328,7 +328,7 @@ test('1994年6月15日午时壬日男命应贯通壬午月取用证据与公共�
   assert.doesNotMatch(prompt, /取用: 主用火/);
 });
 
-test('八字真太阳时本命证据应引用校正后的唯一时间并采用唯一校正时刻', () => {
+test('八字真太阳时本命证据采用唯一校正时刻并保留秒精度', () => {
   const result = baziCalculator.calculateBazi({
     year: 1990,
     month: 4,
@@ -355,7 +355,8 @@ test('八字真太阳时本命证据应引用校正后的唯一时间并采用�
   assert.match(analysis.promptText, /当前命盘只采用明确时辰或真太阳时校正后的唯一时刻/);
   assert.doesNotMatch(analysis.promptText, /候选盘\d|候选时辰为/);
   const prompt = formatBaziForPrompt(result);
-  assert.match(prompt, /真太阳时: 1990年4月14日 22:13 \| 出生地:新疆喀什 \| 经度:73\.5/);
+  assert.equal(result.timing.correctedTime.second, 30);
+  assert.match(prompt, /真太阳时: 1990年4月14日 22:13:30 \| 出生地:新疆喀什 \| 经度:73\.5/);
   assert.match(prompt, /基本信息: 乾造 \| 1990年4月14日 亥时/);
   assert.doesNotMatch(prompt, /结构化证据|证据汇总|候选盘|出生时间敏感性/);
 });
