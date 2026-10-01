@@ -60,6 +60,100 @@ test('太乙阳四十四局的逐宫主算进入完整在线任务书', () => {
   assert.ok(prompt.includes('主大3、主参9'));
 });
 
+test('太乙定目逐宫更正的阴阳局定算与将参进入完整在线任务书', () => {
+  const cases = [
+    {
+      input: { scope: 'year', year: 1977 },
+      yinYang: '阳遁',
+      bureau: 6,
+      count: 32,
+      nature: '次和',
+      general: 2,
+      assistant: 6,
+    },
+    {
+      input: { scope: 'year', year: 1998 },
+      yinYang: '阳遁',
+      bureau: 27,
+      count: 24,
+      nature: '杂重阴',
+      general: 4,
+      assistant: 2,
+    },
+    {
+      input: { scope: 'year', year: 1956 },
+      yinYang: '阳遁',
+      bureau: 57,
+      count: 1,
+      nature: '杂阴',
+      general: 1,
+      assistant: 3,
+    },
+    {
+      input: { scope: 'year', year: 1957 },
+      yinYang: '阳遁',
+      bureau: 58,
+      count: 37,
+      nature: '杂重阳',
+      general: 7,
+      assistant: 1,
+    },
+    {
+      input: { scope: 'hour', date: new Date('2026-06-25T02:30:00Z') },
+      yinYang: '阴遁',
+      bureau: 6,
+      count: 30,
+      nature: undefined,
+      general: 3,
+      assistant: 9,
+    },
+    {
+      input: { scope: 'hour', date: new Date('2026-06-25T16:30:00Z') },
+      yinYang: '阴遁',
+      bureau: 13,
+      count: 13,
+      nature: '杂重阳',
+      general: 3,
+      assistant: 9,
+    },
+    {
+      input: { scope: 'hour', date: new Date('2026-06-26T20:30:00Z') },
+      yinYang: '阴遁',
+      bureau: 27,
+      count: 16,
+      nature: '下和',
+      general: 6,
+      assistant: 8,
+    },
+    {
+      input: { scope: 'hour', date: new Date('2026-06-29T14:30:00Z') },
+      yinYang: '阴遁',
+      bureau: 60,
+      count: 23,
+      nature: '次和',
+      general: 3,
+      assistant: 9,
+    },
+  ] as const;
+
+  for (const { input, yinYang, bureau, count, nature, general, assistant } of cases) {
+    const data = generateTaiyi(input);
+    const facts = formatTaiyiInfo(data);
+    const prompt = buildDivinationPrompt({ method: 'taiyi', data, question: '请解读此盘。' });
+    const label = `${yinYang}${bureau}局`;
+    assert.equal(data.yinYang, yinYang, label);
+    assert.equal(data.bureau, bureau, label);
+    for (const text of [
+      `定算${count}${nature ? `（${nature}）` : ''}`,
+      `定大${general}、定参${assistant}`,
+    ]) {
+      assert.ok(facts.includes(text), `${label}资料缺少${text}`);
+      assert.ok(prompt.includes(text), `${label}任务书缺少${text}`);
+    }
+    assert.doesNotMatch(prompt, /setCount|setGeneral|setAssistant/u);
+  }
+});
+
 test('太乙月日时计正文保留实际东八区起局时刻，与外层当前时间分别呈现', () => {
   for (const [scope, label] of [
     ['month', '月计'],

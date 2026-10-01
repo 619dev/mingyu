@@ -2,6 +2,13 @@ export const CHARACTER_STROKE_NOTES: Readonly<Record<string, string>> = {
   万: '“万”本字在《康熙字典》一部为3画；姓名取数按对应繁体“萬”计算。字形笔画方面，《汉语大字典》“萬”为12画，台湾教育部《重编国语辞典修订本》为13画；康熙艸部按6画加部外9画，共15画。姓名五格和三字取数使用15画，字形笔画分别列示。',
 };
 
+// 多繁体字形按实际原字形选取《康熙字典》条目。
+export const CHARACTER_VARIANT_KANGXI_TEXT: Readonly<Record<string, string>> = {
+  台: '【丑集上】【口字部】 台\n《爾雅·釋詁》台，我也。又《廣韻》三台星。',
+  複: '【申集下】【衣字部】 複\n《玉篇》重衣也。《釋名》衣服有裏曰複。',
+  鐘: '【戌集上】【金字部】 鐘\n《說文》樂鐘也。《詩·周南》鐘鼓樂之。',
+};
+
 export const CHARACTER_READING_NOTES: Readonly<
   Record<
     string,
@@ -12,6 +19,10 @@ export const CHARACTER_READING_NOTES: Readonly<
     }
   >
 > = {
+  干: {
+    readings: ['gān'],
+    note: 'gān 用于干扰、干涉、干支等义。',
+  },
   乐: {
     readings: ['lè', 'yuè', 'yào'],
     note: 'lè 表愉悦；yuè 用于音乐，也用于姓氏；yào 表喜好，见《论语·雍也》“知者乐水，仁者乐山”。人名读音结合取义与本人用法确定。',

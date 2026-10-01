@@ -74,6 +74,27 @@ test('五种时间课的两种提示词应区分历史起课时刻与当前时�
   }
 });
 
+test('奇门在线任务书应保留问题对应的复合格局事实', () => {
+  const session = generateDivinationSession({
+    method: 'qimen',
+    question: '何时推进',
+    currentTime: '2026-05-01T00:00:00Z',
+    divinationTime: '2026-06-15T08:00:00+08:00',
+  });
+  const combos = (session.data as { patternCombos?: Array<{ key: string }> }).patternCombos;
+
+  assert.ok(combos?.some((item) => item.key === 'combo:zhiFuOpenClose:2'));
+  assert.match(session.prompt, /值符开通闭塞（坤二宫）/);
+  assert.match(session.aiPrompt, /值符开通闭塞（坤二宫）/);
+  assert.match(session.aiPrompt, /符临2宫为闭塞/);
+  assert.match(session.aiPrompt, /【当前时间】\n公历：2026年5月1日 8时0分（UTC\+08:00）/);
+  assert.match(session.aiPrompt, /【起课时间】\n公历：2026年6月15日 8时0分（UTC\+08:00）/);
+  assert.equal((session.aiPrompt.match(/【当前时间】/g) ?? []).length, 1);
+  assert.equal((session.aiPrompt.match(/【起课时间】/g) ?? []).length, 1);
+  assert.equal((session.aiPrompt.match(/复合格局：/g) ?? []).length, 1);
+  assert.match(session.aiPrompt, /【任务】[\s\S]*【问题】\n何时推进/);
+});
+
 test('真太阳时起课同时标明原民用占时与校正时刻', () => {
   const session = generateDivinationSession({
     method: 'liuyao',
@@ -372,11 +393,39 @@ test('黄历 AI 提示词应保留用户时段偏好与已计算候选时辰', (
   const morning = makeSession('morning');
   const afternoon = makeSession('afternoon');
   assert.notEqual(morning.aiPrompt, afternoon.aiPrompt);
-  assert.match(morning.aiPrompt, /已选优先上午/);
-  assert.match(afternoon.aiPrompt, /已选优先下午/);
-  assert.match(morning.aiPrompt, /已计算候选日与可用时辰/);
-  assert.match(morning.aiPrompt, /可用时辰/);
+  assert.match(morning.aiPrompt, /时段条件：优先上午/);
+  assert.match(afternoon.aiPrompt, /时段条件：优先下午/);
+  assert.match(morning.aiPrompt, /候选日期明细：共1日/);
+  assert.match(morning.aiPrompt, /辰时07:00-09:00/);
+  assert.match(afternoon.aiPrompt, /申时15:00-17:00/);
   assert.doesNotMatch(morning.aiPrompt, /evidenceAnalysis|calculationSteps|候选分类键/);
+});
+
+test('黄历在线任务书应覆盖十五日范围的末日事项与时辰事实', () => {
+  const session = generateDivinationSession({
+    method: 'almanac',
+    question: '按所选时段择日开业',
+    currentTime: '2026-05-01T00:00:00Z',
+    almanac: {
+      topic: 'opening',
+      startDate: '2026-06-01',
+      endDate: '2026-06-15',
+      timePreferences: ['morning'],
+      participants: [],
+    },
+  });
+  const data = session.data as { days: Array<{ date: string }> };
+  const promptLines = session.aiPrompt.split('\n');
+  const lastDateIndex = promptLines.findIndex((line) => line.includes('第15日：2026-06-15'));
+
+  assert.equal(data.days.length, 15);
+  assert.match(session.aiPrompt, /【当前时间】\n公历：2026年5月1日 8时0分（UTC\+08:00）/);
+  assert.match(session.aiPrompt, /【任务】[\s\S]*【问题】\n按所选时段择日开业/);
+  assert.match(session.aiPrompt, /候选日期明细：共15日/);
+  assert.equal((session.aiPrompt.match(/候选日期明细：共15日/g) ?? []).length, 1);
+  assert.ok(lastDateIndex >= 0);
+  assert.match(promptLines[lastDateIndex + 1] ?? '', /开市/);
+  assert.match(promptLines[lastDateIndex + 1] ?? '', /时辰辰时07:00-09:00/);
 });
 
 test('统一占法会话应支持皇极经世值年盘', () => {

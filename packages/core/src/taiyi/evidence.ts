@@ -286,7 +286,10 @@ function buildForceFacts(data: TaiyiEvidenceInput): TaiyiForceFact[] {
     assistantInCenter: assistantPalace === 5,
     calculationStepKeys: ['taiyi:calculation:bureau'],
     promptText: `${side}算${count}${nature ? `（传统算数属性${nature}）` : '（未列算数属性）'}；${side}大将第${generalPalace}宫，${side}参将第${assistantPalace}宫${generalPalace === 5 || assistantPalace === 5 ? '；将或参落中宫' : ''}`,
-    sources: ['七十二局主算、客算、定算立成表', '定算余数定位大将与大将乘三定位参将规则'],
+    sources: [
+      '《太乙金镜式经》卷二主客目逐宫取算与《武备志》卷一百六十九六合定目取算',
+      '三方算数余数定位大将与大将乘三定位参将规则',
+    ],
     limitation: FORCE_FACT_LIMITATION,
   })) as TaiyiForceFact[];
 }
@@ -716,7 +719,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     `按${scopeLabel}独立规则得到${data.accumulatedLabel}${data.accumulatedValue}，折算360周期余数${data.entryYears}`,
     `360周期余数${data.entryYears}分别落在第${data.yuan}个72数段、第${data.ji}个60数段；数段不冒充已统一口径的元纪`,
     `积数按七十二局循环定位${data.yinYang}第${data.bureau}局`,
-    '按对应阴阳遁七十二局立成表读取太乙、文昌、始击及主客定算',
+    '按对应阴阳遁七十二局立成定位太乙、文昌、始击与主客算；定算立成采用六合定目、正间逐宫取算法',
     '由主客定算余数定位主客定大将与参将，计神及十六神作为辅助定位资料',
     `按余数定位直使并将直门加临太乙，按${data.conditions.threeGates.gateScope}逐项复算，${data.conditions.threeGates.status}；始击门位单列，客方专用门具不并入本栏`,
     `按卷四三项发将条件复算五将${data.conditions.fiveGenerals.launched ? '发' : '不发'}；主客四将同宫关、客目/客将格、文昌对及二目五行关系分别记录`,
@@ -786,7 +789,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
       level: '主证',
       title: '主客定算与将参',
       detail: `${forceFacts.map((item) => item.promptText).join('；')}；统一边界：${FORCE_FACT_LIMITATION}`,
-      source: '七十二局主算、客算、定算立成表及将参定位规则',
+      source: '主客目与六合定目逐宫取算及将参定位规则',
       tags: ['主算', '客算', '定算', '将参'],
     },
     {
@@ -872,7 +875,7 @@ export function buildTaiyiEvidence(data: TaiyiEvidenceInput): TaiyiEvidenceAnaly
     promptText,
     methodology: [
       '先按所选计式独立计算积数、360周期余数、72/60数段、阴阳遁与七十二局；数段只用于复算，不替代尚未统一版本口径的元纪。',
-      '再读取太乙、文昌、始击及主客定算立成，比较同宫结构并定位将参。',
+      '再按立成定位太乙、文昌、始击与主客算；定算立成采用六合定目、正间逐宫取算法，比较同宫结构并定位将参。',
       '依所采用的《太乙金镜式经》直门法计算三门，按太乙与文昌主目判定主门具否，始击门位及客方专用门具另列。',
       '依卷四三项发将条件记录始击掩击、文昌囚迫与主客四将同宫关；格、对及二目五行制化分别列示，不把不同章节的“关”合成一个条件。',
       '按太乙八宫、两目正宫/间辰与主客算奇偶逐项配合，明确记录阴阳和不和。',

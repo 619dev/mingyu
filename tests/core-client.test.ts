@@ -50,6 +50,27 @@ test('统一客户端太乙时计保留阴九、十局的客算与将参', () =>
   }
 });
 
+test('统一客户端太乙定算与逐宫定目同值', () => {
+  const client = createMingyuClient();
+  const cases = [
+    { input: { scope: 'year', year: 1998 }, bureau: 27, count: 24, general: 4, assistant: 2 },
+    {
+      input: { scope: 'hour', date: new Date('2026-06-25T16:30:00Z') },
+      bureau: 13,
+      count: 13,
+      general: 3,
+      assistant: 9,
+    },
+  ] as const;
+  for (const { input, bureau, count, general, assistant } of cases) {
+    const result = client.taiyi(input);
+    assert.equal(result.bureau, bureau);
+    assert.equal(result.setCount, count);
+    assert.equal(result.setGeneral, general);
+    assert.equal(result.setAssistant, assistant);
+  }
+});
+
 test('统一客户端八字结果保留真实出生钟表且传统时辰不生成精确钟表', async () => {
   const client = createMingyuClient();
   const birthProfile: BirthProfile = {

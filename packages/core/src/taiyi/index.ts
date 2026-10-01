@@ -1,6 +1,6 @@
 /**
  * @file 太乙神数四计
- * @description 依《太乙金镜式经》卷一与固定版本 Kintaiyi 交叉校核年、月、日、时四计七十二局基础盘。
+ * @description 依《太乙金镜式经》《武备志》与固定版本 Kintaiyi 校核年、月、日、时四计七十二局基础盘。
  *
  * 四计使用各自时间尺度，不能用年计结果替代月、日、时计：
  *   - 年计：太乙积年 10153917 起算。
@@ -106,14 +106,14 @@ const YIN_WENCHANG_POINTS = Array.from(
 const SHIJI_POINTS = Array.from(
   '坤戌亥丑寅辰巳坤酉乾丑寅辰午坤酉亥子艮辰巳未申戌亥艮卯巽未申戌子艮卯巳午坤戌亥丑寅辰巳坤酉乾丑寅辰午坤酉亥子艮辰巳未申戌亥艮卯巽未申戌子艮卯巳午',
 );
-/** 七十二局主算、客算、定算立成。 */
+/** 七十二局主客算及按《武备志》六合定目、正间逐宫法校正的定算。 */
 const YEAR_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [7, 13, 13],
   [6, 1, 1],
   [1, 40, 32],
   [25, 17, 10],
   [25, 14, 1],
-  [25, 10, 12],
+  [25, 10, 32],
   [8, 25, 9],
   [1, 22, 3],
   [3, 15, 33],
@@ -134,7 +134,7 @@ const YEAR_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [16, 17, 23],
   [39, 40, 40],
   [32, 31, 31],
-  [31, 28, 31],
+  [31, 28, 24],
   [14, 9, 38],
   [13, 39, 26],
   [10, 32, 17],
@@ -164,8 +164,8 @@ const YEAR_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [38, 24, 9],
   [16, 3, 22],
   [15, 34, 10],
-  [10, 25, 10],
-  [12, 26, 27],
+  [10, 25, 1],
+  [12, 26, 37],
   [12, 19, 28],
   [12, 13, 19],
   [33, 34, 34],
@@ -188,14 +188,14 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [1, 16, 30],
   [25, 33, 2],
   [25, 30, 1],
-  [17, 26, 10],
+  [17, 26, 30],
   [2, 3, 3],
   [1, 7, 7],
   [7, 33, 27],
   [1, 34, 25],
   [6, 26, 19],
   [35, 23, 8],
-  [12, 37, 12],
+  [12, 37, 13],
   [12, 27, 11],
   [11, 25, 4],
   [1, 15, 24],
@@ -209,7 +209,7 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [16, 1, 29],
   [31, 16, 32],
   [30, 7, 29],
-  [29, 4, 26],
+  [29, 4, 16],
   [8, 25, 32],
   [7, 15, 26],
   [2, 8, 15],
@@ -242,7 +242,7 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [12, 3, 1],
   [18, 8, 35],
   [18, 1, 34],
-  [10, 35, 25],
+  [10, 35, 23],
   [27, 12, 28],
   [26, 3, 25],
   [25, 4, 12],
@@ -331,7 +331,12 @@ export const TAIYI_MODEL_INFO: TaiyiModelInfo = {
     {
       title: 'Kintaiyi',
       url: 'https://github.com/kentang2017/kintaiyi/tree/9842d8f35e895ea6f09e9787edf6da5c16fab91b',
-      evidence: '用于交叉核对四计积数、阴阳遁、七十二局位置表与主客定算立成',
+      evidence: '用于交叉核对四计积数、阴阳遁、七十二局位置表与初始算表',
+    },
+    {
+      title: '《武备志》卷一百六十九·求定计目法',
+      url: 'https://www.shidianguji.com/zh/book/CADAL02092259/chapter/1lb3wzm7f2qzs',
+      evidence: '六合合神加本计支取定目，正宫按宫数、间神起一，逐宫行算至太乙宫前并定位定将参',
     },
     {
       title: '《太乙金镜式经》三门、五将与阴阳和条文',

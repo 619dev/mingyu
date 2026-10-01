@@ -2,7 +2,6 @@ import { formatLiurenJudgmentFacts } from '../prompt/liuren-judgment';
 import type { WuyunLiuqiResult } from '../wuyun-liuqi';
 import type { DivinationMethodId } from './config';
 import { generateAlmanacSelection } from './algorithms/almanac';
-import { analyzeAlmanacEvidence } from './almanac-evidence';
 import { generateAstrolabe } from './algorithms/astrolabe';
 import { generateJinkoujue } from './algorithms/jinkoujue';
 import { generateLiuyao, type LiuyaoGenerationOptions } from './algorithms/liuyao';
@@ -44,7 +43,6 @@ import {
   type UnifiedResultView,
 } from '../consumption/index';
 import type {
-  AlmanacData,
   AlmanacParticipantInput,
   AlmanacTimePreference,
   AlmanacTopic,
@@ -58,7 +56,6 @@ import type {
   LiurenData,
   LiuyaoData,
   MeihuaSettings,
-  QimenData,
   SupplementaryInfo,
   TarotData,
   TarotSpreadType,
@@ -267,6 +264,7 @@ function formatAiChart(
   data: DivinationData,
   summary: ReturnType<typeof getDivinationSummaryBlocks>,
   currentTime: Date,
+  question: string,
 ) {
   const base = [
     summary.title,
@@ -282,6 +280,8 @@ function formatAiChart(
     });
   }
   if (method === 'jinkoujue') return formatDivinationInfo(method, data);
+  if (method === 'qimen') return formatDivinationInfo(method, data, question);
+  if (method === 'almanac') return formatDivinationInfo(method, data, question);
   if (method === 'liuyao') {
     const item = data as LiuyaoData;
     base.push(
@@ -289,15 +289,6 @@ function formatAiChart(
       ...item.yaosDetail.map(
         (yao) =>
           `第${yao.position}爻：${yao.yaoType}爻，${yao.sixGod}${yao.sixRelative}${yao.najiaDizhi}${yao.wuxing}${yao.isWorld ? '，世爻' : ''}${yao.isResponse ? '，应爻' : ''}${yao.isChanging ? `，动爻${yao.changedYao ? `化${yao.changedYao.liuqin}${yao.changedYao.dizhi}${yao.changedYao.wuxing}` : ''}` : ''}${yao.isVoid ? '，空亡' : ''}`,
-      ),
-    );
-  } else if (method === 'qimen') {
-    const item = data as QimenData;
-    base.push(
-      '九宫明细：',
-      ...item.jiuGongGe.map(
-        (palace) =>
-          `${palace.name}（${palace.direction}、${palace.element}）：天盘${palace.tianPan.stem}${palace.tianPan.star}${palace.tianPan.companionStem ? `，随${palace.tianPan.companionStem}${palace.tianPan.companionStar || ''}` : ''}；地盘${palace.diPan.stem}；门${palace.renPan.door}；神${palace.shenPan.god}`,
       ),
     );
   } else if (method === 'astrolabe') {
@@ -319,27 +310,6 @@ function formatAiChart(
     );
   } else if (method === 'taiyi') {
     base.push('太乙判断依据：', ...formatTaiyiJudgmentFacts(data as TaiyiResult));
-  } else if (method === 'almanac') {
-    const item = data as AlmanacData;
-    const evidence = analyzeAlmanacEvidence(item);
-    const preferences = [
-      item.weekendPreference === 'prefer' ? '优先周末' : '',
-      item.weekendPreference === 'avoid' ? '避开周末' : '',
-      item.timePreferences?.includes('work-hours') ? '工作日常规办事时段' : '',
-      item.timePreferences?.includes('morning') ? '优先上午' : '',
-      item.timePreferences?.includes('afternoon') ? '优先下午' : '',
-    ].filter(Boolean);
-    base.push(
-      `黄历选择条件：事项${item.topicLabel}；候选日期${item.startDate}至${item.endDate}；${preferences.length ? `已选${preferences.join('、')}` : '未指定额外日期或时段偏好'}`,
-      `已计算候选日与可用时辰（候选日最多展示前${Math.min(item.days.length, 8)}日；每个已展示候选日完整列出可用时辰）：`,
-      ...item.days.slice(0, 8).map((day) => {
-        const candidate = evidence.candidates.find((entry) => entry.date === day.date);
-        const hours = candidate?.usableHours
-          .map((hour) => `${hour.name}${hour.range ? `（${hour.range}）` : ''}`)
-          .join('、');
-        return `${day.date}：${candidate?.status ?? '待核验候选'}；${hours ? `可用时辰${hours}` : '当前资料未列可用时辰'}`;
-      }),
-    );
   }
   return base.join('\n');
 }
@@ -660,7 +630,7 @@ export function generateDivinationSession(request: DivinationRequest): Divinatio
           question,
           currentTime,
           supplementaryInfo: request.supplementaryInfo,
-          chartText: formatAiChart(method, data, summary, currentTime),
+          chartText: formatAiChart(method, data, summary, currentTime, question),
           data,
         });
   const aiPrompt = aiPromptDocument.text;

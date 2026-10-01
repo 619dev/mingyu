@@ -24,13 +24,13 @@ test('姓名提示词只要求本次资料支持的分析与方案', () => {
   assert.match(namingPrompt, /至多两个备选名/);
 });
 
-test('偏好字与忌用字按字典繁简对应处理并以忌用字优先', () => {
-  for (const [preferredCharacters, forbiddenCharacters] of [
-    ['樂宁', '乐'],
-    ['乐寧', '樂'],
+test('偏好字保留原字形且忌用字按繁简对应优先处理', () => {
+  for (const [preferredCharacters, forbiddenCharacters, firstPreferred] of [
+    ['樂宁', '乐', '宁'],
+    ['乐寧', '樂', '寧'],
   ]) {
     const pool = selectNamingCharacters({ preferredCharacters, forbiddenCharacters, limit: 100 });
-    assert.equal(pool[0].char, '宁');
+    assert.equal(pool[0].char, firstPreferred);
     assert.ok(pool.every((item) => item.simplified !== '乐' && item.traditional !== '樂'));
     const names = generateChineseNames({
       surname: '李',
@@ -43,10 +43,10 @@ test('偏好字与忌用字按字典繁简对应处理并以忌用字优先', ()
   }
   const pool = selectNamingCharacters({ preferredCharacters: '寧宁樂乐', limit: 100 });
   assert.deepEqual(
-    pool.slice(0, 2).map((item) => item.char),
-    ['宁', '乐'],
+    pool.slice(0, 4).map((item) => item.char),
+    ['寧', '宁', '樂', '乐'],
   );
-  assert.equal(pool.length, new Set(pool.map((item) => item.simplified)).size);
+  assert.equal(pool.length, new Set(pool.map((item) => item.char)).size);
 });
 
 test('“髮”按简体键“发”参与候选偏好与回避', () => {

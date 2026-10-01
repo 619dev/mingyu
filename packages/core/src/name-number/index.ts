@@ -19,7 +19,11 @@ import { checkChinaDst } from '../calendar/china-dst';
 import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
 import { resolveBirthPlace } from '../location';
 import type { BirthProfileTimeRange } from '../profile/time-range';
-import { CHARACTER_STROKE_NOTES, CHARACTER_READING_NOTES } from './character-annotations';
+import {
+  CHARACTER_STROKE_NOTES,
+  CHARACTER_READING_NOTES,
+  CHARACTER_VARIANT_KANGXI_TEXT,
+} from './character-annotations';
 import {
   buildPromptSelectionTask,
   getPromptSelectionSection,
@@ -564,10 +568,18 @@ export function calculateNamingBirthContext(input: NamingBirthInput): NamingBirt
 }
 
 const characterData: Record<string, CharacterDetail> = {};
+// 简体多义字的默认姓名取数对应明确原字形。
+const DEFAULT_KANGXI_GLYPHS: Readonly<Record<string, string>> = {
+  后: '后',
+  干: '干',
+  台: '台',
+  复: '複',
+  钟: '鐘',
+};
 const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
   ([
     simplified,
-    traditional,
+    generatedTraditional,
     kangxiStrokes,
     radical,
     wuxing,
@@ -582,7 +594,7 @@ const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
   ]) => ({
     char: simplified,
     simplified,
-    traditional,
+    traditional: DEFAULT_KANGXI_GLYPHS[simplified] ?? generatedTraditional,
     kangxiStrokes,
     radical: radical ?? undefined,
     wuxing,
@@ -592,10 +604,14 @@ const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
       : {}),
     definition,
     simplifiedStrokes,
-    traditionalStrokes,
+    traditionalStrokes: DEFAULT_KANGXI_GLYPHS[simplified]
+      ? simplified === '复'
+        ? 14
+        : kangxiStrokes
+      : traditionalStrokes,
     structure,
-    kangxiVolume,
-    kangxiSection,
+    kangxiVolume: simplified === '复' ? '申集下' : kangxiVolume,
+    kangxiSection: simplified === '复' ? '衣字部' : kangxiSection,
     ...(CHARACTER_STROKE_NOTES[simplified]
       ? { strokeNote: CHARACTER_STROKE_NOTES[simplified] }
       : {}),
@@ -627,6 +643,28 @@ const manualCommonCharacters: CharacterDetail[] = [
 ];
 for (const item of manualCommonCharacters) {
   characterData[item.simplified] = item;
+  characterData[item.traditional] = item;
+}
+const explicitTraditionalVariants: CharacterDetail[] = [
+  {
+    ...characterData['复'],
+    char: '複',
+    radical: '衤',
+    wuxing: null,
+    definition: '有夹里的衣服；有夹层、重叠，也用于重复、繁复等义。',
+    structure: '左右',
+    common: false,
+  },
+  {
+    ...characterData['钟'],
+    char: '鐘',
+    radical: '金',
+    wuxing: null,
+    definition: '敲击发声的金属乐器；计时器，如时钟、闹钟。',
+    common: false,
+  },
+];
+for (const item of explicitTraditionalVariants) {
   characterData[item.traditional] = item;
 }
 // “发”同时对应“發”和“髮”；毛发义须保留独立字形及康熙笔画。
@@ -913,13 +951,18 @@ export async function analyzeChineseCharactersWithReferences(text: string) {
   const analysis = analyzeChineseCharacters(text);
   const characters = analysis.characters
     .map((item) =>
-      item.detail ? (item.char === '髮' ? item.char : item.detail.simplified) : undefined,
+      item.detail && !CHARACTER_VARIANT_KANGXI_TEXT[item.detail.traditional]
+        ? item.char === '髮'
+          ? item.char
+          : item.detail.simplified
+        : undefined,
     )
     .filter((char): char is string => Boolean(char));
-  if (characters.length === 0) return analysis;
-  const references = await loadKangxiReferences(characters).catch((cause: unknown) => {
-    throw new Error('字典原文加载失败，请重试', { cause });
-  });
+  const references = characters.length
+    ? await loadKangxiReferences(characters).catch((cause: unknown) => {
+        throw new Error('字典原文加载失败，请重试', { cause });
+      })
+    : {};
   return {
     ...analysis,
     characters: analysis.characters.map(({ char, detail }) => ({
@@ -927,7 +970,10 @@ export async function analyzeChineseCharactersWithReferences(text: string) {
       detail: detail
         ? {
             ...detail,
-            kangxiText: references[char === '髮' ? char : detail.simplified] ?? null,
+            kangxiText:
+              CHARACTER_VARIANT_KANGXI_TEXT[detail.traditional] ??
+              references[char === '髮' ? char : detail.simplified] ??
+              null,
           }
         : null,
     })),
@@ -1033,6 +1079,7 @@ export function selectNamingCharacters(input: {
   const preferred = namingCharacters(input.preferredCharacters).filter(
     (char) => !forbidden.has(namingCharacterKey(char)),
   );
+  const preferredGlyphs = new Set(preferred);
   const common = [...new Set([...`${NAMING_CHARACTERS[gender]}${NAMING_CHARACTERS.通用}`])];
   const ordered = [
     ...preferred,
@@ -1042,9 +1089,17 @@ export function selectNamingCharacters(input: {
     }),
     ...common,
   ];
-  return [...new Set(ordered.map(namingCharacterKey))]
+  const selectedGlyphs = [
+    ...new Set(
+      ordered.map((char) => (preferredGlyphs.has(char) ? char : namingCharacterKey(char))),
+    ),
+  ];
+  return selectedGlyphs
     .filter((char) => !forbidden.has(char))
-    .map((char) => charDetail(char))
+    .map((char) => {
+      const detail = charDetail(char);
+      return detail ? { ...detail, char } : null;
+    })
     .filter((item): item is CharacterDetail => item !== null)
     .slice(0, limit);
 }
@@ -1085,9 +1140,9 @@ export function generateChineseNames(input: {
   const preferredElements = [...preferences.stable, ...preferences.conditional];
   const forbidden = new Set(namingCharacters(input.forbiddenCharacters).map(namingCharacterKey));
   const preferred = new Set(
-    namingCharacters(input.preferredCharacters)
-      .map(namingCharacterKey)
-      .filter((char) => !forbidden.has(char)),
+    namingCharacters(input.preferredCharacters).filter(
+      (char) => !forbidden.has(namingCharacterKey(char)),
+    ),
   );
   const generationText = input.generationCharacter?.trim() ?? '';
   if (
@@ -1154,9 +1209,7 @@ export function generateChineseNames(input: {
         givenName,
         analysis,
         selectionEvidence: {
-          preferredCharacters: [...givenName].filter((char) =>
-            preferred.has(namingCharacterKey(char)),
-          ),
+          preferredCharacters: [...givenName].filter((char) => preferred.has(char)),
           generationCharacter: generationCharacter ?? null,
           generationPosition: generationCharacter ? (input.generationPosition ?? 'first') : null,
           favorableElementCharacters: [...analysis.elementMatches],
@@ -1461,10 +1514,7 @@ export function buildChineseNamingPrompt(input: {
     ),
   ].filter((item, index, items) => {
     const key = namingCharacterKey(item.char);
-    return (
-      !forbidden.has(key) &&
-      items.findIndex((entry) => namingCharacterKey(entry.char) === key) === index
-    );
+    return !forbidden.has(key) && items.findIndex((entry) => entry.char === item.char) === index;
   });
   const task = `综合${birthContext ? '出生取用、' : ''}用字条件、字义搭配、音律节奏、字形协调、谐音联想和现代社会使用场景设计姓名。候选姓名只是比较起点，可以重新组合适配字，也可以补充同类常用字并提出更合适的新名字。`;
   return [
