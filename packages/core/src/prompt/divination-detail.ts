@@ -24,6 +24,8 @@ import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
 import { analyzeAlmanacEvidence, formatAlmanacGods } from '../divination/almanac-evidence';
 import { analyzeLenormandEvidence } from '../divination/lenormand-evidence';
+import { analyzeTarotEvidence } from '../divination/tarot-evidence';
+import { resolveSsgwSignFacts } from '../divination/ssgw-content';
 import { formatLiuyaoSanxing } from './liuyao-facts';
 
 type SupportedMethod = Exclude<DivinationMethodId, 'random'>;
@@ -167,12 +169,14 @@ function formatLiurenDetail(data: LiurenData) {
 }
 
 function formatTarotDetail(data: TarotData) {
+  const cards = analyzeTarotEvidence(data).cards;
   return [
-    `牌位：${data.cards.map((card) => `${card.position}${card.name}（${card.reversed ? '逆位' : '正位'}${card.element ? `，${card.element}` : ''}）`).join('；')}`,
+    `牌位：${cards.map((card) => `${card.position}${card.name}（${card.orientation}${card.element !== '元素未列' ? `，${card.element}` : ''}）`).join('；')}`,
   ];
 }
 
 function formatSsgwDetail(data: SsgwData) {
+  data = resolveSsgwSignFacts(data);
   const details = data.details ?? {};
   const basic = details['核心寓意']?.trim() || details['解签']?.trim() || details['签意']?.trim();
   const supplementary = Object.entries(details)

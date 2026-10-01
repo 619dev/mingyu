@@ -2,6 +2,17 @@ import type { ClimateRule } from '../../types';
 
 export const BING_YOU_CLIMATE_RULES: ClimateRule[] = [
   {
+    id: 'you-month-bing-ren-first',
+    label: '丙日酉月壬水辅映规则',
+    description: '八月丙火日近黄昏，原文仍用壬水辅映；无壬用癸与成金局另依条件判断。',
+    priority: 115,
+    months: ['酉'],
+    dayMasters: ['火'],
+    dayStems: ['丙'],
+    usefulWuxing: '水',
+    hint: '丙火酉月，壬水辅映',
+  },
+  {
     id: 'you-month-bing-metal-formation-no-xin',
     label: '丙日酉月金局无辛饿莩规则',
     description: '丙火生酉月，若地支已成金局而辛金不透，传统多断朱门饿莩，不应误作从才富贵。',

@@ -5,7 +5,7 @@ import { generateLiuyao } from 'mingyu-core/divination/liuyao';
 import { generateMeihua } from 'mingyu-core/divination/meihua';
 import { generateQimen, analyzeQimenEvidence } from 'mingyu-core/divination/qimen';
 import { formatQimenPatternBasis } from '@core/divination/qimen-evidence';
-import { drawRandomSign } from 'mingyu-core/divination/ssgw';
+import { resolveSignByNumber } from 'mingyu-core/divination/ssgw';
 import { buildAstrolabePrompt, formatDivinationInfo } from 'mingyu-core/prompt';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 
@@ -125,23 +125,23 @@ test('梅花单动乾卦不把用九当作当前卦辞', () => {
   assert.doesNotMatch(text, /见群龙无首，吉/);
 });
 
-test('灵签解释合并同文并保留本签所选补充', () => {
-  const data = drawRandomSign(date, { seed: 20260521 });
-  data.details = {
-    ...data.details,
-    核心寓意: data.poem,
-    解签: '初段解释。',
-    签意: '初段解释。',
-    解签总论: '第一句。第二句。第三句仍含完整条件。',
-    整体运势: '阶段信息应当保留。',
-    此签核心: '另一个有效取义。',
-    行动建议: '先核实条件。',
-    风险提醒: '留意变化。',
-  };
+test('灵签真实签谱基础解签只列一次，篡改解签不能进入任务书', () => {
+  const data = resolveSignByNumber(18, date);
   const text = buildDivinationPrompt('ssgw', '整体解读', data);
-  for (const phrase of ['先核实条件。', '留意变化。']) assert.ok(text.includes(phrase));
-  assert.equal(text.split('初段解释。').length - 1, 1);
-  assert.doesNotMatch(text, /第三句仍含完整条件|阶段信息应当保留|另一个有效取义/);
+  assert.match(text, /签号：第18签/);
+  assert.match(text, /签诗：东施效颦反增丑，画虎不成反类犬。/);
+  assert.match(text, /补充解释：诗句取象：西施皱眉很美/);
+  assert.equal(text.split('与其费力学别人走路').length - 1, 1);
+  assert.doesNotMatch(text, /解签总论：|此签核心：|行动建议：|风险提醒：|来源状态|签谱状态/);
+
+  const mismatched = {
+    ...data,
+    details: { ...data.details, 核心寓意: '初段解释。' },
+  };
+  assert.throws(
+    () => buildDivinationPrompt('ssgw', '整体解读', mismatched),
+    /签号、签谱内容或抽签记录不一致/,
+  );
 });
 
 test('奇门经典格局保留触发事实而非只列名称', () => {

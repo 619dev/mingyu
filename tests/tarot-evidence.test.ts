@@ -8,7 +8,11 @@ import {
 } from '../packages/core/src/divination/tarot.ts';
 import type { TarotData, TarotSpreadType } from '../packages/core/src/types/divination.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
-import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
+import {
+  buildDivinationPrompt,
+  getDivinationSummaryBlocks,
+} from '../packages/core/src/prompt/divination.ts';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 
 const spreadTypes = Object.keys(tarotSpreads) as TarotSpreadType[];
 
@@ -541,6 +545,17 @@ test('塔罗牌阵名称与牌阵类型不符时标记身份缺口', () => {
     '牌阵名称应为时间流牌阵，记录为凯尔特十字',
   ]);
   assert.equal(evidence.summaryFact.status, '证据链有缺口');
+  const taskbook = buildDivinationPrompt({
+    method: 'tarot',
+    question: '本次占问',
+    data,
+    currentTime: new Date('2025-01-01T00:00:00Z'),
+  });
+  assert.match(taskbook, /核心结构：牌阵时间流牌阵；共3张牌/);
+  assert.match(taskbook, /【任务】/);
+  assert.doesNotMatch(taskbook, /凯尔特十字/);
+  assert.match(formatDetailedDivinationInfo('tarot', data), /牌阵时间流牌阵/);
+  assert.deepEqual(getDivinationSummaryBlocks('tarot', data).tags[0], '牌阵：时间流牌阵');
 });
 
 test('塔罗主题对象只做标签计数，不生成权重或吉凶评分', () => {

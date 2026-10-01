@@ -1116,7 +1116,7 @@ const testCases: Array<{
         mode: 'reference',
         status: '满足',
         adopted: false,
-        order: ['木', '水'],
+        order: ['水', '木'],
       },
     },
   },

@@ -2,6 +2,18 @@ import type { ClimateRule } from '../../types';
 
 export const BING_XU_CLIMATE_RULES: ClimateRule[] = [
   {
+    id: 'xu-month-bing-jia-ren-first',
+    label: '丙日戌月先甲后壬规则',
+    description: '九月丙火退气而忌土晦光，原文先甲木、次壬水；无壬癸透时另论替用。',
+    priority: 115,
+    months: ['戌'],
+    dayMasters: ['火'],
+    dayStems: ['丙'],
+    usefulWuxing: '木',
+    favorableOrder: ['木', '水'],
+    hint: '丙火戌月，先甲木、次壬水',
+  },
+  {
     id: 'xu-month-bing-hidden-ren-gui-page',
     label: '丙日戌月壬癸藏支页监规则',
     description:

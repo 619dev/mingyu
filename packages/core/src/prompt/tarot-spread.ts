@@ -119,11 +119,12 @@ function formatTarotSpreadCoverageNote(
   coverage: ReturnType<typeof analyzeTarotEvidence>['spreadCoverageFact'],
 ) {
   if (coverage.status === '完整') return '';
+  const spreadName = coverage.expectedSpreadName ?? data.spreadName;
   const actualPositions = coverage.actualPositions.join('、') || '无';
   if (coverage.expectedCardCount === null) {
-    return `牌位记录：当前为${data.spreadName}，已记录${coverage.actualCardCount}张，实际牌位为${actualPositions}。`;
+    return `牌位记录：当前为${spreadName}，已记录${coverage.actualCardCount}张，实际牌位为${actualPositions}。`;
   }
-  return `牌位记录：${data.spreadName}预设${coverage.expectedCardCount}张（${coverage.expectedPositions.join('、')}），当前记录${coverage.actualCardCount}张；实际牌位：${actualPositions}；缺少牌位：${coverage.missingPositions.join('、') || '无'}；重复牌位：${coverage.duplicatePositions.join('、') || '无'}；额外牌位：${coverage.unexpectedPositions.join('、') || '无'}；顺序异常位置：${coverage.positionOrderMismatches.join('、') || '无'}；重复牌号：${coverage.duplicateCardIds.join('、') || '无'}。`;
+  return `牌位记录：${spreadName}预设${coverage.expectedCardCount}张（${coverage.expectedPositions.join('、')}），当前记录${coverage.actualCardCount}张；实际牌位：${actualPositions}；缺少牌位：${coverage.missingPositions.join('、') || '无'}；重复牌位：${coverage.duplicatePositions.join('、') || '无'}；额外牌位：${coverage.unexpectedPositions.join('、') || '无'}；顺序异常位置：${coverage.positionOrderMismatches.join('、') || '无'}；重复牌号：${coverage.duplicateCardIds.join('、') || '无'}。`;
 }
 
 export function buildTarotSpreadTask(data: TarotData) {

@@ -23,6 +23,7 @@ import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
 import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
 import { getQimenActiveSpecialConditionText } from '../divination/qimen-evidence';
 import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
+import { analyzeTarotEvidence } from '../divination/tarot-evidence';
 import type {
   AlmanacData,
   AstrolabeData,
@@ -53,7 +54,7 @@ import {
   formatTaiyiTradition,
   getMeihuaMethodLabel,
 } from './divination-enhanced';
-import { resolveSsgwStoryContent } from '../divination/ssgw-content';
+import { resolveSsgwSignFacts, resolveSsgwStoryContent } from '../divination/ssgw-content';
 import { buildSolarTimeInfoText, buildTimeInfoText } from './formatters';
 import { buildTarotSpreadTask } from './tarot-spread';
 import type { HuangjiJingshiResult } from '../huangji-jingshi';
@@ -292,10 +293,10 @@ function formatLiurenFocusSummary(data: LiurenData) {
     .join('，')}`;
 }
 
-function formatTarotFocusSummary(data: TarotData) {
-  return data.cards
+function formatTarotFocusSummary(cards: ReturnType<typeof analyzeTarotEvidence>['cards']) {
+  return cards
     .slice(0, 3)
-    .map((card) => `${card.position}${card.name}（${card.reversed ? '逆位' : '正位'}）`)
+    .map((card) => `${card.position}${card.name}（${card.orientation}）`)
     .join('；');
 }
 
@@ -467,19 +468,21 @@ export function getDivinationSummaryBlocks(
     }
     case 'tarot': {
       const item = data as TarotData;
+      const evidence = analyzeTarotEvidence(item);
       return {
         title: '塔罗抽牌结果',
-        tags: [`牌阵：${item.spreadName}`, `张数：${item.cards.length}张`],
+        tags: [
+          `牌阵：${evidence.spreadCoverageFact.expectedSpreadName ?? item.spreadName}`,
+          `张数：${evidence.cards.length}张`,
+        ],
         lines: [
-          wrapMainEvidence(formatTarotFocusSummary(item)),
-          ...item.cards.map(
-            (card) => `${card.position}：${card.name}（${card.reversed ? '逆位' : '正位'}）`,
-          ),
+          wrapMainEvidence(formatTarotFocusSummary(evidence.cards)),
+          ...evidence.cards.map((card) => `${card.position}：${card.name}（${card.orientation}）`),
         ].filter(Boolean),
       };
     }
     case 'ssgw': {
-      const item = data as SsgwData;
+      const item = resolveSsgwSignFacts(data as SsgwData);
       const storyContent = resolveSsgwStoryContent(item);
       return {
         title: '灵签结果',
@@ -765,6 +768,7 @@ export interface DivinationPromptOptions extends PromptBuildOptions {
 }
 
 function formatSsgwPrompt(data: SsgwData) {
+  data = resolveSsgwSignFacts(data);
   const storyContent = resolveSsgwStoryContent(data);
   const details = data.details ?? {};
   const baseExplanation = details['核心寓意'] || details['解签'] || details['签意'] || '';

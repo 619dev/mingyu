@@ -75,7 +75,7 @@ import type { KongmingHexagramResult, ZhugeNumberResult } from '../name-number';
 import { getKongmingInterpretation } from '../name-number/kongming-interpretations';
 import { getZhugeInterpretation } from '../name-number/zhuge-interpretations';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
-import { resolveSsgwStoryContent } from '../divination/ssgw-content';
+import { resolveSsgwSignFacts, resolveSsgwStoryContent } from '../divination/ssgw-content';
 import { evaluateTaiyiConditions, formatTaiyiTacticBasis } from '../taiyi';
 import { getTaiyiCountNature } from '../taiyi/evidence';
 import {
@@ -1154,6 +1154,7 @@ function formatLiurenInfo(data: LiurenData) {
 function formatTarotInfo(data: TarotData) {
   const evidence = analyzeTarotEvidence(data);
   const coverage = evidence.spreadCoverageFact;
+  const spreadName = coverage.expectedSpreadName ?? data.spreadName;
   const coverageLine =
     coverage.status === '完整'
       ? ''
@@ -1172,7 +1173,7 @@ function formatTarotInfo(data: TarotData) {
 
   return [
     '占法：塔罗',
-    `核心结构：牌阵${data.spreadName}；共${evidence.cards.length}张牌`,
+    `核心结构：牌阵${spreadName}；共${evidence.cards.length}张牌`,
     coverageLine,
     evidence.cards.some((card) => card.orientation === '逆位')
       ? '正逆位口径：逆位表示该牌主题可能受阻、过度、内化或方向偏离，结合所在牌位与整组牌序判断'
@@ -1188,6 +1189,7 @@ function formatTarotInfo(data: TarotData) {
 }
 
 function formatSsgwInfo(data: SsgwData) {
+  data = resolveSsgwSignFacts(data);
   const details = data.details ?? {};
   const compactText = (value: string) => value.replace(/[\s，。；、！？!?]/gu, '');
   const poemText = compactText(data.poem);

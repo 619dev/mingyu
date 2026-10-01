@@ -12,6 +12,7 @@ import type {
   TarotData,
   TarotSpreadType,
   TaiyiResult,
+  SsgwData,
   TaiyiScope,
   XiaoliurenData,
   XiaoliurenDivinationMethod,
@@ -53,7 +54,11 @@ import type { DivinationAlmanacParticipant, DivinationTimeMode } from '../time-i
 import { formatBirthTimeInterval, resolveBaziReverseTimeRange } from '@/lib/bazi-reverse-input';
 import type { BaziReverseSource } from '@/lib/bazi-reverse-input';
 import type { DivinationMethodId } from 'mingyu-core/divination/config';
-import type { HuangjiJingshiResult, HuangjiSixDayCalendarModel } from 'mingyu-core/huangji-jingshi';
+import {
+  buildHuangjiJingshiPrompt,
+  type HuangjiJingshiResult,
+  type HuangjiSixDayCalendarModel,
+} from 'mingyu-core/huangji-jingshi';
 import type { WuyunLiuqiResult } from 'mingyu-core/wuyun-liuqi';
 import { convertTrueSolarTime, formatSolarDateTimeParts, TimeManager } from 'mingyu-core/calendar';
 import { daysInSolarMonth } from '../../date-validation';
@@ -75,6 +80,7 @@ import { analyzeLiurenEvidence } from 'mingyu-core/divination/liuren';
 import { buildLiuyaoTemplateText } from 'mingyu-core/divination/engine/liuyao-template';
 import { buildPromptGuidanceSections, buildPromptTask } from '../../prompt-guidance';
 import { tarotSpreads } from 'mingyu-core/divination/tarot';
+import { resolveSsgwSignFacts } from 'mingyu-core/divination/ssgw-content';
 import { LENORMAND_SPREADS } from 'mingyu-core/divination/lenormand';
 import { secureRandomInt } from 'mingyu-core/random';
 import {
@@ -286,6 +292,8 @@ export type BuildDivinationPromptOptions = {
   liuyaoRange?: LiuyaoRange;
   taiyiRange?: TaiyiRange;
   omitCurrentTime?: boolean;
+  /** 历史记录无时间戳时，使用原任务书中的时间文字。 */
+  timeInfoText?: string;
   almanacParticipantTimeContextText?: string;
   topicId?: string;
   subtopicId?: string;
@@ -326,7 +334,10 @@ export function buildDivinationPrompt(
       ? question.trim() || getAstrolabeDefaultQuestion(astrolabeTopic, { isCustomQuestion })
       : question;
   const isSignPrompt = method === 'zhuge' || method === 'kongming';
-  const timeInfo = method === 'astrolabe' ? buildSolarTimeInfoText(data) : buildTimeInfoText(data);
+  const timeInfo = options.omitCurrentTime
+    ? ''
+    : (options.timeInfoText ??
+      (method === 'astrolabe' ? buildSolarTimeInfoText(data) : buildTimeInfoText(data)));
   const defaultInfoText = formatDivinationInfo(
     method,
     data,
@@ -378,7 +389,7 @@ export function buildDivinationPrompt(
                         }),
                       ].join('\n')
                     : defaultInfoText;
-  const currentTimeSection = options.omitCurrentTime ? '' : buildSection('【当前时间】', timeInfo);
+  const currentTimeSection = timeInfo ? buildSection('【当前时间】', timeInfo) : '';
   if (method === 'ssgw') {
     if (selection) {
       throw new Error('三山国王灵签提示词只接受本次签谱资料，不支持通用主题选择。');
@@ -548,6 +559,112 @@ export function buildDivinationPrompt(
   ]
     .filter(Boolean)
     .join('\n\n');
+}
+
+/** 只从保存的盘面和输入重建所选历史任务书，不重新起盘。 */
+export function rebuildSavedDivinationSession(
+  session: DivinationSession,
+  draft: DivinationDraft,
+  recordQuestion?: string,
+): DivinationSession {
+  const { method, requestedMethod } = session;
+  if (
+    draft.method !== requestedMethod ||
+    (requestedMethod === 'random'
+      ? !CONCRETE_DIVINATION_METHODS.some((candidate) => candidate === method)
+      : method !== requestedMethod)
+  ) {
+    throw new Error('历史占问的占法身份不一致。');
+  }
+
+  let data: DivinationData = session.data;
+  if (method === 'ssgw') {
+    data = resolveSsgwSignFacts(session.data as SsgwData);
+  } else if (method === 'tarot') {
+    const tarotData = session.data as TarotData;
+    if (
+      typeof tarotData.spreadType === 'string' &&
+      Object.hasOwn(tarotSpreads, tarotData.spreadType)
+    ) {
+      data = {
+        ...tarotData,
+        spreadName: tarotSpreads[tarotData.spreadType as keyof typeof tarotSpreads].name,
+      };
+    }
+  }
+  const question = session.question || recordQuestion || draft.question;
+  const selection = session.selection;
+  const scope =
+    selection?.scope ??
+    (method === 'taiyi'
+      ? { year: 'yearly', month: 'monthly', day: 'daily', hour: 'hourly' }[
+          draft.taiyiScope ?? 'year'
+        ]
+      : draft.promptScope);
+  const hasRange = Boolean(
+    session.xiaoliurenRange ||
+    session.liurenRange ||
+    session.jinkoujueRange ||
+    session.meihuaRange ||
+    session.qimenRange ||
+    session.liuyaoRange ||
+    session.taiyiRange,
+  );
+  const originalTime = /(?:^|\n\n)【当前时间】\n([\s\S]*?)(?=\n\n【|$)/u
+    .exec(session.prompt)?.[1]
+    ?.trim();
+  const hasSavedTimestamp = session.data && 'timestamp' in session.data;
+  const huangjiPrompt =
+    method === 'huangji' && !session.huangjiRange
+      ? buildHuangjiJingshiPrompt(data as HuangjiJingshiResult, question, undefined, {
+          topicId: selection?.topicId ?? draft.promptTopicId,
+          subtopicId: selection?.subtopicId ?? draft.promptSubtopicId,
+          scope,
+        })
+      : '';
+  const prompt =
+    method === 'huangji'
+      ? session.huangjiRange
+        ? applyPromptSelectionToExistingPrompt(
+            buildHuangjiRangePrompt(session.huangjiRange, question),
+            selection,
+          )
+        : session.timeContext?.promptText
+          ? insertTimeContextIntoPrompt(huangjiPrompt, session.timeContext.promptText)
+          : huangjiPrompt
+      : buildDivinationPrompt(
+          method,
+          question,
+          data,
+          buildSupplementaryInfo({ ...draft, method }),
+          {
+            isCustomQuestion: method === 'almanac' ? false : draft.questionSource === 'custom',
+            liuyaoTemplate: draft.liuyaoTemplate,
+            liurenTemplate: draft.liurenTemplate,
+            astrolabeTopic: draft.astrolabeTopic,
+            timeContextText: session.timeContext?.promptText,
+            xiaoliurenRangeText:
+              session.xiaoliurenRange?.status === 'conditional'
+                ? formatXiaoliurenRangeFacts(session.xiaoliurenRange)
+                : undefined,
+            liurenRange: session.liurenRange,
+            jinkoujueRange: session.jinkoujueRange,
+            meihuaRange: session.meihuaRange,
+            qimenRange: session.qimenRange,
+            liuyaoRange: session.liuyaoRange,
+            taiyiRange: session.taiyiRange,
+            omitCurrentTime: hasRange || (!hasSavedTimestamp && !originalTime),
+            timeInfoText: hasSavedTimestamp ? undefined : originalTime,
+            almanacParticipantTimeContextText: buildAlmanacParticipantTimeContextText(
+              draft.almanacParticipants ?? [],
+            ),
+            topicId: selection?.topicId ?? draft.promptTopicId,
+            subtopicId: selection?.subtopicId ?? draft.promptSubtopicId,
+            scope,
+          },
+        );
+
+  return { ...session, question, data, prompt };
 }
 
 function buildSupplementaryInfo(draft: DivinationDraft): SupplementaryInfo | undefined {

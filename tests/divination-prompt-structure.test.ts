@@ -8,6 +8,7 @@ import { generateLiuyao } from '../packages/core/src/divination/algorithms/liuya
 import { generateMeihua } from '../packages/core/src/divination/algorithms/meihua/index.ts';
 import { drawTarotSpread, tarotSpreads } from '../packages/core/src/divination/tarot.ts';
 import { drawLenormandSpread } from '../packages/core/src/divination/algorithms/lenormand.ts';
+import { resolveSignByNumber } from '../packages/core/src/divination/algorithms/ssgw.ts';
 import { generateXiaoliuren } from '../packages/core/src/divination/algorithms/xiaoliuren.ts';
 import { generateAlmanacSelection } from '../packages/core/src/divination/algorithms/almanac.ts';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
@@ -407,21 +408,7 @@ function createData(method: FixtureMethod): DivinationData {
         timestamp: Date.now(),
       };
     case 'ssgw':
-      return {
-        number: 18,
-        title: '刘备借荆州',
-        poem: '前路迢迢莫强求，且看云开月自明。',
-        story: '刘备向东吴借取荆州。',
-        details: {
-          吉凶: '中平签',
-          核心寓意: '事情仍有转圜空间，宜结合现况审慎研判。',
-          事业: '先核对资源与时机。',
-          行动建议: '暂缓推进。',
-          风险提醒: '留意反复。',
-        },
-        timestamp: Date.now(),
-        ganzhi: { year: '甲子', month: '乙丑', day: '丙寅', hour: '丁卯' },
-      };
+      return resolveSignByNumber(18, new Date('2025-06-18T10:30:00+08:00'));
   }
 }
 
@@ -612,12 +599,13 @@ test('各类占卜提示词都使用统一的角色加信息加问题结构', as
       assert.doesNotMatch(prompt, /结构化证据|证据汇总|反证|解释边界/);
     } else if (item.method === 'ssgw') {
       assert.match(prompt, /签号：第18签/);
-      assert.match(prompt, /签题：《刘备借荆州》/);
-      assert.match(prompt, /签诗：前路迢迢莫强求，且看云开月自明。/);
-      assert.match(prompt, /吉凶级别：中平签/);
-      assert.match(prompt, /典故：刘备向东吴借取荆州。/);
-      assert.match(prompt, /基础解签：事情仍有转圜空间，宜结合现况审慎研判。/);
-      assert.match(prompt, /补充解释：暂缓推进。留意反复。/);
+      assert.match(prompt, /签题：《第十八签 · 东施效颦，画虎类犬（凶）》/);
+      assert.match(prompt, /签诗：东施效颦反增丑，画虎不成反类犬。/);
+      assert.match(prompt, /吉凶级别：下签（凶）/);
+      assert.match(prompt, /典故："东施效颦"出自《庄子·天运》/);
+      assert.equal((prompt.match(/"东施效颦"出自《庄子·天运》/gu) ?? []).length, 1);
+      assert.match(prompt, /基础解签：与其费力学别人走路，不如把自己脚下的路走稳/);
+      assert.match(prompt, /补充解释：诗句取象：西施皱眉很美/);
       assert.doesNotMatch(
         prompt,
         /【当前时间】|【问题】|【任务】|占法：|行动建议|风险提醒|掷筊|签谱状态|来源状态|证据汇总/,
@@ -1152,32 +1140,6 @@ test('雷诺曼提示词保留逐牌基础牌义与真实布局，不扩写普�
   assert.ok(firstGrandTableauCard);
   assert.match(firstGrandTableauCard, /第1排第1列/);
   assert.doesNotMatch(firstGrandTableauCard, /落骑士宫/);
-});
-
-test('灵签提示词合并重复典故并保留基础解签', () => {
-  const prompt = buildDivinationPrompt(
-    'ssgw',
-    '这件事接下来该怎么推进？',
-    {
-      number: 9,
-      title: '典故去重测试',
-      poem: '静待云开见月明，不妨暂且敛锋芒。',
-      story: '韩信受胯下之辱，先忍后成大业。',
-      details: {
-        典故: '韩信受胯下之辱，先忍后成大业。',
-        解签: '宜暂避锋芒，等待时机。',
-      },
-      timestamp: Date.now(),
-      ganzhi: { year: '甲子', month: '乙丑', day: '丙寅', hour: '丁卯' },
-    },
-    createSupplementaryInfo(),
-  );
-
-  assert.match(prompt, /签诗：静待云开见月明，不妨暂且敛锋芒。/);
-  assert.match(prompt, /典故：韩信受胯下之辱，先忍后成大业。/);
-  assert.match(prompt, /基础解签：宜暂避锋芒，等待时机。/);
-  assert.equal((prompt.match(/韩信受胯下之辱/g) ?? []).length, 1);
-  assert.doesNotMatch(prompt, /辅助证据|行动建议|风险提醒|掷筊/);
 });
 
 test('星盘提示词应直接给出太阳月亮上升和主要相位资料', () => {
