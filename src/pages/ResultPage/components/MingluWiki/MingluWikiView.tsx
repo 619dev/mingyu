@@ -76,7 +76,7 @@ export const MingluWikiView: React.FC<MingluWikiViewProps> = ({ article }) => {
       md += `> 候选场景：${unknown.scenarios
         .map(
           (scenario) =>
-            `${scenario.timeName}（${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}）`,
+            `${scenario.timeName}（${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}）`,
         )
         .join('；')}\n\n`;
     }

@@ -617,6 +617,8 @@ export interface BaziChartResult {
       pillars: Pillars;
       strength: DayMasterStrengthStatus;
       pattern: string;
+      /** 本候选真实四柱的格局成败；取格名称相同也可能有不同成败。 */
+      patternStatus?: PatternFulfillmentResult['status'];
       incrementStatus?: UsefulGodAnalysis['incrementStatus'];
       favorableWuxing: string[];
       unfavorableWuxing: string[];

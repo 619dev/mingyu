@@ -189,19 +189,17 @@ export function getEssentialDignity(
   const rule = ESSENTIAL_DIGNITIES[planetName];
   if (!rule) return null;
 
-  if (rule.domicile.includes(signName)) {
-    return { dignity: 'domicile', label: '入庙' };
-  }
-  if (rule.exaltation.includes(signName)) {
-    return { dignity: 'exaltation', label: '曜升' };
-  }
-  if (rule.detriment.includes(signName)) {
-    return { dignity: 'detriment', label: '落陷' };
-  }
-  if (rule.fall.includes(signName)) {
-    return { dignity: 'fall', label: '坠落' };
-  }
-  return null;
+  const matches = (
+    [
+      ['domicile', '入庙'],
+      ['exaltation', '曜升'],
+      ['detriment', '落陷'],
+      ['fall', '坠落'],
+    ] as const
+  ).filter(([dignity]) => rule[dignity].includes(signName));
+  return matches.length
+    ? { dignity: matches[0][0], label: matches.map(([, label]) => label).join('、') }
+    : null;
 }
 
 function mapPlanet(

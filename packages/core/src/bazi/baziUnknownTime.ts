@@ -498,6 +498,9 @@ export function buildUnknownTimeScenario(
     pillars: chart.pillars,
     strength: chart.analysis.dayMasterStrength.status,
     pattern: chart.analysis.mingGe.pattern,
+    ...(chart.analysis.mingGe.fulfillment?.status
+      ? { patternStatus: chart.analysis.mingGe.fulfillment.status }
+      : {}),
     incrementStatus: chart.analysis.usefulGod.incrementStatus,
     favorableWuxing: chart.analysis.usefulGod.favorableWuxing ?? [],
     unfavorableWuxing: chart.analysis.usefulGod.unfavorableWuxing ?? [],

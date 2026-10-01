@@ -35,6 +35,16 @@ async function callApi(path: string, init?: RequestInit) {
   };
 }
 
+type ApiCallResult = Awaited<ReturnType<typeof callApi>>;
+let openApiDocument: ApiCallResult | undefined;
+
+async function getOpenApiDocument(): Promise<ApiCallResult> {
+  if (openApiDocument) return openApiDocument;
+  const result = await callApi('openapi.json');
+  if (result.response.status === 200 && result.body?.ok === true) openApiDocument = result;
+  return result;
+}
+
 test('玄空公开接口拒绝互相矛盾的坐向度数与山名', async () => {
   for (const extra of [{ facingDegree: 181 }, { sitMountain: '卯' }, { facingMountain: '酉' }]) {
     const result = await callApi('metaphysics/xuankong/calculate', {
@@ -287,7 +297,7 @@ test('公开 API 真太阳时即时盘缺少地点时应明确拒绝', async () 
 });
 
 test('公开 API OpenAPI 应公开即时盘类型与两种时间口径', async () => {
-  const { body } = await callApi('openapi.json');
+  const { body } = await getOpenApiDocument();
   const schema = body.data.components.schemas.InstantChartRequest;
 
   assert.deepEqual(schema.properties.type.enum, [
@@ -479,7 +489,7 @@ test('公开 API well-known 元数据应跟随当前访问域名', async () => {
 });
 
 test('公开 API OpenAPI 文档应标明占卜提示词接口返回摘要', async () => {
-  const { response, body } = await callApi('openapi.json');
+  const { response, body } = await getOpenApiDocument();
 
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
@@ -987,7 +997,7 @@ test('公开 API 应按完整四柱反推北京时间候选区间', async () => 
   assert.equal(secondBatch.body.data.batch.startIndex, 1);
   assert.equal(secondBatch.body.data.candidateCount, firstBatch.body.data.candidateCount);
 
-  const openapi = await callApi('openapi.json');
+  const openapi = await getOpenApiDocument();
   assert.equal(
     openapi.body.data.paths['/calendar/bazi-reverse'].post.summary,
     '根据四柱反推公历北京时间候选区间',
@@ -6225,7 +6235,7 @@ test('八宅与住宅公开接口贯通出生时分和出生地时区，旧请�
     assert.equal(invalidClock.body.error.code, 'BAD_REQUEST');
   }
 
-  const openapi = await callApi('openapi.json');
+  const openapi = await getOpenApiDocument();
   for (const schemaName of ['MetaphysicsRequest', 'ResidentialFengshuiRequest']) {
     const properties = openapi.body.data.components.schemas[schemaName].properties;
     assert.deepEqual(
@@ -6333,7 +6343,7 @@ test('公开 API 七政计算与提示词保留坐标精度来源', async () => 
       }
     }
   }
-  const openapi = await callApi('openapi.json');
+  const openapi = await getOpenApiDocument();
   assert.deepEqual(
     openapi.body.data.components.schemas.QizhengRequest.properties.coordinateAccuracy.enum,
     ['user-provided', 'administrative-center', 'province-approximation', 'mixed'],
@@ -7245,7 +7255,7 @@ test('公开住宅提示词保留八宅跨宅卦测量候选盘', async () => {
 });
 
 test('住宅与玄空公开接口使用专用流运请求 schema', async () => {
-  const { response, body } = await callApi('openapi.json');
+  const { response, body } = await getOpenApiDocument();
 
   assert.equal(response.status, 200);
   const paths = body.data.paths;

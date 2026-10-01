@@ -47,7 +47,9 @@ export const MingluPatternUsefulGodSection: React.FC<Props> = ({ data }) => {
               查阅格局百科
             </MingluLink>
           </div>
-          {pattern.basis && pattern.basis !== pattern.transformation?.basis ? (
+          {pattern.basis &&
+          pattern.basis !== pattern.transformation?.basis &&
+          pattern.basis !== unknownTimeAnalysis?.summary ? (
             <div className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
               立格依据：{pattern.basis}
             </div>
@@ -107,6 +109,7 @@ export const MingluPatternUsefulGodSection: React.FC<Props> = ({ data }) => {
                     {scenario.pillars.month.ganZhi || '—'} {scenario.pillars.day.ganZhi || '—'}{' '}
                     {scenario.pillars.hour.ganZhi || '—'}；旺衰{scenario.strength}；格局
                     {scenario.pattern}
+                    {scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}
                     {scenario.favorableWuxing.length
                       ? `；喜用${scenario.favorableWuxing.join('、')}`
                       : ''}

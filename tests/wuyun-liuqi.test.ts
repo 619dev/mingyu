@@ -218,6 +218,9 @@ test('气运相临应在六十甲子中各得十二年同气、顺化、天刑�
 
 test('天符岁会等五类符会应按通行六十年固定集合核验', () => {
   type ConformityField = 'tianfu' | 'suihui' | 'taiyiTianfu' | 'tongTianfu' | 'tongSuihui';
+  const results = new Map(
+    SIXTY_CYCLE.map((yearGanZhi) => [yearGanZhi, calculateWuyunLiuqi({ yearGanZhi })] as const),
+  );
   const expected: Record<ConformityField, string[]> = {
     tianfu: [
       '丁巳',
@@ -242,29 +245,22 @@ test('天符岁会等五类符会应按通行六十年固定集合核验', () =>
   for (const field of Object.keys(expected) as ConformityField[]) {
     const years = expected[field];
     const actual = SIXTY_CYCLE.filter(
-      (yearGanZhi) => calculateWuyunLiuqi({ yearGanZhi }).annualConformities[field],
+      (yearGanZhi) => results.get(yearGanZhi)!.annualConformities[field],
     );
     assert.deepEqual([...actual].sort(), [...years].sort(), field);
   }
 
   const allConformityYears = SIXTY_CYCLE.filter(
-    (yearGanZhi) => calculateWuyunLiuqi({ yearGanZhi }).annualConformities.names.length > 0,
+    (yearGanZhi) => results.get(yearGanZhi)!.annualConformities.names.length > 0,
   );
   assert.equal(allConformityYears.length, 26);
-  assert.deepEqual(
-    calculateWuyunLiuqi({ yearGanZhi: '甲子' }).annualConformities.sourceReconciliation,
-    {
-      distinctYearsByListedRules: 26,
-      sourceSummaryYears: 28,
-      handling:
-        '吴谦《运气要诀》逐项名单按六十甲子去重为26年，与原文“二十八年”汇总不一致；计算采用逐项定义和逐年名单，不用汇总数反改规则。',
-    },
-  );
-  assert.deepEqual(calculateWuyunLiuqi({ yearGanZhi: '戊午' }).annualConformities.names, [
-    '天符',
-    '岁会',
-    '太乙天符',
-  ]);
+  assert.deepEqual(results.get('甲子')!.annualConformities.sourceReconciliation, {
+    distinctYearsByListedRules: 26,
+    sourceSummaryYears: 28,
+    handling:
+      '吴谦《运气要诀》逐项名单按六十甲子去重为26年，与原文“二十八年”汇总不一致；计算采用逐项定义和逐年名单，不用汇总数反改规则。',
+  });
+  assert.deepEqual(results.get('戊午')!.annualConformities.names, ['天符', '岁会', '太乙天符']);
 });
 
 test('六步节令和主客气关系应完整覆盖二十四节气', () => {

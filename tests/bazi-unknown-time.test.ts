@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
 import { LuckCalculator } from '../packages/core/src/bazi/LuckCalculator';
 import { formatBaziForPrompt } from '../packages/core/src/bazi/baziAnalysisFormatter';
 import { analyzeBaziCompatibility } from '../packages/core/src/bazi/compatibilityEvidence';
+import { buildEnhancedPatternUsefulGodSection } from '../packages/core/src/minglu/bazi-enhancer';
+import {
+  analyzeChineseName,
+  buildChineseNameAnalysisPrompt,
+} from '../packages/core/src/name-number/index';
+import { buildBaziPrompt } from '../packages/core/src/prompt/bazi';
+import { formatBaziSchoolPrompt } from '../packages/core/src/prompt/bazi-school';
+import { MingluPatternUsefulGodSection } from '../src/pages/ResultPage/components/MingluWiki/MingluPatternUsefulGodSection';
 
 test('缺时辰不把午时当成出生事实，完整判断只出现在候选中', () => {
   const result = baziCalculator.calculateBazi({ year: 2000, month: 1, day: 7, gender: 'male' });
@@ -89,6 +99,93 @@ test('未知时辰的晚子日柱与立春交界柱保留为待定', () => {
   assert.doesNotMatch(prompt, /【已确定的柱】|^(?:年|月|日)柱：/mu);
   assert.match(prompt, /【待补时判断】/u);
   assert.equal(prompt.match(/候选喜用/g)?.length, result.unknownTimeAnalysis?.scenarios.length);
+});
+
+test('未知时辰同名格局的成格与破格按各候选实际盘分别呈现', () => {
+  const input = { year: 2024, month: 2, day: 4, gender: 'male' as const };
+  const result = baziCalculator.calculateBazi(input);
+  const scenarios = result.unknownTimeAnalysis?.scenarios ?? [];
+  const undecidedIndex = scenarios.findIndex((item) => item.inputClockTime === '00:30:00');
+  const formedIndex = scenarios.findIndex((item) => item.inputClockTime === '10:00:00');
+  const brokenIndex = scenarios.findIndex((item) => item.inputClockTime === '16:00:00');
+  assert.ok(undecidedIndex >= 0 && formedIndex >= 0 && brokenIndex >= 0);
+  assert.deepEqual(
+    [scenarios[formedIndex]?.pillars.hour.ganZhi, scenarios[brokenIndex]?.pillars.hour.ganZhi],
+    ['丁巳', '庚申'],
+  );
+  assert.deepEqual(
+    [scenarios[formedIndex]?.pattern, scenarios[brokenIndex]?.pattern],
+    ['劫财格', '劫财格'],
+  );
+  assert.deepEqual(
+    [
+      scenarios[undecidedIndex]?.patternStatus,
+      scenarios[formedIndex]?.patternStatus,
+      scenarios[brokenIndex]?.patternStatus,
+    ],
+    ['未判定', '成格', '破格'],
+  );
+  const prompt = formatBaziForPrompt(result);
+  assert.match(prompt, /早子时候选：癸卯 乙丑 戊戌 壬子；[^\n]*劫财格（未判定）/u);
+  assert.match(prompt, /巳时候选：癸卯 乙丑 戊戌 丁巳；[^\n]*劫财格（成格）/u);
+  assert.match(prompt, /申时候选：癸卯 乙丑 戊戌 庚申；[^\n]*劫财格（破格）/u);
+  const fullTaskbook = buildBaziPrompt({ result, school: 'ziping' });
+  const standaloneSchoolFacts = formatBaziSchoolPrompt(result, 'ziping');
+  assert.match(fullTaskbook, /巳时候选：[^\n]*劫财格（成格）/u);
+  assert.match(fullTaskbook, /申时候选：[^\n]*劫财格（破格）/u);
+  assert.match(standaloneSchoolFacts, /巳时候选：[^\n]*格局劫财格（成格）/u);
+  assert.match(standaloneSchoolFacts, /申时候选：[^\n]*格局劫财格（破格）/u);
+
+  const html = renderToStaticMarkup(
+    createElement(MingluPatternUsefulGodSection, {
+      data: buildEnhancedPatternUsefulGodSection(result),
+    }),
+  );
+  const candidateRows = [...html.matchAll(/<li\b[^>]*>(.*?)<\/li>/gsu)].map((match) =>
+    (match[1] ?? '')
+      .replace(/<!--.*?-->|<[^>]+>/gu, '')
+      .replace(/\s+/gu, ' ')
+      .trim(),
+  );
+  const patternBlock =
+    html.match(/id="bazi-pattern-detail"(.*?)id="bazi-useful-god-detail"/su)?.[1] ?? '';
+  assert.equal(patternBlock.split(result.unknownTimeAnalysis!.summary).length - 1, 1);
+  const siRow = candidateRows.find((row) => row.startsWith('巳时候选：'));
+  const shenRow = candidateRows.find((row) => row.startsWith('申时候选：'));
+  assert.ok(siRow);
+  assert.ok(shenRow);
+  assert.match(siRow, /癸卯 乙丑 戊戌 丁巳；[^\n]*格局劫财格（成格）/u);
+  assert.match(shenRow, /癸卯 乙丑 戊戌 庚申；[^\n]*格局劫财格（破格）/u);
+
+  const name = analyzeChineseName({
+    fullName: '李明',
+    birth: {
+      ...input,
+      timeIndex: '',
+      dateType: 'solar',
+      isThreePillars: true,
+    },
+  });
+  const namingPrompt = buildChineseNameAnalysisPrompt({ analysis: name });
+  assert.match(namingPrompt, /候选巳时候选：癸卯 乙丑 戊戌 丁巳；[^\n]*格局劫财格（成格）/u);
+  assert.match(namingPrompt, /候选申时候选：癸卯 乙丑 戊戌 庚申；[^\n]*格局劫财格（破格）/u);
+
+  const legacyResult = structuredClone(result);
+  for (const scenario of legacyResult.unknownTimeAnalysis?.scenarios ?? []) {
+    delete scenario.patternStatus;
+  }
+  assert.match(formatBaziForPrompt(legacyResult), /巳时候选：[^\n]*劫财格；候选喜用/u);
+  assert.match(formatBaziSchoolPrompt(legacyResult, 'ziping'), /巳时候选：[^\n]*格局劫财格；喜用/u);
+
+  for (const [index, status] of [
+    [undecidedIndex, '未判定'],
+    [formedIndex, '成格'],
+    [brokenIndex, '破格'],
+  ] as const) {
+    const page = baziCalculator.calculateBaziUnknownTimeBatch(input, { startIndex: index });
+    assert.equal(page.result.unknownTimeAnalysis?.scenarios[0]?.patternStatus, status);
+    assert.match(formatBaziForPrompt(page.result), new RegExp(`劫财格（${status}）`, 'u'));
+  }
 });
 
 test('夏令时日初跨标准日期时农历历日随候选保留，不把午时占位日写成所有候选事实', () => {

@@ -1486,7 +1486,7 @@ function formatBirthContext(
         `待补时说明：${unknownTime.summary}`,
         ...unknownTime.scenarios.map(
           (scenario) =>
-            `候选${scenario.timeName}：${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}${scenario.favorableWuxing.length ? `；增补喜用${scenario.favorableWuxing.join('、')}` : scenario.incrementStatus === '待判' ? '；增补喜用待判' : ''}`,
+            `候选${scenario.timeName}：${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}${scenario.favorableWuxing.length ? `；增补喜用${scenario.favorableWuxing.join('、')}` : scenario.incrementStatus === '待判' ? '；增补喜用待判' : ''}`,
         ),
       ]
     : [];

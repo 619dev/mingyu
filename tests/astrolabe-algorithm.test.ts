@@ -8,6 +8,7 @@ import {
 } from 'mingyu-core/divination/astrolabe';
 import type { AstrolabeBirthInput, AstrolabeData } from 'mingyu-core/types';
 import { resolveTrueSolarBirthTime } from '../packages/core/src/calendar/true-solar-time';
+import { formatAstrolabeForPrompt } from '../packages/core/src/prompt/astrolabe';
 
 const validInput: AstrolabeBirthInput = {
   name: '本人',
@@ -480,10 +481,31 @@ test('星盘行星尊贵力量（Essential Dignities）应准确识别入庙、�
   assert.deepEqual(getEssentialDignity('Sun', 'Aries'), { dignity: 'exaltation', label: '曜升' });
   assert.deepEqual(getEssentialDignity('Moon', 'Taurus'), { dignity: 'exaltation', label: '曜升' });
   assert.deepEqual(getEssentialDignity('Moon', 'Scorpio'), { dignity: 'fall', label: '坠落' });
+  assert.deepEqual(getEssentialDignity('Mercury', 'Virgo'), {
+    dignity: 'domicile',
+    label: '入庙、曜升',
+  });
+  assert.deepEqual(getEssentialDignity('Mercury', 'Pisces'), {
+    dignity: 'detriment',
+    label: '落陷、坠落',
+  });
   assert.equal(getEssentialDignity('Sun', 'Taurus'), null);
 
   const result = generateAstrolabe(validInput);
   const sun = result.planets.find((p) => p.name === 'Sun');
   assert.ok(sun);
   assert.ok('dignity' in sun);
+
+  for (const [month, day, sign, dignity, label] of [
+    ['2', '25', '双鱼座', 'detriment', '落陷、坠落'],
+    ['9', '15', '处女座', 'domicile', '入庙、曜升'],
+  ] as const) {
+    const chart = generateAstrolabe({ ...validInput, year: '2024', month, day });
+    const mercury = chart.planets.find((point) => point.name === 'Mercury');
+    assert.ok(mercury);
+    assert.equal(mercury.sign, sign);
+    assert.equal(mercury.dignity, dignity);
+    assert.equal(mercury.dignityLabel, label);
+    assert.match(formatAstrolabeForPrompt(chart), new RegExp(`水星${sign}[^\\n]+，${label}`));
+  }
 });
