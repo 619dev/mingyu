@@ -174,6 +174,72 @@ test('中国历史夏令时未知时辰候选跳过不存在时刻并展开回�
   }
 });
 
+test('重复民用日的未知时辰先选有效占位，保留两个偏移的午时候选与分页身份', () => {
+  const person: Person = {
+    year: 1969,
+    month: 9,
+    day: 30,
+    gender: 'female',
+    timeZoneId: 'Pacific/Kwajalein',
+  };
+  const full = baziCalculator.calculateBazi(person);
+  const scenarios = full.unknownTimeAnalysis?.scenarios ?? [];
+  const noon = scenarios.flatMap((scenario, index) =>
+    scenario.inputClockTime === '12:00:00' && scenario.source === 'shichen-representative'
+      ? [{ scenario, index }]
+      : [],
+  );
+  assert.equal(noon.length, 2);
+  assert.deepEqual(
+    noon.map(({ scenario }) => scenario.timeName),
+    ['午时候选（UTC+11）', '午时候选（UTC-12）'],
+  );
+  assert.notEqual(noon[0]!.scenario.scenarioKey, noon[1]!.scenario.scenarioKey);
+  assert.ok(full.unknownTimeAnalysis?.uncertainPillars.includes('day'));
+  assert.equal(full.pillars.day.ganZhi, '');
+
+  for (const { scenario, index } of noon) {
+    const timezone = scenario.timeName.includes('UTC+11') ? 11 : -12;
+    const explicit = baziCalculator.calculateBazi({
+      ...person,
+      timezone,
+      birthHour: 12,
+      birthMinute: 0,
+      birthSecond: 0,
+    });
+    assert.deepEqual(scenario.pillars, explicit.pillars);
+    const page = baziCalculator.calculateBaziUnknownTimeBatch(person, { startIndex: index });
+    assert.deepEqual(page.result.unknownTimeAnalysis?.scenarios, [scenario]);
+    assert.equal(page.batch.candidateKey, scenario.scenarioKey);
+    assert.equal(page.result.pillars.day.ganZhi, '');
+  }
+  assert.throws(
+    () =>
+      baziCalculator.calculateBazi({
+        year: 2011,
+        month: 12,
+        day: 30,
+        gender: 'female',
+        timeZoneId: 'Pacific/Apia',
+      }),
+    /没有有效的出生钟表时刻/,
+  );
+  assert.throws(
+    () =>
+      baziCalculator.calculateBaziUnknownTimeBatch(
+        {
+          year: 2011,
+          month: 12,
+          day: 30,
+          gender: 'female',
+          timeZoneId: 'Pacific/Apia',
+        },
+        { startIndex: 0 },
+      ),
+    /没有有效的出生钟表时刻/,
+  );
+});
+
 test('未知时辰候选页仅展开当前候选一次本命分析且不生成完整命限', () => {
   const originalFull = LuckCalculator.prototype.calculateLuckInfo;
   const originalNatal = LuckCalculator.prototype.calculateNatalLuckInfo;

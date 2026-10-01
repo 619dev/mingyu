@@ -161,11 +161,26 @@ function getBaziTopicTask(topic: BaziPromptTopic, topicLabel: string): string {
   }
 }
 
-export function formatBaziTopicFocus(topic: BaziPromptTopic) {
+export function formatBaziTopicFocus(topic: BaziPromptTopic, unknownTime = false) {
   const focus = TOPIC_FACT_FOCUS[topic];
   return focus
-    ? `优先核对${TOPIC_LABELS[topic]}相关的${focus}；其余已列四柱、取用和关系资料继续作为交叉依据。`
+    ? unknownTime
+      ? `优先核对${TOPIC_LABELS[topic]}相关的${focus}，结合所列时辰候选逐项分析。`
+      : `优先核对${TOPIC_LABELS[topic]}相关的${focus}；其余已列四柱、取用和关系资料继续作为交叉依据。`
     : '';
+}
+
+export function buildBaziUnknownTimeTask(
+  topicLabel: string,
+  isBatch: boolean,
+  custom: boolean,
+): string {
+  const subject = isBatch ? '本页所列出生时辰候选' : '已列出生时辰候选';
+  const purpose = custom ? '回答【问题】' : `重点分析${topicLabel}，回答【问题】`;
+  const comparison = isBatch
+    ? '说明当前候选的旺衰、格局和取用依据，并列出与问题相关的出生时分核实要点。'
+    : '比较各候选共有与有别的旺衰、格局和取用条件，并列出与问题相关的出生时分核实要点。';
+  return `请依据${subject}，${purpose}；${comparison}`;
 }
 
 export function formatBaziPatternConditions(result: BaziChartResult): string {
@@ -296,8 +311,16 @@ export function buildBaziPromptDocument(options: BaziPromptOptions): PromptDocum
     (options.fortuneScope === 'full' && options.result.luckInfo?.cycles?.length),
   );
   const taskMethod = hasFortuneData ? 'bazi' : 'bazi-natal';
-  const task =
-    options.mode === 'custom'
+  const hasKnownPillars = (['year', 'month', 'day'] as const).some((key) =>
+    Boolean(options.result.pillars[key].ganZhi),
+  );
+  const task = options.result.isThreePillars
+    ? buildBaziUnknownTimeTask(
+        topicLabel,
+        Boolean(options.result.unknownTimeAnalysis?.batch),
+        options.mode === 'custom',
+      )
+    : options.mode === 'custom'
       ? buildCustomQuestionTask('八字排盘资料', taskMethod)
       : buildPromptTask(
           hasFortuneData
@@ -318,7 +341,9 @@ export function buildBaziPromptDocument(options: BaziPromptOptions): PromptDocum
     ? fortuneSelection.analysisObject
     : hasFortuneData && options.fortuneScope && options.fortuneScope !== 'natal'
       ? `分析对象：${options.fortuneScope === 'full' ? '本命盘与完整大运流年' : options.fortuneScope}`
-      : '分析对象：本命盘';
+      : options.result.isThreePillars
+        ? `分析对象：${options.result.unknownTimeAnalysis?.batch ? '本页' : '已列'}出生时辰候选${hasKnownPillars ? '与已确定的柱' : ''}`
+        : '分析对象：本命盘';
   const patternConditions = formatBaziPatternConditions(options.result);
   const focusSection =
     !selectedSchools.length && !options.school && patternConditions
@@ -329,7 +354,9 @@ export function buildBaziPromptDocument(options: BaziPromptOptions): PromptDocum
     buildPromptGuidance('bazi'),
     buildPromptSection('当前时间', formatPromptCurrentTime(options.currentTime)),
     buildPromptSection('排盘信息', chart),
-    formatBaziTopicFocus(topic) ? buildPromptSection('主题取用', formatBaziTopicFocus(topic)) : '',
+    formatBaziTopicFocus(topic, options.result.isThreePillars)
+      ? buildPromptSection('主题取用', formatBaziTopicFocus(topic, options.result.isThreePillars))
+      : '',
     focusSection,
     selectedSchools.length
       ? buildPromptSection(

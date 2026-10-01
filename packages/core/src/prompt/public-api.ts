@@ -13,7 +13,11 @@ import {
   formatBaziFullFortune,
   type BaziFortuneTextBatch,
 } from './bazi-fortune';
-import { formatBaziTopicFocus, formatBaziPatternConditions } from './bazi';
+import {
+  buildBaziUnknownTimeTask,
+  formatBaziTopicFocus,
+  formatBaziPatternConditions,
+} from './bazi';
 import {
   buildSerializableZiweiResult,
   formatZiweiNatalSnapshotForPrompt,
@@ -302,17 +306,27 @@ export function buildBaziPromptForResult(params: {
     params.fortuneTextBatch && params.selection
       ? { ...params.selection, scopeLabel: '本次所列大运流年' }
       : params.selection;
+  const hasKnownPillars = (['year', 'month', 'day'] as const).some((key) =>
+    Boolean(params.result.pillars[key].ganZhi),
+  );
   const scopeText = params.fortuneTextBatch
     ? '分析对象：本命盘与本次所列大运流年'
     : fortuneSelection
       ? fortuneSelection.analysisObject
       : effectiveFortuneScope === 'full'
         ? '分析对象：本命盘与完整大运流年'
-        : '分析对象：本命盘';
+        : params.result.isThreePillars
+          ? `分析对象：${params.result.unknownTimeAnalysis?.batch ? '本页' : '已列'}出生时辰候选${hasKnownPillars ? '与已确定的柱' : ''}`
+          : '分析对象：本命盘';
   const label = BAZI_TOPIC_LABELS[topic];
   const taskMethod = hasFortuneData ? 'bazi' : 'bazi-natal';
-  const task =
-    params.mode === 'custom'
+  const task = params.result.isThreePillars
+    ? buildBaziUnknownTimeTask(
+        label,
+        Boolean(params.result.unknownTimeAnalysis?.batch),
+        params.mode === 'custom',
+      )
+    : params.mode === 'custom'
       ? buildCustomQuestionTask('八字排盘资料', taskMethod)
       : label === '通用'
         ? buildPromptTask('请依据八字排盘资料完成解读。', taskMethod)
@@ -320,6 +334,7 @@ export function buildBaziPromptForResult(params: {
   const selectedTask = promptSelection ? buildPromptSelectionTask(task, promptSelection) : task;
   const schoolScene = params.school || params.schools?.length;
   const patternConditions = schoolScene ? '' : formatBaziPatternConditions(params.result);
+  const topicFocus = formatBaziTopicFocus(topic, params.result.isThreePillars);
   const chart = [
     formatBaziForPrompt(
       params.result,
@@ -333,7 +348,7 @@ export function buildBaziPromptForResult(params: {
     buildPromptGuidance('bazi'),
     section('当前时间', formatPromptCurrentTime()),
     section('排盘信息', chart),
-    formatBaziTopicFocus(topic) ? section('主题取用', formatBaziTopicFocus(topic)) : '',
+    topicFocus ? section('主题取用', topicFocus) : '',
     patternConditions ? section('格局条件', patternConditions) : '',
     section('分析对象', scopeText),
     effectiveFortuneScope === 'full'

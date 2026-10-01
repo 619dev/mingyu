@@ -705,6 +705,7 @@ function createParticipantProfiles(
     throw new Error(`黄历择日一次最多分析 ${MAX_ALMANAC_PARTICIPANTS} 位参与人，请拆分请求。`);
   }
 
+  const participantIds = new Set<string>();
   return participants
     .filter((item, index) => {
       if (!item || typeof item !== 'object') {
@@ -715,6 +716,10 @@ function createParticipantProfiles(
     .map((item, index) => {
       const birthInput = readParticipantBirthInput(item);
       const id = readParticipantText(item.id, 'id', `participant-${index + 1}`);
+      if (participantIds.has(id)) {
+        throw new Error('参与人id必须唯一。');
+      }
+      participantIds.add(id);
       const name = readParticipantText(item.name, '姓名', '未命名参与人');
       if (item.birthTimeRange) {
         if (

@@ -897,6 +897,47 @@ test('时辰未知的嵌入式单派和多派提示词共用一份候选资料',
   assert.doesNotMatch(formatBaziSchoolPrompt(result, 'ziping', true), /^流派盘面资料：$/m);
 });
 
+test('未知时辰完整盘与单页候选任务只依据已列候选及稳定干支', () => {
+  for (const input of [
+    { year: 2024, month: 2, day: 4, gender: 'female' as const },
+    { year: 2000, month: 1, day: 7, gender: 'male' as const },
+  ]) {
+    const full = baziCalculator.calculateBazi(input);
+    const page = baziCalculator.calculateBaziUnknownTimeBatch(input, { startIndex: 0 }).result;
+    for (const [result, isPage] of [
+      [full, false],
+      [page, true],
+    ] as const) {
+      for (const prompt of [
+        buildBaziPrompt({ result, topic: 'wealth' }),
+        buildBaziPromptForResult({ result, topic: 'wealth' }),
+      ]) {
+        assert.equal(prompt.match(/^【时辰候选比较】$/gm)?.length ?? 0, isPage ? 0 : 1);
+        assert.equal(prompt.match(/^【当前时辰候选：/gm)?.length ?? 0, isPage ? 1 : 0);
+        assert.equal(
+          prompt.match(/候选喜用/g)?.length,
+          result.unknownTimeAnalysis?.scenarios.length,
+        );
+        assert.match(prompt, /【主题取用】\n[^\n]*结合所列时辰候选逐项分析/);
+        assert.match(
+          prompt,
+          isPage
+            ? /【任务】\n请依据本页所列出生时辰候选[^\n]*说明当前候选的旺衰、格局和取用依据/
+            : /【任务】\n请依据已列出生时辰候选[^\n]*比较各候选共有与有别的旺衰、格局和取用条件/,
+        );
+        assert.doesNotMatch(prompt, /其余已列四柱|说明四柱原局|已列取格依据与格局成败/);
+        assert.doesNotMatch(prompt, /【格局条件】/);
+        if (input.year === 2024) {
+          assert.doesNotMatch(prompt, /【已确定的柱】|^年柱：|^月柱：|^日柱：/m);
+        } else {
+          assert.match(prompt, /【已确定的柱】\n年柱：己卯\n月柱：丁丑/);
+          assert.doesNotMatch(prompt, /^日柱：/m);
+        }
+      }
+    }
+  }
+});
+
 test('八字单盘空问题补通用问题，分类不再塞本地固定问题', () => {
   const result = createBaziResult();
 

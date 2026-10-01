@@ -52,6 +52,40 @@ test('寅日与巳年参与人同时命中刑害，逐日事实与公开证据�
   assert.match(result.evidenceAnalysis!.promptText, /与其年支巳害/u);
 });
 
+test('重复参与人身份标识不会生成指向不同出生资料的同一证据键', () => {
+  assert.throws(
+    () =>
+      generateAlmanacSelection({
+        topic: 'custom',
+        startDate: '2026-06-09',
+        endDate: '2026-06-09',
+        participants: [
+          {
+            id: 'same',
+            name: '参与人甲',
+            gender: '男',
+            year: '1989',
+            month: '7',
+            day: '1',
+            timeIndex: '6',
+            dateType: 'solar',
+          },
+          {
+            id: ' same ',
+            name: '参与人乙',
+            gender: '女',
+            year: '2001',
+            month: '7',
+            day: '1',
+            timeIndex: '6',
+            dateType: 'solar',
+          },
+        ],
+      }),
+    /参与人id必须唯一/u,
+  );
+});
+
 test('参与人仅提供时分时按零秒跨立春排盘，传统时辰输入保持原口径', () => {
   const participants = [
     { id: 'before', birthHour: '16', birthMinute: '26' },

@@ -325,16 +325,39 @@ export class BaziCalculator {
       throw new Error(validationMessage);
     }
 
+    // 未知时辰的午时只用于构造基础资料；重复或跳时的民用日可能没有唯一的正午。
+    // 改用该日首个有效候选作占位，年、月、日柱仍由全部候选比较后决定是否保留。
+    const unknownIanaAnchor =
+      isThreePillars && !useTrueSolarTimeEnabled && !hasPreciseStandardTime && person.timeZoneId
+        ? discoverUnknownTimeCandidates(person)[0]
+        : undefined;
+    if (
+      isThreePillars &&
+      !useTrueSolarTimeEnabled &&
+      !hasPreciseStandardTime &&
+      person.timeZoneId &&
+      !unknownIanaAnchor
+    ) {
+      throw new Error('该日期在指定 IANA 时区下没有有效的出生钟表时刻。');
+    }
+
     // 根据用户选择的日历类型创建时间对象
     let solarTime: SolarTimeInstance;
     let termSolarTime: SolarTimeInstance;
     let lunarHour: LunarHourInstance;
     let timing: TimingInfo | undefined;
     const baseHour =
-      useTrueSolarTimeEnabled || hasPreciseStandardTime ? birthHour! : selectedTimeInfo!.hour;
+      useTrueSolarTimeEnabled || hasPreciseStandardTime
+        ? birthHour!
+        : (unknownIanaAnchor?.person.birthHour ?? selectedTimeInfo!.hour);
     const baseMinute =
-      useTrueSolarTimeEnabled || hasPreciseStandardTime ? birthMinute! : selectedTimeInfo!.minute;
-    const baseSecond = useTrueSolarTimeEnabled || hasPreciseStandardTime ? (birthSecond ?? 0) : 0;
+      useTrueSolarTimeEnabled || hasPreciseStandardTime
+        ? birthMinute!
+        : (unknownIanaAnchor?.person.birthMinute ?? selectedTimeInfo!.minute);
+    const baseSecond =
+      useTrueSolarTimeEnabled || hasPreciseStandardTime
+        ? (birthSecond ?? 0)
+        : (unknownIanaAnchor?.person.birthSecond ?? 0);
 
     if (isLunarEnabled) {
       // 如果选择农历，使用 LunarHour.fromYmdHms() 创建，然后转换为 SolarTime
@@ -520,13 +543,14 @@ export class BaziCalculator {
 
     if (!useTrueSolarTimeEnabled) {
       // 日时保留当地钟表口径；年月节令沿真实瞬时投影到东八区历表。
-      // 未知时辰的午时只是占位；跳时日给定的固定偏移可能只适用于当天部分时刻。
+      // 未知时辰的基础取时只是占位；跳时日给定的固定偏移可能只适用于当天部分时刻。
       // 具体候选仍由出生钟表时刻逐一核验固定偏移。
-      const termPerson =
-        isThreePillars &&
-        !hasPreciseStandardTime &&
-        person.timeZoneId &&
-        person.timezone !== undefined
+      const termPerson = unknownIanaAnchor
+        ? { ...person, timezone: unknownIanaAnchor.person.timezone }
+        : isThreePillars &&
+            !hasPreciseStandardTime &&
+            person.timeZoneId &&
+            person.timezone !== undefined
           ? { ...person, timezone: undefined }
           : person;
       termSolarTime = ianaTermSolarTime ?? getTermSolarTime(solarTime, undefined, termPerson);
