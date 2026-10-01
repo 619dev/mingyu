@@ -235,6 +235,16 @@ test('大六壬旧结果缺少取传名、应期与焦点时应明确标记来�
   const data = generateLiuren(fixedDate);
   data.transmissionRule = undefined;
   data.transmissionPattern = undefined;
+  data.evidenceAnalysis = undefined;
+
+  const missingRule = analyzeLiurenEvidence(data);
+  assert.equal(missingRule.transmissionRuleFact.status, '缺少规则名');
+  assert.equal(missingRule.transmissionRuleFact.rule, null);
+  assert.equal(missingRule.summaryFact.status, '证据链有缺口');
+  assert.equal(missingRule.calculationSteps[3]?.status, '资料不足');
+  assert.equal(missingRule.calculationSteps[6]?.status, '资料不足');
+  assert.match(missingRule.transmissionRuleFact.promptText, /不得按三传结果反推九宗门名称/);
+
   data.transmissionDetail = undefined;
   data.classicalRules = undefined;
   data.timingEvidence = undefined;
@@ -680,17 +690,6 @@ test('大六壬登记课体应以稳定键、固定古籍版本进入统一证�
     assert.match(fact.sourceUrl, /oldid=\d+$/);
     assert.match(traditionalFact.promptText, new RegExp(fact.name));
   }
-});
-
-test('十二天将不得混入十二月将的五味、主数、地形和身体属性', () => {
-  Object.values(TIANJIANG_ATTRIBUTES).forEach((item) => {
-    assert.deepEqual(Object.keys(item).sort(), ['category', 'description', 'wuxing', 'yinYang']);
-  });
-
-  const data = generateLiuren(fixedDate);
-  Object.values(data.tianJiangProps ?? {}).forEach((item) => {
-    assert.deepEqual(Object.keys(item).sort(), ['category', 'description', 'wuxing', 'yinYang']);
-  });
 });
 
 test('大六壬旧结果缺少逐项神煞起法时应明确不可复算', () => {

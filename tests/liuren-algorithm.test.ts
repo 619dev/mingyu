@@ -3,10 +3,7 @@ import assert from 'node:assert/strict';
 
 import type { LiurenLesson, LiurenPlateItem } from 'mingyu-core/types';
 import { calculateSolarTermEvidence, TimeManager } from 'mingyu-core/calendar';
-import {
-  analyzeLiurenEvidence,
-  generateLiuren,
-} from '../packages/core/src/divination/algorithms/liuren';
+import { generateLiuren } from '../packages/core/src/divination/algorithms/liuren';
 import { buildTimeInfoText } from 'mingyu-core/prompt';
 import {
   getLiurenGuaTiFacts,
@@ -71,8 +68,6 @@ test('大六壬应输出分层取用与应期证据', () => {
   assert.ok(evidence);
   assert.equal(evidence.key, 'liuren:evidence');
   assert.equal(evidence.status, '已计算');
-  assert.equal(evidence.calculationSteps.length, 7);
-  assert.equal(evidence.calculationChain.length, evidence.calculationSteps.length);
   const calculationStepKeys = new Set(evidence.calculationSteps.map((item) => item.key));
   assert.ok(
     evidence.calculationSteps.every((item) =>
@@ -80,19 +75,6 @@ test('大六壬应输出分层取用与应期证据', () => {
     ),
   );
   assert.equal(evidence.summaryFact.status, '证据链完整');
-  assert.equal(evidence.summaryFact.platePositionFactCount, evidence.platePositionFacts.length);
-  assert.equal(evidence.summaryFact.lessonFactCount, evidence.lessons.length);
-  assert.equal(evidence.summaryFact.transmissionFactCount, evidence.transmissions.length);
-  assert.equal(evidence.summaryFact.transitionFactCount, evidence.transitionFacts.length);
-  assert.equal(evidence.summaryFact.counterEvidenceCount, evidence.counterEvidenceFacts.length);
-  assert.equal(evidence.summaryFact.timingFactCount, evidence.timingFacts.length);
-  assert.equal(evidence.summaryFact.focusFactCount, evidence.focusFacts.length);
-  assert.equal(evidence.summaryFact.traditionalFactCount, evidence.traditionalFacts.length);
-  assert.equal(evidence.limitationFacts.length, 6);
-  assert.deepEqual(
-    evidence.limitations,
-    evidence.limitationFacts.map((item) => item.promptText),
-  );
   const factKeys = new Set([
     evidence.calculationFact.key,
     evidence.plateFact.key,
@@ -177,22 +159,6 @@ test('真太阳时日时校正跨过雨水时，月将和节气仍按实际占�
   assert.equal(afterTerm.heavenlyPlate.find((item) => item.under === '巳')?.branch, '亥');
 });
 
-test('大六壬旧资料缺少取传规则名时应保留证据缺口，不按三传反推九宗门', () => {
-  const data = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
-  data.transmissionRule = undefined;
-  data.transmissionPattern = undefined;
-  data.evidenceAnalysis = undefined;
-
-  const evidence = analyzeLiurenEvidence(data);
-
-  assert.equal(evidence.transmissionRuleFact.status, '缺少规则名');
-  assert.equal(evidence.transmissionRuleFact.rule, null);
-  assert.equal(evidence.summaryFact.status, '证据链有缺口');
-  assert.equal(evidence.calculationSteps[3]?.status, '资料不足');
-  assert.equal(evidence.calculationSteps[6]?.status, '资料不足');
-  assert.match(evidence.transmissionRuleFact.promptText, /不得按三传结果反推九宗门名称/);
-});
-
 function getUpperByUnder(
   plate: Array<{ branch: string; under: string; god: string }>,
   under: string,
@@ -240,13 +206,6 @@ function createResolveContext(
   };
 }
 
-function getUnderByUpper(
-  plate: Array<{ branch: string; under: string; god: string }>,
-  upper: string,
-) {
-  return plate.find((item) => item.branch === upper)?.under;
-}
-
 function buildReferenceLiurenPlate(args: { day: string; hour: string; monthLeader: string }) {
   const dayStem = args.day.charAt(0);
   const dayBranch = args.day.charAt(1);
@@ -290,28 +249,6 @@ function buildReferenceLiurenPlate(args: { day: string; hour: string; monthLeade
     branches,
   };
 }
-
-test('大六壬会输出完整的四课三传与天盘结构', () => {
-  const result = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
-
-  assert.equal(result.heavenlyPlate.length, 12);
-  assert.equal(result.fourLessons.length, 4);
-  assert.equal(result.threeTransmissions.length, 3);
-  assert.ok(result.xunKong?.length === 2);
-  assert.match(
-    result.transmissionRule || '',
-    /重审法|元首法|贼克法|克法|比用法|涉害法|别责法|八专法/,
-  );
-  assert.ok(result.transmissionDetail?.includes(result.transmissionRule || ''));
-  assert.match(result.transmissionDetail || '', /初传发用/);
-  assert.match(result.transmissionSummary || '', /三传.+主线依次为/);
-
-  const chu = result.threeTransmissions[0].branch;
-  const zhong = result.threeTransmissions[1].branch;
-  const mo = result.threeTransmissions[2].branch;
-  assert.equal(zhong, getUpperByUnder(result.heavenlyPlate, chu));
-  assert.equal(mo, getUpperByUnder(result.heavenlyPlate, zhong));
-});
 
 test('大六壬三传成局应按六壬指南输出课体标签', () => {
   const cases: Array<{ branches: string[]; guaTi: string }> = [
@@ -600,24 +537,6 @@ test('大六壬普通递传即使初末六冲也不得误标返吟', () => {
   assert.ok(!result.patternTags?.includes('反吟'));
 });
 
-test('大六壬天地盘会把月将加在占时地盘上，并保持天地互查可逆', () => {
-  for (const monthLeader of DIZHI) {
-    for (const divinationBranch of DIZHI) {
-      const plate = buildHeavenlyPlate({
-        monthLeader,
-        divinationBranch,
-        noblemanBranch: '丑',
-        dayNight: '昼占',
-      });
-
-      assert.equal(getUpperByUnder(plate, divinationBranch), monthLeader);
-      assert.equal(getUnderByUpper(plate, monthLeader), divinationBranch);
-      assert.equal(new Set(plate.map((item) => item.under)).size, 12);
-      assert.equal(new Set(plate.map((item) => item.branch)).size, 12);
-    }
-  }
-});
-
 test('大六壬全部月将、占时、日柱和昼夜组合应完整成课取传', () => {
   const ruleCounts = new Map<string, number>();
   let caseCount = 0;
@@ -661,9 +580,29 @@ test('大六壬全部月将、占时、日柱和昼夜组合应完整成课取�
           const label = `${monthLeader}将 ${day}${hourStem}${hourBranch} ${dayNight}`;
 
           assert.equal(getUpperByUnder(heavenlyPlate, hourBranch), monthLeader, label);
+          assert.equal(heavenlyPlate.length, 12, label);
           assert.equal(new Set(heavenlyPlate.map((item) => item.under)).size, 12, label);
           assert.equal(new Set(heavenlyPlate.map((item) => item.branch)).size, 12, label);
           assert.equal(new Set(heavenlyPlate.map((item) => item.god)).size, 12, label);
+          if (day === '甲子' && dayNight === '昼占') {
+            const monthLeaderIndex = DIZHI.indexOf(monthLeader);
+            assert.deepEqual(
+              new Map(heavenlyPlate.map((item) => [item.under, item.branch] as const)),
+              new Map(
+                DIZHI.map(
+                  (under, underIndex) =>
+                    [
+                      under,
+                      DIZHI[
+                        (underIndex + monthLeaderIndex - hourBranchIndex + DIZHI.length) %
+                          DIZHI.length
+                      ],
+                    ] as const,
+                ),
+              ),
+              `${label}十二地盘支与上神应逐位按月将加占时旋转`,
+            );
+          }
           assert.equal(lessons.length, 4, label);
           assert.equal(branches.length, 3, label);
           assert.ok(

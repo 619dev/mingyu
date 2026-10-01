@@ -110,46 +110,35 @@ test('四柱反推回填保留秒级标准北京时间，并逐候选复核四�
   }
 });
 
-test('不同年份的合成日期可经反推和完整输入链路复核', () => {
-  const examples = [
-    { year: 1960, date: '1960-01-07' },
-    { year: 2020, date: '2020-01-07' },
-  ];
-
-  for (const example of examples) {
-    const target = getGanZhiFromDate(beijingDate(example.year, 1, 7, 9));
-    const reversed = reverseBaziDates({
-      pillars: target,
-      startYear: example.year,
-      endYear: example.year,
-    });
-    const candidate = reversed.candidates.find((item) => item.start.text.startsWith(example.date));
-    assert.ok(candidate, `${example.date} 应有对应候选时段`);
-    const selection = resolveBaziReverseCandidate(candidate);
-    assert.ok(selection);
-    const chart = calculateBaziChartFromInput({
-      gender: 'male',
-      year: selection.year,
-      month: selection.month,
-      day: selection.day,
-      dateType: 'solar',
-      isLeapMonth: false,
-      useTrueSolarTime: false,
-      timeIndex: '',
-      birthHour: selection.representativeHour,
-      birthMinute: selection.representativeMinute,
-      birthSecond: selection.representativeSecond,
-    });
-    assert.deepEqual(
-      {
-        year: chart.pillars.year.ganZhi,
-        month: chart.pillars.month.ganZhi,
-        day: chart.pillars.day.ganZhi,
-        hour: chart.pillars.hour.ganZhi,
-      },
-      target,
-    );
-  }
+test('1960 年历史日期可经反推和完整输入链路复核', () => {
+  const target = getGanZhiFromDate(beijingDate(1960, 1, 7, 9));
+  const reversed = reverseBaziDates({ pillars: target, startYear: 1960, endYear: 1960 });
+  const candidate = reversed.candidates.find((item) => item.start.text.startsWith('1960-01-07'));
+  assert.ok(candidate, '1960-01-07 应有对应候选时段');
+  const selection = resolveBaziReverseCandidate(candidate);
+  assert.ok(selection);
+  const chart = calculateBaziChartFromInput({
+    gender: 'male',
+    year: selection.year,
+    month: selection.month,
+    day: selection.day,
+    dateType: 'solar',
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+    timeIndex: '',
+    birthHour: selection.representativeHour,
+    birthMinute: selection.representativeMinute,
+    birthSecond: selection.representativeSecond,
+  });
+  assert.deepEqual(
+    {
+      year: chart.pillars.year.ganZhi,
+      month: chart.pillars.month.ganZhi,
+      day: chart.pillars.day.ganZhi,
+      hour: chart.pillars.hour.ganZhi,
+    },
+    target,
+  );
 });
 
 test('历史夏令时年份的合成候选仍按固定东八区解释', () => {

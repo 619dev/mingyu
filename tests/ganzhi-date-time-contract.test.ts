@@ -39,7 +39,7 @@ function runProbe(timeZone: string): ProbeResult {
   return JSON.parse(result.stdout.trim()) as ProbeResult;
 }
 
-test('公共 Date 干支入口对同一真实瞬时在不同宿主时区保持四柱和交节一致', () => {
+test('公共 Date 干支入口在不同宿主时区和显式配置时区均按真实瞬时取四柱与交节', () => {
   const utc = runProbe('UTC');
   assert.deepEqual(runProbe('Asia/Shanghai'), utc);
   assert.deepEqual(utc.defaultResult.helper, {
@@ -60,10 +60,7 @@ test('公共 Date 干支入口对同一真实瞬时在不同宿主时区保持�
     ['癸卯', '乙丑'],
   );
   assert.deepEqual([utc.defaultResult.at.year, utc.defaultResult.at.month], ['甲辰', '丙寅']);
-});
-
-test('公共 Date 干支入口遵循显式时区钟表并以真实瞬时判断节气年、月', () => {
-  const result = runProbe('UTC').customResult;
+  const result = utc.customResult;
   assert.deepEqual(result.helper, result.managed);
   assert.deepEqual(result.clock, {
     year: 2024,

@@ -52,19 +52,15 @@ function chinaPartsFromUtcTimestamp(timestamp: number): ReturnType<typeof at> {
   );
 }
 
-test('八字反推应同时从核心历法主入口和独立包子路径导出', () => {
+test('八字反推从核心主入口和子路径导出同一算法，并返回完整子时区间', () => {
   assert.equal(reverseBaziDatesFromCalendar, reverseBaziDatesFromSubpath);
-  const result = reverseBaziDatesFromSubpath({
-    pillars: { year: '甲辰', month: '丙寅', day: '己亥', hour: '甲子' },
-    startYear: 2024,
-    endYear: 2024,
-  });
-  assert.equal(result.candidates[0]?.start.text, '2024-02-04 23:00:00');
-});
-
-test('八字反推返回完整候选区间，并能在区间内正向复核', () => {
-  const pillars = pillarsAt(at(2024, 2, 4, 23));
-  const result = reverseBaziDates({ pillars, startYear: 2024, endYear: 2024 });
+  const pillars: BaziReversePillars = {
+    year: '甲辰',
+    month: '丙寅',
+    day: '己亥',
+    hour: '甲子',
+  };
+  const result = reverseBaziDatesFromSubpath({ pillars, startYear: 2024, endYear: 2024 });
 
   assert.equal(result.policy.timezone, 'Asia/Shanghai');
   assert.equal(result.policy.month, '节气月');

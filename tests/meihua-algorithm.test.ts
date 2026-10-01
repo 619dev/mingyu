@@ -40,7 +40,7 @@ test('梅花随机轨迹重放应识别缺失、多余、篡改及拒绝采样',
   assert.equal(data.calculation?.upperTrigramIndex, 1);
   assert.equal(data.calculation?.lowerTrigramIndex, 3);
   assert.equal(data.movingYao.position, 4);
-  assert.equal(analyzeMeihuaEvidence(data).randomFact.sampleCount, 4);
+  assert.equal(data.evidenceAnalysis?.randomFact.sampleCount, 4);
   assert.throws(
     () => generateMeihua(SAMPLE_DATE, { method: 'random', replay: [...samples, 0] }),
     /重放样本有剩余/,
@@ -58,7 +58,7 @@ test('梅花随机轨迹重放应识别缺失、多余、篡改及拒绝采样',
   }
 });
 
-test('梅花：变卦应按初爻到上爻的传统爻位计算', () => {
+test('梅花：主互变卦与六爻体用应按传统爻位计算', () => {
   const data = generateMeihua(SAMPLE_DATE, { method: 'number', number: 123 });
 
   assert.equal(data.originalName, '火风鼎');
@@ -87,11 +87,6 @@ test('梅花：变卦应按初爻到上爻的传统爻位计算', () => {
     ),
   );
   assert.match(data.evidenceAnalysis?.calculationFact.limitation || '', /不证明卦象预测有效性/);
-});
-
-test('梅花：互卦应取二三四爻为下互、三四五爻为上互', () => {
-  const data = generateMeihua(SAMPLE_DATE, { method: 'number', number: 123 });
-
   assert.equal(data.interName, '泽天夬');
   assert.equal(data.interHexagram?.upper, '兑');
   assert.equal(data.interHexagram?.lower, '乾');
@@ -99,6 +94,22 @@ test('梅花：互卦应取二三四爻为下互、三四五爻为上互', () =>
   assert.equal(data.interYongGua?.name, '乾');
   assert.equal(data.analysis.inter1Relation, '原体克体互');
   assert.equal(data.analysis.inter2Relation, '原体克用互');
+  assert.deepEqual(
+    data.yaosDetail.map((yao) => ({
+      position: yao.position,
+      yaoType: yao.yaoType,
+      isChanging: yao.isChanging,
+      tiYong: yao.tiYong,
+    })),
+    [
+      { position: 1, yaoType: '阴', isChanging: false, tiYong: '用' },
+      { position: 2, yaoType: '阳', isChanging: true, tiYong: '用' },
+      { position: 3, yaoType: '阳', isChanging: false, tiYong: '用' },
+      { position: 4, yaoType: '阳', isChanging: false, tiYong: '体' },
+      { position: 5, yaoType: '阴', isChanging: false, tiYong: '体' },
+      { position: 6, yaoType: '阳', isChanging: false, tiYong: '体' },
+    ],
+  );
 });
 
 test('梅花：纯乾、纯坤主卦应按原文改取变卦互', () => {
@@ -181,8 +192,9 @@ test('梅花：天泽履二爻动应变天雷无妄，不得错认成天山遁',
   assert.equal(data.analysis.yongSeasonState, '相');
 });
 
-test('梅花：数字起卦生成的主互变三卦与动爻资料必须始终完整', () => {
-  for (let number = 1; number <= 192; number += 1) {
+test('梅花：数字起卦的完整取余周期应保留主互变三卦与动爻资料', () => {
+  // 固定时辰下，上卦除8、动爻除6的完整取余周期为24。
+  for (let number = 1; number <= 24; number += 1) {
     const data = generateMeihua(SAMPLE_DATE, { method: 'number', number });
 
     assert.ok(data.originalName);
@@ -195,43 +207,6 @@ test('梅花：数字起卦生成的主互变三卦与动爻资料必须始终�
     assert.doesNotMatch(data.movingYao.yaoName, /未知/);
     assert.doesNotMatch(JSON.stringify(data.analysis), /无变卦|关系未定/);
   }
-});
-
-test('梅花：爻位详情应从初爻往上排列并准确标出动爻', () => {
-  const data = generateMeihua(SAMPLE_DATE, { method: 'number', number: 123 });
-
-  assert.deepEqual(
-    data.yaosDetail.map((yao) => ({
-      position: yao.position,
-      yaoType: yao.yaoType,
-      isChanging: yao.isChanging,
-      tiYong: yao.tiYong,
-    })),
-    [
-      { position: 1, yaoType: '阴', isChanging: false, tiYong: '用' },
-      { position: 2, yaoType: '阳', isChanging: true, tiYong: '用' },
-      { position: 3, yaoType: '阳', isChanging: false, tiYong: '用' },
-      { position: 4, yaoType: '阳', isChanging: false, tiYong: '体' },
-      { position: 5, yaoType: '阴', isChanging: false, tiYong: '体' },
-      { position: 6, yaoType: '阳', isChanging: false, tiYong: '体' },
-    ],
-  );
-});
-
-test('梅花：上下同卦时仍须按动爻所在位置区分体用', () => {
-  const data = generateMeihua(SAMPLE_DATE, {
-    method: 'direction',
-    direction: 'south',
-    objectType: 'fire',
-  });
-
-  assert.equal(data.mainHexagram.upper, '离');
-  assert.equal(data.mainHexagram.lower, '离');
-  assert.equal(data.movingYao.position, 5);
-  assert.deepEqual(
-    data.yaosDetail.map((yao) => yao.tiYong),
-    ['体', '体', '体', '用', '用', '用'],
-  );
 });
 
 test('梅花：用生体应期描述应保留验证条件且不带多余标点', () => {
@@ -308,11 +283,9 @@ test('梅花时间卦证据应以原占时复核农历取数，识别取余结�
 
     const changedDay = structuredClone(data);
     changedDay.calculation.day = 2; // 原日数26，减24后除8、除6的余数都不变。
-    assert.equal(analyzeMeihuaEvidence(changedDay).calculationFact.status, '计算不一致');
-    assert.match(
-      analyzeMeihuaEvidence(changedDay).calculationFact.promptText,
-      /农历年支、月、日与时间戳重算结果不一致/,
-    );
+    const changedDayFact = analyzeMeihuaEvidence(changedDay).calculationFact;
+    assert.equal(changedDayFact.status, '计算不一致');
+    assert.match(changedDayFact.promptText, /农历年支、月、日与时间戳重算结果不一致/);
 
     const legacy = structuredClone(data);
     delete legacy.calculation.timezoneOffsetMinutes;
@@ -506,7 +479,6 @@ test('梅花：字数起卦应按分段规则支持笔画、传统四声与纯�
     characterTones: [1, 4, 3, 3, 1, 1],
   };
   const toneData = generateMeihua(SAMPLE_DATE, toneSettings);
-  const replayData = generateMeihua(SAMPLE_DATE, toneSettings);
   assert.equal(toneData.calculation?.characterCount, 6);
   assert.deepEqual(toneData.calculation?.characterTones, [1, 4, 3, 3, 1, 1]);
   assert.equal(toneData.calculation?.characterUpperNumber, 8);
@@ -518,7 +490,7 @@ test('梅花：字数起卦应按分段规则支持笔画、传统四声与纯�
   assert.equal(toneData.mainHexagram.lower, '巽');
   assert.deepEqual(
     [toneData.originalName, toneData.changedName, toneData.movingYao.position],
-    [replayData.originalName, replayData.changedName, replayData.movingYao.position],
+    ['地风升', '地天泰', 1],
   );
   assert.equal(toneData.evidenceAnalysis?.calculationFact.status, '完整');
   const longData = generateMeihua(SAMPLE_DATE, {
@@ -567,7 +539,7 @@ test('梅花：字数起卦应按分段规则支持笔画、传统四声与纯�
   );
 });
 
-test('梅花：方位取象应分别记录所见物类、方位与时支', () => {
+test('梅花：方位物类取数与同卦体用应按动爻位置记录', () => {
   const data = generateMeihua(SAMPLE_DATE, {
     method: 'direction',
     direction: 'south',
@@ -583,6 +555,11 @@ test('梅花：方位取象应分别记录所见物类、方位与时支', () =>
   assert.equal(data.calculation?.movingYaoIndex, 5);
   assert.equal(data.mainHexagram.upper, '离');
   assert.equal(data.mainHexagram.lower, '离');
+  assert.equal(data.movingYao.position, 5);
+  assert.deepEqual(
+    data.yaosDetail.map((yao) => yao.tiYong),
+    ['体', '体', '体', '用', '用', '用'],
+  );
   assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
   assert.match(data.evidenceAnalysis?.calculationFact.promptText || '', /方位取象/);
   assert.throws(

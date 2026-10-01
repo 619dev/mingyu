@@ -998,28 +998,15 @@ test('公开 API 应按完整四柱反推北京时间候选区间', async () => 
     24,
   );
 
-  for (const payload of [
-    { startYear: 2024, endYear: 2024 },
-    {
-      pillars: { year: '甲辰', month: '丙寅', day: '己亥', hour: '甲子' },
-      startYear: 2025,
-      endYear: 2024,
-    },
-    {
-      pillars: { year: '甲辰', month: '丙寅', day: '未知', hour: '甲子' },
-      startYear: 2024,
-      endYear: 2024,
-    },
-  ]) {
-    const invalid = await callApi('calendar/bazi-reverse', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    assert.equal(invalid.response.status, 400);
-    assert.equal(invalid.body.ok, false);
-    assert.equal(invalid.body.error.code, 'BAD_REQUEST');
-  }
+  const missingPillars = await callApi('calendar/bazi-reverse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ startYear: 2024, endYear: 2024 }),
+  });
+  assert.equal(missingPillars.response.status, 400);
+  assert.equal(missingPillars.body.ok, false);
+  assert.equal(missingPillars.body.error.code, 'BAD_REQUEST');
+  assert.match(missingPillars.body.error.message, /pillars 必须是包含年、月、日、时四柱的对象/);
 
   const invalidPillar = await callApi('calendar/bazi-reverse', {
     method: 'POST',
@@ -1031,6 +1018,8 @@ test('公开 API 应按完整四柱反推北京时间候选区间', async () => 
     }),
   });
   assert.equal(invalidPillar.response.status, 400);
+  assert.equal(invalidPillar.body.ok, false);
+  assert.equal(invalidPillar.body.error.code, 'BAD_REQUEST');
   assert.match(invalidPillar.body.error.message, /pillars\.day.*有效的六十甲子干支/);
 
   const reversedYears = await callApi('calendar/bazi-reverse', {
@@ -1043,6 +1032,8 @@ test('公开 API 应按完整四柱反推北京时间候选区间', async () => 
     }),
   });
   assert.equal(reversedYears.response.status, 400);
+  assert.equal(reversedYears.body.ok, false);
+  assert.equal(reversedYears.body.error.code, 'BAD_REQUEST');
   assert.match(reversedYears.body.error.message, /起始年份不能大于结束年份/);
 });
 

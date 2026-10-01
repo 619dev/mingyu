@@ -33,20 +33,6 @@ test('交节当小时内应按实际分钟区分前后节气', () => {
   assert.equal(after.jieQi.next, '小雪 (2026-11-22)');
 });
 
-test('节令月应保留交节当天的末日部分时段，而不是整天提前截止', () => {
-  const yearInfo = getYearInfo(2024);
-  const firstMonth = yearInfo.months[0];
-  const firstMonthDays = getMonthDaysInfo(2024, 1);
-
-  assert.equal(firstMonth.month, '寅月');
-  assert.equal(firstMonth.startDate, '2024-02-04');
-  assert.equal(firstMonth.endDate, '2024-03-05');
-  assert.equal(firstMonthDays[0]?.solarDate, '2024-02-04');
-  assert.equal(firstMonthDays.at(-1)?.solarDate, '2024-03-05');
-  assert.match(firstMonthDays[0]?.boundaryNote ?? '', /交节/);
-  assert.match(firstMonthDays.at(-1)?.boundaryNote ?? '', /交节/);
-});
-
 test('交节当天应按具体时刻切换节令月，不应整天一起切换', () => {
   const before = new Date('2024-03-05T10:21:00+08:00');
   const after = new Date('2024-03-05T10:23:00+08:00');
@@ -115,6 +101,15 @@ test('子初流日切片连续覆盖交节月，切片内部日柱与当前时�
   for (const year of [2022, 2024]) {
     for (const month of getYearInfo(year).months) {
       const days = getMonthDaysInfo(year, month.index);
+      if (year === 2024 && month.index === 1) {
+        assert.equal(month.month, '寅月');
+        assert.equal(month.startDate, '2024-02-04');
+        assert.equal(month.endDate, '2024-03-05');
+        assert.equal(days[0]?.solarDate, '2024-02-04');
+        assert.equal(days.at(-1)?.solarDate, '2024-03-05');
+        assert.match(days[0]?.boundaryNote ?? '', /交节/);
+        assert.match(days.at(-1)?.boundaryNote ?? '', /交节/);
+      }
       assert.equal(days[0].timeRange.startTimestamp, month.timeRange.startTimestamp);
       assert.equal(days.at(-1)!.timeRange.endTimestamp, month.timeRange.endTimestamp);
       for (let index = 0; index < days.length; index++) {

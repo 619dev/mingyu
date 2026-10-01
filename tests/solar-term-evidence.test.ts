@@ -67,27 +67,24 @@ test('节气证据应采用历表边界并保留太阳视黄经独立核验', ()
   );
 });
 
-test('全年二十四节气应保持名称、黄经和节气属性顺序', () => {
-  const terms = calculateSolarTermsForYear(2024);
-
-  assert.equal(terms.length, 24);
+test('多历元节气日期基准与全年二十四节气次序应通过核验', () => {
+  const annualTerms = calculateSolarTermsForYear(2024);
+  assert.equal(annualTerms.length, 24);
   assert.deepEqual(
-    terms.slice(0, 4).map((item) => item.name),
+    annualTerms.slice(0, 4).map((item) => item.name),
     ['小寒', '大寒', '立春', '雨水'],
   );
   assert.deepEqual(
-    terms.slice(0, 4).map((item) => item.targetLongitudeDegrees),
+    annualTerms.slice(0, 4).map((item) => item.targetLongitudeDegrees),
     [285, 300, 315, 330],
   );
   assert.deepEqual(
-    terms.slice(0, 4).map((item) => item.isJie),
+    annualTerms.slice(0, 4).map((item) => item.isJie),
     [true, false, true, false],
   );
-  assert.equal(terms.at(-1)?.name, '冬至');
-  assert.match(terms.at(-1)?.utcDateTime ?? '', /^2024-12/);
-});
+  assert.equal(annualTerms.at(-1)?.name, '冬至');
+  assert.match(annualTerms.at(-1)?.utcDateTime ?? '', /^2024-12/);
 
-test('唯一采用的 tyme4ts 节气日期应通过香港天文台多历元基准核验', () => {
   // 基准来源：https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T{year}c.txt
   const expectedDates = {
     1901: { 立春: '02-04', 春分: '03-21', 夏至: '06-22', 秋分: '09-24', 冬至: '12-22' },

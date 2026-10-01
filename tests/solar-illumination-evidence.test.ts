@@ -53,15 +53,16 @@ function assertEvidenceReferences(evidence: ReturnType<typeof calculateSolarIllu
 }
 
 test('北京夏至应给出可复核的日出日落、太阳高度与曙暮光', () => {
-  const evidence = calculateSolarIlluminationEvidence({
+  const base = {
     year: 2024,
     month: 6,
     day: 21,
-    hour: 12,
-    timezone: 8,
     latitude: 39.9042,
     longitude: 116.4074,
-  });
+  } as const;
+  const evidence = calculateSolarIlluminationEvidence({ ...base, hour: 12, timezone: 8 });
+  const midnight = calculateSolarIlluminationEvidence({ ...base, hour: 0, timezone: 8 });
+  const differentTimezone = calculateSolarIlluminationEvidence({ ...base, hour: 12, timezone: 9 });
 
   assert.ok(evidence.solarAltitudeDegrees > 72 && evidence.solarAltitudeDegrees < 74);
   assert.ok(evidence.solarAzimuthDegrees > 160 && evidence.solarAzimuthDegrees < 180);
@@ -98,6 +99,10 @@ test('北京夏至应给出可复核的日出日落、太阳高度与曙暮光',
     evidence.key,
     'solar-illumination:2024-06-21:39.9042:116.4074:2024-06-21 04:00:00Z:UTC+8',
   );
+  assert.notEqual(midnight.key, evidence.key);
+  assert.notEqual(evidence.key, differentTimezone.key);
+  assert.match(differentTimezone.key, /:2024-06-21 03:00:00Z:UTC\+9$/);
+  assert.notEqual(midnight.solarAltitudeDegrees, evidence.solarAltitudeDegrees);
   assert.equal(evidence.status, '已计算');
   assert.equal(evidence.astronomicalTime.status, '已计算');
   assert.deepEqual(
@@ -373,32 +378,6 @@ test('夏令时切换日的日出和视太阳正午应按事件时刻的历史�
       eventLocalTime(evidence.apparentSolarNoonUtcDateTime),
     );
   }
-});
-
-test('太阳光照证据 key 应区分参考时刻和解析时区', () => {
-  const base = {
-    year: 2024,
-    month: 6,
-    day: 21,
-    latitude: 39.9042,
-    longitude: 116.4074,
-  } as const;
-  const midnight = calculateSolarIlluminationEvidence({ ...base, hour: 0, timezone: 8 });
-  const noon = calculateSolarIlluminationEvidence({ ...base, hour: 12, timezone: 8 });
-  const differentTimezone = calculateSolarIlluminationEvidence({
-    ...base,
-    hour: 12,
-    timezone: 9,
-  });
-
-  assert.notEqual(midnight.key, noon.key);
-  assert.notEqual(noon.key, differentTimezone.key);
-  assert.equal(
-    noon.key,
-    'solar-illumination:2024-06-21:39.9042:116.4074:2024-06-21 04:00:00Z:UTC+8',
-  );
-  assert.match(differentTimezone.key, /:2024-06-21 03:00:00Z:UTC\+9$/);
-  assert.notEqual(midnight.solarAltitudeDegrees, noon.solarAltitudeDegrees);
 });
 
 test('经度端点在 UTC-12 和 UTC+14 应保持同子午线事件日期与时刻', () => {

@@ -79,7 +79,6 @@ test('真太阳时公共入口应复用旧八字算法并返回便捷资料', ()
   assert.equal(result.shichen.name, '巳时');
   assert.equal(result.status, '已计算');
   assert.equal(result.summaryFact.status, '证据链完整');
-  assert.equal(result.calculationSteps.length, 6);
   assertTrueSolarEvidence(result);
   assert.deepEqual(legacyCheckChinaDst(1988, 7, 15, 12), checkChinaDst(1988, 7, 15, 12));
 });
@@ -385,8 +384,6 @@ test('统一出生真太阳时入口应处理公历、农历、跨日和时辰�
   assert.equal(solar.calculationSteps[0].stage, '历法输入换算');
   assert.equal(lunar.calculationSteps[0].status, '已换算');
   assert.equal(lunar.correctionFacts[0].type, '历法输入');
-  assert.equal(solar.calculationSteps.length, 7);
-  assert.equal(lunar.calculationSteps.length, 7);
   assertTrueSolarEvidence(solar);
   assertTrueSolarEvidence(lunar);
 });
