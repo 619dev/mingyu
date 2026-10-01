@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import type { BaziChartResult } from '@core/bazi/baziTypes';
 import { baziCalculator } from '@core/bazi/baziCalculator';
 import {
+  evaluateBaziZiweiCorroboration,
   evaluateGuiRenCorroboration,
   evaluateShaYaoCorroboration,
   hasCompleteZiweiOrigin,
@@ -50,7 +51,7 @@ function completePalaces(first: Record<string, unknown>): Record<string, unknown
   return PALACE_NAMES.map((name, index) => ({
     name,
     index,
-    is_body_palace: false,
+    is_body_palace: index === 10,
     major_stars: [],
     minor_stars: [],
     other_stars: [],
@@ -225,6 +226,73 @@ test('真实紫微仆役宫与交友宫为同一宫位，别名重复仍属十�
   assert.equal(hasCompleteZiweiOrigin(ziwei), true);
   ziwei.payloadByScope.origin.palaces[6].name = '交友宫';
   assert.equal(hasCompleteZiweiOrigin(ziwei), false);
+});
+
+test('身宫定位缺失或重复时不把关键宫未命中写成已核验', () => {
+  const missingBodyPalace = buildZiwei(false);
+  const palaces = missingBodyPalace.payloadByScope.origin.palaces;
+  palaces[10].minor_stars = [{ name: '擎羊' }];
+  delete (palaces[10] as { is_body_palace?: boolean }).is_body_palace;
+
+  assert.equal(hasCompleteZiweiOrigin(missingBodyPalace), false);
+  const result = evaluateShaYaoCorroboration(buildBazi('身强', false), missingBodyPalace);
+  assert.equal(result.ziweiCheckStatus, 'origin-missing');
+  assert.equal(result.ziweiShaEvidence.length, 0);
+  assert.equal(
+    result.effectConditions.find((item) => item.key === 'ziwei.sha-star-position')?.status,
+    '资料不足',
+  );
+  assert.match(result.judgment, /原盘十二宫资料不完整.*未核验/);
+  assert.doesNotMatch(result.judgment, /紫微关键宫未记录目标煞曜/);
+
+  const noBodyPalace = buildZiwei(false);
+  for (const palace of noBodyPalace.payloadByScope.origin.palaces) {
+    palace.is_body_palace = false;
+  }
+  assert.equal(hasCompleteZiweiOrigin(noBodyPalace), false);
+
+  const duplicateBodyPalaces = buildZiwei(false);
+  duplicateBodyPalaces.payloadByScope.origin.palaces[8].is_body_palace = true;
+  assert.equal(hasCompleteZiweiOrigin(duplicateBodyPalaces), false);
+});
+
+test('真实待补时八字的羊刃与天乙位置资料不足，不把空列表解释为未命中', () => {
+  const bazi = baziCalculator.calculateBazi({
+    year: 2000,
+    month: 1,
+    day: 7,
+    gender: 'male',
+  });
+  assert.equal(bazi.isThreePillars, true);
+  assert.equal(bazi.unknownTimeAnalysis?.status, '待补时');
+  assert.ok(bazi.pillars.year.ganZhi);
+  assert.ok(bazi.pillars.month.ganZhi);
+  assert.equal(bazi.unknownTimeAnalysis?.uncertainPillars.includes('day'), true);
+  assert.equal(bazi.pillars.day.ganZhi, '');
+  assert.equal(bazi.pillars.hour.ganZhi, '');
+  assert.deepEqual(bazi.shensha, {
+    year: [],
+    month: [],
+    day: [],
+    hour: [],
+    global: [],
+  });
+
+  const corroboration = evaluateBaziZiweiCorroboration(bazi, buildGuiZiwei());
+  const yangRenCondition = corroboration.shaYao.effectConditions.find(
+    (item) => item.key === 'bazi.yang-ren-position',
+  );
+  const tianYiCondition = corroboration.guiRen.effectConditions.find(
+    (item) => item.key === 'bazi.tianyi-position',
+  );
+  assert.equal(yangRenCondition?.status, '资料不足');
+  assert.equal(tianYiCondition?.status, '资料不足');
+  assert.match(yangRenCondition?.detail ?? '', /出生时辰待补/);
+  assert.match(tianYiCondition?.detail ?? '', /出生时辰待补/);
+  assert.doesNotMatch(
+    corroboration.summary,
+    /八字四柱未命中|八字四柱未记录|未命中八字羊刃|未命中八字天乙/,
+  );
 });
 
 test('贵人合参保留八字柱位、紫微宫位与星曜状态，不把共现写成终身断语', () => {

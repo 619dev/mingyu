@@ -60,6 +60,8 @@ test('动态解读逐页限量且保留每段全部连续事实与首末秒候�
       nextFact += page.factCount;
     }
     const text = branchPages.map((page) => page.text).join('\n');
+    assert.match(text, /以60角秒为周期，范围相对首值按最短弧展开，首末值保留原值/u);
+    assert.match(text, /以360度为周期，范围相对首值按最短弧展开，首末值保留原值/u);
     assert.equal(
       text.match(/整段连续事实：/gu)?.length,
       branch.continuous.filter((fact) => isAstrolabeDynamicReadingFact(fact.path)).length,

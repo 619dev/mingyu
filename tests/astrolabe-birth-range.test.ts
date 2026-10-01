@@ -293,6 +293,34 @@ test('西占本命区间在春分跨零度时按太阳离散星座切分并保�
   );
 });
 
+test('本命稳定分支按圆周统计跨分角秒', () => {
+  const start = beijingTimestamp('1990-05-20 12:30:03');
+  const base = { ...BASE_INPUT, latitude: '39.9042', longitude: '116.4074' };
+  const before = generateAstrolabe(inputAt(start, base));
+  const after = generateAstrolabe(inputAt(start + SECOND, base));
+  const beforeAscendant = before.angles.find((point) => point.name === 'Ascendant')!;
+  const afterAscendant = after.angles.find((point) => point.name === 'Ascendant')!;
+  assert.ok(beforeAscendant.second! > afterAscendant.second!);
+  assert.ok(beforeAscendant.longitude < afterAscendant.longitude);
+  assert.equal(
+    getAstrolabeBirthRangeDiscreteFingerprint(before),
+    getAstrolabeBirthRangeDiscreteFingerprint(after),
+  );
+
+  const range = generateAstrolabeBirthRange(inputAt(start, base), {
+    startTimestamp: start,
+    endTimestamp: start + 2 * SECOND,
+  });
+  assert.equal(range.status, 'stable');
+  const branch = range.branches[0]!;
+  const seconds = branch.continuous.find((fact) => fact.path === 'angles[Ascendant].second')!;
+  assert.equal(seconds.first, beforeAscendant.second);
+  assert.equal(seconds.last, afterAscendant.second);
+  assert.equal(seconds.circular?.period, 60);
+  assert.equal(seconds.min, beforeAscendant.second);
+  assert.equal(seconds.max, afterAscendant.second! + 60);
+});
+
 test('西占本命区间通过端点定位真实宫位与相位离散边界', () => {
   const houseWindow = findTransitionWindow(planetHouseSignature);
   assert.ok(houseWindow, '公开合成时间候选中应存在宫位变化窗口');

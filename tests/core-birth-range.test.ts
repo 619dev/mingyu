@@ -207,6 +207,51 @@ test('每秒出生结果与对应单点重算一致，并保留秒级证据和�
   assert.notEqual(solarTimestamp(firstStart), solarTimestamp(secondStart));
 });
 
+test('出生年上限按最后实际样本核验，跨到次年终点可用而越界样本逐页拒绝', async () => {
+  const start = '2100-12-31 23:59:59';
+  const end = '2101-01-01 00:00:00';
+  const profile: BirthProfile = {
+    ...PROFILE,
+    id: 'synthetic-2100-birth-range',
+    name: '公开合成2100出生区间',
+    year: 2100,
+    month: 12,
+    day: 31,
+    hour: 23,
+    minute: 59,
+    second: 59,
+    timeIndex: 12,
+    birthTimeRange: rangeFor(start, end),
+  };
+  const valid = asRangeBundle(
+    await calculateBirthChartBundle(profile, { systems: ['bazi'], rangeBatch: { limit: 1 } }),
+  );
+  assert.equal(valid.range.totalSamples, 1);
+  assert.equal(valid.range.nextIndex, null);
+  assert.equal(valid.range.samples[0]?.timestamp, beijingTimestamp(start));
+  assert.equal(valid.range.samples[0]?.bundle.profile.year, 2100);
+  const point = await calculateBirthChartBundle(valid.range.samples[0]!.bundle.profile, {
+    systems: ['bazi'],
+  });
+  if (point.range) throw new Error('单点档案不应返回出生区间结果。');
+  assert.deepEqual(valid.range.samples[0]?.bundle.bazi, point.bazi);
+
+  const invalid = {
+    ...profile,
+    birthTimeRange: rangeFor(start, '2101-01-01 00:00:01'),
+  };
+  for (const rangeBatch of [
+    { limit: 1 },
+    { startIndex: 1, limit: 1 },
+    { startIndex: 2, limit: 1 },
+  ]) {
+    await assert.rejects(
+      () => calculateBirthChartBundle(invalid, { systems: ['bazi'], rangeBatch }),
+      /出生年份需在 1900-2100 之间/u,
+    );
+  }
+});
+
 test('缺省 second 仍按分钟精度记录，而范围样本明确保留秒精度', () => {
   const minuteProfile = { ...PROFILE };
   delete minuteProfile.second;

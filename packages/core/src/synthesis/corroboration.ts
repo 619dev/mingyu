@@ -108,18 +108,21 @@ function normalizeOriginPalaceName(name: string): string {
   return bareName === '仆役' ? '交友' : bareName;
 }
 
-/** 十二宫索引和名称均完整，才可把未列星曜解释为未命中。 */
+/** 宫位身份、身宫定位和星曜列表完整，才可把未列星曜解释为未命中。 */
 export function hasCompleteZiweiOrigin(ziwei: ZiweiRuntime): boolean {
   const palaces = ziwei.payloadByScope.origin?.palaces;
   const names = palaces?.map((palace) => normalizeOriginPalaceName(palace.name));
+  const bodyPalaceCount = palaces?.filter((palace) => palace.is_body_palace).length ?? 0;
   return (
     palaces?.length === 12 &&
     new Set(palaces.map((palace) => palace.index)).size === 12 &&
+    bodyPalaceCount === 1 &&
     palaces.every(
       (palace) =>
         Number.isInteger(palace.index) &&
         palace.index >= 0 &&
         palace.index < 12 &&
+        typeof palace.is_body_palace === 'boolean' &&
         Array.isArray(palace.major_stars) &&
         Array.isArray(palace.minor_stars) &&
         Array.isArray(palace.other_stars),
@@ -137,6 +140,11 @@ const PILLAR_NAMES = {
   hour: '时柱',
 } as const;
 
+/** 待补时盘中的空神煞列表表示尚未计算。 */
+function hasUnknownBirthTime(bazi: BaziChartResult): boolean {
+  return bazi.isThreePillars === true || bazi.unknownTimeAnalysis?.status === '待补时';
+}
+
 /**
  * 直接复用排盘时选定的公共神煞结果。
  *
@@ -149,6 +157,7 @@ function findBaziShenShaEvidence(
 ): BaziBranchEvidence[] | undefined {
   const shensha = bazi.shensha;
   if (
+    hasUnknownBirthTime(bazi) ||
     !shensha ||
     (Object.keys(PILLAR_NAMES) as Array<keyof typeof PILLAR_NAMES>).some(
       (pillar) => !Array.isArray(shensha[pillar]),
@@ -364,6 +373,9 @@ export function evaluateShaYaoCorroboration(
 ): ShaYaoCorroborationResult {
   const baziYangRenEvidence = findBaziShenShaEvidence(bazi, '羊刃');
   const baziShenShaAvailable = baziYangRenEvidence !== undefined;
+  const baziShenShaIssue = hasUnknownBirthTime(bazi)
+    ? '出生时辰待补，八字神煞尚未计算'
+    : '八字神煞资料未提供';
   const baziYangRenPositions = baziYangRenEvidence ?? [];
   const hasBaziYangRen = baziYangRenPositions.length > 0;
 
@@ -382,7 +394,7 @@ export function evaluateShaYaoCorroboration(
       key: 'bazi.yang-ren-position',
       status: !baziShenShaAvailable ? '资料不足' : hasBaziYangRen ? '满足' : '不满足',
       detail: !baziShenShaAvailable
-        ? '八字神煞资料未提供，无法按当前口径核验羊刃。'
+        ? `${baziShenShaIssue}，无法按当前口径核验羊刃。`
         : hasBaziYangRen
           ? `按当前八字神煞口径，羊刃命中${formatBaziEvidence(baziYangRenPositions)}。`
           : '按当前八字神煞口径，四柱未记录羊刃。',
@@ -409,10 +421,10 @@ export function evaluateShaYaoCorroboration(
   let judgment: string;
   if (!baziShenShaAvailable) {
     judgment = !completeOrigin
-      ? `${originIssue}，煞曜同参未核验；八字神煞资料未提供，无法核验羊刃位置`
+      ? `${originIssue}，煞曜同参未核验；${baziShenShaIssue}，无法核验羊刃位置`
       : ziweiShaEvidence.length > 0
-        ? `紫微${formatZiweiEvidence(ziweiShaEvidence)}；八字神煞资料未提供，无法核验羊刃位置，仅保留紫微宫位与星曜线索`
-        : '八字神煞资料未提供，无法核验羊刃位置；紫微关键宫也未记录目标煞曜';
+        ? `紫微${formatZiweiEvidence(ziweiShaEvidence)}；${baziShenShaIssue}，无法核验羊刃位置，仅保留紫微宫位与星曜线索`
+        : `${baziShenShaIssue}，无法核验羊刃位置；紫微关键宫也未记录目标煞曜`;
   } else if (!completeOrigin) {
     judgment = hasBaziYangRen
       ? `${originIssue}，煞曜同参未核验；八字羊刃命中${formatBaziEvidence(baziYangRenPositions)}，仅保留单盘位置事实`
@@ -457,6 +469,9 @@ export function evaluateGuiRenCorroboration(
 ): GuiRenCorroborationResult {
   const baziTianYiEvidence = findBaziShenShaEvidence(bazi, '天乙贵人');
   const baziShenShaAvailable = baziTianYiEvidence !== undefined;
+  const baziShenShaIssue = hasUnknownBirthTime(bazi)
+    ? '出生时辰待补，八字神煞尚未计算'
+    : '八字神煞资料未提供';
   const baziTianYiPositions = baziTianYiEvidence ?? [];
   const hasBaziTianYi = baziTianYiPositions.length > 0;
 
@@ -473,7 +488,7 @@ export function evaluateGuiRenCorroboration(
       key: 'bazi.tianyi-position',
       status: !baziShenShaAvailable ? '资料不足' : hasBaziTianYi ? '满足' : '不满足',
       detail: !baziShenShaAvailable
-        ? '八字神煞资料未提供，无法按当前口径核验天乙贵人。'
+        ? `${baziShenShaIssue}，无法按当前口径核验天乙贵人。`
         : hasBaziTianYi
           ? `按当前八字神煞口径，天乙贵人命中${formatBaziEvidence(baziTianYiPositions)}。`
           : '按当前八字神煞口径，四柱未记录天乙贵人。',
@@ -495,10 +510,10 @@ export function evaluateGuiRenCorroboration(
 
   if (!baziShenShaAvailable) {
     judgment = !completeOrigin
-      ? `${originIssue}，贵人吉曜同参未核验；八字神煞资料未提供，无法核验天乙位置`
+      ? `${originIssue}，贵人吉曜同参未核验；${baziShenShaIssue}，无法核验天乙位置`
       : ziweiGuiEvidence.length > 0
-        ? `紫微${formatZiweiEvidence(ziweiGuiEvidence)}；八字神煞资料未提供，无法核验天乙位置，仅保留紫微宫位与星曜线索`
-        : '八字神煞资料未提供，无法核验天乙位置；紫微关键宫也未记录目标贵人星';
+        ? `紫微${formatZiweiEvidence(ziweiGuiEvidence)}；${baziShenShaIssue}，无法核验天乙位置，仅保留紫微宫位与星曜线索`
+        : `${baziShenShaIssue}，无法核验天乙位置；紫微关键宫也未记录目标贵人星`;
   } else if (!completeOrigin) {
     judgment = hasBaziTianYi
       ? `${originIssue}，贵人吉曜同参未核验；八字天乙位于${formatBaziEvidence(baziTianYiPositions)}，仅保留单盘位置线索`

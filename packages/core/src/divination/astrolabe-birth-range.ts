@@ -511,7 +511,7 @@ function collectPointSamples(
       '度/日',
       point.longitudeSpeed,
     );
-    addSample(samples, `${base}.second`, `${point.label}位置角秒`, '角秒', point.second);
+    addSample(samples, `${base}.second`, `${point.label}位置角秒`, '角秒', point.second, 60);
   }
 }
 
