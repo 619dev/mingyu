@@ -2181,7 +2181,7 @@ function formatQizhengFlowingPrompt(
       const second = natalStars.find((star) => `本命${star.name}` === aspect.star2)!;
       const relation = aspect.type === '同宫' ? '合相' : aspect.type;
       const palaceRelation = first.signBranch === second.signBranch ? '同宫' : '异宫';
-      return `采样时刻${flowing.localDateTime}：${aspect.star1}与${aspect.star2}：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`;
+      return `${aspect.star1}与${aspect.star2}：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`;
     }),
     16,
   );

@@ -1081,7 +1081,7 @@ test('奇门终身局基础盘省略同格局复述并保留独有组合与遁�
   assert.ok(data.baseChart.classicPatterns?.some((item) => item.summary.includes('乃虎遁之格')));
 });
 
-test('奇门终身局阶段同宫得使临吉门只列加强条件', () => {
+test('奇门终身局同宫得使合并基础条件，保留不同宫位的独立事实', () => {
   const data = calculateQimenLifetime({
     birthDateTime: '2026-01-01T08:00:00',
     gender: 'male',
@@ -1090,10 +1090,51 @@ test('奇门终身局阶段同宫得使临吉门只列加强条件', () => {
   const prompt = buildLifetimePrompt(data, undefined, { includeCurrentTime: false });
   const baseSection = prompt.split('【终身局基础盘】')[1].split('【个人标记与主题宫】')[0];
   const stageSection = prompt.split('【人生阶段资料】')[1].split('【任务】')[0];
-  assert.match(baseSection, /月奇得使（吉）/);
-  assert.match(baseSection, /月奇得使临吉门（吉）/);
+  assert.doesNotMatch(baseSection, /月奇得使（吉）/);
+  assert.match(
+    baseSection,
+    /月奇得使临吉门（吉）：丙奇加地盘[戊庚]（甲子\/甲申所遁）于[^；]+；同宫临(?:开|休|生)门/u,
+  );
   assert.match(stageSection, /成吉格「月奇得使临吉门」/);
   assert.doesNotMatch(stageSection, /成吉格「月奇得使」(?:；|\n|$)/u);
+  assert.ok(data.baseChart.classicPatterns?.some((item) => item.name === '月奇得使'));
+  assert.ok(data.baseChart.classicPatterns?.some((item) => item.name === '月奇得使临吉门'));
+  assert.doesNotMatch(baseSection, /月奇得使又临吉门|得门得使，双重吉利/u);
+
+  const emptyStageData = structuredClone(data);
+  const originalParent = emptyStageData.baseChart.classicPatterns!.find(
+    (item) => item.name === '月奇得使',
+  )!;
+  emptyStageData.stages[0].supportFacts = [
+    `成吉格「${originalParent.name}」：${originalParent.summary}`,
+  ];
+  emptyStageData.stages[0].constraintFacts = [];
+  const emptyStagePrompt = buildLifetimePrompt(emptyStageData, undefined, {
+    includeCurrentTime: false,
+  });
+  const firstStage = emptyStagePrompt.split('阶段1：')[1].split('阶段2：')[0];
+  assert.doesNotMatch(firstStage, /宫位支持类象：|宫位制约类象：/u);
+
+  // 模拟跨宫聚合资料，核对同名格局只在全部宫位被涵盖时省略。
+  const separatePalaceData = structuredClone(data);
+  const parent = separatePalaceData.baseChart.classicPatterns!.find(
+    (item) => item.name === '月奇得使',
+  )!;
+  const strengthened = separatePalaceData.baseChart.classicPatterns!.find(
+    (item) => item.name === '月奇得使临吉门',
+  )!;
+  const separatePalace = separatePalaceData.baseChart.jiuGongGe.find(
+    (palace) => !strengthened.palaces.includes(palace.gong),
+  )!;
+  parent.palaces.push(separatePalace.gong);
+  separatePalaceData.stages[0].supportFacts = [`成吉格「${parent.name}」：${parent.summary}`];
+  const separatePrompt = buildLifetimePrompt(separatePalaceData, undefined, {
+    includeCurrentTime: false,
+  });
+  const separateBase = separatePrompt.split('【终身局基础盘】')[1].split('【个人标记与主题宫】')[0];
+  const separateStages = separatePrompt.split('【人生阶段资料】')[1].split('【任务】')[0];
+  assert.match(separateBase, /月奇得使（吉）/);
+  assert.match(separateStages, /成吉格「月奇得使」/);
 });
 
 test('奇门终身局历史秒级偏移在出生时区和任务书中保持精度', () => {

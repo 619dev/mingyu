@@ -871,7 +871,7 @@ test('交运年份默认应归到后一步大运，而不是继续挂在童运�
   assert.equal(result.luckInfo.cycles[normalized.cycleIndex ?? -1]?.ganZhi, '乙亥');
 });
 
-test('核心运限选择不得把缺失字段静默替换成当前时间或第一项', () => {
+test('核心运限选择应拒绝缺失字段或非整数的流月流日序号', () => {
   const result = createMockResult();
 
   assert.throws(
@@ -898,6 +898,27 @@ test('核心运限选择不得把缺失字段静默替换成当前时间或第�
         cycleIndex: 0,
         year: 2008,
         month: 1,
+      }),
+    /必须提供该节令月内的有效流日序号/,
+  );
+  assert.throws(
+    () =>
+      normalizeFortuneSelection(result, {
+        scope: 'month',
+        cycleIndex: 0,
+        year: 2008,
+        month: 1.5,
+      }),
+    /必须提供有效的流月序号/,
+  );
+  assert.throws(
+    () =>
+      normalizeFortuneSelection(result, {
+        scope: 'day',
+        cycleIndex: 0,
+        year: 2008,
+        month: 1,
+        day: 1.5,
       }),
     /必须提供该节令月内的有效流日序号/,
   );

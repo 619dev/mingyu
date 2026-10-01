@@ -30,7 +30,6 @@ test('紫微独立运限仅指定日期时沿用当前流时，与完整盘同�
     .flatMap((period) => period.years)
     .find((year) => Boolean(year.targetHour))?.targetHour;
 
-  assert.equal(input.birthTimeIndex, 4);
   assert.equal(standalone.targetDateStr, dateStr);
   assert.equal(standalone.targetHourIndex, 6);
   assert.equal(runtime.fortuneTimeline?.targetHourIndex, 6);
@@ -38,4 +37,5 @@ test('紫微独立运限仅指定日期时沿用当前流时，与完整盘同�
   assert.deepEqual(standaloneHour, runtimeHour);
   assert.equal(standaloneHour.heavenlyStem, runtime.horoscope.hourly.heavenlyStem);
   assert.equal(standaloneHour.earthlyBranch, runtime.horoscope.hourly.earthlyBranch);
+  assert.equal(`${standaloneHour.heavenlyStem}${standaloneHour.earthlyBranch}`, '丙午');
 });

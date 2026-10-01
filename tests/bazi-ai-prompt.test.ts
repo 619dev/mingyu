@@ -3,15 +3,10 @@ import assert from 'node:assert/strict';
 import { buildPromptFromConfig, getCompatibilityPrompt } from '../src/utils/ai/aiPrompts';
 import { formatBaziCompatibilityFacts } from '../src/lib/bazi-compatibility-facts';
 import { baziCalculator } from '@core/bazi/baziCalculator';
-import {
-  formatBaziForPrompt as formatBaziForPromptLocal,
-  formatPatternBasisForPrompt,
-} from '@core/bazi/baziAnalysisFormatter';
+import { formatBaziForPrompt, formatPatternBasisForPrompt } from '@core/bazi/baziAnalysisFormatter';
 import { buildFortuneSelectionContext } from '@core/bazi/fortuneSelection';
 import { generateAnalysisDimensionHints } from '@core/bazi/baziEnhancement';
-import { formatBaziForPrompt as formatBaziForPromptCore } from '../packages/core/src/bazi/baziAnalysisFormatter';
-import { identifyClassicPattern as identifyClassicPatternCore } from '../packages/core/src/bazi/baziEnhancement/classicPatterns';
-import { identifyClassicPattern as identifyClassicPatternLocal } from '@core/bazi/baziEnhancement/classicPatterns';
+import { identifyClassicPattern } from '@core/bazi/baziEnhancement/classicPatterns';
 import { generateEnhancedAnalysisSection } from '@core/bazi/baziPromptEnhancement';
 import { PROMPT_GUIDANCE_TEXT as PROMPT_ROLE_TEXT } from '../src/lib/prompt-guidance';
 import { assertPromptHasAnswerFramework, assertPromptHasSingleRole } from './prompt-assertions';
@@ -52,6 +47,45 @@ function createBaziResult(overrides: Partial<BaziInput> = {}) {
   };
 
   return baziCalculator.calculateBazi({ ...base, ...overrides });
+}
+
+let cachedOrdinaryZhengyinResult: ReturnType<typeof baziCalculator.calculateBazi> | undefined;
+
+function getOrdinaryZhengyinResult() {
+  return (cachedOrdinaryZhengyinResult ??= createBaziResult({
+    year: 1990,
+    month: 9,
+    day: 5,
+    timeIndex: 6,
+  }));
+}
+
+let cachedMarriagePromptFixture:
+  | {
+      result: ReturnType<typeof baziCalculator.calculateBazi>;
+      prompt: ReturnType<typeof buildPromptFromConfig>;
+    }
+  | undefined;
+
+function getMarriagePromptFixture() {
+  return (cachedMarriagePromptFixture ??= (() => {
+    const result = createBaziResult({
+      year: 1988,
+      month: 1,
+      day: 1,
+      timeIndex: 0,
+      gender: 'female',
+    });
+    const prompt = buildPromptFromConfig(
+      '请分析我的婚恋。',
+      { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
+      result,
+      null,
+      '婚恋',
+      { isCustomQuestion: false },
+    );
+    return { result, prompt };
+  })());
 }
 
 test('夏令时跨日任务书分别列原始出生钟表与排盘历法，时辰盘不虚构精确时刻', () => {
@@ -116,6 +150,14 @@ test('八字合盘不再附加系统提示词，并保留双盘资料与简明�
   assert.match(prompt.user, /日主关系：/);
   assert.match(prompt.user, /【任务】\n关系范围：合伙。请依据双方盘面回答【问题】。/);
   assert.doesNotMatch(prompt.user, /结构化证据|证据边界|不得编造|只基于/);
+  assert.equal((prompt.user.match(/^【第一人排盘信息】$/gm) ?? []).length, 1);
+  assert.equal((prompt.user.match(/^【第二人排盘信息】$/gm) ?? []).length, 1);
+  assert.doesNotMatch(prompt.user, /^【命盘】$/m);
+  assert.doesNotMatch(prompt.user, /^【核心判断】$/m);
+  assert.doesNotMatch(prompt.user, /^【四柱】$/m);
+  assert.match(prompt.user, /命盘：\n/);
+  assert.match(prompt.user, /核心判断：\n/);
+  assert.match(prompt.user, /四柱：\n/);
 });
 
 test('八字合盘喜忌覆盖不复述已在个人盘面呈现的功能事实', () => {
@@ -184,7 +226,7 @@ test('八字输出提示词应是可复制给在线 AI 的独立任务书，不�
 });
 
 test('普通成格提示词保留结论并省略重复的格局条件', () => {
-  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const result = getOrdinaryZhengyinResult();
   assert.equal(result.analysis.mingGe.fulfillment?.status, '成格');
   assert.equal(formatBaziPatternConditions(result), '');
 
@@ -196,7 +238,7 @@ test('普通成格提示词保留结论并省略重复的格局条件', () => {
 });
 
 test('普通格流派提示词只列一次取格依据', () => {
-  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const result = getOrdinaryZhengyinResult();
   const basis = formatPatternBasisForPrompt(result.analysis.mingGe.basis ?? '');
   assert.ok(basis);
 
@@ -231,7 +273,7 @@ test('新派流派任务引用格局成败，不预设额外格局条件段', ()
 });
 
 test('本命流派提示词不附完整大运，完整命限仅在所选范围出现', () => {
-  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const result = getOrdinaryZhengyinResult();
   for (const school of ['ziping', 'mangpai', 'xinpai'] as const) {
     const natal = buildBaziPrompt({ result, school, fortuneScope: 'natal' });
     assert.doesNotMatch(natal, /出生后\s*\d+\s*年.*起运|大运\w+（\d{4}年起/);
@@ -244,7 +286,7 @@ test('本命流派提示词不附完整大运，完整命限仅在所选范围�
 });
 
 test('单一格局的在线任务只核对本盘已列成败事实', () => {
-  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const result = getOrdinaryZhengyinResult();
   const prompts = [
     buildBaziPrompt({ result, fortuneScope: 'natal' }),
     buildBaziPrompt({ result, fortuneScope: 'full' }),
@@ -865,7 +907,7 @@ test('流派提示词只补充格局的盘面证据，不复述共同判定和�
 });
 
 test('内嵌多派提示词共用通根事实，并省略排盘信息已有的月令、四柱和五行明细', () => {
-  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const result = getOrdinaryZhengyinResult();
   const prompt = buildBaziPrompt({ result, schools: ['ziping', 'mangpai', 'xinpai'] });
 
   assert.equal(prompt.match(/^透干通根：/gm)?.length, 1);
@@ -1138,29 +1180,6 @@ test('八字提示词未选择年限时输出本命资料且不输出岁运重�
   assert.doesNotMatch(prompt.user, /资料说明：|本次未指定|不得自行指定/);
 });
 
-test('合盘提示词不应误要求使用单盘核心用神句式', () => {
-  const { result1, result2 } = createCompatibilityBaziResults();
-
-  const prompt = getCompatibilityPrompt('请分析我们适不适合长期合伙。', result1, result2, 'career');
-
-  assert.doesNotMatch(prompt.system, /核心用神：……，辅助喜用：……，主忌：……/);
-});
-
-test('八字合盘内嵌命盘资料不应重复使用顶层 section 标题', () => {
-  const { result1, result2 } = createCompatibilityBaziResults();
-
-  const prompt = getCompatibilityPrompt('请分析我们适不适合长期合伙。', result1, result2, 'career');
-
-  assert.equal((prompt.user.match(/^【第一人排盘信息】$/gm) ?? []).length, 1);
-  assert.equal((prompt.user.match(/^【第二人排盘信息】$/gm) ?? []).length, 1);
-  assert.doesNotMatch(prompt.user, /^【命盘】$/m);
-  assert.doesNotMatch(prompt.user, /^【核心判断】$/m);
-  assert.doesNotMatch(prompt.user, /^【四柱】$/m);
-  assert.match(prompt.user, /命盘：\n/);
-  assert.match(prompt.user, /核心判断：\n/);
-  assert.match(prompt.user, /四柱：\n/);
-});
-
 test('八字提示词不应由五行百分比阈值自动生成病药结论', () => {
   const result = baziCalculator.calculateBazi({
     year: 1995,
@@ -1250,14 +1269,7 @@ test('八字经典格局多选一条件应任一命中，不应要求全部同�
     hour: ['己', '癸', '辛'],
   };
 
-  assert.equal(
-    identifyClassicPatternLocal('丁', '寅', pillars, hiddenStems, '正印格')?.name,
-    '日贵格',
-  );
-  assert.equal(
-    identifyClassicPatternCore('丁', '寅', pillars, hiddenStems, '正印格')?.name,
-    '日贵格',
-  );
+  assert.equal(identifyClassicPattern('丁', '寅', pillars, hiddenStems, '正印格')?.name, '日贵格');
 });
 
 test('八字经典格局应按古籍识别子午双包，并排除只有两个子的误报', () => {
@@ -1289,20 +1301,18 @@ test('八字经典格局应按古籍识别子午双包，并排除只有两个�
     day: ['丁', '己'],
   };
 
-  for (const identifyClassicPattern of [identifyClassicPatternLocal, identifyClassicPatternCore]) {
-    assert.equal(
-      identifyClassicPattern('甲', '午', twoZiOneWuPillars, hiddenStems, '正印格')?.name,
-      '子午双包格',
-    );
-    assert.equal(
-      identifyClassicPattern('甲', '午', ziWuBothPillars, ziWuHiddenStems, '偏财格')?.name,
-      '子午双包格',
-    );
-    assert.notEqual(
-      identifyClassicPattern('甲', '申', onlyTwoZiPillars, hiddenStems, '正印格')?.name,
-      '子午双包格',
-    );
-  }
+  assert.equal(
+    identifyClassicPattern('甲', '午', twoZiOneWuPillars, hiddenStems, '正印格')?.name,
+    '子午双包格',
+  );
+  assert.equal(
+    identifyClassicPattern('甲', '午', ziWuBothPillars, ziWuHiddenStems, '偏财格')?.name,
+    '子午双包格',
+  );
+  assert.notEqual(
+    identifyClassicPattern('甲', '申', onlyTwoZiPillars, hiddenStems, '正印格')?.name,
+    '子午双包格',
+  );
 });
 
 test('八字经典外格应按古籍口径限制关键成格条件', () => {
@@ -1313,74 +1323,72 @@ test('八字经典外格应按古籍口径限制关键成格条件', () => {
     hour: [],
   };
 
-  for (const identifyClassicPattern of [identifyClassicPatternLocal, identifyClassicPatternCore]) {
-    const jingLanCha = identifyClassicPattern(
-      '庚',
-      '子',
-      {
-        year: { gan: '甲', zhi: '申', ganZhi: '甲申' },
-        month: { gan: '甲', zhi: '子', ganZhi: '甲子' },
-        day: { gan: '庚', zhi: '辰', ganZhi: '庚辰' },
-        hour: { gan: '辛', zhi: '卯', ganZhi: '辛卯' },
-      },
-      emptyHiddenStems,
-      '正印格',
-    );
-    const renQiLong = identifyClassicPattern(
-      '壬',
-      '寅',
-      {
-        year: { gan: '甲', zhi: '辰', ganZhi: '甲辰' },
-        month: { gan: '丙', zhi: '寅', ganZhi: '丙寅' },
-        day: { gan: '壬', zhi: '辰', ganZhi: '壬辰' },
-        hour: { gan: '庚', zhi: '申', ganZhi: '庚申' },
-      },
-      emptyHiddenStems,
-      '正印格',
-    );
-    const feiTianLuMa = identifyClassicPattern(
-      '庚',
-      '寅',
-      {
-        year: { gan: '甲', zhi: '子', ganZhi: '甲子' },
-        month: { gan: '丙', zhi: '寅', ganZhi: '丙寅' },
-        day: { gan: '庚', zhi: '子', ganZhi: '庚子' },
-        hour: { gan: '甲', zhi: '辰', ganZhi: '甲辰' },
-      },
-      emptyHiddenStems,
-      '正印格',
-    );
-    const oldFeiTianFalsePositive = identifyClassicPattern(
-      '庚',
-      '寅',
-      {
-        year: { gan: '甲', zhi: '申', ganZhi: '甲申' },
-        month: { gan: '乙', zhi: '卯', ganZhi: '乙卯' },
-        day: { gan: '庚', zhi: '寅', ganZhi: '庚寅' },
-        hour: { gan: '丙', zhi: '子', ganZhi: '丙子' },
-      },
-      emptyHiddenStems,
-      '正印格',
-    );
-    const singleChenRenFalsePositive = identifyClassicPattern(
-      '壬',
-      '寅',
-      {
-        year: { gan: '甲', zhi: '子', ganZhi: '甲子' },
-        month: { gan: '丙', zhi: '寅', ganZhi: '丙寅' },
-        day: { gan: '壬', zhi: '辰', ganZhi: '壬辰' },
-        hour: { gan: '庚', zhi: '申', ganZhi: '庚申' },
-      },
-      emptyHiddenStems,
-      '正印格',
-    );
+  const jingLanCha = identifyClassicPattern(
+    '庚',
+    '子',
+    {
+      year: { gan: '甲', zhi: '申', ganZhi: '甲申' },
+      month: { gan: '甲', zhi: '子', ganZhi: '甲子' },
+      day: { gan: '庚', zhi: '辰', ganZhi: '庚辰' },
+      hour: { gan: '辛', zhi: '卯', ganZhi: '辛卯' },
+    },
+    emptyHiddenStems,
+    '正印格',
+  );
+  const renQiLong = identifyClassicPattern(
+    '壬',
+    '寅',
+    {
+      year: { gan: '甲', zhi: '辰', ganZhi: '甲辰' },
+      month: { gan: '丙', zhi: '寅', ganZhi: '丙寅' },
+      day: { gan: '壬', zhi: '辰', ganZhi: '壬辰' },
+      hour: { gan: '庚', zhi: '申', ganZhi: '庚申' },
+    },
+    emptyHiddenStems,
+    '正印格',
+  );
+  const feiTianLuMa = identifyClassicPattern(
+    '庚',
+    '寅',
+    {
+      year: { gan: '甲', zhi: '子', ganZhi: '甲子' },
+      month: { gan: '丙', zhi: '寅', ganZhi: '丙寅' },
+      day: { gan: '庚', zhi: '子', ganZhi: '庚子' },
+      hour: { gan: '甲', zhi: '辰', ganZhi: '甲辰' },
+    },
+    emptyHiddenStems,
+    '正印格',
+  );
+  const oldFeiTianFalsePositive = identifyClassicPattern(
+    '庚',
+    '寅',
+    {
+      year: { gan: '甲', zhi: '申', ganZhi: '甲申' },
+      month: { gan: '乙', zhi: '卯', ganZhi: '乙卯' },
+      day: { gan: '庚', zhi: '寅', ganZhi: '庚寅' },
+      hour: { gan: '丙', zhi: '子', ganZhi: '丙子' },
+    },
+    emptyHiddenStems,
+    '正印格',
+  );
+  const singleChenRenFalsePositive = identifyClassicPattern(
+    '壬',
+    '寅',
+    {
+      year: { gan: '甲', zhi: '子', ganZhi: '甲子' },
+      month: { gan: '丙', zhi: '寅', ganZhi: '丙寅' },
+      day: { gan: '壬', zhi: '辰', ganZhi: '壬辰' },
+      hour: { gan: '庚', zhi: '申', ganZhi: '庚申' },
+    },
+    emptyHiddenStems,
+    '正印格',
+  );
 
-    assert.equal(jingLanCha?.name, '井栏叉格');
-    assert.equal(renQiLong?.name, '壬骑龙背格');
-    assert.equal(feiTianLuMa?.name, '飞天禄马格');
-    assert.notEqual(oldFeiTianFalsePositive?.name, '飞天禄马格');
-    assert.notEqual(singleChenRenFalsePositive?.name, '壬骑龙背格');
-  }
+  assert.equal(jingLanCha?.name, '井栏叉格');
+  assert.equal(renQiLong?.name, '壬骑龙背格');
+  assert.equal(feiTianLuMa?.name, '飞天禄马格');
+  assert.notEqual(oldFeiTianFalsePositive?.name, '飞天禄马格');
+  assert.notEqual(singleChenRenFalsePositive?.name, '壬骑龙背格');
 });
 
 test('八字经典格局提示词应保留福德秀气的成格边界，不输出统一强断', () => {
@@ -1446,10 +1454,7 @@ test('八字提示词不展开内部取用脉络', () => {
   assert.doesNotMatch(prompt.user, /命中规则:/);
   assert.doesNotMatch(prompt.user, /贱而且贫/);
 
-  const localFormatted = formatBaziForPromptLocal(result);
-  const coreFormatted = formatBaziForPromptCore(result as any);
-  assert.doesNotMatch(localFormatted, /运势警语:|逢金水运反败/);
-  assert.doesNotMatch(coreFormatted, /运势警语:|逢金水运反败/);
+  assert.doesNotMatch(formatBaziForPrompt(result), /运势警语:|逢金水运反败/);
 });
 
 test('八字提示词在通关结论落入正式主忌时应隐藏通关法片段', () => {
@@ -1501,53 +1506,17 @@ test('八字提示词不应由五行百分比阈值自动生成通关结论', ()
 });
 
 test('八字提示词不默认展开桃花神煞详解', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 1,
-    day: 1,
-    timeIndex: 0,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
+  const { result, prompt } = getMarriagePromptFixture();
 
   assert.equal(result.shensha.global?.some((name) => name.includes('桃花')) ?? false, false);
   assert.ok(result.shensha.month.includes('桃花'));
   assert.ok(result.shensha.hour.includes('桃花'));
 
-  const prompt = buildPromptFromConfig(
-    '请分析我的婚恋。',
-    { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
-    result,
-    null,
-    '婚恋',
-    { isCustomQuestion: false },
-  );
-
   assert.doesNotMatch(prompt.user, /【桃花详解】|墙外桃花/);
 });
 
 test('八字提示词只在柱位标记空亡，不另起详解段', () => {
-  const withKongWang = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 1,
-    day: 1,
-    timeIndex: 0,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const withPrompt = buildPromptFromConfig(
-    '请分析我的婚恋。',
-    { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
-    withKongWang,
-    null,
-    '婚恋',
-    { isCustomQuestion: false },
-  );
+  const { result: withKongWang, prompt: withPrompt } = getMarriagePromptFixture();
 
   assert.match(withPrompt.user, /月柱:[^\n]*\(空亡\)/);
   assert.match(withPrompt.user, /时柱:[^\n]*\(空亡\)/);
@@ -1605,32 +1574,11 @@ test('八字提示词不应把问真年柱旬空口径展开为空亡详解', ()
   assert.doesNotMatch(prompt.user, /【空亡详解】/);
   assert.doesNotMatch(prompt.user, /月柱:[^\n]*\(空亡\)|时柱:[^\n]*\(空亡\)/);
 
-  const localFormatted = formatBaziForPromptLocal(result);
-  const coreFormatted = formatBaziForPromptCore(result as any);
-  assert.doesNotMatch(localFormatted, /月柱:[^\n]*\(空亡\)|时柱:[^\n]*\(空亡\)/);
-  assert.doesNotMatch(coreFormatted, /月柱:[^\n]*\(空亡\)|时柱:[^\n]*\(空亡\)/);
+  assert.doesNotMatch(formatBaziForPrompt(result), /月柱:[^\n]*\(空亡\)|时柱:[^\n]*\(空亡\)/);
 });
 
 test('八字提示词保留原局同支关系且不重复展开段落', () => {
-  const withFuxin = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 1,
-    day: 1,
-    timeIndex: 0,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const withPrompt = buildPromptFromConfig(
-    '请分析我的婚恋。',
-    { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
-    withFuxin,
-    null,
-    '婚恋',
-    { isCustomQuestion: false },
-  );
+  const { result: withFuxin, prompt: withPrompt } = getMarriagePromptFixture();
 
   assert.match(withPrompt.user, /年柱与日柱地支同为卯/);
   assert.match(withPrompt.user, /月柱与时柱地支同为子/);
@@ -1662,50 +1610,14 @@ test('八字提示词保留原局同支关系且不重复展开段落', () => {
 });
 
 test('八字提示词保留原局刑冲合会破事实', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 1,
-    day: 1,
-    timeIndex: 0,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const prompt = buildPromptFromConfig(
-    '请分析我的婚恋。',
-    { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
-    result,
-    null,
-    '婚恋',
-    { isCustomQuestion: false },
-  );
+  const { prompt } = getMarriagePromptFixture();
 
   assert.match(prompt.user, /年柱丁与月柱壬合/);
   assert.match(prompt.user, /年柱卯与月柱子刑/);
 });
 
 test('八字提示词不展开内部相合成化判定过程', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 1,
-    day: 1,
-    timeIndex: 0,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const prompt = buildPromptFromConfig(
-    '请分析我的婚恋。',
-    { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
-    result,
-    null,
-    '婚恋',
-    { isCustomQuestion: false },
-  );
+  const { prompt } = getMarriagePromptFixture();
 
   assert.doesNotMatch(
     prompt.user,
@@ -1714,16 +1626,7 @@ test('八字提示词不展开内部相合成化判定过程', () => {
 });
 
 test('八字增强资料包不再按用户分类切换本地模板', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 1,
-    day: 1,
-    timeIndex: 0,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
+  const { result } = getMarriagePromptFixture();
 
   const generalSection = generateEnhancedAnalysisSection(result, 'general');
   const healthSection = generateEnhancedAnalysisSection(result, 'health');

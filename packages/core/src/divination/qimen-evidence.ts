@@ -394,9 +394,9 @@ export function formatQimenPatternBasis(item: QimenPatternEvidenceFact): string 
   return unique([...factualClauses, ...additionalFacts]).join('；') || item.name;
 }
 
-export function selectQimenClassicPatternsForPrompt(
-  classicFacts: QimenPatternEvidenceFact[],
-): QimenPatternEvidenceFact[] {
+export function selectQimenClassicPatternsForPrompt<
+  T extends Pick<QimenPatternEvidenceFact, 'name' | 'palaces'>,
+>(classicFacts: T[]): T[] {
   return classicFacts.filter(
     (item) =>
       !/^[日月星]奇得使$/u.test(item.name) ||

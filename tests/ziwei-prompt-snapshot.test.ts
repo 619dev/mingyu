@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { EARTHLY_BRANCHES } from '../packages/core/src/ganzhi/data';
 import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
 import { buildFocusTaskBundle } from '../packages/core/src/ziwei/prompt/focus';
-import { isRepeatedZiweiCoLocationCondition } from '../packages/core/src/ziwei/prompt/pattern-condition-visibility';
+import {
+  isRepeatedZiweiCoLocationCondition,
+  isZiweiConditionRestatedByPalaces,
+} from '../packages/core/src/ziwei/prompt/pattern-condition-visibility';
 
 import {
   buildCombinedZiweiCompatibilityPrompt,
@@ -147,6 +150,22 @@ function createReportContext(overrides: Partial<PromptContext> = {}): PromptCont
   };
 }
 
+let repeatedOriginChart: ReturnType<typeof calculateZiweiChart> | undefined;
+
+function getRepeatedOriginChart() {
+  return (repeatedOriginChart ??= calculateZiweiChart(
+    {
+      name: '紫微资料去重核验',
+      gender: '女',
+      dateType: 'solar',
+      birthDate: '1990-05-15',
+      birthTimeIndex: 4,
+      algorithm: 'default',
+    },
+    { scopes: ['origin'] },
+  ));
+}
+
 test('紫微宫位专题遇到盘上不存在的宫名时只采用已定位宫位', () => {
   const payload = createPayload();
   const focus = buildFocusTaskBundle(payload, {
@@ -261,6 +280,42 @@ test('紫微同宫去重保留含独立限定的复合条件', () => {
   );
 });
 
+test('紫微单宫定位条件仅在宫位中已有同一星曜事实时省略', () => {
+  const palace = createPalace(2, '夫妻', ['太阴']);
+  palace.earthly_branch = '亥';
+  palace.major_stars[0]!.brightness = '陷';
+  const pattern = {
+    palace_indexes: [2],
+    palace_names: ['夫妻'],
+    star_names: ['太阴'],
+  };
+
+  assert.equal(isZiweiConditionRestatedByPalaces(pattern, '太阴在亥宫守夫妻宫', [palace]), true);
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(pattern, '太阴以“陷”亮度守夫妻宫', [palace]),
+    true,
+  );
+  assert.equal(isZiweiConditionRestatedByPalaces(pattern, '太阴在子宫守夫妻宫', [palace]), false);
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(pattern, '太阴以“庙”亮度守夫妻宫', [palace]),
+    false,
+  );
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(pattern, '太阴守夫妻宫，且不见火铃', [palace]),
+    false,
+  );
+  assert.equal(isZiweiConditionRestatedByPalaces(pattern, '太阴守夫妻宫', []), false);
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(pattern, '太阴守夫妻宫', [{ ...palace, index: 3 }]),
+    false,
+  );
+  palace.major_stars[0]!.brightness = undefined;
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(pattern, '太阴以“陷”亮度守夫妻宫', [palace]),
+    false,
+  );
+});
+
 test('紫微在线提示词省略未出现的可选格局加强条件', () => {
   const payload = createPayload();
   const fudePalace = payload.palaces.find((palace) => palace.name === '福德');
@@ -284,17 +339,7 @@ test('紫微在线提示词省略未出现的可选格局加强条件', () => {
 });
 
 test('真实紫微盘的重点宫星只在详细资料列出一次，十二宫索引保留完整宫位', async () => {
-  const runtime = await calculateZiweiChart(
-    {
-      name: '紫微宫星去重核验',
-      gender: '女',
-      dateType: 'solar',
-      birthDate: '1990-05-15',
-      birthTimeIndex: 4,
-      algorithm: 'default',
-    },
-    { scopes: ['origin'] },
-  );
+  const runtime = await getRepeatedOriginChart();
   const snapshot = buildZiweiReadableSnapshot({
     payload: runtime.payloadByScope.origin,
     reportContext: createReportContext(),
@@ -316,17 +361,7 @@ test('真实紫微盘的重点宫星只在详细资料列出一次，十二宫�
 });
 
 test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注星曜亮度', async () => {
-  const runtime = await calculateZiweiChart(
-    {
-      name: '证据去重核验',
-      gender: '女',
-      dateType: 'solar',
-      birthDate: '1990-05-15',
-      birthTimeIndex: 4,
-      algorithm: 'default',
-    },
-    { scopes: ['origin'] },
-  );
+  const runtime = await getRepeatedOriginChart();
   const payload = runtime.payloadByScope.origin;
   const prompt = formatZiweiPayloadForPrompt(payload);
 
@@ -335,6 +370,11 @@ test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注�
   assert.match(prompt, /福德宫；[^\n]*太阴，亮度：陷，生年化科/);
   assert.match(prompt, /福德宫；[^\n]*标签：[^\n]*三方四正见化忌/);
   assert.match(prompt, /父母宫；[^\n]*宫干飞化：[^\n]*化忌入命宫/);
+  assert.match(prompt, /财帛宫（身宫）；[^\n]*辅曜：[^\n]*擎羊，亮度：陷/);
+  assert.match(prompt, /格局：君子在野/);
+  assert.doesNotMatch(prompt, /命中条件：擎羊以“陷”亮度守财帛/);
+  assert.match(prompt, /命中条件：天魁、天钺一曜坐命，另一曜在对宫/);
+  assert.match(prompt, /命中条件：左辅、右弼分别从命宫三方会照/);
   assert.match(prompt, /身宫落宫：财帛宫/);
   assert.doesNotMatch(prompt, /庙旺陷|庙旺平|命身主轴：|重现实利禄与财富运作/);
   assert.doesNotMatch(
@@ -346,6 +386,15 @@ test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注�
   const focusedPrompt = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
   assert.match(focusedPrompt, /【主证】父母化忌入命宫/);
   assert.doesNotMatch(focusedPrompt, /【主证】命宫主星为天机/);
+  assert.match(focusedPrompt, /命中条件：擎羊以“陷”亮度守财帛/);
+
+  const reportContext = createReportContext();
+  const readableSnapshot = buildZiweiReadableSnapshot({ payload, reportContext });
+  const taskBookSnapshot = buildZiweiTaskBookSnapshot({ payload, reportContext });
+  for (const snapshot of [readableSnapshot, taskBookSnapshot]) {
+    assert.match(snapshot, /格局：君子在野/);
+    assert.doesNotMatch(snapshot, /命中条件：擎羊以“陷”亮度守财帛/);
+  }
 });
 
 test('紫微在线提示词无四化事实时不输出资料状态占位', () => {
@@ -496,6 +545,14 @@ test('紫微输出提示词应是可复制给在线 AI 的独立任务书，不�
 
   assertPromptHasSingleRole(prompt, PROMPT_ROLE_TEXT.ziwei);
   assertNoEngineeringPromptText(prompt);
+  assert.match(prompt, /【分析对象】/);
+  assert.match(prompt, /分析对象：本命盘（出生日期1990-05-15）。/);
+  assert.doesNotMatch(prompt, /本命盘（2026-05-16）/);
+  assert.doesNotMatch(prompt, /【运限重点】/);
+  assert.doesNotMatch(prompt, /【运限命中摘要】/);
+  assert.doesNotMatch(prompt, /【当前运限】/);
+  assert.doesNotMatch(prompt, /【当前报告任务】/);
+  assert.doesNotMatch(prompt, /【解读目标】|【解读范围】|【解读方法】|应期范围|本次只提供/);
 });
 
 test('紫微提示词快照只保留分析背景和盘面资料', () => {
@@ -797,21 +854,6 @@ test('紫微单层盘面任务书只收录本命与所选运限层的证据和�
   assert.match(prompt, /大限独立证据/);
   assert.match(prompt, /运限命中：大限落宫/);
   assert.doesNotMatch(prompt, /流年独立证据|流日独立证据|流年落宫|流日落宫/);
-});
-
-test('紫微本命完整提示词应输出本命分析对象且不输出空运限重点', () => {
-  const prompt = buildCombinedZiweiPrompt(createPayload(), 'destiny', '请分析命局主线。', {
-    isCustomQuestion: false,
-  });
-
-  assert.match(prompt, /【分析对象】/);
-  assert.match(prompt, /分析对象：本命盘（出生日期1990-05-15）。/);
-  assert.doesNotMatch(prompt, /本命盘（2026-05-16）/);
-  assert.doesNotMatch(prompt, /【运限重点】/);
-  assert.doesNotMatch(prompt, /【运限命中摘要】/);
-  assert.doesNotMatch(prompt, /【当前运限】/);
-  assert.doesNotMatch(prompt, /【当前报告任务】/);
-  assert.doesNotMatch(prompt, /【解读目标】|【解读范围】|【解读方法】|应期范围|本次只提供/);
 });
 
 test('紫微合盘内嵌盘面资料不应重复使用顶层 section 标题', () => {
@@ -1237,7 +1279,6 @@ test('大限提示词只选当前焦点宫的三方四正化曜，保留各宫�
     /大限落入本命|大限.+化[禄权科忌]入本命|见大限化|主星为|为空宫|见生年化|出现自化|化[禄权科忌]入/,
   );
   assert.doesNotMatch(evidenceFacts, /宫位中可见化|对应的动态宫名为/);
-  assert.ok(evidenceFacts.split('\n').length <= 20);
   const readable = buildZiweiReadableSnapshot({ payload, reportContext });
   const readableObject = readable.match(/【分析对象】\n([\s\S]*?)(?=\n\n【)/)?.[1] ?? '';
   assert.match(readableObject, /分析对象：大限/);

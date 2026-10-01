@@ -8,6 +8,7 @@ import type { QimenLifetimeData } from '../../../../types/divination';
 import { TimeManager } from '../../../../calendar/timeManager';
 import { QIMEN_IMAGE_INTERPRETATION_TASK } from '../../../../prompt/qimen-interpretation';
 import { buildPromptTask } from '../../../../prompt/guidance';
+import { selectQimenClassicPatternsForPrompt } from '../../../qimen-evidence';
 
 type TriggerDate = NonNullable<
   NonNullable<QimenLifetimeData['eventClusters']>[number]['triggerDates']
@@ -228,11 +229,36 @@ export function buildLifetimePrompt(
     );
   }
 
-  if (data.baseChart.classicPatterns && data.baseChart.classicPatterns.length > 0) {
+  const classicPatterns = data.baseChart.classicPatterns ?? [];
+  const visibleClassicPatterns = selectQimenClassicPatternsForPrompt(classicPatterns);
+  if (visibleClassicPatterns.length > 0) {
     lines.push(`盘面吉凶格局：`);
-    for (const cp of data.baseChart.classicPatterns) {
+    for (const cp of visibleClassicPatterns) {
+      const parentName = cp.name.match(/^([日月星]奇得使)临吉门$/u)?.[1];
+      const parentSummaries = parentName
+        ? classicPatterns
+            .filter(
+              (pattern) =>
+                pattern.name === parentName &&
+                pattern.palaces.some((gong) => cp.palaces.includes(gong)),
+            )
+            .map((pattern) =>
+              formatLifetimePatternSummary(pattern.name, pattern.summary).replace(/[；。]+$/u, ''),
+            )
+        : [];
+      const summary = formatLifetimePatternSummary(cp.name, cp.summary);
+      const mergedSummary = [
+        ...new Set([
+          ...parentSummaries,
+          parentSummaries.length
+            ? summary
+                .replace(`${parentName}又临吉门`, '同宫临')
+                .replace(/，得门得使，双重吉利。?$/u, '')
+            : summary,
+        ]),
+      ].join('；');
       lines.push(
-        `  ${cp.name}（${cp.type === 'good' ? '吉' : cp.type === 'bad' ? '凶' : '中性'}）：${formatLifetimePatternSummary(cp.name, cp.summary)}`,
+        `  ${cp.name}（${cp.type === 'good' ? '吉' : cp.type === 'bad' ? '凶' : '中性'}）：${mergedSummary}`,
       );
     }
   }
@@ -265,21 +291,13 @@ export function buildLifetimePrompt(
   // 6. 【人生阶段资料】
   lines.push(`【人生阶段资料】`);
   const basePatternFacts = new Map<string, string>();
-  const classicPatterns = data.baseChart.classicPatterns ?? [];
   const redundantStagePatternFacts = new Set<string>();
   for (const pattern of classicPatterns) {
     const label = pattern.type === 'good' ? '成吉格' : pattern.type === 'bad' ? '逢凶格' : '';
     if (label) {
       const fullFact = `${label}「${pattern.name}」：${pattern.summary}`;
       basePatternFacts.set(fullFact, `${label}「${pattern.name}」`);
-      if (
-        /^[日月星]奇得使$/u.test(pattern.name) &&
-        classicPatterns.some(
-          (item) =>
-            item.name === `${pattern.name}临吉门` &&
-            pattern.palaces.some((gong) => item.palaces.includes(gong)),
-        )
-      ) {
+      if (!visibleClassicPatterns.includes(pattern)) {
         redundantStagePatternFacts.add(fullFact);
       }
     }
@@ -302,11 +320,13 @@ export function buildLifetimePrompt(
     if (st.startDateTime)
       lines.push(`  精确区间：${st.startDateTime}起，至${st.endDateTimeExclusive}前。`);
     if (st.ganzhi) lines.push(`  干支定位：${st.associatedMarkers.join('；')}`);
-    if (st.supportFacts.length > 0) {
-      lines.push(`  宫位支持类象：${formatStageFacts(st.supportFacts)}`);
+    const supportFacts = formatStageFacts(st.supportFacts);
+    const constraintFacts = formatStageFacts(st.constraintFacts);
+    if (supportFacts) {
+      lines.push(`  宫位支持类象：${supportFacts}`);
     }
-    if (st.constraintFacts.length > 0) {
-      lines.push(`  宫位制约类象：${formatStageFacts(st.constraintFacts)}`);
+    if (constraintFacts) {
+      lines.push(`  宫位制约类象：${constraintFacts}`);
     }
   }
   lines.push('');

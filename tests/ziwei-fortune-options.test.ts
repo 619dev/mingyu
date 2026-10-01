@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildZiweiFortuneOptions } from '../packages/core/src/ziwei/fortune-options';
+import { buildZiweiFortuneTimeline } from '../packages/core/src/ziwei/fortune-timeline';
 import {
   buildAstrolabeFromInput,
   buildHoroscopeFromInput,
@@ -16,7 +17,11 @@ test('紫微春节前出生的流年选项按实际虚岁分界，不漏同公�
     birthTimeIndex: 4,
   });
   const astrolabe = await buildAstrolabeFromInput(input);
-  const options = await buildZiweiFortuneOptions(input, { startAge: 1, endAge: 3 });
+  const options = await buildZiweiFortuneOptions(
+    input,
+    { startAge: 1, endAge: 3 },
+    { hourIndex: 4 },
+  );
 
   assert.deepEqual(
     options.yearOptions.map(({ age, year, dateStr, ganZhi }) => ({ age, year, dateStr, ganZhi })),
@@ -75,6 +80,7 @@ test('紫微闰月流月选项覆盖引擎连续月段，流日可跨公历月',
     input,
     { startAge: 34, endAge: 34 },
     {
+      hourIndex: 4,
       selectedYearDateStr: '2023-03-22',
       selectedMonthDateStr: '2023-03-22',
     },
@@ -101,7 +107,7 @@ test('紫微闰月后半段按引擎实际切月日生成流月与流日选项',
   const options = await buildZiweiFortuneOptions(
     input,
     { startAge: 36, endAge: 36 },
-    { selectedYearDateStr: '2025-08-19', selectedMonthDateStr: '2025-08-19' },
+    { hourIndex: 4, selectedYearDateStr: '2025-08-19', selectedMonthDateStr: '2025-08-19' },
   );
   const month = options.monthOptions.find(
     (item) => item.dateStr <= '2025-08-19' && item.endDateStr >= '2025-08-19',
@@ -127,7 +133,11 @@ test('紫微末段虚岁选项支持 2100 年后的真实日期', async () => {
     birthDate: '1992-08-21',
     birthTimeIndex: 4,
   });
-  const options = await buildZiweiFortuneOptions(input, { startAge: 125, endAge: 125 });
+  const options = await buildZiweiFortuneOptions(
+    input,
+    { startAge: 125, endAge: 125 },
+    { hourIndex: 4 },
+  );
   assert.deepEqual(
     options.yearOptions.map(({ age, dateStr, endDateStr }) => ({ age, dateStr, endDateStr })),
     [{ age: 125, dateStr: '2116-02-14', endDateStr: '2117-02-01' }],
@@ -150,6 +160,7 @@ test('紫微生日分界与节令分年交错时，同虚岁按实际流年分�
     input,
     { startAge: 35, endAge: 35 },
     {
+      hourIndex: 4,
       selectedYearDateStr: '2025-02-03',
     },
   );
@@ -174,4 +185,53 @@ test('紫微生日分界与节令分年交错时，同虚岁按实际流年分�
     options.dayOptions.map((day) => day.dateStr),
     ['2025-02-03'],
   );
+});
+
+test('紫微流日选项省略目标时辰时采用当前流时，显式晚子时仍保留不同日柱', async (context) => {
+  context.mock.timers.enable({ apis: ['Date'], now: new Date('2026-08-06T04:30:00Z') });
+  const input = normalizeChartInput({
+    name: '流日钟表与出生时辰分离',
+    gender: '女',
+    dateType: 'solar',
+    birthDate: '1992-08-21',
+    birthTimeIndex: 12,
+    dayDivide: 'forward',
+    ageDivide: 'normal',
+    yearDivide: 'exact',
+    horoscopeDivide: 'exact',
+  });
+  const selectedDate = '2025-02-02';
+  const selectedDecadal = { startAge: 34, endAge: 34 };
+  const selection = { selectedYearDateStr: selectedDate, selectedMonthDateStr: selectedDate };
+  const currentTimeOptions = await buildZiweiFortuneOptions(input, selectedDecadal, selection);
+  const lateZiOptions = await buildZiweiFortuneOptions(input, selectedDecadal, {
+    ...selection,
+    hourIndex: 12,
+  });
+  const timeline = await buildZiweiFortuneTimeline(input, { scope: 'day', dateStr: selectedDate });
+  const selectedDay = currentTimeOptions.dayOptions.find((day) => day.dateStr === selectedDate);
+  const explicitLateZiDay = lateZiOptions.dayOptions.find((day) => day.dateStr === selectedDate);
+  const timelineDay = timeline.periods
+    .flatMap((period) => period.years)
+    .find((year) => year.targetDay)?.targetDay;
+
+  assert.deepEqual(
+    currentTimeOptions.yearOptions.map(({ dateStr, endDateStr, ganZhi }) => ({
+      dateStr,
+      endDateStr,
+      ganZhi,
+    })),
+    [
+      { dateStr: '2025-01-29', endDateStr: '2025-02-02', ganZhi: '甲辰' },
+      { dateStr: '2025-02-03', endDateStr: '2026-02-03', ganZhi: '乙巳' },
+      { dateStr: '2026-02-04', endDateStr: '2026-02-16', ganZhi: '丙午' },
+    ],
+  );
+  assert.equal(timeline.targetHourIndex, 6);
+  assert.equal(selectedDay?.ganZhi, '壬寅');
+  assert.equal(
+    selectedDay?.ganZhi,
+    `${timelineDay?.layer.heavenlyStem}${timelineDay?.layer.earthlyBranch}`,
+  );
+  assert.equal(explicitLateZiDay?.ganZhi, '癸卯');
 });

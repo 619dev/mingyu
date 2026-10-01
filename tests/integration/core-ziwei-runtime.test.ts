@@ -78,7 +78,11 @@ test('npm 紫微资料便捷入口应保留指定范围并返回结构化 payloa
 
 test('npm 紫微运限便捷入口应一次生成流年、流月和流日选项', async () => {
   const input = buildZiweiChartInput(baseDraft);
-  const options = await buildZiweiFortuneOptions(input, { startAge: 1, endAge: 1 });
+  const options = await buildZiweiFortuneOptions(
+    input,
+    { startAge: 1, endAge: 1 },
+    { hourIndex: 4 },
+  );
 
   assert.equal(options.yearOptions.length, 1);
   assert.equal(options.yearOptions[0]?.age, 1);

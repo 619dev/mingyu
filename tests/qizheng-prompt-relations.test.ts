@@ -63,16 +63,12 @@ test('流曜吊照绑定采样时刻并保留落宫关系，角距两端来自�
     const angle = Math.min(raw, 360 - raw);
     assert.ok(Math.abs(angle - aspect.actualAngle) < 0.0001);
     assert.ok(Math.abs(Math.abs(angle - aspect.exactAngle) - aspect.orb) < 0.0001);
-    assert.ok(
-      result.prompt.includes(
-        `采样时刻${flowing.localDateTime}：${aspect.star1}与${aspect.star2}：`,
-      ),
-    );
+    assert.ok(result.prompt.includes(`${aspect.star1}与${aspect.star2}：`));
     const relation = aspect.type === '同宫' ? '合相' : aspect.type;
     const palaceRelation = first.signBranch === second.signBranch ? '同宫' : '异宫';
     assert.ok(
       result.prompt.includes(
-        `采样时刻${flowing.localDateTime}：${aspect.star1}与${aspect.star2}：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`,
+        `${aspect.star1}与${aspect.star2}：${relation}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}；落宫关系${palaceRelation}`,
       ),
     );
     assert.ok(
@@ -86,7 +82,9 @@ test('流曜吊照绑定采样时刻并保留落宫关系，角距两端来自�
       ),
     );
   }
-  assert.match(result.prompt, /采样时刻2022-06-15T12:00:00/);
+  const flowingText = result.prompt.split('【流曜】\n')[1]?.split('【流曜周期】')[0] ?? '';
+  assert.equal((flowingText.match(/落宫时刻 2022-06-15T12:00:00/g) ?? []).length, 1);
+  assert.doesNotMatch(flowingText, /采样时刻2022-06-15T12:00:00/);
   assert.equal(flowing.periodEvents?.mode, 'daily');
 });
 

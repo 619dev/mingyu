@@ -1,6 +1,6 @@
 import type { AnalysisPayloadV1, PalaceFact } from '../../types/analysis';
 import { selectVerifiedZiweiPatterns } from '../iztro/pattern-detection';
-import { isRepeatedZiweiCoLocationCondition } from './pattern-condition-visibility';
+import { isZiweiConditionRestatedByPalaces } from './pattern-condition-visibility';
 import { buildFocusTaskBundle } from './focus';
 import {
   buildEvidenceSummary,
@@ -101,7 +101,7 @@ export function buildZiweiMatchedPatternSummary(
     const displayedConditions = options.displayedPalaces
       ? conditions.filter(
           (condition) =>
-            !isRepeatedZiweiCoLocationCondition(pattern, condition, options.displayedPalaces!),
+            !isZiweiConditionRestatedByPalaces(pattern, condition, options.displayedPalaces!),
         )
       : conditions;
     const uncoveredPalaces = pattern.palace_names.filter(

@@ -723,7 +723,7 @@ function buildPrompt(result: Omit<XuanKongResult, 'evidenceAnalysis' | 'prompt'>
     result.combinations.length
       ? `组合：${result.combinations.map((item) => `${item.name}${item.palaces?.length ? `（${item.palaces.map((gong) => `${GONG_NAMES[gong]}${GONG_DIRECTION[gong]}`).join('、')}）` : ''}`).join('；')}`
       : '',
-    `到山到向：${result.daoShanXiang.summary}`,
+    result.formation === '旺山旺向' ? '' : `到山到向：${result.daoShanXiang.summary}`,
     result.castleGate?.summary ?? '',
     ...(result.measurement?.stability === '山向边界敏感' &&
     result.measurement.candidateMountains?.length

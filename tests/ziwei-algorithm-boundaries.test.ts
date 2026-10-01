@@ -183,7 +183,11 @@ test('春节前晚子跨年盘的完整运限与生日分界沿用次日安星�
   assert.equal(lateZi.decadalTimeline[0]?.dateStr, '2024-02-10');
   assert.deepEqual(lateZi.fortuneTimeline?.periods, nextMorning.fortuneTimeline?.periods);
 
-  const options = await buildZiweiFortuneOptions(lateZiInput, { startAge: 1, endAge: 2 });
+  const options = await buildZiweiFortuneOptions(
+    lateZiInput,
+    { startAge: 1, endAge: 2 },
+    { hourIndex: 12 },
+  );
   assert.deepEqual(
     options.yearOptions.map(({ age, dateStr }) => ({ age, dateStr })),
     [
@@ -203,10 +207,11 @@ test('春节前晚子跨年盘的完整运限与生日分界沿用次日安星�
   const birthday = await buildHoroscopeFromInput(birthdayAstrolabe, birthdayInput, '2025-01-29', 0);
   assert.equal(dayBefore.age.nominalAge, 1);
   assert.equal(birthday.age.nominalAge, 2);
-  const birthdayOptions = await buildZiweiFortuneOptions(birthdayInput, {
-    startAge: 1,
-    endAge: 2,
-  });
+  const birthdayOptions = await buildZiweiFortuneOptions(
+    birthdayInput,
+    { startAge: 1, endAge: 2 },
+    { hourIndex: 12 },
+  );
   assert.deepEqual(
     birthdayOptions.yearOptions.map(({ age, dateStr }) => ({ age, dateStr })),
     [

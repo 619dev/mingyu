@@ -1,7 +1,11 @@
 import { SolarDay } from 'tyme4ts';
 import type { ChartInput } from '../types/chart';
 import type { DecadalTimelineOption } from './iztro/decadal';
-import { buildAstrolabeFromInput, getZiweiFortuneBirthSolarDate } from './iztro/runtime-helpers';
+import {
+  buildAstrolabeFromInput,
+  getDefaultHoroscopeContext,
+  getZiweiFortuneBirthSolarDate,
+} from './iztro/runtime-helpers';
 import { createZiweiHoroscopeResolver } from './iztro/decadal';
 import { buildYearDate, buildZiweiFlowMonths, collectYearBoundaryDates } from './fortune-timeline';
 
@@ -32,6 +36,7 @@ export interface ZiweiDayOption {
 export interface ZiweiFortuneOptionsBuildOptions {
   /** 可省略；省略时从紫微命盘取得换算后的公历出生日期。 */
   birthSolarDate?: string;
+  /** 目标流时；省略时采用当前时刻的时辰。 */
   hourIndex?: number;
   selectedYearDateStr?: string;
   selectedMonthDateStr?: string;
@@ -93,7 +98,7 @@ export async function buildZiweiFortuneOptions(
     throw new Error('紫微运限出生公历日期与当前命盘不一致。');
   }
   const fortuneBirthSolarDate = getZiweiFortuneBirthSolarDate(astrolabe, input);
-  const hourIndex = options.hourIndex ?? input.birthTimeIndex;
+  const hourIndex = options.hourIndex ?? getDefaultHoroscopeContext().hourIndex;
   if (!Number.isInteger(hourIndex) || hourIndex < 0 || hourIndex > 12) {
     throw new Error('紫微运限时辰索引需在 0-12 之间。');
   }
