@@ -17,11 +17,14 @@ import {
 } from '../astrolabe-scope';
 import { getAiApiEndpoint } from './stream-client';
 import {
+  checkChinaDst,
   DEFAULT_CHINA_TIMEZONE_HOURS,
   getTimeIndexFromClock,
+  resolveBirthCalendarClockTime,
   resolveCivilTime,
   TimeManager,
 } from 'mingyu-core/calendar';
+import { SolarDay } from 'tyme4ts';
 import { getWuyunLiuqiYearGanZhi } from 'mingyu-core/wuyun-liuqi';
 import { parseBaziReverseSource, formatBirthTimeInterval } from '../bazi-reverse-input';
 import {
@@ -762,23 +765,126 @@ function assertBaziResultFacts(
   const useTrueSolarTime = locked.useTrueSolarTime === true;
   const timeInfo = result.timeInfo;
   if (!record(timeInfo)) throw new Error('补算返回缺少八字实际出生时辰。');
-  if (!useTrueSolarTime) {
-    if (dateType === 'lunar') {
-      assertDateParts('八字实际农历出生日期', birth, result.lunarDate);
-    } else {
-      assertDateParts('八字实际公历出生日期', birth, result.solarDate);
+  const birthClockTime = record(result.birthClockTime) ? result.birthClockTime : undefined;
+  if (birthClockTime) {
+    const originalClock = resolveBirthCalendarClockTime({
+      dateType: dateType as 'solar' | 'lunar',
+      year: Number(birth.year),
+      month: Number(birth.month),
+      day: Number(birth.day),
+      isLeapMonth: birth.isLeapMonth === true,
+      hour: Number(locked.birthHour),
+      minute: Number(locked.birthMinute),
+      second: Number(locked.birthSecond ?? 0),
+    });
+    for (const field of ['year', 'month', 'day', 'hour', 'minute', 'second']) {
+      assertStructuredField(
+        `八字原始公历出生日期.${field}`,
+        originalClock[field as keyof typeof originalClock],
+        birthClockTime[field],
+      );
     }
-    const expectedTimeIndex =
-      locked.birthSecond !== undefined
-        ? getTimeIndexFromClock(Number(locked.birthHour), Number(locked.birthMinute))
-        : locked.timeIndex;
+  }
+  if (!useTrueSolarTime) {
+    let expectedTimeIndex: unknown;
+    if (birthClockTime) {
+      const { year, month, day, hour, minute } = birthClockTime;
+      if (
+        ![year, month, day, hour, minute].every(
+          (value) => typeof value === 'number' && Number.isInteger(value),
+        )
+      ) {
+        throw new Error('补算返回缺少八字原始精确出生钟表。');
+      }
+      const dst = checkChinaDst(
+        Number(year),
+        Number(month),
+        Number(day),
+        Number(hour),
+        Number(minute),
+      );
+      const useChinaDst =
+        dst.inDst &&
+        (locked.applyChinaDst === true ||
+          (locked.timeZoneId === 'Asia/Shanghai' &&
+            resolveCivilTime({
+              year: Number(year),
+              month: Number(month),
+              day: Number(day),
+              hour: Number(hour),
+              minute: Number(minute),
+              second: Number(birthClockTime.second ?? 0),
+              timezone: typeof locked.timezone === 'number' ? locked.timezone : undefined,
+              timeZoneId: 'Asia/Shanghai',
+            }).timezone === 9));
+      const adjusted = new Date(
+        Date.UTC(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hour),
+          Number(minute),
+          Number(birthClockTime.second ?? 0),
+        ) + (useChinaDst ? dst.offsetMinutes * 60_000 : 0),
+      );
+      const adjustedDate = {
+        year: adjusted.getUTCFullYear(),
+        month: adjusted.getUTCMonth() + 1,
+        day: adjusted.getUTCDate(),
+      };
+      assertDateParts('八字实际校正公历出生日期', adjustedDate, result.solarDate);
+      const lunar = SolarDay.fromYmd(
+        adjustedDate.year,
+        adjustedDate.month,
+        adjustedDate.day,
+      ).getLunarDay();
+      assertDateParts(
+        '八字实际校正农历出生日期',
+        { year: lunar.getYear(), month: lunar.getMonth(), day: lunar.getDay() },
+        result.lunarDate,
+      );
+      expectedTimeIndex = getTimeIndexFromClock(adjusted.getUTCHours(), adjusted.getUTCMinutes());
+    } else {
+      if (dateType === 'lunar') {
+        assertDateParts('八字实际农历出生日期', birth, result.lunarDate);
+      } else {
+        assertDateParts('八字实际公历出生日期', birth, result.solarDate);
+      }
+      expectedTimeIndex =
+        locked.birthSecond !== undefined
+          ? getTimeIndexFromClock(Number(locked.birthHour), Number(locked.birthMinute))
+          : locked.timeIndex;
+    }
     assertStructuredField('bazi.result.timeInfo.index', expectedTimeIndex, timeInfo.index);
     return;
   }
 
   const timing = record(result.timing) ? result.timing : undefined;
   const { standardTime, correctedTime } = assertTrueSolarEvidence('八字', timing);
+  if (birthClockTime) {
+    for (const field of ['year', 'month', 'day', 'hour', 'minute', 'second']) {
+      assertStructuredField(
+        `bazi.timing.standardTime.${field}`,
+        birthClockTime[field],
+        standardTime[field],
+      );
+    }
+  }
   assertDateParts('八字实际校正公历出生日期', correctedTime, result.solarDate);
+  const correctedLunar = SolarDay.fromYmd(
+    Number(correctedTime.year),
+    Number(correctedTime.month),
+    Number(correctedTime.day),
+  ).getLunarDay();
+  assertDateParts(
+    '八字实际校正农历出生日期',
+    {
+      year: correctedLunar.getYear(),
+      month: correctedLunar.getMonth(),
+      day: correctedLunar.getDay(),
+    },
+    result.lunarDate,
+  );
   assertStructuredField(
     'bazi.result.timeInfo.index',
     getTimeIndexFromClock(Number(correctedTime.hour), Number(correctedTime.minute)),

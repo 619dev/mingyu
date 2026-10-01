@@ -33,6 +33,23 @@ test('统一客户端应提供出生盘、占法、能力发现和稳定序列�
   assert.equal(client.serialize({ b: 2, a: 1 }), '{"a":1,"b":2}');
 });
 
+test('统一客户端太乙时计保留阴九、十局的客算与将参', () => {
+  const client = createMingyuClient();
+  for (const [instant, bureau, taiyiPalace, shiJiPosition, guestCount, general, assistant] of [
+    ['2026-06-25T08:30:00Z', 9, 7, '酉', 33, 3, 9],
+    ['2026-06-25T10:30:00Z', 10, 6, '乾', 34, 4, 2],
+  ] as const) {
+    const result = client.taiyi({ scope: 'hour', date: new Date(instant) });
+    assert.equal(result.yinYang, '阴遁');
+    assert.equal(result.bureau, bureau);
+    assert.equal(result.taiyiPalace, taiyiPalace);
+    assert.equal(result.shiJiPosition, shiJiPosition);
+    assert.equal(result.guestCount, guestCount);
+    assert.equal(result.guestGeneral, general);
+    assert.equal(result.guestAssistant, assistant);
+  }
+});
+
 test('统一客户端八字结果保留真实出生钟表且传统时辰不生成精确钟表', async () => {
   const client = createMingyuClient();
   const birthProfile: BirthProfile = {

@@ -587,7 +587,7 @@ const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
     radical: radical ?? undefined,
     wuxing,
     pinyin: CHARACTER_READING_NOTES[simplified]?.readings.join('、') ?? pinyin ?? undefined,
-    ...(CHARACTER_READING_NOTES[simplified]
+    ...(CHARACTER_READING_NOTES[simplified]?.note
       ? { readingNote: CHARACTER_READING_NOTES[simplified].note }
       : {}),
     definition,
@@ -603,6 +603,29 @@ const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
   }),
 );
 for (const item of allCharacters) {
+  characterData[item.simplified] = item;
+  characterData[item.traditional] = item;
+}
+const manualCommonCharacters: CharacterDetail[] = [
+  {
+    char: '为',
+    simplified: '为',
+    traditional: '為',
+    kangxiStrokes: 12,
+    radical: '爪',
+    wuxing: null,
+    pinyin: CHARACTER_READING_NOTES['为'].readings.join('、'),
+    readingNote: CHARACTER_READING_NOTES['为'].note,
+    definition: '做、成为或当作；也可表示原因、对象或目的。',
+    simplifiedStrokes: 4,
+    traditionalStrokes: 9,
+    structure: null,
+    kangxiVolume: null,
+    kangxiSection: null,
+    common: true,
+  },
+];
+for (const item of manualCommonCharacters) {
   characterData[item.simplified] = item;
   characterData[item.traditional] = item;
 }

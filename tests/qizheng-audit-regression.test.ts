@@ -262,6 +262,34 @@ test('恩难相位以合相描述零度吊照，不把跨宫关系写成同宫',
   assert.ok(result.aspectInteraction.every((item) => !item.includes('同宫吊照')));
 });
 
+test('实际七政盘三项恩难交会在完整任务书中保留全部角色', () => {
+  const chart = generateQizheng({
+    year: 2020,
+    month: 8,
+    day: 15,
+    hour: 12,
+    timezone: 8,
+    latitude: 39.9,
+    longitude: 116.4,
+  });
+  assert.equal(chart.mingZhu, '火');
+  assert.deepEqual(chart.enNan?.aspectInteraction, [
+    '难星月孛(水余)与命主形成合相吊照',
+    '难星辰星(水)与命主形成三方吊照',
+    '恩星岁星(木)与命主形成四正吊照',
+  ]);
+  const jupiterAspect = chart.aspects.find(
+    (item) => item.star1 === '荧惑(火)' && item.star2 === '岁星(木)',
+  );
+  assert.equal(jupiterAspect?.type, '四正');
+  assert.ok(jupiterAspect && Math.abs(jupiterAspect.actualAngle - 90) <= jupiterAspect.allowedOrb);
+  for (const role of ['命主难星：月孛(水余)', '命主难星：辰星(水)', '命主恩星：岁星(木)']) {
+    assert.ok(chart.enNan?.summary.includes(role));
+    assert.ok(chart.prompt.includes(role));
+    assert.equal(chart.prompt.split(role).length - 1, 1);
+  }
+});
+
 test('恩难只采用本命当前黄经支持的吊照，不沿用旧角距或缺位星曜', () => {
   const base = {
     birthUtcTimestamp: Date.parse('2024-06-21T12:00:00Z'),

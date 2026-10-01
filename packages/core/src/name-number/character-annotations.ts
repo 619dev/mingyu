@@ -7,8 +7,8 @@ export const CHARACTER_READING_NOTES: Readonly<
     string,
     {
       readings: readonly string[];
-      note: string;
-      surname: string;
+      note?: string;
+      surname?: string;
     }
   >
 > = {
@@ -41,6 +41,38 @@ export const CHARACTER_READING_NOTES: Readonly<
     readings: ['pò', 'pú', 'piáo'],
     note: 'pò 可指树皮或朴树；pú 表质朴，也见姓氏；piáo 亦用于姓氏。姓氏存在 pú、piáo 两种辞典读法，应以本人及家族用法为准。',
     surname: 'pú、piáo',
+  },
+  重: {
+    readings: ['zhòng', 'chóng'],
+    note: 'zhòng 用于重量、重要等义；chóng 用于重复、重叠等义。作为姓名时按本人实际读法确定。',
+  },
+  行: {
+    readings: ['xíng', 'xìng', 'háng', 'hàng'],
+    note: '字典列有多种读音，具体读法随词义和用法区分；作为姓名时按本人实际读法确定。',
+  },
+  长: {
+    readings: ['cháng', 'zhǎng'],
+    note: 'cháng 用于长度、长短等义；zhǎng 用于长幼、增长等义。作为姓名时按本人实际读法确定。',
+  },
+  分: {
+    readings: ['fēn', 'fèn'],
+    note: 'fēn 用于分开、分配、辨别等义；fèn 用于名分、职责、情分等义。',
+  },
+  份: { readings: ['fèn'] },
+  吩: { readings: ['fēn'] },
+  氛: { readings: ['fēn'] },
+  汾: { readings: ['fén'] },
+  忿: { readings: ['fèn'] },
+  纷: { readings: ['fēn'] },
+  芬: { readings: ['fēn'] },
+  粉: { readings: ['fěn'] },
+  焚: { readings: ['fén'] },
+  坟: { readings: ['fén'] },
+  愤: { readings: ['fèn'] },
+  粪: { readings: ['fèn'] },
+  为: {
+    readings: ['wéi', 'wèi'],
+    note: 'wéi 用于作为、成为等义；wèi 用于表示原因、对象或目的。',
   },
   柏: {
     readings: ['bó', 'bǎi'],

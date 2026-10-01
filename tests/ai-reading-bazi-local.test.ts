@@ -119,3 +119,144 @@ test('浏览器八字补算使用本地 Worker 并保留主体核验、取消和
     else Reflect.deleteProperty(globalThis, 'Worker');
   }
 });
+
+test('八字补算按原始钟表核主体，并按校正日期核盘面与时辰', async () => {
+  const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
+  let altered: 'none' | 'birth-clock' | 'chart-date' = 'none';
+  class LocalWorker {
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    onerror: ((event: ErrorEvent) => void) | null = null;
+    onmessageerror: (() => void) | null = null;
+
+    postMessage(message: { id: string; calculationRequest: Record<string, unknown> }) {
+      queueMicrotask(() => {
+        try {
+          const result = calculateBaziReading(message.calculationRequest);
+          if (altered === 'birth-clock') result.result.birthClockTime!.day = 2;
+          if (altered === 'chart-date') result.result.solarDate.day = 30;
+          this.onmessage?.({ data: { id: message.id, type: 'result', result } } as MessageEvent);
+        } catch (error) {
+          this.onerror?.({ message: String(error) } as ErrorEvent);
+        }
+      });
+    }
+
+    terminate() {}
+  }
+  Object.defineProperty(globalThis, 'Worker', {
+    configurable: true,
+    writable: true,
+    value: LocalWorker,
+  });
+  const base = {
+    gender: 'female' as const,
+    birthHour: 0,
+    birthMinute: 30,
+    birthSecond: 42,
+    timeIndex: 0,
+    useTrueSolarTime: false,
+  };
+  const action = {
+    kind: 'calculate' as const,
+    method: 'bazi',
+    input: { baziFortuneScope: 'natal', question: '核对出生日期和时辰。' },
+  };
+  const subjectFor = (id: string, locked: Record<string, unknown>): ReadingSubjectSnapshot => ({
+    id,
+    source: 'bazi',
+    allowedMethods: ['bazi'],
+    range: {},
+    lockedInputs: { bazi: locked },
+  });
+  const dst = subjectFor('中国夏令时跨日', {
+    ...base,
+    year: 1988,
+    month: 6,
+    day: 1,
+    dateType: 'solar',
+    timezone: 8,
+    applyChinaDst: true,
+  });
+  try {
+    for (const [label, locked] of [
+      ['中国夏令时', dst],
+      [
+        'IANA 历史夏令时',
+        subjectFor('IANA 历史夏令时跨日', {
+          ...base,
+          year: 1988,
+          month: 6,
+          day: 1,
+          dateType: 'solar',
+          timeZoneId: 'Asia/Shanghai',
+        }),
+      ],
+      [
+        '农历输入夏令时',
+        subjectFor('农历输入夏令时跨日', {
+          ...base,
+          year: 1988,
+          month: 4,
+          day: 17,
+          dateType: 'lunar',
+          timezone: 8,
+          applyChinaDst: true,
+        }),
+      ],
+    ] as const) {
+      const resource = await executeReadingAction(action, undefined, locked);
+      assert.equal(resource.usable, true, label);
+      const result = resource.structured as ReturnType<typeof calculateBaziReading>['result'];
+      assert.deepEqual(result.birthClockTime, {
+        year: 1988,
+        month: 6,
+        day: 1,
+        hour: 0,
+        minute: 30,
+        second: 42,
+      });
+      assert.deepEqual(result.solarDate, { year: 1988, month: 5, day: 31 });
+      assert.deepEqual(
+        { year: result.lunarDate.year, month: result.lunarDate.month, day: result.lunarDate.day },
+        { year: 1988, month: 4, day: 16 },
+      );
+      assert.equal(result.timeInfo.index, 12);
+    }
+
+    const trueSolar = await executeReadingAction(
+      action,
+      undefined,
+      subjectFor('真太阳时跨日', {
+        ...base,
+        year: 2024,
+        month: 5,
+        day: 19,
+        dateType: 'solar',
+        timezone: 8,
+        useTrueSolarTime: true,
+        birthLongitude: 75,
+      }),
+    );
+    assert.equal(trueSolar.usable, true);
+    const trueSolarResult = trueSolar.structured as ReturnType<
+      typeof calculateBaziReading
+    >['result'];
+    assert.deepEqual(trueSolarResult.birthClockTime, {
+      year: 2024,
+      month: 5,
+      day: 19,
+      hour: 0,
+      minute: 30,
+      second: 42,
+    });
+    assert.deepEqual(trueSolarResult.solarDate, { year: 2024, month: 5, day: 18 });
+
+    altered = 'birth-clock';
+    await assert.rejects(executeReadingAction(action, undefined, dst), /原始公历出生日期/);
+    altered = 'chart-date';
+    await assert.rejects(executeReadingAction(action, undefined, dst), /实际校正公历出生日期/);
+  } finally {
+    if (originalWorker) Object.defineProperty(globalThis, 'Worker', originalWorker);
+    else Reflect.deleteProperty(globalThis, 'Worker');
+  }
+});

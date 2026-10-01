@@ -101,15 +101,11 @@ const WENCHANG_POINTS = Array.from(
   '申酉戌乾乾亥子丑艮寅卯辰巽巳午未坤坤申酉戌乾乾亥子丑艮寅卯辰巽巳午未坤坤申酉戌乾乾亥子丑艮寅卯辰巽巳午未坤坤申酉戌乾乾亥子丑艮寅卯辰巽巳午未坤坤',
 );
 const YIN_WENCHANG_POINTS = Array.from(
-  '寅卯辰巽巽巳午未坤申酉戌乾亥子丑艮艮寅卯辰巽巽巳午未坤申酉戌乾亥子丑艮艮寅卯辰巽巽巳午未坤申酉乾乾亥子丑艮艮寅卯辰巽巽巳午未坤申酉戌乾亥子丑艮艮',
+  '寅卯辰巽巽巳午未坤申酉戌乾亥子丑艮艮寅卯辰巽巽巳午未坤申酉戌乾亥子丑艮艮寅卯辰巽巽巳午未坤申酉戌乾亥子丑艮艮寅卯辰巽巽巳午未坤申酉戌乾亥子丑艮艮',
 );
 const SHIJI_POINTS = Array.from(
   '坤戌亥丑寅辰巳坤酉乾丑寅辰午坤酉亥子艮辰巳未申戌亥艮卯巽未申戌子艮卯巳午坤戌亥丑寅辰巳坤酉乾丑寅辰午坤酉亥子艮辰巳未申戌亥艮卯巽未申戌子艮卯巳午',
 );
-/** 阴七十二局始击大义（亥），阳七十二局始击大威（午）。 */
-const YIN_SHIJI_POINTS = [...SHIJI_POINTS];
-YIN_SHIJI_POINTS[71] = '亥';
-
 /** 七十二局主算、客算、定算立成。 */
 const YEAR_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [7, 13, 13],
@@ -155,7 +151,7 @@ const YEAR_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [27, 16, 3],
   [27, 12, 34],
   [8, 17, 1],
-  [23, 14, 32],
+  [33, 14, 32],
   [32, 7, 25],
   [5, 16, 29],
   [4, 8, 17],
@@ -195,8 +191,8 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [17, 26, 10],
   [2, 3, 3],
   [1, 7, 7],
-  [7, 34, 27],
-  [1, 24, 25],
+  [7, 33, 27],
+  [1, 34, 25],
   [6, 26, 19],
   [35, 23, 8],
   [12, 37, 12],
@@ -219,7 +215,7 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [2, 8, 15],
   [27, 28, 28],
   [27, 26, 26],
-  [26, 38, 15],
+  [26, 18, 15],
   [26, 22, 9],
   [25, 10, 1],
   [25, 9, 34],
@@ -234,11 +230,11 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [38, 31, 25],
   [7, 1, 31],
   [6, 32, 25],
-  [1, 19, 14],
+  [1, 29, 14],
   [16, 1, 17],
   [16, 31, 15],
-  [25, 29, 4],
-  [33, 9, 16],
+  [15, 29, 4],
+  [33, 7, 16],
   [32, 1, 8],
   [32, 8, 1],
   [16, 18, 18],
@@ -248,9 +244,9 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [18, 1, 34],
   [10, 35, 25],
   [27, 12, 28],
-  [26, 30, 25],
+  [26, 3, 25],
   [25, 4, 12],
-  [16, 3, 3],
+  [16, 33, 3],
   [15, 23, 34],
   [10, 16, 23],
   [25, 26, 26],
@@ -258,7 +254,7 @@ const YIN_CALCULATIONS: ReadonlyArray<readonly [number, number, number]> = [
   [24, 16, 13],
   [32, 28, 15],
   [31, 16, 7],
-  [31, 25, 1],
+  [31, 15, 1],
 ];
 
 const YANG_JISHEN_BY_YEAR_BRANCH: Record<string, string> = {
@@ -660,7 +656,7 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
   const yinYang = resolveYinYang(scope, termReferenceDate);
   const taiyiPosition = (yinYang === '阳遁' ? TAIYI_POINTS : YIN_TAIYI_POINTS)[index];
   const wenChangPosition = (yinYang === '阳遁' ? WENCHANG_POINTS : YIN_WENCHANG_POINTS)[index];
-  const shiJiPosition = (yinYang === '阳遁' ? SHIJI_POINTS : YIN_SHIJI_POINTS)[index];
+  const shiJiPosition = SHIJI_POINTS[index];
   const taiyiPalace = pointToPalace(taiyiPosition);
   const wenChangPalace = pointToPalace(wenChangPosition);
   const shiJiPalace = pointToPalace(shiJiPosition);

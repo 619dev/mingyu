@@ -194,7 +194,7 @@ export function evaluateQizhengEnNan(params: {
   }
 
   const interactionDesc = interactionRoleFacts.length
-    ? [...new Set(interactionRoleFacts)].slice(0, 2).join('；')
+    ? [...new Set(interactionRoleFacts)].join('；')
     : '';
 
   const summary = `【七政恩难】${sect}（${sectSummary}）；命主：${mingZhu}（${mingElement}）${interactionDesc ? `；${interactionDesc}` : ''}；按出生时刻与当地太阳高度阈值划分昼夜（太阳上缘-0.833°）`;

@@ -7001,13 +7001,42 @@ test('公开 API 太乙应支持月日时四计', async () => {
 test('公开 API 太乙阴遁局式与完整任务书共用主客算、宫目和将参事实', async () => {
   for (const example of [
     {
+      input: { year: 2026, month: 6, day: 25, hour: 16, minute: 30 },
+      instant: '2026-06-25T08:30:00.000Z',
+      bureau: 9,
+      taiyiPalace: 7,
+      wenChangPosition: '坤',
+      shiJiPosition: '酉',
+      lordCount: 7,
+      guestCount: 33,
+      lordGeneral: 7,
+      lordAssistant: 1,
+      guestGeneral: 3,
+      guestAssistant: 9,
+    },
+    {
+      input: { year: 2026, month: 6, day: 25, hour: 18, minute: 30 },
+      instant: '2026-06-25T10:30:00.000Z',
+      bureau: 10,
+      taiyiPalace: 6,
+      wenChangPosition: '申',
+      shiJiPosition: '乾',
+      lordCount: 1,
+      guestCount: 34,
+      lordGeneral: 1,
+      lordAssistant: 3,
+      guestGeneral: 4,
+      guestAssistant: 2,
+    },
+    {
       input: { year: 2026, month: 6, day: 27, hour: 16, minute: 30 },
       instant: '2026-06-27T08:30:00.000Z',
       bureau: 33,
+      taiyiPalace: 7,
       wenChangPosition: '子',
       shiJiPosition: '艮',
       lordCount: 26,
-      guestCount: 38,
+      guestCount: 18,
       lordGeneral: 6,
       lordAssistant: 8,
       guestGeneral: 8,
@@ -7017,10 +7046,11 @@ test('公开 API 太乙阴遁局式与完整任务书共用主客算、宫目和
       input: { year: 2026, month: 6, day: 30, hour: 22, minute: 30 },
       instant: '2026-06-30T14:30:00.000Z',
       bureau: 72,
+      taiyiPalace: 1,
       wenChangPosition: '艮',
-      shiJiPosition: '亥',
+      shiJiPosition: '午',
       lordCount: 31,
-      guestCount: 25,
+      guestCount: 15,
       lordGeneral: 1,
       lordAssistant: 3,
       guestGeneral: 5,
@@ -7044,6 +7074,7 @@ test('公开 API 太乙阴遁局式与完整任务书共用主客算、宫目和
       assert.equal(result.yinYang, '阴遁');
       for (const key of [
         'bureau',
+        'taiyiPalace',
         'wenChangPosition',
         'shiJiPosition',
         'lordCount',
@@ -7076,6 +7107,33 @@ test('公开 API 太乙阴遁局式与完整任务书共用主客算、宫目和
     }
     assertPromptIsPortableTaskText(prompt);
   }
+});
+
+test('公开 API 太乙阳四十四局的主算与完整任务书一致', async () => {
+  const input = { scope: 'hour', year: 2025, month: 12, day: 24, hour: 13, minute: 0 };
+  const calculated = await callApi('metaphysics/taiyi/calculate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const prompted = await callApi('metaphysics/taiyi/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...input, responseMode: 'full' }),
+  });
+  assert.equal(calculated.response.status, 200);
+  assert.equal(prompted.response.status, 200);
+  for (const result of [calculated.body.data, prompted.body.data.result]) {
+    assert.equal(result.yinYang, '阳遁');
+    assert.equal(result.bureau, 44);
+    assert.equal(result.taiyiPalace, 8);
+    assert.equal(result.wenChangPosition, '丑');
+    assert.equal(result.lordCount, 33);
+    assert.equal(result.lordGeneral, 3);
+    assert.equal(result.lordAssistant, 9);
+  }
+  assert.ok(prompted.body.data.prompt.includes('主算 33'));
+  assertPromptIsPortableTaskText(prompted.body.data.prompt);
 });
 
 test('公开 API 玄空飞星应返回真实下卦局型', async () => {
