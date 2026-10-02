@@ -229,16 +229,33 @@ test('七政本命区间支持单秒范围与进度回调', () => {
   assert.equal(range.branches[0]?.startTimestamp, start);
   assert.equal(range.branches[0]?.endTimestamp, start + SECOND);
   assert.deepEqual(progress, [[1, 1]]);
+
+  const mutableInput = inputAt(start);
+  const mutableRange = { startTimestamp: start, endTimestamp: start + 2 * SECOND };
+  const lockedRange = generateQizhengBirthRange(mutableInput, mutableRange, {
+    onProgress: (completed) => {
+      if (completed === 1) {
+        mutableInput.longitude = 0;
+        mutableRange.startTimestamp += SECOND;
+        mutableRange.endTimestamp += SECOND;
+      }
+    },
+  });
+  assert.equal(lockedRange.source.startTimestamp, start);
+  assert.equal(lockedRange.source.endTimestamp, start + 2 * SECOND);
+  assert.equal(lockedRange.branches.at(-1)?.endTimestamp, start + 2 * SECOND);
+  assert.equal(lockedRange.branches.at(-1)?.representative.calculationContext.longitude, 116.4);
 });
 
 test('七政本命区间支持取消且不吞掉取消状态', () => {
+  const start = beijingTimestamp('2024-02-19 11:24:48');
   const controller = new AbortController();
   assert.throws(
     () =>
       generateQizhengBirthRange(
-        inputAt(beijingTimestamp('2024-02-19 11:24:48')),
+        inputAt(start),
         {
-          startTimestamp: beijingTimestamp('2024-02-19 11:24:48'),
+          startTimestamp: start,
           endTimestamp: beijingTimestamp('2024-02-19 11:24:51'),
         },
         {
@@ -246,6 +263,23 @@ test('七政本命区间支持取消且不吞掉取消状态', () => {
             if (completed === 1) controller.abort();
           },
           signal: controller.signal,
+        },
+      ),
+    /已取消/u,
+  );
+
+  const lastSampleController = new AbortController();
+  assert.throws(
+    () =>
+      generateQizhengBirthRange(
+        inputAt(start),
+        { startTimestamp: start, endTimestamp: start + SECOND },
+        {
+          onProgress: (completed, total) => {
+            assert.deepEqual([completed, total], [1, 1]);
+            lastSampleController.abort();
+          },
+          signal: lastSampleController.signal,
         },
       ),
     /已取消/u,

@@ -728,13 +728,15 @@ export function generateQizhengBirthRange(
   assertNatalOnlyInput(input);
   assertInputMatchesStart(input, range.startTimestamp);
   assertNotAborted(options.signal);
+  const lockedInput = { ...input };
+  const { startTimestamp, endTimestamp } = range;
 
   let active: ActiveBranch | undefined;
   const branches: QizhengBirthRangeBranch[] = [];
   for (let completed = 0; completed < total; completed += 1) {
     assertNotAborted(options.signal);
-    const timestamp = range.startTimestamp + completed * SECOND_MILLISECONDS;
-    const result = generateQizheng(inputAtTimestamp(input, timestamp));
+    const timestamp = startTimestamp + completed * SECOND_MILLISECONDS;
+    const result = generateQizheng(inputAtTimestamp(lockedInput, timestamp));
     const currentFingerprint = fingerprint(result);
     if (!active) {
       active = {
@@ -765,15 +767,16 @@ export function generateQizhengBirthRange(
     options.onProgress?.(completed + 1, total);
   }
 
+  assertNotAborted(options.signal);
   if (!active) throw new Error('七政本命区间没有可计算的整秒样本。');
-  branches.push(finalizeBranch(active, range.endTimestamp));
+  branches.push(finalizeBranch(active, endTimestamp));
 
   return {
     coverage: 'natal',
     status: branches.length === 1 ? 'stable' : 'conditional',
     source: {
-      startTimestamp: range.startTimestamp,
-      endTimestamp: range.endTimestamp,
+      startTimestamp,
+      endTimestamp,
       endExclusive: true,
       timezone: 'Asia/Shanghai',
       offsetHours: CHINA_OFFSET_HOURS,

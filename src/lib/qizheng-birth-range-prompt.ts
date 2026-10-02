@@ -24,19 +24,29 @@ function formatNatalFacts(data: QizhengResult): string[] {
   const context = data.calculationContext;
   const enNan = data.enNan;
   return [
-    `命宫${getQizhengSignBranch(data.mingGong)}、身宫${getQizhengSignBranch(data.shenGong)}、命主${data.mingZhu}。`,
+    `命宫${getQizhengSignBranch(data.mingGong)}。`,
+    `身宫${getQizhengSignBranch(data.shenGong)}。`,
+    `命主${data.mingZhu}。`,
     `十二宫：${data.twelvePalaces.map((item) => `${item.palace}在${item.signBranch}`).join('；')}。`,
     ...data.stars.map(
       (star) =>
         `${star.name}：${star.xiu}宿，${star.signBranch}宫${star.palace}${star.dignity && star.dignity !== '—' ? `，${star.dignity}` : ''}${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
     ),
-    `吊照：${data.aspects.length ? data.aspects.map((item) => `${item.star1}与${item.star2}${formatAspectType(item.type)}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
-    `神煞：${data.shensha.map((item) => `${item.name}${item.value}`).join('；')}。`,
+    ...(data.aspects.length
+      ? data.aspects.map(
+          (item) =>
+            `吊照：${item.star1}与${item.star2}${formatAspectType(item.type)}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度。`,
+        )
+      : ['吊照：容许度内无主要吊照。']),
+    ...data.shensha.map((item) => `神煞：${item.name}${item.value}。`),
     ...(enNan
       ? [
           `昼夜分金：${enNan.sect}；${enNan.sectSummary}。按出生时刻与当地太阳高度阈值划分，太阳上缘负零点八三三度。`,
-          `命主五行${enNan.mingElement}；恩星${enNan.enStars.join('、')}；难星${enNan.nanStars.join('、')}；仇星${enNan.chouStars.join('、')}；用星${enNan.yongStars.join('、')}。`,
-          `恩难交会：${enNan.aspectInteraction.length ? enNan.aspectInteraction.join('；') : '无对应交会'}。`,
+          `命主五行${enNan.mingElement}。`,
+          `恩星${enNan.enStars.join('、')}；难星${enNan.nanStars.join('、')}；仇星${enNan.chouStars.join('、')}；用星${enNan.yongStars.join('、')}。`,
+          ...(enNan.aspectInteraction.length
+            ? enNan.aspectInteraction.map((item) => `恩难交会：${item}。`)
+            : ['恩难交会：无对应交会。']),
         ]
       : []),
     `月相：${context.moonPhase.eightPhaseName}，${context.moonPhase.waxing ? '盈' : '亏'}；${context.moonPhase.currentPrincipalPhase ? `当前四正月相${context.moonPhase.currentPrincipalPhase.name}，` : ''}前一四正月相${context.moonPhase.previousPrincipalPhase.name}，后一四正月相${context.moonPhase.nextPrincipalPhase.name}。`,
@@ -48,6 +58,11 @@ export function formatQizhengFlowRangeFacts(
   data: QizhengResult,
   period?: QizhengFlowBirthRangeBranch['periodEvents'],
 ): string[] {
+  if (!data.flowingStars) return [];
+  return [...formatFlowDiscreteFacts(data), ...formatFlowPeriodFacts(period)];
+}
+
+function formatFlowDiscreteFacts(data: QizhengResult): string[] {
   const flow = data.flowingStars;
   if (!flow) return [];
   const limits = data.timeLords;
@@ -55,9 +70,14 @@ export function formatQizhengFlowRangeFacts(
     '流曜落宫落宿：',
     ...flow.stars.map(
       (star) =>
-        `${star.name}：${star.signBranch}宫${star.palace}，${star.xiu}宿${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
+        `流曜${star.name}：${star.signBranch}宫${star.palace}，${star.xiu}宿${star.retrograde === undefined ? '' : `，${star.retrograde ? '逆行' : '顺行'}`}。`,
     ),
-    `流曜与本命吊照：${flow.transits.length ? flow.transits.map((item) => `${item.star1}与${item.star2}${formatAspectType(item.type)}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度`).join('；') : '容许度内无主要吊照'}。`,
+    ...(flow.transits.length
+      ? flow.transits.map(
+          (item) =>
+            `流曜与本命吊照：${item.star1}与${item.star2}${formatAspectType(item.type)}，${item.closeness}，目标角${item.exactAngle}度、容许偏差${item.allowedOrb}度。`,
+        )
+      : ['流曜与本命吊照：容许度内无主要吊照。']),
     ...(limits
       ? [
           `行限：${limits.gender === 'male' ? '男命' : '女命'}，生年干${limits.yearStem}属${limits.yearStemYinYang}，${limits.direction}，虚岁${limits.nominalAge}；${limits.ageNote}。`,
@@ -65,6 +85,11 @@ export function formatQizhengFlowRangeFacts(
           `洞微宫序与各宫年数：${limits.majorPalaceYears.map((item) => `${item.signBranch}宫${item.palace}${item.years === null ? '依命度定年数' : `${item.years}年`}`).join('；')}。`,
         ]
       : ['行限：性别未提供。']),
+  ];
+}
+
+function formatFlowPeriodFacts(period?: QizhengFlowBirthRangeBranch['periodEvents']): string[] {
+  return [
     '周期事件（北京时间；按本段出生秒核对）：',
     ...(period
       ? period.events.length
@@ -84,10 +109,22 @@ export function formatQizhengBirthRangePrompt(
   const first = range.branches[0].representative;
   const context = first.calculationContext;
   const flow = first.flowingStars;
+  const natalFacts = range.branches.map((branch) => formatNatalFacts(branch.representative));
+  const flowFacts = range.branches.map((branch) => formatFlowDiscreteFacts(branch.representative));
+  const commonNatal =
+    range.branches.length > 1
+      ? natalFacts[0].filter((fact) => natalFacts.every((branch) => branch.includes(fact)))
+      : [];
+  const commonFlow =
+    range.branches.length > 1
+      ? flowFacts[0].filter((fact) => flowFacts.every((branch) => branch.includes(fact)))
+      : [];
+  const commonNatalSet = new Set(commonNatal);
+  const commonFlowSet = new Set(commonFlow);
   return [
     flow ? '【七政四余流曜与出生区间】' : '【七政四余本命出生区间】',
     `出生范围（北京时间）：${formatQizhengRangeTime(range.source.startTimestamp)} 至 ${formatQizhengRangeTime(range.source.endTimestamp)}，起点含、终点不含。`,
-    `区间按整秒核对，共${range.sampleCount}个时刻、${range.branches.length}段。各段列出保持一致的命身宫、星曜落宫落宿、吊照与恩难关系，并汇总连续量。`,
+    `区间按整秒核对，共${range.sampleCount}个时刻、${range.branches.length}段。${range.branches.length > 1 ? '共同盘面先列，各段列出变化的命身宫、星曜落宫落宿、吊照与恩难关系，并汇总连续量。' : '本段列出命身宫、星曜落宫落宿、吊照与恩难关系，并汇总连续量。'}`,
     '【任务】',
     flow
       ? '依据《果老星宗》的落宫、落宿、吊照及恩难仇用关系，结合目标时段的流曜、小限与太岁解读。区分整个出生范围共同成立的判断与各出生分段的差异，逐项写明出生时段和目标周期。周期事件的时刻范围表示出生时间不确定带来的变化。'
@@ -102,14 +139,15 @@ export function formatQizhengBirthRangePrompt(
     '【时间与地点】',
     `东八区；纬度${context.latitude}、经度${context.longitude}；传统宫位采用${context.palaceTimeMode || '民用时间'}。`,
     '连续量列出本段所有整秒的极值；圆周量按相对首值的最短弧展开，折回零至三百六十度可得圆周位置。事件时间统一列为北京时间。',
+    ...(commonNatal.length || commonFlow.length
+      ? ['【全范围共同盘面】', ...commonNatal, ...commonFlow]
+      : []),
     ...range.branches.flatMap((branch, index) => [
       `【时段${index + 1}】`,
       `${formatQizhengRangeTime(branch.startTimestamp)} 至 ${formatQizhengRangeTime(branch.endTimestamp)}（起点含、终点不含），共${branch.sampleCount}秒。`,
-      ...formatNatalFacts(branch.representative),
-      ...formatQizhengFlowRangeFacts(
-        branch.representative,
-        'periodEvents' in branch ? branch.periodEvents : undefined,
-      ),
+      ...natalFacts[index].filter((fact) => !commonNatalSet.has(fact)),
+      ...flowFacts[index].filter((fact) => !commonFlowSet.has(fact)),
+      ...('periodEvents' in branch ? formatFlowPeriodFacts(branch.periodEvents) : []),
       '连续量（最小至最大）：',
       ...branch.continuous.map(
         (item) =>

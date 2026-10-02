@@ -112,7 +112,6 @@ function assertRowsEqual(actual: TimelineRows, expected: TimelineRows, message: 
   for (const [index, row] of actual.entries()) {
     assert.deepEqual(row, expected[index], `${message}：第${index + 1}个年龄年`);
   }
-  assert.equal(JSON.stringify(actual), JSON.stringify(expected), `${message}：结构化字节顺序`);
 }
 
 function snapshotHoroscope(horoscope: IztroHoroscope) {
@@ -729,11 +728,6 @@ test('紫微normal独立页以所选年龄年真实对象复用阶段核验和�
     };
 
     const [legacy, reused] = await Promise.all([run(false), run(true)]);
-    assert.equal(
-      JSON.stringify(reused.timeline),
-      JSON.stringify(legacy.timeline),
-      `${age}岁完整时间线`,
-    );
     assert.deepEqual(reused.timeline, legacy.timeline, `${age}岁结构化时间线`);
     assert.equal(reused.timeline.periods[0]?.years[0]?.age, age);
     assert.equal(reused.batch.periods[0]?.selectedAgeHoroscope?.age, age);

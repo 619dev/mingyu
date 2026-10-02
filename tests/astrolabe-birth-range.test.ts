@@ -215,25 +215,29 @@ function locateDisplayBoundary(): number | null {
   return null;
 }
 
-test('西占本命区间采用半开整秒边界并逐秒复现完整单点盘', () => {
+test('西占本命区间锁定输入与半开整秒边界并逐秒复现完整单点盘', () => {
   const start = beijingTimestamp('1990-05-20 12:30:00');
   const end = start + 3 * SECOND;
   const progress: Array<[number, number]> = [];
-  const range = generateAstrolabeBirthRange(
-    inputAt(start),
-    {
-      startTimestamp: start,
-      endTimestamp: end,
+  const mutableInput = inputAt(start);
+  const mutableSource = { startTimestamp: start, endTimestamp: end };
+  const range = generateAstrolabeBirthRange(mutableInput, mutableSource, {
+    onProgress: (completed, total) => {
+      progress.push([completed, total]);
+      if (completed === 1) {
+        mutableInput.longitude = '-74.0060';
+        mutableSource.startTimestamp += 3_600_000;
+        mutableSource.endTimestamp += 3_600_000;
+      }
     },
-    {
-      onProgress: (completed, total) => progress.push([completed, total]),
-    },
-  );
+  });
 
   assert.equal(range.coverage, 'natal');
   assert.equal(range.status, 'stable');
   assert.equal(range.sampleCount, 3);
   assert.equal(range.source.endExclusive, true);
+  assert.equal(range.source.startTimestamp, start);
+  assert.equal(range.source.endTimestamp, end);
   assert.equal(isAstrolabeBirthRangeSource(range.source), true);
   assert.deepEqual(progress, [
     [1, 3],
@@ -402,6 +406,17 @@ test('西占本命区间支持取消并拒绝时区、错位、非整秒和超�
           },
           signal: controller.signal,
         },
+      ),
+    /已取消/u,
+  );
+
+  const lastSample = new AbortController();
+  assert.throws(
+    () =>
+      generateAstrolabeBirthRange(
+        inputAt(start),
+        { startTimestamp: start, endTimestamp: start + SECOND },
+        { signal: lastSample.signal, onProgress: () => lastSample.abort() },
       ),
     /已取消/u,
   );

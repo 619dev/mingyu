@@ -317,6 +317,50 @@ test('紫微同宫去重保留含独立限定的复合条件', () => {
   );
 });
 
+test('紫微身宫格局只借用同一实际宫位已展示的星曜事实', () => {
+  const payload = createPayload();
+  const bodyPalace = payload.palaces[4]!;
+  bodyPalace.is_body_palace = true;
+  bodyPalace.major_stars.push({ name: '武曲', kind: 'major' });
+  bodyPalace.minor_stars.push({ name: '文曲', kind: 'minor' });
+  payload.basic_info.hidden_palaces!.body_palace_name = bodyPalace.name;
+  payload.patterns = detectPatterns({ palaces: payload.palaces });
+
+  const pattern = payload.patterns.find((item) => item.name === '兼文武');
+  assert.deepEqual(pattern?.palace_indexes, [bodyPalace.index]);
+  assert.deepEqual(pattern?.palace_names, [bodyPalace.name]);
+  assert.deepEqual(pattern?.matched_conditions, ['文曲、武曲同坐身宫']);
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(pattern!, '文曲、武曲同坐身宫', [bodyPalace]),
+    true,
+  );
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(pattern!, '文曲、武曲同坐身宫', [
+      { ...bodyPalace, is_body_palace: false },
+    ]),
+    false,
+  );
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(pattern!, '文曲、武曲同坐身宫', [
+      {
+        ...bodyPalace,
+        major_stars: [],
+        minor_stars: [],
+        scope_stars: [...bodyPalace.major_stars, ...bodyPalace.minor_stars],
+      },
+    ]),
+    false,
+  );
+
+  const fullPrompt = formatZiweiPayloadForPrompt(payload);
+  assert.match(fullPrompt, /财帛宫（身宫）；[^\n]*主星：武曲；辅曜：文曲/u);
+  assert.match(fullPrompt, /格局：兼文武/u);
+  assert.doesNotMatch(fullPrompt, /命中条件：文曲、武曲同坐身宫/u);
+
+  const focusedPrompt = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
+  assert.match(focusedPrompt, /格局：兼文武[\s\S]*?命中条件：文曲、武曲同坐身宫/u);
+});
+
 test('真实马落空亡盘在完整宫位已列天马与旬空时不重复同宫条件', async () => {
   const runtime = await calculateFullZiweiChart(
     buildZiweiChartInput({

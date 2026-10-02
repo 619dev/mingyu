@@ -4774,7 +4774,13 @@ test('黄历择日长区间提示词应携带全部 180 个候选日', async () 
     }),
   );
 
-  assert.ok('days' in session.data && session.data.days.length === 180);
+  assert.ok('days' in session.data);
+  const candidateDates = session.data.days.map((day) => day.date);
+  assert.equal(candidateDates.length, 180);
+  assert.equal(new Set(candidateDates).size, 180);
+  assert.ok(candidateDates.every((date) => date >= '2026-01-01' && date <= '2026-06-29'));
+  assert.ok(candidateDates.includes('2026-01-01'));
+  assert.ok(candidateDates.includes('2026-06-29'));
   assert.match(session.prompt, /候选日期明细：共180日/);
   assert.equal(session.prompt.match(/第\d+日：2026-/g)?.length, 180);
   assert.ok(session.prompt.length < 50_000);

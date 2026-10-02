@@ -17,6 +17,15 @@ test('七政本命区间资料保留月亮换宫两侧、整秒范围与完整�
   assert.match(text, /共2个时刻、2段/);
   assert.match(text, /2024-02-19 11:24:48 至 2024-02-19 11:24:49/);
   assert.match(text, /2024-02-19 11:24:49 至 2024-02-19 11:24:50/);
+  const [shared, firstBranch, secondBranch] = text.split(/(?=【时段\d+】)/u);
+  assert.match(shared!, /【全范围共同盘面】/u);
+  assert.equal((text.match(/十二宫：/gu) ?? []).length, 1);
+  assert.equal((text.match(/太阳：/gu) ?? []).length, 1);
+  assert.equal((text.match(/太阴：/gu) ?? []).length, 2);
+  assert.match(firstBranch!, /身宫巳。/u);
+  assert.match(secondBranch!, /身宫辰。/u);
+  assert.doesNotMatch(firstBranch!, /十二宫：|太阳：/u);
+  assert.doesNotMatch(secondBranch!, /十二宫：|太阳：/u);
   for (const branch of range.branches) {
     for (const item of branch.continuous) assert.ok(text.includes(item.label));
     for (const item of branch.representative.enNan?.aspectInteraction ?? []) {
@@ -125,6 +134,15 @@ test('七政流曜区间资料保留目标窗口、所有分段、行限与事�
   assert.match(text, /小限/);
   assert.match(text, /【时段1】/);
   assert.match(text, /【时段2】/);
+  const [shared, firstBranch, secondBranch] = text.split(/(?=【时段\d+】)/u);
+  assert.match(shared!, /【全范围共同盘面】[\s\S]*流曜落宫落宿/u);
+  assert.equal((text.match(/流曜太阳：/gu) ?? []).length, 1);
+  assert.match(firstBranch!, /身宫巳。/u);
+  assert.match(secondBranch!, /身宫辰。/u);
+  assert.match(firstBranch!, /事件1：太阴精确吊照/u);
+  assert.match(secondBranch!, /事件1：太阴精确吊照/u);
+  assert.doesNotMatch(firstBranch!, /流曜太阳：/u);
+  assert.doesNotMatch(secondBranch!, /流曜太阳：/u);
   assert.doesNotMatch(text, /流年与行限属于另外/);
   assert.doesNotMatch(text, /正常交点|全天高于阈值|全天低于阈值|光照日期/);
   for (const branch of range.branches) {

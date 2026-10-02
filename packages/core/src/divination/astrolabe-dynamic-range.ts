@@ -499,10 +499,13 @@ export function* scanAstrolabeDynamicRange(
   request: AstrolabeDynamicRangeRequest,
   options: AstrolabeBirthRangeOptions = {},
 ): Generator<AstrolabeDynamicRangeBranch, AstrolabeDynamicRangeSummary, void> {
-  const total = validateAstrolabeRangeInput(input, range);
+  const lockedInput = { ...input };
+  const lockedRange = { ...range };
+  const total = validateAstrolabeRangeInput(lockedInput, lockedRange);
   if (!request || !['yearly', 'monthly', 'daily', 'full'].includes(request.scope)) {
     throw new Error('动态出生区间必须指定流年、流月、流日或完整范围。');
   }
+  const lockedRequest = { ...request };
   let branchCount = 0;
   const periodCalculationCache = new AstrolabePeriodCalculationCache();
   let active:
@@ -514,10 +517,10 @@ export function* scanAstrolabeDynamicRange(
     | undefined;
   for (let completed = 0; completed < total; completed++) {
     if (options.signal?.aborted) throw new Error('西占动态区间计算已取消。');
-    const timestamp = range.startTimestamp + completed * 1000;
+    const timestamp = lockedRange.startTimestamp + completed * 1000;
     const sample = calculateSample(
-      getAstrolabeRangeInputAtTimestamp(input, timestamp),
-      request,
+      getAstrolabeRangeInputAtTimestamp(lockedInput, timestamp),
+      lockedRequest,
       periodCalculationCache,
     );
     const projection = projectAstrolabeDynamicSample(sample);
@@ -557,12 +560,12 @@ export function* scanAstrolabeDynamicRange(
   if (options.signal?.aborted) throw new Error('西占动态区间计算已取消。');
   return {
     coverage: 'natal+dynamic',
-    scope: request.scope,
-    referenceDate: request.referenceDate,
+    scope: lockedRequest.scope,
+    referenceDate: lockedRequest.referenceDate,
     status: branchCount === 1 ? 'stable' : 'conditional',
     source: {
-      startTimestamp: range.startTimestamp,
-      endTimestamp: range.endTimestamp,
+      startTimestamp: lockedRange.startTimestamp,
+      endTimestamp: lockedRange.endTimestamp,
       endExclusive: true,
       timezone: 'Asia/Shanghai',
       offsetHours: 8,

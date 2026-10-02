@@ -638,17 +638,6 @@ test('黄历择日：跨世纪与交节日期应符合独立历法真值', () =>
   }
 });
 
-test('黄历择日：网页长区间应支持一次比较 180 天', () => {
-  const result = generateAlmanacSelection({
-    topic: 'custom',
-    startDate: '2026-01-01',
-    endDate: '2026-06-29',
-  });
-
-  assert.equal(result.days.length, 180);
-  assert.equal(new Set(result.days.map((day) => day.date)).size, 180);
-});
-
 test('黄历择日：工作时间应同时避开周末并限定常规办事时段', () => {
   const result = generateAlmanacSelection({
     topic: 'contract',

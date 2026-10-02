@@ -21,31 +21,19 @@ export function isRepeatedZiweiCoLocationCondition(
   }
 
   const palaceName = match[2]?.replace(/宫$/u, '');
-  if (palaceName && !pattern.palace_names.some((name) => name.replace(/宫$/u, '') === palaceName)) {
-    return false;
-  }
   if (!palaceName && (pattern.palace_indexes.length !== 1 || pattern.palace_names.length !== 1)) {
     return false;
   }
 
-  const targetPalaces = pattern.palace_indexes
-    .map((index) =>
-      displayedPalaces.find(
-        (palace) =>
-          palace.index === index &&
-          palace.name.replace(/宫$/u, '') ===
-            (palaceName ?? pattern.palace_names[0].replace(/宫$/u, '')),
-      ),
-    )
-    .filter((palace): palace is PalaceFact => Boolean(palace));
-  if (targetPalaces.length !== 1) return false;
+  const targetPalaceName = palaceName ?? pattern.palace_names[0];
+  if (!targetPalaceName) return false;
+  const targetPalace = getPatternPalace(pattern, targetPalaceName, displayedPalaces);
+  if (!targetPalace) return false;
 
   const palaceStars = new Set(
-    [
-      ...targetPalaces[0].major_stars,
-      ...targetPalaces[0].minor_stars,
-      ...targetPalaces[0].other_stars,
-    ].map((star) => star.name),
+    [...targetPalace.major_stars, ...targetPalace.minor_stars, ...targetPalace.other_stars].map(
+      (star) => star.name,
+    ),
   );
   return conditionStars.every((name) => palaceStars.has(name));
 }
@@ -63,13 +51,29 @@ function getPatternPalace(
 ) {
   const normalizedName = normalizePalaceName(palaceName);
   const matchingIndexes = pattern.palace_names.flatMap((name, index) =>
-    normalizePalaceName(name) === normalizedName ? [pattern.palace_indexes[index]] : [],
+    normalizePalaceName(name) === normalizedName ||
+    (normalizedName === '身' &&
+      displayedPalaces.some(
+        (palace) =>
+          palace.index === pattern.palace_indexes[index] &&
+          normalizePalaceName(palace.name) === normalizePalaceName(name) &&
+          palace.is_body_palace,
+      ))
+      ? [pattern.palace_indexes[index]]
+      : [],
   );
   if (matchingIndexes.length !== 1 || matchingIndexes[0] === undefined) return undefined;
+  const patternPalaceName =
+    pattern.palace_names[pattern.palace_indexes.indexOf(matchingIndexes[0])];
+  if (!patternPalaceName) return undefined;
 
   return displayedPalaces.find(
     (palace) =>
-      palace.index === matchingIndexes[0] && normalizePalaceName(palace.name) === normalizedName,
+      palace.index === matchingIndexes[0] &&
+      (normalizedName === '身'
+        ? palace.is_body_palace &&
+          normalizePalaceName(palace.name) === normalizePalaceName(patternPalaceName)
+        : normalizePalaceName(palace.name) === normalizedName),
   );
 }
 

@@ -466,6 +466,22 @@ test('七政流曜出生区间报告进度并拒绝越界、非北京时间及�
     { onProgress: (completed, total) => progress.push([completed, total]) },
   );
   assert.deepEqual(progress, [[1, 1]]);
+
+  const mutableInput = { ...DAILY_INPUT };
+  const mutableSource = { ...DAILY_SOURCE };
+  const lockedRange = generateQizhengFlowBirthRange(mutableInput, mutableSource, {
+    onProgress: (completed) => {
+      if (completed === 1) {
+        mutableInput.longitude = 0;
+        mutableSource.startTimestamp += SECOND;
+        mutableSource.endTimestamp += SECOND;
+      }
+    },
+  });
+  assert.equal(lockedRange.source.startTimestamp, DAILY_SOURCE.startTimestamp);
+  assert.equal(lockedRange.source.endTimestamp, DAILY_SOURCE.endTimestamp);
+  assert.equal(lockedRange.branches.at(-1)?.endTimestamp, DAILY_SOURCE.endTimestamp);
+  assert.equal(lockedRange.branches.at(-1)?.representative.calculationContext.longitude, 116.4);
   assert.throws(
     () =>
       generateQizhengFlowBirthRange(DAILY_INPUT, {
@@ -502,6 +518,23 @@ test('七政流曜出生区间支持取消并停止继续采样', () => {
         },
         signal: controller.signal,
       }),
+    /计算已取消/u,
+  );
+
+  const lastSampleController = new AbortController();
+  assert.throws(
+    () =>
+      generateQizhengFlowBirthRange(
+        DAILY_INPUT,
+        { ...DAILY_SOURCE, endTimestamp: DAILY_SOURCE.startTimestamp + SECOND },
+        {
+          onProgress: (completed, total) => {
+            assert.deepEqual([completed, total], [1, 1]);
+            lastSampleController.abort();
+          },
+          signal: lastSampleController.signal,
+        },
+      ),
     /计算已取消/u,
   );
 });
