@@ -24,15 +24,17 @@ const partner = {
   timeIndex: 7,
 };
 
-test('双人 BirthProfile 应直接生成八字合盘证据', async () => {
-  const bundle = await calculateCompatibilityBundle(primary, partner, {
+test('双人 BirthProfile 生成八字合盘证据并保留给定姓名', async () => {
+  const namedPrimary = { ...primary, name: '未命名' };
+  const bundle = await calculateCompatibilityBundle(namedPrimary, partner, {
     systems: ['bazi'],
   });
 
   assert.deepEqual(bundle.systems, ['bazi']);
   assert.equal(bundle.primary.bazi?.pillars.hour.ganZhi.length, 2);
   assert.equal(bundle.partner.bazi?.pillars.hour.ganZhi.length, 2);
-  assert.equal(bundle.bazi?.people.person1, '第一人');
+  assert.equal(bundle.primary.profile.name, '未命名');
+  assert.equal(bundle.bazi?.people.person1, '未命名');
   assert.equal(bundle.bazi?.people.person2, '第二人');
   assert.equal(bundle.astrolabe, undefined);
   assert.equal(bundle.ziwei, undefined);
@@ -123,10 +125,24 @@ test('紫微合盘补齐本命资料并拒绝不含本命盘的独立批次', as
 });
 
 test('单点合盘锁定双方档案和规则，异步计算后关系仍对应原始盘面', async () => {
-  const mutablePrimary = { ...primary };
-  const mutablePartner = { ...partner };
+  const mutablePrimary = {
+    ...primary,
+    name: '',
+    hour: 9,
+    minute: 0,
+    location: { latitude: 39.9042, longitude: 116.4074, timezone: 8 },
+  };
+  const mutablePartner = {
+    ...partner,
+    name: '  ',
+    hour: 13,
+    minute: 0,
+    location: { latitude: 31.2304, longitude: 121.4737, timezone: 8 },
+  };
+  const initialPrimary = structuredClone(mutablePrimary);
+  const initialPartner = structuredClone(mutablePartner);
   const options = {
-    systems: ['bazi', 'ziwei'] as Array<'bazi' | 'ziwei'>,
+    systems: ['bazi', 'ziwei', 'astrolabe'] as Array<'bazi' | 'ziwei' | 'astrolabe'>,
     chart: {
       ziwei: {
         scopes: ['origin'] as Array<'origin' | 'yearly'>,
@@ -136,6 +152,8 @@ test('单点合盘锁定双方档案和规则，异步计算后关系仍对应�
     },
   };
   const pending = calculateCompatibilityBundle(mutablePrimary, mutablePartner, options);
+  assert.deepEqual(mutablePrimary, initialPrimary);
+  assert.deepEqual(mutablePartner, initialPartner);
   mutablePrimary.name = '事后改名一';
   mutablePrimary.year = 1991;
   mutablePartner.name = '事后改名二';
@@ -150,6 +168,11 @@ test('单点合盘锁定双方档案和规则，异步计算后关系仍对应�
   assert.equal(bundle.partner.profile.year, 1992);
   assert.deepEqual(bundle.bazi?.people, { person1: '第一人', person2: '第二人' });
   assert.deepEqual(bundle.ziwei?.people, { person1: '第一人', person2: '第二人' });
+  assert.deepEqual(bundle.astrolabe?.people, ['第一人', '第二人']);
+  assert.equal(bundle.primary.astrolabe?.birth.name, '第一人');
+  assert.equal(bundle.partner.astrolabe?.birth.name, '第二人');
+  assert.match(bundle.primary.astrolabe?.birth.dateTime ?? '', /1990-05-15/);
+  assert.match(bundle.partner.astrolabe?.birth.dateTime ?? '', /1992-08-20/);
   assert.ok(bundle.primary.ziwei?.payloadByScope.origin);
   assert.ok(bundle.partner.ziwei?.payloadByScope.origin);
 });

@@ -7387,8 +7387,14 @@ function readAstrolabeSynastryCharts(input: JsonRecord) {
   if (!isRecord(input.person1) || !isRecord(input.person2)) {
     throw new ApiError(400, 'BAD_REQUEST', 'person1 和 person2 必须是完整的星盘出生资料。');
   }
-  const chart1 = calculateAstrolabe(input.person1);
-  const chart2 = calculateAstrolabe(input.person2);
+  const chart1 = calculateAstrolabe({
+    ...input.person1,
+    name: readString(input.person1, 'name', '').trim() || '第一人',
+  });
+  const chart2 = calculateAstrolabe({
+    ...input.person2,
+    name: readString(input.person2, 'name', '').trim() || '第二人',
+  });
   return { chart1, chart2 };
 }
 

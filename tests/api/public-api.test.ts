@@ -4989,7 +4989,6 @@ test('公开 API 西占双盘应返回跨盘相位、落宫和结构化证据', 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       person1: {
-        name: '甲',
         gender: '女',
         year: 1995,
         month: 5,
@@ -5001,7 +5000,7 @@ test('公开 API 西占双盘应返回跨盘相位、落宫和结构化证据', 
         timezone: 8,
       },
       person2: {
-        name: '乙',
+        name: '   ',
         gender: '男',
         year: 1992,
         month: 8,
@@ -5021,7 +5020,11 @@ test('公开 API 西占双盘应返回跨盘相位、落宫和结构化证据', 
   const synastry = body.data.synastry;
   assert.equal(synastry.key, 'astrolabe:synastry:evidence');
   assert.equal(synastry.status, '已计算');
-  assert.deepEqual(synastry.people, ['甲', '乙']);
+  assert.deepEqual(synastry.people, ['第一人', '第二人']);
+  assert.equal(body.data.charts.person1.birth.name, '第一人');
+  assert.equal(body.data.charts.person1.birth.dateTime, '1995-05-20 12:30');
+  assert.equal(body.data.charts.person2.birth.name, '第二人');
+  assert.equal(body.data.charts.person2.birth.dateTime, '1992-08-21 08:15');
   assert.ok(synastry.aspects.length > 0);
   synastry.aspects.forEach(
     (aspect: { key: string; status: string; calculationStepKey: string; strength?: number }) => {
@@ -5054,7 +5057,7 @@ test('公开 API 西占双盘提示词应携带双方本命盘与简明任务', 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       person1: {
-        name: '甲',
+        name: '未命名',
         gender: '女',
         year: 1995,
         month: 5,
@@ -5066,7 +5069,7 @@ test('公开 API 西占双盘提示词应携带双方本命盘与简明任务', 
         timezone: 8,
       },
       person2: {
-        name: '乙',
+        name: '乙真实人',
         gender: '男',
         year: 1992,
         month: 8,
@@ -5087,11 +5090,14 @@ test('公开 API 西占双盘提示词应携带双方本命盘与简明任务', 
   assert.equal(body.ok, true);
   assert.equal(body.data.resultSummary.key, 'astrolabe:synastry:evidence');
   assert.equal(body.data.resultSummary.status, '已计算');
+  assert.deepEqual(body.data.resultSummary.people, ['未命名', '乙真实人']);
   assert.ok(body.data.resultSummary.summaryFact.returnedAspectCount > 0);
   assert.ok(JSON.stringify(body.data.resultSummary).length < 5000);
   assertPromptHasSingleRole(body.data.prompt, PROMPT_ROLE_TEXT['astrolabe-synastry']);
   assert.match(body.data.prompt, /【第一人本命盘】/);
   assert.match(body.data.prompt, /【第二人本命盘】/);
+  assert.match(body.data.prompt, /出生信息：未命名；[^；\n]*；1995-05-20 12:30；/);
+  assert.match(body.data.prompt, /出生信息：乙真实人；[^；\n]*；1992-08-21 08:15；/);
   assert.match(body.data.prompt, /【跨盘相位】/);
   assert.match(
     body.data.prompt,

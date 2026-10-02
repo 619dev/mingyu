@@ -178,8 +178,14 @@ function resolveAstrolabePromptScopeArgs(
 }
 
 function buildAstrolabeSynastryResult(args: z.infer<typeof astrolabeSynastrySchema>) {
-  const chart1 = buildAstrolabeResult(args.person1);
-  const chart2 = buildAstrolabeResult(args.person2);
+  const chart1 = buildAstrolabeResult({
+    ...args.person1,
+    name: args.person1.name?.trim() || '第一人',
+  });
+  const chart2 = buildAstrolabeResult({
+    ...args.person2,
+    name: args.person2.name?.trim() || '第二人',
+  });
   return {
     charts: { person1: chart1, person2: chart2 },
     synastry: analyzeAstrolabeSynastry(chart1, chart2),

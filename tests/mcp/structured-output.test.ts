@@ -3364,7 +3364,6 @@ test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () =
       name: 'astrolabe_synastry_prompt',
       arguments: {
         person1: {
-          name: '甲',
           gender: '女',
           year: 1995,
           month: 5,
@@ -3376,7 +3375,7 @@ test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () =
           timezone: 8,
         },
         person2: {
-          name: '乙',
+          name: '   ',
           gender: '男',
           year: 1992,
           month: 8,
@@ -3393,12 +3392,24 @@ test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () =
     });
 
     assert.equal(result.isError, undefined);
+    const promptedResult = result.structuredContent?.result as {
+      charts?: {
+        person1?: { birth?: { name?: string; dateTime?: string } };
+        person2?: { birth?: { name?: string; dateTime?: string } };
+      };
+      synastry?: { people?: string[] };
+    };
+    assert.deepEqual(promptedResult.synastry?.people, ['第一人', '第二人']);
+    assert.equal(promptedResult.charts?.person1?.birth?.name, '第一人');
+    assert.equal(promptedResult.charts?.person1?.birth?.dateTime, '1995-05-20 12:30');
+    assert.equal(promptedResult.charts?.person2?.birth?.name, '第二人');
+    assert.equal(promptedResult.charts?.person2?.birth?.dateTime, '1992-08-21 08:15');
     const calculation = await client.callTool({
       name: 'astrolabe_synastry',
       arguments: {
         detailMode: 'full',
         person1: {
-          name: '甲',
+          name: '未命名',
           gender: '女',
           year: 1995,
           month: 5,
@@ -3410,7 +3421,7 @@ test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () =
           timezone: 8,
         },
         person2: {
-          name: '乙',
+          name: '乙真实人',
           gender: '男',
           year: 1992,
           month: 8,
@@ -3427,9 +3438,14 @@ test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () =
     const chart = (
       calculation.structuredContent as {
         result?: {
+          charts?: {
+            person1?: { birth?: { name?: string; dateTime?: string } };
+            person2?: { birth?: { name?: string; dateTime?: string } };
+          };
           synastry?: {
             key?: string;
             status?: string;
+            people?: string[];
             calculationSteps?: Array<{ key: string }>;
             aspects?: Array<{
               key: string;
@@ -3449,6 +3465,11 @@ test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () =
     ).result;
     assert.equal(chart?.synastry?.key, 'astrolabe:synastry:evidence');
     assert.equal(chart?.synastry?.status, '已计算');
+    assert.deepEqual(chart?.synastry?.people, ['未命名', '乙真实人']);
+    assert.equal(chart?.charts?.person1?.birth?.name, '未命名');
+    assert.equal(chart?.charts?.person1?.birth?.dateTime, '1995-05-20 12:30');
+    assert.equal(chart?.charts?.person2?.birth?.name, '乙真实人');
+    assert.equal(chart?.charts?.person2?.birth?.dateTime, '1992-08-21 08:15');
     assert.equal(chart?.synastry?.calculationSteps?.length, 7);
     for (const aspect of chart?.synastry?.aspects ?? []) {
       assert.match(aspect.key, /^astrolabe:synastry:aspect:/);
@@ -3482,6 +3503,8 @@ test('MCP 西占双盘提示词应返回跨盘资料和简明任务', async () =
     assert.match(prompt, /【第一人本命盘】/);
     assert.match(prompt, /【跨盘相位】/);
     assert.match(prompt, /【跨盘落宫】/);
+    assert.match(prompt, /出生信息：第一人；[^；\n]*；1995-05-20 12:30；/);
+    assert.match(prompt, /出生信息：第二人；[^；\n]*；1992-08-21 08:15；/);
     assert.match(prompt, /容许度/);
     assert.match(prompt, /【多口径合参】/);
     assert.match(prompt, /流派1：现代心理占星/);

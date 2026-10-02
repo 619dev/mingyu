@@ -231,8 +231,8 @@ function lockInputs(
   const lockedOptions = structuredClone(optionsWithoutSignal);
   lockedOptions.signal = effectiveSignal;
   return {
-    primary: structuredClone(primary),
-    partner: structuredClone(partner),
+    primary: { ...structuredClone(primary), name: primary.name?.trim() ? primary.name : '第一人' },
+    partner: { ...structuredClone(partner), name: partner.name?.trim() ? partner.name : '第二人' },
     options: lockedOptions,
   };
 }
