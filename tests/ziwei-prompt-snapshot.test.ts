@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateFullZiweiChart, buildZiweiChartInput } from '../src/lib/full-chart-engine/ziwei';
 import { EARTHLY_BRANCHES } from '../packages/core/src/ganzhi/data';
-import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
+import { buildZiweiPrompt, formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
 import {
   buildPublicZiweiPromptForRuntime,
   formatZiweiEvidenceText,
@@ -512,6 +512,144 @@ test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注�
   for (const snapshot of [readableSnapshot, taskBookSnapshot]) {
     assert.match(snapshot, /格局：君子在野/);
     assert.doesNotMatch(snapshot, /命中条件：擎羊以“陷”亮度守财帛/);
+  }
+
+  const scopeCases = [
+    {
+      birthDate: '1990-05-15',
+      algorithm: 'default',
+      yearlyLanding: '仆役',
+      monthlyLanding: '兄弟',
+      yearly: [
+        ['廉贞', '忌', '仆役', '命宫'],
+        ['天同', '禄', '财帛', '田宅'],
+        ['天机', '权', '命宫', '疾厄'],
+        ['文昌', '科', '仆役', '命宫'],
+      ],
+      monthly: [
+        ['太阴', '忌', '福德', '田宅'],
+        ['天机', '禄', '命宫', '父母'],
+        ['天梁', '权', '迁移', '疾厄'],
+        ['紫微', '科', '父母', '福德'],
+      ],
+    },
+    {
+      birthDate: '1992-08-21',
+      algorithm: 'zhongzhou',
+      yearlyLanding: '福德',
+      monthlyLanding: '仆役',
+      yearly: [
+        ['廉贞', '忌', '官禄', '福德'],
+        ['天同', '禄', '疾厄', '仆役'],
+        ['天机', '权', '兄弟', '子女'],
+        ['文昌', '科', '福德', '命宫'],
+      ],
+      monthly: [
+        ['太阴', '忌', '子女', '官禄'],
+        ['天机', '禄', '兄弟', '迁移'],
+        ['天梁', '权', '父母', '财帛'],
+        ['紫微', '科', '命宫', '疾厄'],
+      ],
+    },
+  ] as const;
+  for (const expected of scopeCases) {
+    const scopedRuntime = await calculateZiweiChart(
+      {
+        name: '运限四化显示核验',
+        gender: '女',
+        dateType: 'solar',
+        birthDate: expected.birthDate,
+        birthTimeIndex: 4,
+        algorithm: expected.algorithm,
+      },
+      {
+        scopes: ['origin', 'yearly', 'monthly'],
+        horoscopeContext: { dateStr: '2026-08-06', hourIndex: 4 },
+      },
+    );
+    const structuredBefore = structuredClone(scopedRuntime.payloadByScope);
+    for (const scope of ['yearly', 'monthly'] as const) {
+      const scopePayload = scopedRuntime.payloadByScope[scope]!;
+      const scopeLabel = scope === 'yearly' ? '流年' : '流月';
+      const landing = scope === 'yearly' ? expected.yearlyLanding : expected.monthlyLanding;
+      const stemBranch = scope === 'yearly' ? '丙午' : '乙未';
+      for (const text of [
+        formatZiweiPayloadForPrompt(scopePayload),
+        buildZiweiPrompt({
+          runtime: scopedRuntime,
+          scope,
+          currentTime: new Date('2026-10-03T00:00:00Z'),
+          schools: ['sanhe', 'feixing'],
+        }),
+      ]) {
+        for (const [star, mutagen, nativePalace, dynamicPalace] of expected[scope]) {
+          const nativeName = nativePalace.endsWith('宫') ? nativePalace : `${nativePalace}宫`;
+          const palaceLine = text
+            .split('\n')
+            .find(
+              (line) =>
+                line.trimStart().startsWith(`${nativeName}；`) ||
+                line.trimStart().startsWith(`${nativeName}（`),
+            );
+          assert.ok(palaceLine, `${expected.birthDate}${scopeLabel}${nativeName}`);
+          assert.match(palaceLine, new RegExp(`${star}，[^、\\n]*当前化${mutagen}`));
+          assert.ok(palaceLine.includes(`动态宫名：${dynamicPalace}`));
+          assert.ok(
+            !text.includes(`${scopeLabel}${star}化${mutagen}入本命${nativeName}`),
+            `${scopeLabel}${star}化${mutagen}只由实际宫位表达`,
+          );
+        }
+        assert.ok(
+          text.includes(`${scopeLabel}干支为${stemBranch}，命宫由运限对象定位到本命${landing}宫。`),
+        );
+      }
+    }
+    assert.deepEqual(scopedRuntime.payloadByScope, structuredBefore);
+
+    if (expected.birthDate !== '1990-05-15') continue;
+    const yearlyPayload = scopedRuntime.payloadByScope.yearly!;
+    const title = '流年廉贞化忌入本命仆役宫（当前流年命宫）';
+    assert.ok(
+      formatZiweiPayloadForPrompt(yearlyPayload, { focusPalaceNames: ['命宫'] }).includes(title),
+    );
+    assert.ok(
+      !formatZiweiPayloadForPrompt(yearlyPayload, { focusPalaceNames: ['仆役'] }).includes(title),
+    );
+    const preservedCases = [
+      '缺星曜',
+      '缺当前化',
+      '缺动态宫名',
+      '资料缺口',
+      '额外说明',
+      '额外正文',
+    ] as const;
+    for (const condition of preservedCases) {
+      const changed = structuredClone(yearlyPayload);
+      const target = changed.palaces.find((palace) => palace.name === '仆役')!;
+      const evidence = changed.evidence_pool.find((item) => item.title === title)!;
+      assert.ok(evidence);
+      if (condition === '缺星曜') {
+        target.major_stars = target.major_stars.filter((star) => star.name !== '廉贞');
+      } else if (condition === '缺当前化') {
+        const star = target.major_stars.find((item) => item.name === '廉贞')!;
+        delete star.active_scope_mutagen;
+      } else if (condition === '缺动态宫名') {
+        delete target.dynamic_scope_name;
+      } else if (condition === '资料缺口') {
+        evidence.status = '资料缺口';
+      } else if (condition === '额外说明') {
+        evidence.description += '该宫另见独立条件。';
+        evidence.promptText = `${evidence.title}：${evidence.description}`;
+      } else {
+        evidence.promptText = `${evidence.title}：另见独立条件。`;
+      }
+      const changedPrompt = formatZiweiPayloadForPrompt(changed);
+      assert.ok(changedPrompt.includes(title), `${condition}须保留证据`);
+      if (condition === '额外说明' || condition === '额外正文') {
+        assert.ok(changedPrompt.includes('独立条件'));
+      }
+    }
+    assert.deepEqual(scopedRuntime.payloadByScope, structuredBefore);
   }
 });
 

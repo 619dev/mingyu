@@ -832,7 +832,6 @@ test('星盘资料缺少经度时应退回保守提示而不是报错', () => {
   assert.match(context.promptText, /本命点经度资料不足/);
   assert.match(context.promptText, /行运落宫：/);
   assert.match(context.promptText, /落本命第\d+宫/);
-  assert.doesNotThrow(() => buildAstrolabeScopeContext(incompleteData, 'daily', '2028-06-12'));
 });
 
 test('星盘资料缺少宫头经度时应禁止行运落宫证据', () => {
@@ -846,7 +845,6 @@ test('星盘资料缺少宫头经度时应禁止行运落宫证据', () => {
   const context = buildAstrolabeScopeContext(incompleteData, 'daily', '2028-06-12');
 
   assert.match(context.promptText, /行运落宫：本命宫头资料不足/);
-  assert.doesNotThrow(() => buildAstrolabeScopeContext(incompleteData, 'daily', '2028-06-12'));
 });
 
 test('星盘行运应使用目标日期的出生地时区而不是固定北京时间', () => {

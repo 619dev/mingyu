@@ -343,6 +343,7 @@ function isShownInZiweiPalaces(
   item: AnalysisPayloadV1['evidence_pool'][number],
   palaces: PalaceFact[],
   isOriginScope: boolean,
+  active: AnalysisPayloadV1['active_scope'],
 ) {
   if (
     item.status === '资料缺口' ||
@@ -356,6 +357,49 @@ function isShownInZiweiPalaces(
         (tag) => tag.startsWith('三方四正见化') && item.title === `${palace.name}${tag}`,
       ),
     );
+  }
+  if (item.type === 'scope_mutagen_destination') {
+    if (isOriginScope || item.scope !== active.scope) return false;
+    const landing = palaces.find((palace) => palace.index === active.palace_index);
+    if (!landing || landing.name !== active.palace_name) return false;
+    const scopeLabel = active.label || SCOPE_LABELS[active.scope];
+    const landingName = landing.name.endsWith('宫') ? landing.name : `${landing.name}宫`;
+    return active.mutagen_map.some((mapping) => {
+      const target = palaces.find((palace) => palace.index === mapping.palace_index);
+      if (
+        !target ||
+        target.name !== mapping.palace_name ||
+        !mapping.dynamic_palace_name ||
+        target.dynamic_scope_name !== mapping.dynamic_palace_name ||
+        item.star_names.length !== 1 ||
+        item.star_names[0] !== mapping.star ||
+        item.mutagens.length !== 1 ||
+        item.mutagens[0] !== mapping.mutagen ||
+        !item.palace_indexes.includes(landing.index) ||
+        !item.palace_indexes.includes(target.index)
+      ) {
+        return false;
+      }
+      const stars = [...target.major_stars, ...target.minor_stars, ...target.other_stars];
+      if (
+        !stars.some(
+          (star) => star.name === mapping.star && star.active_scope_mutagen === mapping.mutagen,
+        )
+      ) {
+        return false;
+      }
+      const targetName = target.name.endsWith('宫') ? target.name : `${target.name}宫`;
+      const dynamicName = mapping.dynamic_palace_name.endsWith('宫')
+        ? mapping.dynamic_palace_name
+        : `${mapping.dynamic_palace_name}宫`;
+      // 只省略宫位已完整表达的标准映射，额外条件与说明继续展示。
+      return (
+        item.title ===
+          `${scopeLabel}${mapping.star}化${mapping.mutagen}入本命${targetName}（当前${scopeLabel}${dynamicName}）` &&
+        item.description ===
+          `${scopeLabel}四化序列中的${mapping.star}对应化${mapping.mutagen}；该星的本命物理落宫为${targetName}，当前对应${scopeLabel}${dynamicName}，运限命宫落于本命${landingName}。`
+      );
+    });
   }
   const palace = palaces.find((value) => value.index === item.palace_indexes[0]);
   if (!palace) return false;
@@ -427,7 +471,7 @@ export function formatZiweiPayloadForPrompt(
   const isOriginScope = active.scope === 'origin';
   const evidenceItems = payload.evidence_pool
     .filter((item) => item.scope === 'origin' || item.scope === active.scope)
-    .filter((item) => !isShownInZiweiPalaces(item, selectedPalaces, isOriginScope))
+    .filter((item) => !isShownInZiweiPalaces(item, selectedPalaces, isOriginScope, active))
     .map((item) => {
       const level = item.level ? `【${item.level}】` : '';
       const detail = item.promptText || item.description;

@@ -8,14 +8,19 @@ import { formatBaziSchoolPrompt } from '../packages/core/src/prompt/bazi-school'
 import { analyzePillarRelations } from '../packages/core/src/bazi/baziPromptEnhancement';
 import type { PatternFulfillmentResult } from '../packages/core/src/bazi/baziPatternFulfillment';
 
-const seed = () =>
-  baziCalculator.calculateBazi({
-    year: 2000,
-    month: 1,
-    day: 7,
-    timeIndex: 5,
-    gender: 'male',
-  });
+let repeatedSeed: ReturnType<typeof baziCalculator.calculateBazi> | undefined;
+
+function seed() {
+  return structuredClone(
+    (repeatedSeed ??= baziCalculator.calculateBazi({
+      year: 2000,
+      month: 1,
+      day: 7,
+      timeIndex: 5,
+      gender: 'male',
+    })),
+  );
+}
 
 for (const status of ['成格', '破格', '破而复成', '平常', '未判定'] as const) {
   test(`格局${status}经本命证据和各解读入口保留原始裁决`, () => {

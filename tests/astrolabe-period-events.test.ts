@@ -33,6 +33,20 @@ const astrolabeData = generateAstrolabe({
   locationName: '北京',
 });
 
+const newYorkAstrolabeFixture = generateAstrolabe({
+  name: '本人',
+  gender: '女',
+  year: '1995',
+  month: '5',
+  day: '20',
+  hour: '12',
+  minute: '30',
+  latitude: '40.7128',
+  longitude: '-74.0060',
+  timeZoneId: 'America/New_York',
+  locationName: '纽约',
+});
+
 let june2028Monthly: ReturnType<typeof buildAstrolabePeriodEvents> | undefined;
 
 const analyticTarget = { year: 2030, month: 1, day: 1 };
@@ -364,19 +378,7 @@ test('流月相邻半开批次合并后与完整月份事件一致', () => {
 });
 
 test('跨夏令时的流年七日批次按全局采样网格逐事件等价', () => {
-  const newYorkData = generateAstrolabe({
-    name: '本人',
-    gender: '女',
-    year: '1995',
-    month: '5',
-    day: '20',
-    hour: '12',
-    minute: '30',
-    latitude: '40.7128',
-    longitude: '-74.0060',
-    timeZoneId: 'America/New_York',
-    locationName: '纽约',
-  });
+  const newYorkData = structuredClone(newYorkAstrolabeFixture);
   const target = { year: 2024, month: 7, day: 1 };
   const complete = buildAstrolabePeriodEvents(newYorkData, 'yearly', target).events;
   const context = buildAstrolabePeriodContext(newYorkData);
@@ -567,21 +569,10 @@ test('同一日停逆前后两次越过本命点与同一宫头应完整列出',
 });
 
 test('纽约夏令时流年批次的结果时区取父范围起点', () => {
-  const newYorkData = generateAstrolabe({
-    name: '本人',
-    gender: '女',
-    year: '1995',
-    month: '5',
-    day: '20',
-    hour: '12',
-    minute: '30',
-    latitude: '40.7128',
-    longitude: '-74.0060',
-    timeZoneId: 'America/New_York',
-    locationName: '纽约',
-  });
+  const newYorkData = structuredClone(newYorkAstrolabeFixture);
+  const newYorkContext = buildAstrolabePeriodContext(newYorkData);
   const result = buildAstrolabePeriodBatchResult(
-    buildAstrolabePeriodContext(newYorkData),
+    newYorkContext,
     'yearly',
     { year: 2024, month: 7, day: 1 },
     '2024',
@@ -593,12 +584,12 @@ test('纽约夏令时流年批次的结果时区取父范围起点', () => {
 
   assert.equal(result.timeZoneId, 'America/New_York');
   assert.equal(result.timezone, -5);
-  const winter = resolveAstrolabePeriodWindow(buildAstrolabePeriodContext(newYorkData), 'yearly', {
+  const winter = resolveAstrolabePeriodWindow(newYorkContext, 'yearly', {
     year: 2024,
     month: 1,
     day: 1,
   });
-  const summer = resolveAstrolabePeriodWindow(buildAstrolabePeriodContext(newYorkData), 'monthly', {
+  const summer = resolveAstrolabePeriodWindow(newYorkContext, 'monthly', {
     year: 2024,
     month: 7,
     day: 1,
