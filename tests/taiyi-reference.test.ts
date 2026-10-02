@@ -210,15 +210,16 @@ test('太乙十六位环首尾相接且三位外不计击', () => {
   assert.equal(distant.fiveGenerals.shiJiNoCoverOrHit, true);
 });
 
-test('太乙在线证据任务书只列本次成立格局且不重复反证与方法说明', () => {
+test('太乙年计在线任务书保留成立条件并将门将摘要只呈现一次', () => {
   const withCover = generateTaiyi({ year: 2004, scope: 'year' });
+  const twentyTwentySix = generateTaiyi({ year: 2026, scope: 'year' });
   assert.match(withCover.evidenceAnalysis.promptText, /掩成立：始击与太乙同宫/);
   assert.doesNotMatch(
     withCover.evidenceAnalysis.promptText,
     /2004-07-01|结构化证据|反证核验|证据汇总|解释限制/,
   );
   for (const year of [2004, 2026]) {
-    const result = year === 2004 ? withCover : generateTaiyi({ year, scope: 'year' });
+    const result = year === 2004 ? withCover : twentyTwentySix;
     assert.match(result.evidenceAnalysis.promptText, /囚成立：客大将与太乙同宫/);
     assert.doesNotMatch(result.evidenceAnalysis.promptText, /文昌或主客大小将至少一项/);
   }
@@ -251,11 +252,7 @@ test('太乙在线证据任务书只列本次成立格局且不重复反证与�
   for (const label of ['三门', '五将', '阴阳']) {
     assert.equal(withoutCoverOrImprison.evidenceAnalysis.promptText.split(label).length - 1, 1);
   }
-});
-
-test('太乙任务书的门将条件只呈现一次并保留独立判断', () => {
-  for (const year of [2004, 2026]) {
-    const result = generateTaiyi({ year, scope: 'year' });
+  for (const result of [withCover, twentyTwentySix]) {
     const conditions = result.conditions;
     const summary = `${conditions.threeGates.status}（直使${conditions.threeGates.directGate}）；五将${conditions.fiveGenerals.launched ? '发' : '不发'}；阴阳${conditions.yinYangHarmony.matched ? '和' : '不和'}。`;
     assert.equal(result.prompt.split(summary).length - 1, 1);

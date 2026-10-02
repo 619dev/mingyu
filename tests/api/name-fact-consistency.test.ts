@@ -96,3 +96,78 @@ test('姓名MCP实际工具输出保留取用状态与复姓音义，字查询�
     await server.close();
   }
 });
+
+test('姓名HTTP与MCP任务书按中国夏令时别名保留原钟表及校正事实', async () => {
+  const aliasBirth = {
+    gender: 'male',
+    year: 1988,
+    month: 7,
+    day: 1,
+    birthHour: 12,
+    birthMinute: 30,
+    birthSecond: 15,
+    timeZoneId: 'Asia/Chongqing',
+  };
+  const inputs = [
+    {
+      path: 'name/analyze/prompt',
+      tool: 'name_analyze_prompt',
+      args: { fullName: '李清和', birth: aliasBirth },
+    },
+    {
+      path: 'name/generate/prompt',
+      tool: 'name_generate_prompt',
+      args: {
+        surname: '李',
+        givenNameLength: 1,
+        generationCharacter: '和',
+        limit: 1,
+        birth: aliasBirth,
+      },
+    },
+  ];
+  function contextOf(result: any) {
+    return result.analysis?.birthContext ?? result.candidates[0].analysis.birthContext;
+  }
+  function assertAliasFacts(result: any) {
+    const context = contextOf(result);
+    assert.equal(context.timeBasis.timeZoneId, 'Asia/Chongqing');
+    assert.equal(context.timeBasis.timezone, 9);
+    assert.equal(context.timeBasis.inputTime, '12:30:15');
+    assert.equal(context.timeBasis.calculatedTime, '11:30:15');
+    assert.equal(context.timeBasis.mode, '中国历史夏令时钟表时间（已回拨为标准北京时间）');
+    assert.match(result.prompt, /出生记录：公历1988年7月1日 12:30:15/);
+    assert.match(result.prompt, /排盘公历：1988-07-01 11:30:15/);
+    assert.ok(result.prompt.includes(`四柱：${context.pillars.join(' ')}`));
+    return context;
+  }
+  const httpContexts = [];
+  for (const input of inputs) {
+    const response = await handlePublicApiRequest(
+      new Request(`https://example.test/api/v1/${input.path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input.args),
+      }),
+    );
+    assert.equal(response.status, 200);
+    httpContexts.push(assertAliasFacts(((await response.json()) as any).data));
+  }
+  const server = createMingyuMcpServer();
+  const client = new Client({ name: 'name-dst-alias-facts', version: '1.0.0' });
+  const [left, right] = InMemoryTransport.createLinkedPair();
+  await server.connect(right);
+  await client.connect(left);
+  try {
+    for (const [index, input] of inputs.entries()) {
+      const response = await client.callTool({ name: input.tool, arguments: input.args });
+      assert.equal(response.isError, undefined);
+      const context = assertAliasFacts((response.structuredContent as any).result);
+      assert.deepEqual(context.pillars, httpContexts[index].pillars);
+      assert.deepEqual(context.timeBasis, httpContexts[index].timeBasis);
+    }
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});

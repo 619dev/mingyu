@@ -5,6 +5,8 @@ import { resolveBirthPlace } from '../packages/core/src/location/index.ts';
 import {
   analyzeChineseName,
   buildChineseNameAnalysisPrompt,
+  buildChineseNamingPrompt,
+  generateChineseNames,
 } from '../packages/core/src/name-number/index.ts';
 
 test('姓名出生事实区分地点代表坐标并列出实际校正经度和时区', () => {
@@ -72,4 +74,89 @@ test('姓名出生事实区分地点代表坐标并列出实际校正经度和�
     buildChineseNameAnalysisPrompt({ analysis: longitudeOnlyAnalysis }),
     /地点记录：未提供；真太阳时校正经度：75°；时区：Asia\/Kolkata，UTC\+05:30/,
   );
+});
+
+test('姓名出生钟表与中国历史夏令时别名的排盘时间一致', () => {
+  const birth = {
+    gender: 'male' as const,
+    year: 1988,
+    month: 7,
+    day: 1,
+    dateType: 'solar' as const,
+    birthHour: 12,
+    birthMinute: 30,
+    birthSecond: 15,
+  };
+  const canonical = analyzeChineseName({
+    fullName: '李清和',
+    birth: { ...birth, timeZoneId: 'Asia/Shanghai' },
+  }).birthContext!;
+  for (const timeZoneId of ['Asia/Chongqing', 'Asia/Chungking', 'Asia/Harbin', 'PRC']) {
+    const analysis = analyzeChineseName({ fullName: '李清和', birth: { ...birth, timeZoneId } });
+    const context = analysis.birthContext!;
+    assert.equal(context.timeBasis.inputTime, '12:30:15', timeZoneId);
+    assert.equal(context.timeBasis.calculatedTime, '11:30:15', timeZoneId);
+    assert.equal(context.timeBasis.mode, '中国历史夏令时钟表时间（已回拨为标准北京时间）');
+    assert.equal(context.timeBasis.timeZoneId, timeZoneId);
+    assert.deepEqual(context.pillars, canonical.pillars, timeZoneId);
+    assert.equal(context.solarDate, canonical.solarDate, timeZoneId);
+    const prompt = buildChineseNameAnalysisPrompt({ analysis });
+    assert.match(prompt, /出生记录：公历1988年7月1日 12:30:15/);
+    assert.match(prompt, /排盘公历：1988-07-01 11:30:15/);
+    assert.ok(prompt.includes(`四柱：${canonical.pillars.join(' ')}`));
+  }
+  for (const options of [
+    { timezone: 8, applyChinaDst: true },
+    { timeZoneId: 'PRC', birthSecond: undefined },
+    { timeZoneId: 'Asia/Tokyo' },
+    { timezone: 8 },
+  ]) {
+    const context = analyzeChineseName({
+      fullName: '李清和',
+      birth: { ...birth, ...options },
+    }).birthContext!;
+    const corrected = options.applyChinaDst === true || options.timeZoneId === 'PRC';
+    const withSeconds = options.timeZoneId !== 'PRC';
+    assert.equal(
+      context.timeBasis.calculatedTime,
+      `${corrected ? '11' : '12'}:30${withSeconds ? ':15' : ''}`,
+    );
+    assert.equal(
+      context.timeBasis.mode,
+      corrected
+        ? '中国历史夏令时钟表时间（已回拨为标准北京时间）'
+        : 'timezone' in options
+          ? '标准北京时间（精确到秒）'
+          : '当地钟表时间（精确到秒）',
+    );
+  }
+});
+
+test('姓名生成任务书保留夏令时别名跨日的原记录与标准排盘日期', () => {
+  const candidates = generateChineseNames({
+    surname: '李',
+    givenNameLength: 1,
+    generationCharacter: '和',
+    limit: 1,
+    birth: {
+      gender: 'male',
+      year: 1990,
+      month: 5,
+      day: 15,
+      dateType: 'solar',
+      birthHour: 0,
+      birthMinute: 20,
+      birthSecond: 17,
+      timeZoneId: 'Asia/Chongqing',
+    },
+  });
+  const context = candidates[0].analysis.birthContext!;
+  assert.equal(context.timeBasis.inputTime, '00:20:17');
+  assert.equal(context.timeBasis.calculatedTime, '23:20:17');
+  assert.equal(context.timeBasis.mode, '中国历史夏令时钟表时间（已回拨为标准北京时间）');
+  const prompt = buildChineseNamingPrompt({ surname: '李', candidates });
+  assert.match(prompt, /出生记录：公历1990年5月15日 00:20:17/);
+  assert.equal(context.solarDate, '1990-05-14');
+  assert.match(prompt, /排盘公历：1990-05-14 23:20:17/);
+  assert.ok(prompt.includes(`四柱：${context.pillars.join(' ')}`));
 });

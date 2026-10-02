@@ -124,7 +124,7 @@ test('浏览器八字补算使用本地 Worker 并保留主体核验、取消和
 
 test('八字补算按原始钟表核主体，并按校正日期核盘面与时辰', async () => {
   const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
-  let altered: 'none' | 'birth-clock' | 'chart-date' = 'none';
+  let altered: 'none' | 'birth-clock' | 'chart-date' | 'chart-time' = 'none';
   const canonicalResults = new Map<string, ReturnType<typeof calculateBaziReading>>();
   class LocalWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
@@ -143,6 +143,7 @@ test('八字补算按原始钟表核主体，并按校正日期核盘面与时�
           const result = structuredClone(canonicalResult);
           if (altered === 'birth-clock') result.result.birthClockTime!.day = 2;
           if (altered === 'chart-date') result.result.solarDate.day = 30;
+          if (altered === 'chart-time') result.result.timeInfo.index = 0;
           this.onmessage?.({ data: { id: message.id, type: 'result', result } } as MessageEvent);
         } catch (error) {
           this.onerror?.({ message: String(error) } as ErrorEvent);
@@ -200,6 +201,20 @@ test('八字补算按原始钟表核主体，并按校正日期核盘面与时�
           timeZoneId: 'Asia/Shanghai',
         }),
       ],
+      ...['Asia/Chongqing', 'Asia/Harbin', 'PRC'].map(
+        (timeZoneId) =>
+          [
+            `IANA 中国时区别名 ${timeZoneId}`,
+            subjectFor(`IANA 中国时区别名跨日 ${timeZoneId}`, {
+              ...base,
+              year: 1988,
+              month: 6,
+              day: 1,
+              dateType: 'solar',
+              timeZoneId,
+            }),
+          ] as const,
+      ),
       [
         '农历输入夏令时',
         subjectFor('农历输入夏令时跨日', {
@@ -264,6 +279,22 @@ test('八字补算按原始钟表核主体，并按校正日期核盘面与时�
     await assert.rejects(executeReadingAction(action, undefined, dst), /原始公历出生日期/);
     altered = 'chart-date';
     await assert.rejects(executeReadingAction(action, undefined, dst), /实际校正公历出生日期/);
+    altered = 'chart-time';
+    await assert.rejects(
+      executeReadingAction(
+        action,
+        undefined,
+        subjectFor('IANA 中国时区别名跨日错误时辰', {
+          ...base,
+          year: 1988,
+          month: 6,
+          day: 1,
+          dateType: 'solar',
+          timeZoneId: 'Asia/Chongqing',
+        }),
+      ),
+      /bazi\.result\.timeInfo\.index/,
+    );
   } finally {
     if (originalWorker) Object.defineProperty(globalThis, 'Worker', originalWorker);
     else Reflect.deleteProperty(globalThis, 'Worker');

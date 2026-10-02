@@ -213,8 +213,13 @@ test('单复姓与单双字名均提供逐格可复算的五格依据', () => {
   }
 });
 
-test('姓名与起名提示词携带真实字义和五格算式并使用完整中文术语', () => {
+test('姓名解析无数值评分，提示词携带真实字义和五格算式并使用完整中文术语', () => {
   const analysis = analyzeChineseName({ fullName: '李清和' });
+  assert.equal(analysis.surname, '李');
+  assert.equal(analysis.given, '清和');
+  assert.equal(Object.keys(analysis.grids).length, 5);
+  assert.equal(analysis.sancai.combo.length, 3);
+  assert.equal('scores' in analysis, false);
   const prompt = buildChineseNameAnalysisPrompt({ analysis });
   for (const char of analysis.chars) {
     if (char.definition) assert.ok(prompt.includes(char.definition));
@@ -294,14 +299,7 @@ test('明确选字五行可以独立进入姓名提示词并与实际匹配字�
   assert.match(buildChineseNameAnalysisPrompt({ analysis }), /本次选字五行：水/);
 });
 
-test('姓名解析不返回数值评分，起名规则实际约束候选用字', () => {
-  const analysis = analyzeChineseName({ fullName: '李清和' });
-  assert.equal(analysis.surname, '李');
-  assert.equal(analysis.given, '清和');
-  assert.equal(Object.keys(analysis.grids).length, 5);
-  assert.equal(analysis.sancai.combo.length, 3);
-  assert.equal('scores' in analysis, false);
-
+test('起名规则实际约束候选用字', () => {
   const names = generateChineseNames({
     surname: '李',
     gender: '通用',

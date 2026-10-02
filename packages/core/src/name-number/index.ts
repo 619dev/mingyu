@@ -19,7 +19,7 @@ import {
   getCivilDateTimeAtFixedOffset,
   resolveCivilTime,
 } from '../calendar/civil-time';
-import { checkChinaDst } from '../calendar/china-dst';
+import { resolveChinaStandardBirthTime } from '../calendar/china-dst';
 import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
 import { resolveBirthPlace } from '../location';
 import type { BirthProfileTimeRange } from '../profile/time-range';
@@ -99,22 +99,23 @@ function formatNamingClock(input: NamingBirthInput, includeSeconds: boolean) {
 function correctedChinaDstClock(
   input: NamingBirthInput,
   clock: ReturnType<typeof resolveBirthCalendarClockTime>,
-  timezone: number,
 ): string | null {
   if (
     input.useTrueSolarTime === true ||
     !hasNamingClock(input) ||
-    (input.applyChinaDst !== true && !(input.timeZoneId === 'Asia/Shanghai' && timezone === 9))
-  ) {
+    (!input.timeZoneId && input.applyChinaDst !== true)
+  )
     return null;
-  }
+  const resolved = resolveChinaStandardBirthTime({
+    ...clock,
+    timezone: input.timezone,
+    timeZoneId: input.timeZoneId || undefined,
+    applyChinaDst: input.applyChinaDst,
+  });
+  if (!resolved.usedChinaDstCorrection) return null;
   const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
-  const dst = checkChinaDst(clock.year, clock.month, clock.day, clock.hour, clock.minute);
-  if (!dst.inDst) return null;
-  const corrected = new Date(
-    Date.UTC(clock.year, clock.month - 1, clock.day, clock.hour, clock.minute + dst.offsetMinutes),
-  );
-  return `${String(corrected.getUTCHours()).padStart(2, '0')}:${String(corrected.getUTCMinutes()).padStart(2, '0')}${hasInputSecond ? `:${String(clock.second).padStart(2, '0')}` : ''}`;
+  const corrected = resolved.effectiveTime;
+  return `${String(corrected.hour).padStart(2, '0')}:${String(corrected.minute).padStart(2, '0')}${hasInputSecond ? `:${String(corrected.second).padStart(2, '0')}` : ''}`;
 }
 
 function calculateNamingBazi(input: NamingBirthInput) {
@@ -168,13 +169,11 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
     : null;
   const chinaDstClock =
     standardCalendarClock && standardCivilTime
-      ? correctedChinaDstClock(input, standardCalendarClock, standardCivilTime.timezone)
+      ? correctedChinaDstClock(input, standardCalendarClock)
       : null;
   const standardClockIsBeijing = standardCivilTime?.timezone === 8 && !standardCivilTime.timeZoneId;
   const standardClockMode = chinaDstClock
-    ? standardClockIsBeijing || standardCivilTime?.timeZoneId === 'Asia/Shanghai'
-      ? '中国历史夏令时钟表时间（已回拨为标准北京时间）'
-      : '当地钟表时间（按中国历史夏令时规则已回拨一小时）'
+    ? '中国历史夏令时钟表时间（已回拨为标准北京时间）'
     : standardClockIsBeijing
       ? `标准北京时间（精确到${hasInputSecond ? '秒' : '分'}）`
       : `当地钟表时间（精确到${hasInputSecond ? '秒' : '分'}）`;

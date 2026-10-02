@@ -17,10 +17,10 @@ import {
 } from '../astrolabe-scope';
 import { getAiApiEndpoint } from './stream-client';
 import {
-  checkChinaDst,
   DEFAULT_CHINA_TIMEZONE_HOURS,
   getTimeIndexFromClock,
   resolveBirthCalendarClockTime,
+  resolveChinaStandardBirthTime,
   resolveCivilTime,
   TimeManager,
 } from 'mingyu-core/calendar';
@@ -800,41 +800,21 @@ function assertBaziResultFacts(
       ) {
         throw new Error('补算返回缺少八字原始精确出生钟表。');
       }
-      const dst = checkChinaDst(
-        Number(year),
-        Number(month),
-        Number(day),
-        Number(hour),
-        Number(minute),
-      );
-      const useChinaDst =
-        dst.inDst &&
-        (locked.applyChinaDst === true ||
-          (locked.timeZoneId === 'Asia/Shanghai' &&
-            resolveCivilTime({
-              year: Number(year),
-              month: Number(month),
-              day: Number(day),
-              hour: Number(hour),
-              minute: Number(minute),
-              second: Number(birthClockTime.second ?? 0),
-              timezone: typeof locked.timezone === 'number' ? locked.timezone : undefined,
-              timeZoneId: 'Asia/Shanghai',
-            }).timezone === 9));
-      const adjusted = new Date(
-        Date.UTC(
-          Number(year),
-          Number(month) - 1,
-          Number(day),
-          Number(hour),
-          Number(minute),
-          Number(birthClockTime.second ?? 0),
-        ) + (useChinaDst ? dst.offsetMinutes * 60_000 : 0),
-      );
+      const { effectiveTime } = resolveChinaStandardBirthTime({
+        year: Number(year),
+        month: Number(month),
+        day: Number(day),
+        hour: Number(hour),
+        minute: Number(minute),
+        second: Number(birthClockTime.second ?? 0),
+        timezone: typeof locked.timezone === 'number' ? locked.timezone : undefined,
+        timeZoneId: typeof locked.timeZoneId === 'string' ? locked.timeZoneId : undefined,
+        applyChinaDst: locked.applyChinaDst === true,
+      });
       const adjustedDate = {
-        year: adjusted.getUTCFullYear(),
-        month: adjusted.getUTCMonth() + 1,
-        day: adjusted.getUTCDate(),
+        year: effectiveTime.year,
+        month: effectiveTime.month,
+        day: effectiveTime.day,
       };
       assertDateParts('八字实际校正公历出生日期', adjustedDate, result.solarDate);
       const lunar = SolarDay.fromYmd(
@@ -847,7 +827,7 @@ function assertBaziResultFacts(
         { year: lunar.getYear(), month: lunar.getMonth(), day: lunar.getDay() },
         result.lunarDate,
       );
-      expectedTimeIndex = getTimeIndexFromClock(adjusted.getUTCHours(), adjusted.getUTCMinutes());
+      expectedTimeIndex = getTimeIndexFromClock(effectiveTime.hour, effectiveTime.minute);
     } else {
       if (dateType === 'lunar') {
         assertDateParts('八字实际农历出生日期', birth, result.lunarDate);
