@@ -1,4 +1,6 @@
 import type { BaziChartResult } from '../bazi/baziTypes';
+import { formatPatternBasisForPrompt } from '../bazi/baziAnalysisFormatter';
+import { buildBaziNatalAnalysisFacts, formatNatalPatternFacts } from '../bazi/natalEvidence';
 import { getBaziMonthIndexByCivilDate } from '../bazi/calendarTool';
 import { createCivilDate, getLuckCycleForCivilDate, toChinaCivilDate } from '../bazi/luckTiming';
 import {
@@ -272,7 +274,7 @@ function createBaziFacts(
       return fact?.promptText ?? chart.pillars[key].ganZhi;
     })
     .join('；');
-  const useful = chart.analysis.usefulGod;
+  const usefulFact = buildBaziNatalAnalysisFacts(chart).find((item) => item.type === '用神取忌')!;
   const cycleAtStart = getLuckCycleForCivilDate(chart.luckInfo.cycles, timingReference.start);
   const cycleAtEnd = getLuckCycleForCivilDate(chart.luckInfo.cycles, timingReference.endInclusive);
   const luckAmbiguous = cycleAtStart !== cycleAtEnd;
@@ -346,7 +348,11 @@ function createBaziFacts(
         system: 'bazi',
         scope: 'natal',
         title: '格局',
-        detail: `${chart.analysis.mingGe.pattern || '未记录'}${chart.analysis.mingGe.basis ? `；${chart.analysis.mingGe.basis}` : ''}`,
+        detail: unique([
+          chart.analysis.mingGe.pattern || '未记录',
+          formatPatternBasisForPrompt(chart.analysis.mingGe.basis ?? ''),
+          ...formatNatalPatternFacts(chart.analysis.mingGe),
+        ]).join('；'),
         sourceKeys: [analysisKey('格局')],
       },
     ],
@@ -356,12 +362,7 @@ function createBaziFacts(
         system: 'bazi',
         scope: 'natal',
         title: '取用与喜忌',
-        detail: unique([
-          useful.primaryUseful ? `首取${useful.primaryUseful}` : useful.useful,
-          useful.primaryAvoid ? `首忌${useful.primaryAvoid}` : useful.avoid,
-          useful.primaryReason ?? '',
-          ...(useful.strategyTrace ?? []),
-        ]).join('；'),
+        detail: unique([usefulFact.result, ...usefulFact.basis]).join('；'),
         sourceKeys: [analysisKey('用神取忌')],
       },
     ],

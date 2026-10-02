@@ -114,6 +114,7 @@
 六爻接口的 `liuyaoMethod` 支持 `time`、`coins`、`manual`、`yarrow`。蓍草起卦使用 `yarrow`，可提供 `seed` 或 `replay` 重放随机过程；也可单独提供 `yarrowSplits`，按初爻至上爻传入十八次挂一前左堆策数。每次左堆须为正整数，右堆挂一后至少留一策；具体上限随前一变剩策变化。手工分堆与随机选项、手工爻值不能混用。结果 `generation.yarrow` 保留六爻十八变，`meta.random` 保留随机样本，提示词接口同步包含起卦过程。MCP 的 `divine_liuyao` 与 `liuyao_prompt` 使用对应的 `method: "yarrow"` 和 `yarrowSplits` 参数。
 
 面向自动化代理与 MCP 客户端时：
+
 - **提示词优先**：优先使用 `/prompt` 一站式接口或 MCP `*_prompt` 工具，让服务端直接返回可交给 AI 解读的自包含 `prompt` 任务书，不要先取完整排盘再自行拼装提示词。只有需要做表格展示、二次计算或缓存结构化数据时，才调用 `/calculate` 或 `/divination/{method}`；
 - **MCP 入口选择**：Agent/Skill 客户端能够启动本地进程时，优先使用 `npx -y mingyu-mcp` stdio；它默认使用 `full`，不消耗 Cloudflare Pages Functions 请求额度。只有本地进程不可用或需要远程免安装接入时，再选择 `https://aov.cc/mcp`。在线 MCP 提示词通常默认 `summary`，但非幂等的一次性起卦、抽牌、求签提示词默认 `full`；显式 `responseMode` 优先。`summary` 只减少返回体，不减少计算 CPU。星盘默认本命 `natal`；`full` 和其他范围仍受在线资源保护与 Cloudflare 边缘运行限制。
 - **在线 MCP 的连接与请求用量**：Streamable HTTP 中每条 JSON-RPC 消息单独用一次 `POST`，在线端点拒绝 JSON-RPC batch；初始化、工具列表和工具调用会形成多次 HTTP 请求。该端点不提供 SSE `GET` 流：普通浏览器 `GET` 返回端点元数据，带 `Accept: text/event-stream` 的 `GET` 返回 `405`；旧路径 `/sse` 只返回 `USE_STREAMABLE_HTTP` 提示，也不是 SSE 服务。命中 Pages Function 的请求（包括 `/sse`）会计入 Cloudflare Functions 用量；避免轮询和紧密重试。有推运需求时按需传入 `astrolabeScope: "yearly"`；奇门终身局传 `periodRange` 限制年份；黄历择日按段请求。
@@ -255,6 +256,8 @@ curl -X POST https://aov.cc/api/v1/foundation/shensha \
 该入口要求四柱全部明确且合法，并与八字默认口径一致：空亡同时取日柱与年柱旬空，驿马、桃花同时按年支与日支查；不会生成候选时辰、缺时柱命盘、吉凶总分或事件概率。
 
 紫微排盘、提示词及八字紫微合参支持 `scopeDate`（YYYY-MM-DD）和 `scopeHourIndex`（整数0—12，0=早子、1=丑、…、12=晚子）指定运限时点；省略时使用当前日期和时辰。出生 `timeIndex` 单独用于本命盘。
+
+紫微普通钟表输入也支持 `birthHour`、`birthMinute` 与可选 `birthSecond`：先将农历出生日期换算为公历，再按 `timeZoneId` 核验真实当地时刻；回拨重复时间须用匹配的 `timezone` 消歧，跳时缺口与偏移冲突会拒绝计算。中国 1986—1991 年夏令时记录可使用 `Asia/Shanghai` 或其 IANA 别名自动还原标准钟表，也可使用固定 `timezone: 8` 与 `applyChinaDst: true`；秒数与回拨后的跨日日期一并保留。其他地区沿用当地钟表日期与时辰。单独传传统 `timeIndex` 时仍按该时辰排盘。
 
 八字排盘并生成提示词：
 

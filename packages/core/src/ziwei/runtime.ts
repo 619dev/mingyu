@@ -1,5 +1,7 @@
 import { getBirthDateValidationMessage } from '../calendar/date-validation';
 import { getTimeIndexFromClock } from '../calendar/dateUtils';
+import { resolveBirthCalendarClockTime } from '../calendar/true-solar-time';
+import { resolveChinaStandardBirthTime } from '../calendar/china-dst';
 import { resolveZiweiTrueSolarBirth } from './true-solar-input';
 import type {
   AnalysisPayloadV1,
@@ -561,21 +563,57 @@ export function buildZiweiChartInput(input: ZiweiChartInputDraft): ChartInput {
         applyChinaDst: input.applyChinaDst,
       })
     : null;
+  const standardBirthTime = preciseStandardBirthTime
+    ? resolveChinaStandardBirthTime({
+        ...resolveBirthCalendarClockTime({
+          dateType: input.dateType,
+          ...birthDateParts,
+          ...preciseStandardBirthTime,
+          second: preciseStandardBirthTime.second ?? 0,
+          isLeapMonth: input.isLeapMonth,
+        }),
+        timezone: input.timezone,
+        timeZoneId: input.timeZoneId,
+        applyChinaDst: input.applyChinaDst,
+      })
+    : undefined;
+  const correctedStandardTime = standardBirthTime?.usedChinaDstCorrection
+    ? standardBirthTime.effectiveTime
+    : undefined;
+  const usesCorrectedDate = input.useTrueSolarTime || correctedStandardTime !== undefined;
 
   return normalizeChartInput({
     name: input.name,
     gender,
-    dateType: input.useTrueSolarTime ? 'solar' : input.dateType,
+    dateType: usesCorrectedDate ? 'solar' : input.dateType,
     birthDate:
       trueSolarBirth?.birthDate ??
-      formatBirthDate(birthDateParts.year, birthDateParts.month, birthDateParts.day),
-    birthTimeIndex: trueSolarBirth?.birthTimeIndex ?? birthTimeIndex,
+      (correctedStandardTime
+        ? formatBirthDate(
+            correctedStandardTime.year,
+            correctedStandardTime.month,
+            correctedStandardTime.day,
+          )
+        : formatBirthDate(birthDateParts.year, birthDateParts.month, birthDateParts.day)),
+    birthTimeIndex:
+      trueSolarBirth?.birthTimeIndex ??
+      (correctedStandardTime
+        ? getTimeIndexFromClock(correctedStandardTime.hour, correctedStandardTime.minute)
+        : birthTimeIndex),
     ...(trueSolarBirth
       ? { birthTime: trueSolarBirth.birthTime, trueSolarEvidence: trueSolarBirth.trueSolarEvidence }
       : preciseStandardBirthTime
-        ? { birthTime: preciseStandardBirthTime }
+        ? {
+            birthTime: {
+              hour: standardBirthTime!.effectiveTime.hour,
+              minute: standardBirthTime!.effectiveTime.minute,
+              ...(preciseStandardBirthTime.second === undefined
+                ? {}
+                : { second: standardBirthTime!.effectiveTime.second }),
+            },
+          }
         : {}),
-    isLeapMonth: input.useTrueSolarTime ? false : input.isLeapMonth,
+    isLeapMonth: usesCorrectedDate ? false : input.isLeapMonth,
     algorithm: input.algorithm ?? 'default',
   });
 }

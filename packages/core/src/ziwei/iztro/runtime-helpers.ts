@@ -18,7 +18,7 @@ const VALID_AGE_DIVIDES = ['normal', 'birthday'] as const;
 const VALID_DAY_DIVIDES = ['current', 'forward'] as const;
 
 type IztroAstro = typeof import('iztro').astro;
-type BirthdayTools = [
+type HoroscopeTools = [
   typeof import('iztro/lib/astro/index.js'),
   typeof import('iztro/lib/star/index.js'),
   typeof import('iztro/lib/utils/index.js'),
@@ -93,7 +93,7 @@ async function loadIztroAstro(): Promise<IztroAstro> {
   }
 }
 
-async function loadIztroBirthdayTools(): Promise<BirthdayTools> {
+async function loadIztroHoroscopeTools(): Promise<HoroscopeTools> {
   return Promise.all([
     import('iztro/lib/astro/index.js'),
     import('iztro/lib/star/index.js'),
@@ -182,8 +182,7 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
   const normalized = normalizeChartInput(input);
   assertValidChartInput(normalized);
   const astro = await loadIztroAstro();
-  const birthdayTools: BirthdayTools | undefined =
-    normalized.ageDivide === 'birthday' ? await loadIztroBirthdayTools() : undefined;
+  const horoscopeTools = await loadIztroHoroscopeTools();
   let effectiveBirthSolarDate: string | undefined;
 
   const options = {
@@ -244,15 +243,15 @@ export async function buildAstrolabeFromInput(input: ChartInput): Promise<Functi
       ) {
         horoscope = calculateHoroscope(horoscope.solarDate, 0) as FunctionalHoroscope;
       }
-      return birthdayTools
+      return normalized.ageDivide === 'birthday'
         ? applyBirthdayAgeBoundary(
             astrolabe,
             horoscope,
             horoscope.solarDate,
             normalized,
-            birthdayTools,
+            horoscopeTools,
           )
-        : horoscope;
+        : applyAgePalaceCycle(astrolabe, horoscope, horoscope.age.nominalAge, horoscopeTools);
     } finally {
       if (effectiveBirthSolarDate) astrolabe.solarDate = displayBirthSolarDate;
     }
@@ -420,13 +419,12 @@ export async function buildHoroscopeFromInput(
 
   // iztro 的配置是全局状态；每次取运限前恢复本盘配置，避免不同口径串盘。
   // 可选依赖只在调用紫微能力时加载，并在恢复配置前完成异步导入。
-  const birthdayTools: BirthdayTools | undefined =
-    normalized.ageDivide === 'birthday' ? await loadIztroBirthdayTools() : undefined;
+  const horoscopeTools = await loadIztroHoroscopeTools();
   astro.config(buildIztroConfig(normalized));
   const horoscope = astrolabe.horoscope(dateStr, hourIndex) as FunctionalHoroscope;
-  return birthdayTools
-    ? applyBirthdayAgeBoundary(astrolabe, horoscope, dateStr, normalized, birthdayTools)
-    : horoscope;
+  return normalized.ageDivide === 'birthday'
+    ? applyBirthdayAgeBoundary(astrolabe, horoscope, dateStr, normalized, horoscopeTools)
+    : applyAgePalaceCycle(astrolabe, horoscope, horoscope.age.nominalAge, horoscopeTools);
 }
 
 type LunarBirthdayParts = {
@@ -476,7 +474,7 @@ function applyBirthdayAgeBoundary(
   horoscope: FunctionalHoroscope,
   targetDateStr: string,
   input: ChartInput,
-  [{ getPalaceNames }, { getHoroscopeStar }, { getMutagensByHeavenlyStem }]: BirthdayTools,
+  horoscopeTools: HoroscopeTools,
 ): FunctionalHoroscope {
   const birthDateStr = normalizeSolarDateKey(getZiweiFortuneBirthSolarDate(astrolabe, input));
   const birth = getLunarBirthdayParts(birthDateStr);
@@ -488,17 +486,34 @@ function applyBirthdayAgeBoundary(
     birth.year,
   );
   const nominalAge = Math.max(1, target.year - birth.year + (birthdayComparison >= 0 ? 1 : 0));
-  if (horoscope.age.nominalAge === nominalAge) return horoscope;
+  return applyAgePalaceCycle(astrolabe, horoscope, nominalAge, horoscopeTools);
+}
 
-  const agePalace = astrolabe.palaces.find((palace) => palace.ages.includes(nominalAge));
-  if (!agePalace) {
-    // iztro 对超出小限支持范围的输入本来也返回 -1；保留其结构，只纠正可确定的年龄。
-    horoscope.age = { ...horoscope.age, nominalAge };
+/** 小限每十二岁同宫，大限从五行局起限后每十年一宫，十二宫后循原宫序续行。 */
+function applyAgePalaceCycle(
+  astrolabe: IFunctionalAstrolabe,
+  horoscope: FunctionalHoroscope,
+  nominalAge: number,
+  [{ getPalaceNames }, { getHoroscopeStar }, { getMutagensByHeavenlyStem }]: HoroscopeTools,
+): FunctionalHoroscope {
+  if (
+    horoscope.age.nominalAge === nominalAge &&
+    (nominalAge <= 120 || (horoscope.age.index >= 0 && horoscope.decadal.index >= 0))
+  ) {
     return horoscope;
   }
 
+  const ageInFirstCycle = ((nominalAge - 1) % 12) + 1;
+  const agePalace = astrolabe.palaces.find((palace) => palace.ages.includes(ageInFirstCycle))!;
+  const decadalStartAge = Math.min(...astrolabe.palaces.map((palace) => palace.decadal.range[0]));
+  // 起限之前仍按童限；起限之后以首限年龄为原点，避免将末限的 121 岁误归首限。
+  const ageInDecadalCycle =
+    nominalAge < decadalStartAge
+      ? nominalAge
+      : decadalStartAge + ((nominalAge - decadalStartAge) % 120);
   const regularDecadalPalace = astrolabe.palaces.find(
-    (palace) => nominalAge >= palace.decadal.range[0] && nominalAge <= palace.decadal.range[1],
+    (palace) =>
+      ageInDecadalCycle >= palace.decadal.range[0] && ageInDecadalCycle <= palace.decadal.range[1],
   );
   const childhoodPalaceName = ['命宫', '财帛', '疾厄', '夫妻', '福德', '官禄'][nominalAge - 1];
   const childhoodPalace = childhoodPalaceName

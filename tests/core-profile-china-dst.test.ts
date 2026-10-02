@@ -159,3 +159,35 @@ test('中国夏令时未启用时保留钟表时间，已注明传统时辰不�
     /仅适用于东八区/,
   );
 });
+
+test('上海 IANA 别名在相同瞬时下采用同一跨日标准出生日期与时辰', () => {
+  for (const timeZoneId of ['Asia/Shanghai', 'Asia/Chongqing', 'Asia/Harbin', 'Asia/Chungking']) {
+    const profile = {
+      ...profileAt(1990, 5, 15, 0, 20),
+      applyChinaDst: false,
+      location: { longitude: 116.4, timeZoneId },
+    };
+    const normalized = normalizeBirthProfile(profile);
+    assert.deepEqual(
+      normalized.effectiveTime,
+      {
+        year: 1990,
+        month: 5,
+        day: 14,
+        hour: 23,
+        minute: 20,
+        second: 17,
+      },
+      timeZoneId,
+    );
+    assert.equal(normalized.usedChinaDstCorrection, true, timeZoneId);
+    assert.equal(normalized.timeIndex, 12, timeZoneId);
+    assert.match(normalized.timeEvidence.promptText, /1990-05-14T15:20:17.000Z/);
+    const bazi = calculateBaziFromBirthProfile(profile);
+    assert.equal(bazi.solarDate.day, 14, timeZoneId);
+    assert.equal(bazi.timeInfo.index, 12, timeZoneId);
+    const ziwei = birthProfileToZiweiChartInput(profile);
+    assert.equal(ziwei.birthDate, '1990-05-14', timeZoneId);
+    assert.deepEqual(ziwei.birthTime, { hour: 23, minute: 20, second: 17 }, timeZoneId);
+  }
+});

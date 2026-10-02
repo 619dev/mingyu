@@ -150,6 +150,64 @@ test('仅时分可省略时辰索引，提示词机器身份保留零秒并可�
   }
 });
 
+test('紫微 HTTP 单盘与提示词采用同一农历夏令时跨日事实，身份可原样重放', async () => {
+  const input = {
+    ...birth,
+    year: 1990,
+    month: 4,
+    day: 21,
+    dateType: 'lunar',
+    birthHour: 0,
+    birthMinute: 20,
+    birthSecond: 17,
+    timeZoneId: 'Asia/Chongqing',
+    timezone: 9,
+  };
+  const calculated = assertSuccess(await callApi('ziwei/calculate', input));
+  const prompt = assertSuccess(
+    await callApi('ziwei/prompt', {
+      ...input,
+      question: '请解读本命盘。',
+      promptScope: 'origin',
+      responseMode: 'full',
+    }),
+  );
+  assert.equal(calculated.basicInfo.solar_date, '1990-05-14');
+  assert.equal(calculated.basicInfo.birth_time_label, '晚子时');
+  assert.deepEqual(prompt.result.basicInfo.four_pillars, calculated.basicInfo.four_pillars);
+  assert.match(prompt.prompt, /1990-05-14/);
+  assert.match(prompt.prompt, /晚子时/);
+  assertNoEngineeringPromptText(prompt.prompt);
+  assertNoPromptPlaceholders(prompt.prompt);
+  const identity = prompt.result.calculationIdentity.birth;
+  assert.equal(identity.dateType, 'lunar');
+  assert.equal(identity.birthSecond, 17);
+  assert.equal(identity.timeZoneId, 'Asia/Chongqing');
+  const replay = assertSuccess(await callApi('ziwei/calculate', identity));
+  assert.deepEqual(replay.basicInfo, calculated.basicInfo);
+});
+
+test('紫微 HTTP 普通钟表入口拒绝 IANA 缺口、未消歧回拨与冲突偏移', async () => {
+  for (const clock of [
+    { month: 3, day: 10, birthHour: 2, birthMinute: 30 },
+    { month: 11, day: 3, birthHour: 1, birthMinute: 30 },
+    { month: 7, day: 1, birthHour: 12, birthMinute: 0, timezone: -5 },
+    { month: 7, day: 1, birthHour: 12, birthMinute: 0, applyChinaDst: true },
+  ]) {
+    for (const path of ['ziwei/calculate', 'ziwei/prompt']) {
+      const result = await callApi(path, {
+        ...birth,
+        timeZoneId: 'America/New_York',
+        ...clock,
+        question: '请解读本命盘。',
+        promptScope: 'origin',
+      });
+      assert.equal(result.status, 400, `${path}: ${JSON.stringify(result.body)}`);
+      assert.equal(result.body.error.code, 'BAD_REQUEST');
+    }
+  }
+});
+
 test('传统时辰与空表单沿用索引，部分钟表和坏值明确拒绝', async () => {
   const traditional = { ...birth, timeIndex: 6 };
   const bazi = assertSuccess(await callApi('bazi/calculate', traditional));

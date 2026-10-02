@@ -928,18 +928,14 @@ function extractQizhengFlowFacts(
     );
   }
   for (const [index, aspect] of flowing.transits.entries()) {
+    const owner = `${aspect.star1}与${aspect.star2}：${aspect.type === '同宫' ? '合相' : aspect.type}`;
     facts.push(
       ...collect([
         fact(
           `${options.idPrefix}.flow.transit.${index}`,
-          aspect.star1,
+          owner,
           [
-            aspect.star2,
-            `目标角${aspect.exactAngle}°`,
-            `实际角距${aspect.actualAngle.toFixed(2)}°`,
-            `偏差${aspect.orb.toFixed(2)}°`,
-            `容许偏差上限${aspect.allowedOrb}°`,
-            aspect.closeness,
+            `${owner}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°，${aspect.closeness}`,
           ],
           { scope: options.flowScope, unit: 'line' },
         ),
@@ -993,12 +989,15 @@ export function extractQizhengFacts(
     ) {
       continue;
     }
+    const owner = `${aspect.star1}与${aspect.star2}：${aspect.type === '同宫' ? '合相' : aspect.type}`;
     facts.push(
       ...collect([
         fact(
           `${idPrefix}.natal.aspect.${index}`,
-          aspect.star1,
-          [aspect.star2, `目标角${aspect.exactAngle}°`, `偏差${aspect.orb.toFixed(2)}°`],
+          owner,
+          [
+            `${owner}；目标角${aspect.exactAngle}°，实际角距${aspect.actualAngle.toFixed(2)}°，偏差${aspect.orb.toFixed(2)}°，容许偏差上限${aspect.allowedOrb}°`,
+          ],
           { scope: natalScope, unit: 'line' },
         ),
       ]),

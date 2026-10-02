@@ -147,3 +147,52 @@ test('MCP 部分钟表和坏值明确拒绝', async () => {
   const combined = await tools.bazi_ziwei_prompt!.handler(parsed.data);
   assert.equal(combined.isError, true);
 });
+
+test('MCP 紫微单盘和提示词共同采用上海别名的夏令时跨日事实', async () => {
+  const tools = getTools();
+  const input = {
+    ...ziweiBirth({
+      ...birth,
+      year: 1990,
+      month: 5,
+      day: 15,
+      birthHour: 0,
+      birthMinute: 20,
+      birthSecond: 17,
+    }),
+    timeZoneId: 'Asia/Harbin',
+    promptScope: 'origin',
+  };
+  const calculated = await callTool(tools.ziwei_calculate!, input);
+  const prompt = await callTool(tools.ziwei_prompt!, { ...input, question: '请解读本命盘。' });
+  assert.equal(calculated.basicInfo.solar_date, '1990-05-14');
+  assert.equal(calculated.basicInfo.birth_time_label, '晚子时');
+  assert.deepEqual(prompt.result.basicInfo.four_pillars, calculated.basicInfo.four_pillars);
+  assert.match(prompt.prompt, /1990-05-14/);
+  assert.match(prompt.prompt, /晚子时/);
+  assert.deepEqual(buildMcpZiweiChartInput(input).birthTime, { hour: 23, minute: 20, second: 17 });
+});
+
+test('MCP 紫微普通钟表拒绝不存在与未消歧的 IANA 当地时刻', async () => {
+  const tools = getTools();
+  for (const clock of [
+    { month: 3, day: 10, birthHour: 2, birthMinute: 30 },
+    { month: 11, day: 3, birthHour: 1, birthMinute: 30 },
+    { month: 7, day: 1, birthHour: 12, birthMinute: 0, timezone: -5 },
+  ]) {
+    const input = {
+      ...ziweiBirth({ ...birth, ...clock }),
+      timeZoneId: 'America/New_York',
+      ...('timezone' in clock ? { timezone: clock.timezone } : {}),
+      promptScope: 'origin',
+    };
+    for (const name of ['ziwei_calculate', 'ziwei_prompt']) {
+      const tool = tools[name]!;
+      const parsed = tool.inputSchema.safeParse({ ...input, question: '请解读本命盘。' });
+      assert.equal(parsed.success, true);
+      if (!parsed.success) throw new Error('MCP 输入未通过 schema。');
+      const response = await tool.handler(parsed.data);
+      assert.equal(response.isError, true, name);
+    }
+  }
+});

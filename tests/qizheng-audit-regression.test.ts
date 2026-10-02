@@ -14,6 +14,86 @@ import { auditPromptFacts } from '../scripts/prompt-audit/facts.ts';
 
 const branches = '子丑寅卯辰巳午未申酉戌亥';
 
+test('真实七政相位审查绑定本命与流曜两端及本条数值，其他吊照不能补足', () => {
+  const chart = generateQizheng({
+    year: 2024,
+    month: 6,
+    day: 20,
+    hour: 12,
+    timezone: 8,
+    flowYear: 2024,
+    flowMonth: 6,
+    flowDay: 20,
+    flowHour: 12,
+  });
+  const flowing = chart.flowingStars;
+  assert.ok(flowing);
+  const facts = extractQizhengFacts(chart);
+  const natalFacts = facts.filter((item) => item.id.includes('.natal.aspect.'));
+  const flowFacts = facts.filter((item) => item.id.includes('.flow.transit.'));
+  const publishedAspects = chart.aspects.filter(
+    (item) =>
+      !(
+        (item.star1 === '罗睺(火余)' && item.star2 === '计都(土余)') ||
+        (item.star1 === '计都(土余)' && item.star2 === '罗睺(火余)')
+      ),
+  );
+  assert.equal(natalFacts.length, publishedAspects.length);
+  assert.equal(flowFacts.length, flowing.transits.length);
+  assert.equal(
+    facts.length,
+    chart.stars.length +
+      publishedAspects.length +
+      1 +
+      flowing.stars.length +
+      flowing.transits.length +
+      (flowing.periodEvents?.events.length ?? 0),
+  );
+  assert.deepEqual(auditPromptFacts(chart.prompt, facts).missing, []);
+
+  const natalLine = chart.prompt.split('\n').find((line) => line.startsWith('七政四余吊照：'));
+  const flowLine = chart.prompt.split('\n').find((line) => line.startsWith('流曜与本命吊照：'));
+  assert.ok(natalLine && flowLine);
+  const withoutNatal = chart.prompt.replace(natalLine, '');
+  assert.ok(withoutNatal.includes(flowLine));
+  const removedNatal = auditPromptFacts(withoutNatal, facts);
+  assert.deepEqual(
+    removedNatal.missing.filter((id) => id.includes('.natal.aspect.')),
+    natalFacts.map((item) => item.id),
+  );
+  assert.ok(flowFacts.every((item) => !removedNatal.missing.includes(item.id)));
+  const removedFlow = auditPromptFacts(chart.prompt.replace(flowLine, ''), facts);
+  assert.deepEqual(
+    removedFlow.missing.filter((id) => id.includes('.flow.transit.')),
+    flowFacts.map((item) => item.id),
+  );
+
+  const sunIndex = flowing.transits.findIndex(
+    (item) => item.star1 === '流曜太阳' && item.star2 === '本命太阳',
+  );
+  assert.ok(sunIndex >= 0);
+  assert.equal(flowing.transits[sunIndex].actualAngle, 0);
+  const sun = '流曜太阳与本命太阳：合相；目标角0°，实际角距0.00°，偏差0.00°，容许偏差上限8°，紧密';
+  assert.ok(flowLine.includes(sun));
+  for (const corrupted of [
+    '',
+    sun.replace('流曜太阳与本命太阳', '本命太阳与流曜太阳'),
+    sun.replace('与本命太阳', '与本命太阴'),
+    sun.replace('：合相', '：六合'),
+    sun.replace('目标角0°', '目标角60°'),
+    sun.replace('实际角距0.00°', '实际角距0.01°'),
+    sun.replace('偏差0.00°', '偏差0.01°'),
+    sun.replace('容许偏差上限8°', '容许偏差上限9°'),
+    sun.replace('紧密', '宽松'),
+  ]) {
+    const changed = chart.prompt.replace(sun, corrupted);
+    assert.ok(
+      auditPromptFacts(changed, facts).missing.includes(`qizheng.flow.transit.${sunIndex}`),
+      corrupted || '删除本条相位',
+    );
+  }
+});
+
 test('同一瞬时异地地心曜度与宿界一致，位置计算证据不列出生坐标', () => {
   const input = { year: 2026, month: 5, day: 19, hour: 10, minute: 30, timezone: 8 };
   const beijing = generateQizheng({ ...input, latitude: 39.9, longitude: 116.4 });

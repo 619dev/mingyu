@@ -1,7 +1,7 @@
 import { SolarTime, SixtyCycleYear, Gender, LunarHour, EightChar } from 'tyme4ts';
 import { TIME_MAP } from './baziDefinitions';
 import { resolveTrueSolarBirthTime } from '../calendar/true-solar-time';
-import { checkChinaDst, isDateInChinaDstRange } from '../calendar/china-dst';
+import { isDateInChinaDstRange, resolveChinaStandardBirthTime } from '../calendar/china-dst';
 import {
   buildBaziWarningEvidence,
   checkJieqiBoundary,
@@ -55,7 +55,6 @@ import {
 } from './baziTypes';
 import { getTimeIndexFromClock } from '../calendar/dateUtils';
 import { getBirthDateValidationMessage } from '../calendar/date-validation';
-import { resolveCivilTime } from '../calendar/civil-time';
 import { getTermSolarTime } from './globalTimeBasis';
 import {
   applyUnknownBirthTime,
@@ -483,11 +482,8 @@ export class BaziCalculator {
           second: solarTime.getSecond(),
         }),
       );
-    } else if (person.timeZoneId && hasPreciseStandardTime) {
-      if (applyChinaDst) {
-        throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
-      }
-      const civilTime = resolveCivilTime({
+    } else if (hasPreciseStandardTime && (person.timeZoneId || applyChinaDst)) {
+      const standardBirthTime = resolveChinaStandardBirthTime({
         year: solarTime.getYear(),
         month: solarTime.getMonth(),
         day: solarTime.getDay(),
@@ -496,44 +492,16 @@ export class BaziCalculator {
         second: solarTime.getSecond(),
         timezone: person.timezone,
         timeZoneId: person.timeZoneId,
+        applyChinaDst,
       });
-      ianaTermSolarTime = getTermSolarTime(solarTime, undefined, person);
-      if (
-        person.timeZoneId === 'Asia/Shanghai' &&
-        civilTime.timezone === 9 &&
-        checkChinaDst(
-          solarTime.getYear(),
-          solarTime.getMonth(),
-          solarTime.getDay(),
-          solarTime.getHour(),
-          solarTime.getMinute(),
-        ).inDst
-      ) {
-        solarTime = solarTime.next(-3600);
-        lunarHour = solarTime.getLunarHour();
-        warnings.push('出生钟表时间处于中国历史夏令时期间，已回拨 60 分钟为北京时间后排盘。');
-      }
-    } else if (applyChinaDst && hasPreciseStandardTime) {
       if (person.timeZoneId) {
-        throw new Error('timeZoneId 已包含历史夏令时规则，不能同时启用 applyChinaDst。');
+        ianaTermSolarTime = getTermSolarTime(solarTime, undefined, person);
       }
-      const dst = checkChinaDst(
-        solarTime.getYear(),
-        solarTime.getMonth(),
-        solarTime.getDay(),
-        solarTime.getHour(),
-        solarTime.getMinute(),
-      );
-      if (dst.nonexistent) {
-        throw new Error('该中国历史钟表时间处于夏令时跳时缺口，实际并不存在。');
-      }
-      if (dst.ambiguous) {
-        throw new Error('该中国历史钟表时间处于夏令时回拨重复时段，无法唯一定时。');
-      }
-      if (dst.inDst) {
-        solarTime = solarTime.next(dst.offsetMinutes * 60);
+      if (standardBirthTime.usedChinaDstCorrection) {
+        const { year, month, day, hour, minute, second } = standardBirthTime.effectiveTime;
+        solarTime = SolarTime.fromYmdHms(year, month, day, hour, minute, second);
         lunarHour = solarTime.getLunarHour();
-        termSolarTime = solarTime;
+        if (!person.timeZoneId) termSolarTime = solarTime;
         warnings.push('出生钟表时间处于中国历史夏令时期间，已回拨 60 分钟为北京时间后排盘。');
       }
     } else if (

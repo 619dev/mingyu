@@ -161,9 +161,9 @@ test('七政在线任务书省去恒定罗计对照和重复星曜名单，完�
   assert.doesNotMatch(result.prompt, /罗睺\(火余\)与计都\(土余\)：对照/);
   assert.doesNotMatch(result.prompt, /七政：太阳、太阴、水、金、火、木、土；四余：/);
   assert.ok(
-    extractQizhengFacts(result)
-      .filter((fact) => fact.id.includes('.natal.aspect.'))
-      .every((fact) => !fact.values.includes('计都(土余)') || fact.owner !== '罗睺(火余)'),
+    !extractQizhengFacts(result).some(
+      (fact) => fact.id === `qizheng.natal.aspect.${result.aspects.indexOf(nodalAspect!)}`,
+    ),
   );
   assert.match(result.prompt, /命主：月（水）；命主恩星：太白\(金\)/u);
   assert.equal(result.prompt.match(/太阴与太白\(金\)：合相/gu)?.length, 1);

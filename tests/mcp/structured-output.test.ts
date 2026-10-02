@@ -2725,21 +2725,22 @@ test('MCP 八字双盘排盘工具应返回计算链、反证、汇总与限制�
   });
 });
 
-test('MCP 黄历择日排盘保留证据，提示词允许省略问题并返回结构化结果', async () => {
+test('MCP 黄历择日提示词在省略问题时返回完整结构化证据', async () => {
   await withMcpClient(async (client) => {
-    const result = await client.callTool({
-      name: 'divine_almanac',
+    const promptResult = await client.callTool({
+      name: 'almanac_prompt',
       arguments: {
-        detailMode: 'full',
         topic: 'contract',
         startDate: '2026-06-01',
         endDate: '2026-06-03',
       },
     });
 
-    assert.equal(result.isError, undefined, 'divine_almanac 不应返回错误');
+    assert.equal(promptResult.isError, undefined, 'almanac_prompt 不填 question 不应返回错误');
+    assert.ok(promptResult.structuredContent && 'result' in promptResult.structuredContent);
+    assert.ok(promptResult.structuredContent && 'prompt' in promptResult.structuredContent);
     const chart = (
-      result.structuredContent as {
+      promptResult.structuredContent as {
         result: {
           days: Array<{
             score?: number;
@@ -2927,17 +2928,6 @@ test('MCP 黄历择日排盘保留证据，提示词允许省略问题并返回�
         assert.equal(hour.score, undefined);
       }
     }
-    const promptResult = await client.callTool({
-      name: 'almanac_prompt',
-      arguments: {
-        topic: 'contract',
-        startDate: '2026-06-01',
-        endDate: '2026-06-03',
-      },
-    });
-    assert.equal(promptResult.isError, undefined, 'almanac_prompt 不填 question 不应返回错误');
-    assert.ok(promptResult.structuredContent && 'result' in promptResult.structuredContent);
-    assert.ok(promptResult.structuredContent && 'prompt' in promptResult.structuredContent);
     const prompt = String(promptResult.structuredContent?.prompt);
     assert.match(prompt, /【占卜信息】/);
     assert.match(prompt, /占法：黄历择日/);

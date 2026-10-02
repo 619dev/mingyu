@@ -177,7 +177,7 @@ function hasText(value: unknown): value is string {
 }
 
 /** 本命提示证据保留本盘裁决所需事实，通用核验条件留在结构化 fulfillment 中。 */
-function formatNatalPatternFacts(pattern: PatternAnalysis): string[] {
+export function formatNatalPatternFacts(pattern: PatternAnalysis): string[] {
   const decision = formatPatternDecisionForPrompt(pattern);
   const knownEvidence = [
     pattern.basis,
@@ -392,7 +392,7 @@ function buildPillarFacts(data: BaziChartResult): BaziNatalPillarFact[] {
   });
 }
 
-function buildAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
+export function buildBaziNatalAnalysisFacts(data: BaziChartResult): BaziNatalAnalysisFact[] {
   if (data.isThreePillars) {
     return (['日主旺衰', '格局', '用神取忌'] as const).map((type, index) => ({
       key: `bazi:natal:analysis:${['strength', 'pattern', 'useful-god'][index]}`,
@@ -956,7 +956,7 @@ function buildEvidenceBundle(args: {
 
 export function analyzeBaziNatalEvidence(data: BaziChartResult): BaziNatalEvidenceAnalysis {
   const pillarFacts = buildPillarFacts(data);
-  const analysisFacts = buildAnalysisFacts(data);
+  const analysisFacts = buildBaziNatalAnalysisFacts(data);
   const relationFacts = buildRelationFacts(data);
   const calculationSteps = buildCalculationSteps({
     data,

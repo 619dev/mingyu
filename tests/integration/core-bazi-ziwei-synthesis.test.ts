@@ -8,6 +8,8 @@ import {
 } from 'mingyu-core/synthesis';
 import { createMingyuClient } from 'mingyu-core/client';
 import type { BirthProfile } from 'mingyu-core/profile';
+import { baziCalculator } from '../../packages/core/src/bazi/baziCalculator';
+import { calculateZiweiChart } from '../../packages/core/src/ziwei/runtime';
 
 const profile: BirthProfile = {
   name: '时月',
@@ -440,4 +442,143 @@ test('局部细节未知不应把已知的旺衰结构整体标为缺口', async
   });
 
   assert.equal(synthesis.status, '资料完整');
+});
+
+test('真实同名格局的破格与未判定分别传入合参，不以格名替代裁决', async () => {
+  const examples = [
+    {
+      year: 2000,
+      month: 8,
+      day: 19,
+      timeIndex: 0,
+      pillars: ['庚辰', '甲申', '己酉', '甲子'],
+      pattern: '伤官格',
+      status: '破格',
+    },
+    {
+      year: 1990,
+      month: 7,
+      day: 13,
+      timeIndex: 12,
+      pillars: ['庚午', '癸未', '庚辰', '丙子'],
+      pattern: '正官格',
+      status: '未判定',
+    },
+    {
+      year: 2013,
+      month: 9,
+      day: 25,
+      timeIndex: 3,
+      pillars: ['癸巳', '辛酉', '甲午', '丁卯'],
+      pattern: '正官格',
+      status: '破格',
+    },
+  ];
+  for (const example of examples) {
+    const bazi = baziCalculator.calculateBazi({ ...example, gender: 'male' });
+    assert.deepEqual(
+      Object.values(bazi.pillars).map((pillar) => pillar.ganZhi),
+      example.pillars,
+    );
+    assert.equal(bazi.analysis.mingGe.pattern, example.pattern);
+    assert.equal(bazi.analysis.mingGe.fulfillment?.status, example.status);
+    const originalPattern = structuredClone(bazi.analysis.mingGe);
+    const runtime = await calculateZiweiChart(
+      {
+        name: '格局核验',
+        gender: '男',
+        dateType: 'solar',
+        birthDate: `${example.year}-${String(example.month).padStart(2, '0')}-${String(example.day).padStart(2, '0')}`,
+        birthTimeIndex: example.timeIndex,
+      },
+      {
+        horoscopeContext: { dateStr: '2026-09-16', hourIndex: 6 },
+        scopes: ['origin', 'decadal', 'yearly'],
+      },
+    );
+    const synthesis = buildBaziZiweiSynthesis({ bazi, ziwei: runtime });
+    const patternFacts = synthesis.themes
+      .flatMap((theme) => theme.baziEvidence)
+      .filter((fact) => fact.title === '格局');
+    assert.ok(patternFacts.length);
+    assert.ok(
+      patternFacts.every((fact) => fact.detail.includes(`当前成败判定：${example.status}`)),
+    );
+    const prompt = formatBaziZiweiSynthesisForPrompt(synthesis);
+    assert.ok(prompt.includes(`当前成败判定：${example.status}`));
+    assert.equal(prompt.split(`当前成败判定：${example.status}`).length - 1, 1);
+    assert.doesNotMatch(prompt, /当前成败判定：成格/);
+    if (example.year === 1990) {
+      assert.match(prompt, /正官仅见于年柱藏干丁（正官）、月柱藏干\/中气丁（正官），未透干/);
+      assert.doesNotMatch(prompt, /当前成败判定：破格/);
+    } else if (example.year === 2000) {
+      assert.match(prompt, /格局破格所忌：甲正官（时柱）；伤官见官的救应明确不成立/);
+      assert.match(prompt, /条件核验：资料不足；伤官见官可用项：时柱透干甲（正官）/);
+      assert.doesNotMatch(prompt, /格局破格所忌：甲正官（月柱）/);
+    }
+    assert.deepEqual(bazi.analysis.mingGe, originalPattern);
+  }
+});
+
+test('真实冬月条件取用保留部分判定、作用对象与干级所忌，不扩大为整五行', async () => {
+  const bazi = baziCalculator.calculateBazi({
+    year: 1904,
+    month: 1,
+    day: 20,
+    timeIndex: 0,
+    gender: 'male',
+  });
+  assert.deepEqual(
+    Object.values(bazi.pillars).map((pillar) => pillar.ganZhi),
+    ['癸卯', '乙丑', '癸丑', '壬子'],
+  );
+  assert.equal(bazi.analysis.usefulGod.incrementStatus, '部分判定');
+  assert.deepEqual(bazi.analysis.usefulGod.favorableWuxing, ['金', '水']);
+  assert.deepEqual(bazi.analysis.usefulGod.conditionalFavorableStems, ['丙']);
+  assert.deepEqual(bazi.analysis.usefulGod.conditionalUnfavorableStems, ['丁']);
+  const originalUsefulGod = structuredClone(bazi.analysis.usefulGod);
+  const runtime = await calculateZiweiChart(
+    {
+      name: '取用核验',
+      gender: '男',
+      dateType: 'solar',
+      birthDate: '1904-01-20',
+      birthTimeIndex: 0,
+    },
+    {
+      horoscopeContext: { dateStr: '1930-09-16', hourIndex: 6 },
+      scopes: ['origin', 'decadal', 'yearly'],
+    },
+  );
+  const synthesis = buildBaziZiweiSynthesis({ bazi, ziwei: runtime });
+  assert.equal(synthesis.status, '资料完整');
+  assert.deepEqual(synthesis.missingFacts, []);
+  const prompt = formatBaziZiweiSynthesisForPrompt(synthesis);
+  assert.match(prompt, /增补五行喜忌部分判定/);
+  assert.match(prompt, /条件取用：丙火用于解冻（作用对象：癸）/);
+  assert.match(prompt, /干级所忌：丁/);
+  assert.doesNotMatch(prompt, /主用火|首取火|喜用五行火/);
+  assert.deepEqual(bazi.analysis.usefulGod, originalUsefulGod);
+
+  bazi.analysis.usefulGod = { ...bazi.analysis.usefulGod, incrementStatus: '待判' };
+  const pendingSynthesis = buildBaziZiweiSynthesis({ bazi, ziwei: runtime });
+  assert.equal(pendingSynthesis.status, '资料完整');
+  assert.deepEqual(pendingSynthesis.missingFacts, []);
+  const pending = formatBaziZiweiSynthesisForPrompt(pendingSynthesis);
+  assert.match(pending, /增补五行喜忌待判/);
+  assert.match(pending, /条件取用：丙火用于解冻（作用对象：癸）/);
+  assert.doesNotMatch(pending, /首取印星|首忌食伤|最终取用:/);
+
+  const missingYearly = buildBaziZiweiSynthesis({
+    bazi,
+    ziwei: {
+      ...runtime,
+      payloadByScope: { ...runtime.payloadByScope, yearly: undefined },
+    },
+  });
+  assert.equal(missingYearly.status, '资料有缺口');
+  assert.ok(missingYearly.missingFacts.includes('运限基准年份缺少对应紫微流年'));
+  const missingPrompt = formatBaziZiweiSynthesisForPrompt(missingYearly);
+  assert.match(missingPrompt, /增补五行喜忌待判/);
+  assert.match(missingPrompt, /条件取用：丙火用于解冻（作用对象：癸）/);
 });

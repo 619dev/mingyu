@@ -97,6 +97,39 @@ test('本地紫微点补算保留出生秒、算法、固定运限上下文和�
   assert.match(result.prompt, /请核对本次紫微资料/u);
 });
 
+test('本地紫微无秒钟表身份保留实际时分和零秒，省索引及旧索引均可准确重放', async () => {
+  for (const clock of [
+    { timeIndex: undefined, birthSecond: undefined },
+    { timeIndex: 6, birthSecond: '' },
+  ]) {
+    const request = {
+      ...BASE_INPUT,
+      year: 2024,
+      month: 6,
+      day: 1,
+      birthHour: 0,
+      birthMinute: 5,
+      ...clock,
+      promptScope: 'origin',
+    };
+    const calculated = await generateZiweiReadingLocally(request);
+    const identity = calculated.result.calculationIdentity.birth;
+    assert.equal(identity.birthHour, 0);
+    assert.equal(identity.birthMinute, 5);
+    assert.equal(identity.birthSecond, 0);
+    assert.equal(identity.timeIndex, undefined);
+    assert.equal(calculated.result.basicInfo.birth_time_label, '早子时');
+    assert.match(calculated.prompt, /早子时/);
+    const replay = await generateZiweiReadingLocally({
+      ...identity,
+      ...calculated.result.calculationIdentity.target,
+      question: request.question,
+    });
+    assert.deepEqual(replay.result.basicInfo, calculated.result.basicInfo);
+    assert.deepEqual(replay.result.palaces, calculated.result.palaces);
+  }
+});
+
 test('本地紫微 full 补算逐批取得年龄年后再生成完整事实提示词', async () => {
   const progress: Array<[number, number]> = [];
   const chunks: ZiweiReadingChunk[] = [];
