@@ -188,6 +188,78 @@ test('未知时辰同名格局的成格与破格按各候选实际盘分别呈�
   }
 });
 
+test('未知时辰按候选保留冬癸取用的部分判定与所忌，已判定候选保持独立', () => {
+  const input = { year: 1904, month: 1, day: 20, gender: 'male' as const };
+  const result = baziCalculator.calculateBazi(input);
+  const scenarios = result.unknownTimeAnalysis!.scenarios;
+  const texts = [
+    formatBaziForPrompt(result),
+    buildBaziPrompt({ result }),
+    ...(['ziping', 'mangpai', 'xinpai'] as const).map((school) =>
+      formatBaziSchoolPrompt(result, school),
+    ),
+  ];
+  const html = renderToStaticMarkup(
+    createElement(MingluPatternUsefulGodSection, {
+      data: buildEnhancedPatternUsefulGodSection(result),
+    }),
+  );
+  const rows = [...html.matchAll(/<li\b[^>]*>(.*?)<\/li>/gsu)].map((match) =>
+    match[1]
+      .replace(/<!--.*?-->|<[^>]+>/gu, '')
+      .replace(/\s+/gu, ' ')
+      .trim(),
+  );
+  const expected = [
+    {
+      name: '早子时候选',
+      hour: '壬子',
+      status: '部分判定',
+      favorable: ['金', '水'],
+      unfavorable: ['木', '土'],
+    },
+    { name: '酉时候选', hour: '辛酉', status: '部分判定', favorable: [], unfavorable: [] },
+    {
+      name: '寅时候选',
+      hour: '甲寅',
+      status: '已判定',
+      favorable: ['金', '水'],
+      unfavorable: ['木', '火', '土'],
+    },
+  ];
+  for (const item of expected) {
+    const scenario = scenarios.find((candidate) => candidate.timeName === item.name)!;
+    assert.deepEqual(
+      Object.values(scenario.pillars).map((pillar) => pillar.ganZhi),
+      ['癸卯', '乙丑', '癸丑', item.hour],
+    );
+    assert.equal(scenario.incrementStatus, item.status);
+    assert.deepEqual(scenario.favorableWuxing, item.favorable);
+    assert.deepEqual(scenario.unfavorableWuxing, item.unfavorable);
+    const candidateRows = texts.map((text) =>
+      text.split('\n').find((line) => line.startsWith(`${item.name}：`)),
+    );
+    candidateRows.push(rows.find((row) => row.startsWith(`${item.name}：`)));
+    for (const row of candidateRows) {
+      assert.ok(row);
+      assert.ok(row.includes(`癸卯 乙丑 癸丑 ${item.hour}；`));
+      assert.equal(row.split('增补取用部分判定').length - 1, item.status === '部分判定' ? 1 : 0);
+      if (item.unfavorable.length) assert.ok(row.includes(`所忌${item.unfavorable.join('、')}`));
+    }
+  }
+  const roosterIndex = scenarios.findIndex((scenario) => scenario.timeName === '酉时候选');
+  const page = baziCalculator.calculateBaziUnknownTimeBatch(input, { startIndex: roosterIndex });
+  assert.deepEqual(page.result.unknownTimeAnalysis?.scenarios, [scenarios[roosterIndex]]);
+  assert.match(
+    formatBaziForPrompt(page.result),
+    /^酉时候选：癸卯 乙丑 癸丑 辛酉；.*候选喜用待判，候选所忌待判；增补取用部分判定$/mu,
+  );
+  assert.match(
+    formatBaziSchoolPrompt(page.result, 'ziping'),
+    /^酉时候选：癸卯 乙丑 癸丑 辛酉；.*；增补取用部分判定$/mu,
+  );
+});
+
 test('夏令时日初跨标准日期时农历历日随候选保留，不把午时占位日写成所有候选事实', () => {
   const result = baziCalculator.calculateBazi({
     year: 1988,

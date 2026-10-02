@@ -89,6 +89,10 @@ test('给出性别与流年后应同时生成行限和流曜，并叠到本命�
   assert.equal(result.flowingStars?.periodEvents?.mode, 'daily');
   assert.equal(result.prompt.match(/当前大限宫位未定/g)?.length, 1);
   assert.doesNotMatch(result.prompt, /只解读根基、落宿、落宫和吊照/);
+  for (const event of result.flowingStars!.periodEvents!.events) {
+    assert.equal(result.prompt.split(event.promptText).length - 1, 1);
+  }
+  assert.doesNotMatch(result.prompt, /周期主轴：|主轴列/);
 });
 
 test('七政默认东八区生成行限时与流曜共用同一时间解析口径', () => {
@@ -128,6 +132,14 @@ test('只有流年没有性别时只排流曜，不编造行限', () => {
   assert.match(result.prompt, /【流曜周期】/);
   assert.equal(result.flowingStars?.periodEvents?.mode, 'yearly');
   assert.ok((result.flowingStars?.periodEvents?.events.length ?? 0) > 0);
+  const period = result.flowingStars!.periodEvents!;
+  assert.ok(period.axis.length > 0);
+  assert.ok(period.windows.length > 0);
+  assert.ok(period.windows.every((window) => result.prompt.includes(window)));
+  for (const event of period.events) {
+    assert.equal(result.prompt.split(event.promptText).length - 1, 1);
+  }
+  assert.doesNotMatch(result.prompt, /周期主轴：|主轴列/);
   assert.doesNotMatch(result.prompt, /【行限】/);
 });
 

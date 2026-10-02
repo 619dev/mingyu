@@ -258,6 +258,9 @@ test('周期主轴暴露归组展开成员与单事件成员', () => {
   const singleAxis = layers.axis.find((item) => item.key === singleEvent.key);
   assert.ok(singleAxis);
   assert.deepEqual(singleAxis.eventKeys, [singleEvent.key]);
-  assert.match(layers.promptText, /周期主轴：/);
+  for (const event of [...groupedEvents, singleEvent]) {
+    assert.equal(layers.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1, 1);
+  }
+  assert.doesNotMatch(layers.promptText, /周期主轴：|具体时刻见|具体星象见/);
   assert.match(layers.promptText, /完整明细：/);
 });

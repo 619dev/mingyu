@@ -241,7 +241,11 @@ test('星盘流年分析对象会生成行运证据和展示文本', () => {
   assert.equal(new Set(sampledAspects).size, sampledAspects.length, '每条取样相位只列示一次');
   assert.match(context.promptText, /行运落宫：/);
   assert.match(context.promptText, /周期关键星象（2028-01-01 00:00至2029-01-01 00:00，共\d+项）。/);
-  assert.match(context.promptText, /周期主轴：/);
+  assert.ok(context.periodEvents!.axis.length > 0);
+  for (const event of context.periodEvents!.events) {
+    assert.equal(context.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1, 1);
+  }
+  assert.doesNotMatch(context.promptText, /周期主轴：|具体时刻见|具体星象见/);
   assert.match(context.promptText, /完整明细：/);
   assert.match(context.promptText, /太阳返照有效期.+：/);
   assert.match(context.promptText, /次限相位：/);

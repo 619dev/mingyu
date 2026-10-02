@@ -269,13 +269,18 @@ test('流年应列出周期内动态点的精准相位、停逆、换座、朔�
     collection.promptText,
     /周期关键星象（2028-01-01 00:00至2029-01-01 00:00，共\d+项）。/,
   );
-  assert.match(collection.promptText, /周期主轴：/);
   assert.match(collection.promptText, /完整明细：/);
-  assert.doesNotMatch(collection.promptText, /不得|时间边界|证据|不代表/);
-  assert.ok(collection.axis.length > 0);
-  assert.ok(
-    collection.promptText.indexOf('周期主轴：') < collection.promptText.indexOf('完整明细：'),
+  assert.doesNotMatch(
+    collection.promptText,
+    /不得|时间边界|证据|不代表|周期主轴：|具体星象见|具体时刻见/,
   );
+  assert.ok(collection.axis.length > 0);
+  for (const event of collection.events) {
+    assert.equal(
+      collection.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1,
+      1,
+    );
+  }
 
   const firstTransit = collection.events.find((item) => item.kind === '行运相位');
   assert.ok(firstTransit);
@@ -652,9 +657,13 @@ test('星盘流年分析对象应写入周期关键星象资料', () => {
   assert.ok((context.periodEvents?.events.length ?? 0) > 0);
   assert.match(context.promptText, /周期关键星象/);
   assert.doesNotMatch(context.promptText, /不得|时间边界|证据/);
+  for (const event of context.periodEvents!.events) {
+    assert.equal(context.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1, 1);
+  }
+  assert.doesNotMatch(context.promptText, /周期主轴：|重复过境主线见|具体星象见|具体时刻见/);
 });
 
-test('同一慢行星对本命点的多次过境应归组，并先列主轴再列完整明细', () => {
+test('同一慢行星多次过境保留归组统计，逐时刻事实只列一次', () => {
   const events = [12, 180, 300].map((day, index) => ({
     key: `行运相位:Saturn:Sun:${index}`,
     kind: '行运相位' as const,
@@ -684,11 +693,41 @@ test('同一慢行星对本命点的多次过境应归组，并先列主轴再�
 
   assert.equal(layers.groups.length, 1);
   assert.match(layers.groups[0].promptText, /土星刑本命太阳 3次过境/);
-  assert.match(layers.promptText, /周期主轴：/);
   assert.match(layers.promptText, /过境归组：土星刑本命太阳 3次过境/);
   assert.match(layers.promptText, /完整明细：/);
-  assert.ok(layers.promptText.indexOf('周期主轴：') < layers.promptText.indexOf('完整明细：'));
+  for (const event of [...events, eclipse]) {
+    assert.equal(layers.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1, 1);
+  }
+  assert.doesNotMatch(layers.promptText, /周期主轴：|具体时刻见|具体星象见|重复过境主线见/);
   assert.match(layers.axis.map((item) => item.promptText).join('；'), /土星刑本命太阳|日全食/);
+});
+
+test('同一民用日的分离关键窗口保留各自真实起止时分', () => {
+  const hours = [0, 1, 2, 3, 11, 12, 13, 14];
+  const events = hours.map((hour, index) => ({
+    key: `停逆:${index}`,
+    kind: '停逆' as const,
+    julianDate: 2461900 + hour / 24,
+    dateTime: `2028-03-12 ${String(hour).padStart(2, '0')}:00`,
+    promptText: `土星${index % 2 ? '顺行' : '逆行'}`,
+    movingPoint: '土星',
+  }));
+  const layers = buildAstrolabePeriodEventLayers(
+    events,
+    '2028-03-12 00:00',
+    '2028-03-13 00:00',
+    'daily',
+  );
+  assert.equal(layers.windows.length, 2);
+  assert.deepEqual(
+    layers.windows.map((window) => window.eventKeys),
+    [events.slice(0, 4).map((event) => event.key), events.slice(4).map((event) => event.key)],
+  );
+  assert.match(layers.promptText, /2028-03-12 00:00至2028-03-12 03:00（共4项）/);
+  assert.match(layers.promptText, /2028-03-12 11:00至2028-03-12 14:00（共4项）/);
+  for (const event of events) {
+    assert.equal(layers.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1, 1);
+  }
 });
 
 test('核心提示词与占问提示词应使用同一套本命相位主线和完整明细', () => {

@@ -183,7 +183,8 @@ const REQUIRED_SAMPLE_FIELDS: RequiredSampleFields[] = [
       '【行限】',
       '【流曜】',
       '【流曜周期】',
-      '周期主轴',
+      '周期事件参考',
+      '完整明细',
     ],
   },
   {

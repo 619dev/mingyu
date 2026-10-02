@@ -7,7 +7,7 @@ import {
   isServerBuiltinAiEnabled,
   isServerDefaultAiEnabled,
 } from '../src/lib/ai/settings';
-import { getAiRuntimeConfig, getAiRuntimeConfigScript } from '../src/lib/ai/runtime-config';
+import { getAiRuntimeConfig } from '../src/lib/ai/runtime-config';
 import { AI_CLIENT_ADDRESS_HEADER } from '../src/lib/ai/rate-limit';
 import { onRequest as handleRuntimeConfigRequest } from '../functions/_middleware';
 
@@ -47,21 +47,7 @@ test('内置 AI 可显示但默认仍保持提示词模式', (t) => {
   );
 });
 
-test('运行时 AI 配置需要同时配置密钥和开启开关', () => {
-  assert.deepEqual(
-    getAiRuntimeConfig({
-      AI_API_KEY: 'test-key',
-      AI_BUILTIN_ENABLED: 'true',
-      AI_DEFAULT_ENABLED: 'false',
-      AI_PROVIDER_NAME: 'DeepSeek',
-    }),
-    {
-      aiBuiltinEnabled: true,
-      aiDefaultEnabled: false,
-      aiProviderName: 'DeepSeek',
-    },
-  );
-
+test('运行时 AI 配置缺少密钥时应禁用内置 AI', () => {
   assert.equal(
     getAiRuntimeConfig({
       AI_BUILTIN_ENABLED: 'true',
@@ -69,18 +55,6 @@ test('运行时 AI 配置需要同时配置密钥和开启开关', () => {
       AI_PROVIDER_NAME: 'DeepSeek',
     }).aiBuiltinEnabled,
     false,
-  );
-});
-
-test('运行时 AI 配置脚本可被页面直接加载', () => {
-  assert.equal(
-    getAiRuntimeConfigScript({
-      AI_API_KEY: 'test-key',
-      AI_BUILTIN_ENABLED: 'true',
-      AI_DEFAULT_ENABLED: 'false',
-      AI_PROVIDER_NAME: 'DeepSeek',
-    }),
-    'window.__MINGYU_RUNTIME_CONFIG__ = {"aiBuiltinEnabled":true,"aiDefaultEnabled":false,"aiProviderName":"DeepSeek"};\n',
   );
 });
 

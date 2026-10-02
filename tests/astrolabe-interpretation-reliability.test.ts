@@ -48,14 +48,16 @@ test('星盘周期提示词压缩保留真实 fixture 的全量事件且摘要�
     collection.promptText.length < 3324,
     `周期提示词应短于压缩前同一 fixture 的 3324 字符，实际为 ${collection.promptText.length}`,
   );
-  assert.match(collection.promptText, /周期主轴：/);
+  assert.ok(collection.axis.length > 0);
+  assert.doesNotMatch(collection.promptText, /周期主轴：|具体时刻见|具体星象见|重复过境主线见/);
   assert.match(collection.promptText, /关键窗口：/);
   assert.match(collection.promptText, /过境归组：/);
   assert.match(collection.promptText, /完整明细：/);
 
   for (const event of collection.events) {
-    assert.ok(
-      collection.promptText.includes(`${event.dateTime} ${event.promptText}`),
+    assert.equal(
+      countOccurrences(collection.promptText, `${event.dateTime} ${event.promptText}`),
+      1,
       `完整明细缺少事件：${event.dateTime} ${event.promptText}`,
     );
     assert.equal(

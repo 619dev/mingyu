@@ -952,9 +952,7 @@ function transitGroupKey(event: AstrolabePeriodEvent) {
 }
 
 function formatDateRange(startDateTime: string, endDateTime: string) {
-  const startDay = startDateTime.slice(0, 10);
-  const endDay = endDateTime.slice(0, 10);
-  return startDay === endDay ? startDay : `${startDateTime}至${endDateTime}`;
+  return startDateTime === endDateTime ? startDateTime : `${startDateTime}至${endDateTime}`;
 }
 
 function buildTransitGroups(events: AstrolabePeriodEvent[]): AstrolabePeriodTransitGroup[] {
@@ -978,7 +976,7 @@ function buildTransitGroups(events: AstrolabePeriodEvent[]): AstrolabePeriodTran
         targetPoint: sample.targetPoint ?? '',
         aspectName: sample.aspectName ?? '',
         events: sorted,
-        promptText: `${sample.movingPoint}${sample.aspectName === '合相' ? '合' : sample.aspectName === '刑相' ? '刑' : sample.aspectName === '冲相' ? '冲' : sample.aspectName === '拱相' ? '拱' : sample.aspectName === '六合' ? '六合' : ''}${sample.targetPoint} ${countLabel}（${range}；具体时刻见完整明细）`,
+        promptText: `${sample.movingPoint}${sample.aspectName === '合相' ? '合' : sample.aspectName === '刑相' ? '刑' : sample.aspectName === '冲相' ? '冲' : sample.aspectName === '拱相' ? '拱' : sample.aspectName === '六合' ? '六合' : ''}${sample.targetPoint} ${countLabel}（${range}）`,
       };
     })
     .filter((item) => item.events.length >= 2)
@@ -1028,7 +1026,7 @@ function buildKeyWindows(
         startDateTime,
         endDateTime,
         eventKeys: cluster.map((item) => item.key),
-        promptText: `${formatDateRange(startDateTime, endDateTime)}（共${cluster.length}项；具体星象见完整明细）`,
+        promptText: `${formatDateRange(startDateTime, endDateTime)}（共${cluster.length}项）`,
       };
     });
 }
@@ -1067,18 +1065,11 @@ export function buildAstrolabePeriodEventLayers(
   const groups = buildTransitGroups(events);
   const windows = buildKeyWindows(events, scope);
   const axis = buildAxis(events, groups);
-  const groupKeys = new Set(groups.map((item) => item.key));
-  const axisWithoutGroups = axis.filter((item) => !groupKeys.has(item.key));
   const lines = [
     events.length
       ? `周期关键星象（${startDateTime}至${endDateTime}，共${events.length}项）。`
       : `周期关键星象（${startDateTime}至${endDateTime}）：所选周期内未见当前筛选范围内的精准相位、停逆、换座、换宫、朔望或交食。`,
   ];
-  if (axisWithoutGroups.length) {
-    lines.push(`周期主轴：${axisWithoutGroups.map((item) => item.promptText).join('；')}。`);
-  } else if (axis.length) {
-    lines.push(`周期主轴：重复过境主线见过境归组，其他重点星象见完整明细。`);
-  }
   if (windows.length)
     lines.push(`关键窗口：${windows.map((item) => item.promptText).join('；')}。`);
   if (groups.length) lines.push(`过境归组：${groups.map((item) => item.promptText).join('；')}。`);

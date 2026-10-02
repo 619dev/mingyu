@@ -76,7 +76,7 @@ test('七政周期求根缺少中间黄经样本时直接报错', () => {
   );
 });
 
-test('七政周期主轴把零度角关系写为合相', () => {
+test('七政周期把零度角关系写为合相且逐事件事实只列一次', () => {
   const result = scanQizhengPeriodEvents({
     natalStars: [{ name: '本命星', longitude: 5 }],
     twelvePalaces: [],
@@ -92,8 +92,11 @@ test('七政周期主轴把零度角关系写为合相', () => {
     result.events.some((event) => event.kind === '精确吊照' && event.aspectType === '同宫'),
   );
   assert.ok(result.axis.some((line) => line.includes('合相')));
-  assert.match(result.promptText, /周期主轴：[^\n]*成合相/u);
-  assert.doesNotMatch(result.promptText, /周期主轴：[^\n]*成同宫/u);
+  assert.match(result.promptText, /精确吊照：[^\n]*成合相/u);
+  assert.doesNotMatch(result.promptText, /周期主轴：|主轴列|精确吊照：[^\n]*成同宫/u);
+  for (const event of result.events) {
+    assert.equal(result.promptText.split(event.promptText).length - 1, 1);
+  }
 });
 
 for (const direction of [1, -1]) {
@@ -360,7 +363,14 @@ test('周期主轴筛出重点事件后仍按实际发生时序列示', () => {
     axisEvents.map((event) => event!.utcMs),
     [...axisEvents].sort((left, right) => left!.utcMs - right!.utcMs).map((event) => event!.utcMs),
   );
-  const summary = result.promptText.split('\n').find((line) => line.startsWith('周期主轴：'))!;
-  assert.ok(summary.indexOf('吊照太阳') < summary.indexOf('换宫太阳'));
-  assert.ok(summary.indexOf('换宫太阳') < summary.indexOf('停逆太阳'));
+  for (const event of result.events) {
+    assert.equal(result.promptText.split(event.promptText).length - 1, 1);
+  }
+  const detail = result.promptText.split('完整明细：\n')[1];
+  assert.ok(detail);
+  assert.deepEqual(
+    detail.split('\n'),
+    result.events.map((event) => event.promptText),
+  );
+  assert.doesNotMatch(result.promptText, /周期主轴：|主轴列/);
 });

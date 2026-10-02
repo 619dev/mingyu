@@ -471,7 +471,7 @@ function formatUnknownTimeFacts(result: BaziChartResult) {
     analysis?.summary || '出生时辰待补充；旺衰、格局、喜忌与岁运须在出生时分确定后再判。';
   const scenarios = (analysis?.scenarios ?? []).map(
     (scenario) =>
-      `${scenario.timeName}：${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}${scenario.favorableWuxing.length ? `；喜用${scenario.favorableWuxing.join('、')}` : ''}`,
+      `${scenario.timeName}：${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}${scenario.favorableWuxing.length ? `；喜用${scenario.favorableWuxing.join('、')}` : ''}${scenario.unfavorableWuxing.length ? `；所忌${scenario.unfavorableWuxing.join('、')}` : ''}${scenario.incrementStatus === '部分判定' ? '；增补取用部分判定' : ''}`,
   );
   return [
     `出生时辰资料：${summary}`,

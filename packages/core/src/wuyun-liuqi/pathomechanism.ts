@@ -144,7 +144,7 @@ export function evaluateWuyunLiuqiPathomechanism(params: {
 
   const pathology = SITIAN_PATHOLOGY[sitian.name];
 
-  const summary = `岁运纪：${movementRegime}（按年干太过不及推得的基准）${pingQiConditions.length ? `；平气参考条件：${pingQiConditions.join('；')}` : ''}`;
+  const summary = `岁运纪：${movementRegime}（按年干太过不及推得的基准）${pingQiConditions.length ? `；平气参考条件：${pingQiConditions.join('；')}` : ''}；平气核定：${pingQiType}，待结合交气日时与气候应期核定；平气成立时称${names[2]}之纪`;
 
   return {
     isPingQi: null,

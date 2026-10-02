@@ -113,6 +113,10 @@ export const MingluPatternUsefulGodSection: React.FC<Props> = ({ data }) => {
                     {scenario.favorableWuxing.length
                       ? `；喜用${scenario.favorableWuxing.join('、')}`
                       : ''}
+                    {scenario.unfavorableWuxing.length
+                      ? `；所忌${scenario.unfavorableWuxing.join('、')}`
+                      : ''}
+                    {scenario.incrementStatus === '部分判定' ? '；增补取用部分判定' : ''}
                   </li>
                 ))}
               </ul>

@@ -388,7 +388,7 @@ function buildBaziText(baziResult: BaziChartResult, options: FormatBaziOptions):
             .map((pillar) => pillar.ganZhi)
             .join(
               ' ',
-            )}；${scenario.strength}；${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}；候选喜用${scenario.favorableWuxing.join('、') || '待判'}，候选所忌${scenario.unfavorableWuxing.join('、') || '待判'}`,
+            )}；${scenario.strength}；${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}；候选喜用${scenario.favorableWuxing.join('、') || '待判'}，候选所忌${scenario.unfavorableWuxing.join('、') || '待判'}${scenario.incrementStatus === '部分判定' ? '；增补取用部分判定' : ''}`,
       ),
     ].join('\n');
   }

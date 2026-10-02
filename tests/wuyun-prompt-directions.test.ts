@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { calculateWuyunLiuqi } from '@core/wuyun-liuqi';
 import { SIXTY_CYCLE } from '@core/ganzhi';
+import {
+  formatDivinationInfo,
+  getDivinationSummaryBlocks,
+} from '../packages/core/src/prompt/divination';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 
 test('五运六气原生正文按六十甲子保留中运与司天实际五行方向', () => {
   const sheng: Record<string, string> = { 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' };
@@ -58,4 +64,63 @@ test('丁亥年同气事实只列一次，平气参考条件仍保持独立', ()
   assert.match(result.prompt, /中运（木）与司天厥阴风木（木）同气；/);
   assert.match(result.prompt, /平气参考条件：厥阴风木司天与木运同气，资助岁运不及/);
   assert.doesNotMatch(result.prompt, /同气（同气）|主客关系同气（/);
+});
+
+test('五运六气各事实出口保留实际平气待核及条件成立后的纪名', () => {
+  // 《古今医统大全》卷五“论纪运”：平气须按当年辰日时推之，物生脉应合期。
+  // 同篇明确木运委和/敷和、水运流衍/静顺、火运赫曦/升明的基准与平气纪。
+  // https://www.theqi.com/cmed/oldbook/book85/b85_05.html
+  const cases = [
+    {
+      yearGanZhi: '丁亥',
+      baseline: '委和',
+      balanced: '敷和',
+      status: '具平气条件',
+      conditions: ['厥阴风木司天与木运同气，资助岁运不及'],
+    },
+    {
+      yearGanZhi: '丙午',
+      baseline: '流衍',
+      balanced: '静顺',
+      status: '平气待定',
+      conditions: [],
+    },
+    {
+      yearGanZhi: '戊辰',
+      baseline: '赫曦',
+      balanced: '升明',
+      status: '具平气条件',
+      conditions: ['太阳寒水司天制约火运太过'],
+    },
+  ];
+  for (const expected of cases) {
+    const result = calculateWuyunLiuqi({ yearGanZhi: expected.yearGanZhi });
+    assert.equal(result.pathomechanism!.isPingQi, null);
+    assert.equal(result.pathomechanism!.pingQiType, expected.status);
+    assert.deepEqual(result.pathomechanism!.pingQiConditions, expected.conditions);
+    const texts = [
+      result.prompt,
+      getDivinationSummaryBlocks('wuyun', result).lines.join('\n'),
+      formatDivinationInfo('wuyun', result),
+      formatDetailedDivinationInfo('wuyun', result),
+      formatEnhancedDivinationInfo('wuyun', result),
+    ];
+    for (const text of texts) {
+      assert.ok(
+        text.includes(`岁运纪：${expected.baseline}之纪（按年干太过不及推得的基准）`),
+        expected.yearGanZhi,
+      );
+      assert.ok(
+        text.includes(`平气核定：${expected.status}，待结合交气日时与气候应期核定`),
+        expected.yearGanZhi,
+      );
+      assert.ok(text.includes(`平气成立时称${expected.balanced}之纪`), expected.yearGanZhi);
+      assert.doesNotMatch(text, new RegExp(`岁运纪：${expected.balanced}之纪`));
+      for (const condition of expected.conditions) assert.ok(text.includes(condition));
+      if (!expected.conditions.length) assert.doesNotMatch(text, /平气参考条件：/);
+      for (const other of cases.filter((item) => item.yearGanZhi !== expected.yearGanZhi)) {
+        assert.doesNotMatch(text, new RegExp(`平气成立时称${other.balanced}之纪`));
+      }
+    }
+  }
 });
