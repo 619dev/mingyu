@@ -8,6 +8,7 @@ import {
   buildInstantZiweiPrompt,
 } from '../src/lib/instant-prompt';
 import { baziCalculator } from '../packages/core/src/bazi/baziCalculator';
+import { formatBaziForPrompt } from '../packages/core/src/bazi/baziAnalysisFormatter';
 import { generateAstrolabe } from '../packages/core/src/divination/algorithms/astrolabe';
 import { buildFocusTaskBundle } from '../packages/core/src/ziwei/prompt/focus';
 import {
@@ -93,6 +94,7 @@ test('中性水火指标不占用即时八字盘面资料', () => {
     useTrueSolarTime: false,
   });
   assert.equal(chart.climate?.nature, '未见明显偏向');
+  assert.doesNotMatch(formatBaziForPrompt(chart), /水火分布参考:|调候特征:/);
   assert.doesNotMatch(
     buildInstantBaziPrompt(chart, '判断当前事件。', '当地民用时间'),
     /水火分布参考：|调候：/,

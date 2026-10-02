@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateQizheng } from '../packages/core/src/qi_zheng/index';
+import {
+  generateQizheng,
+  formatQizhengFlowTimestampNote,
+} from '../packages/core/src/qi_zheng/index';
 import { extractQizhengFacts } from '../scripts/prompt-audit/natal-facts';
+import { auditPromptFacts } from '../scripts/prompt-audit/facts';
 
 test('未提供性别时流曜提示词只要求使用已生成的目标时段资料', () => {
   const result = generateQizheng({
@@ -16,9 +20,26 @@ test('未提供性别时流曜提示词只要求使用已生成的目标时段�
     flowDay: 15,
   });
   assert.ok(result.flowingStars);
+  assert.equal(formatQizhengFlowTimestampNote(result.flowingStars), '流曜周期按2022年6月15日扫描');
   assert.equal(result.timeLords, undefined);
+  assert.ok(result.prompt.includes('流曜周期按2022年6月15日扫描；落宫时刻 2022-06-15T12:00:00。'));
+  assert.doesNotMatch(result.prompt, /落宫取当日 12:00/u);
   assert.match(result.prompt, /目标时段结合已列流曜与周期星象分析/);
   assert.doesNotMatch(result.prompt, /目标时段结合流曜、小限与太岁分析/);
+  const facts = extractQizhengFacts(result);
+  assert.deepEqual(auditPromptFacts(result.prompt, facts).missing, []);
+  const timestampLine = '流曜周期按2022年6月15日扫描；落宫时刻 2022-06-15T12:00:00。';
+  for (const changedLine of [
+    '；落宫时刻 2022-06-15T12:00:00。',
+    '流曜周期按2022年6月16日扫描；落宫时刻 2022-06-15T12:00:00。',
+    '流曜周期按2022年6月15日扫描；落宫时刻 。',
+    '流曜周期按2022年6月15日扫描；落宫时刻 2022-06-15T12:01:00。',
+  ]) {
+    assert.deepEqual(
+      auditPromptFacts(result.prompt.replace(timestampLine, changedLine), facts).missing,
+      ['qizheng.flow.timestamp'],
+    );
+  }
 });
 
 test('只指定流分时，流曜采样时刻与提示词时间一致', () => {
@@ -36,7 +57,49 @@ test('只指定流分时，流曜采样时刻与提示词时间一致', () => {
   });
   assert.equal(result.flowingStars?.localDateTime, '2022-06-15T12:37:00');
   assert.match(result.flowingStars?.timestampNote ?? '', /落宫取 12:37/);
-  assert.match(result.prompt, /落宫取 12:37；落宫时刻 2022-06-15T12:37:00/);
+  assert.ok(result.prompt.includes('流曜周期按2022年6月15日扫描；落宫时刻 2022-06-15T12:37:00。'));
+  const clockLine = result.prompt
+    .split('\n')
+    .find((line) => line.includes('落宫时刻 2022-06-15T12:37:00'));
+  assert.ok(clockLine);
+  assert.equal(clockLine.match(/12:37/g)?.length, 1);
+  assert.doesNotMatch(result.prompt, /落宫取 12:37/u);
+  const facts = extractQizhengFacts(result);
+  assert.deepEqual(auditPromptFacts(result.prompt, facts).missing, []);
+  const timestampLine = '流曜周期按2022年6月15日扫描；落宫时刻 2022-06-15T12:37:00。';
+  for (const changedLine of [
+    '；落宫时刻 2022-06-15T12:37:00。',
+    '流曜周期按2022年6月16日扫描；落宫时刻 2022-06-15T12:37:00。',
+    '流曜周期按2022年6月15日扫描；落宫时刻 。',
+    '流曜周期按2022年6月15日扫描；落宫时刻 2022-06-15T12:38:00。',
+  ]) {
+    assert.deepEqual(
+      auditPromptFacts(result.prompt.replace(timestampLine, changedLine), facts).missing,
+      ['qizheng.flow.timestamp'],
+    );
+  }
+  for (const [note, shownNote] of [
+    [
+      '未指定流日时，流曜周期按2022年6月整月扫描；落宫取月中 15日 12:00，不代替整月',
+      '流曜周期按2022年6月整月扫描；落宫取月中 15日 12:00',
+    ],
+    [
+      '未指定流月时，流曜周期自立春扫描至次年立春；落宫取立春交节，不代替全年',
+      '流曜周期自立春扫描至次年立春；落宫取立春交节',
+    ],
+  ]) {
+    assert.equal(
+      formatQizhengFlowTimestampNote({ ...result.flowingStars!, timestampNote: note }),
+      shownNote,
+    );
+  }
+  assert.equal(
+    formatQizhengFlowTimestampNote({
+      ...result.flowingStars!,
+      localDateTime: '2022-06-15T12:38:00',
+    }),
+    result.flowingStars!.timestampNote,
+  );
 });
 
 test('流曜吊照绑定采样时刻并保留落宫关系，角距两端来自不同时间盘', () => {

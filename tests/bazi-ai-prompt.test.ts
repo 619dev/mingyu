@@ -1589,6 +1589,7 @@ test('八字提示词在通关结论落入正式主忌时应隐藏通关法片�
   );
 
   assert.doesNotMatch(prompt.user, /【通关法】/);
+  assert.doesNotMatch(prompt.user, /传统旁证:|传统互参:|因色生灾|因妻致富|因色破财/);
 });
 
 test('八字提示词不应由五行百分比阈值自动生成通关结论', () => {

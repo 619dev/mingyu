@@ -1,5 +1,6 @@
 import {
   getQizhengSignBranch,
+  formatQizhengFlowTimestampNote,
   type QizhengBirthRange,
   type QizhengFlowBirthRange,
   type QizhengFlowBirthRangeBranch,
@@ -132,7 +133,7 @@ export function formatQizhengBirthRangePrompt(
     ...(flow
       ? [
           '【流曜目标】',
-          `${flow.timestampNote}；代表时刻${flow.localDateTime}。`,
+          `${formatQizhengFlowTimestampNote(flow)}；代表时刻${flow.localDateTime}。`,
           `周期事件窗口：${flow.periodEvents!.startDateTime} 至 ${flow.periodEvents!.endDateTime}（起点含、终点不含），${flow.periodEvents!.mode === 'yearly' ? '流年' : flow.periodEvents!.mode === 'monthly' ? '流月' : '流日'}。`,
         ]
       : []),

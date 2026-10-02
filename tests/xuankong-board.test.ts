@@ -237,6 +237,12 @@ test('玄空八运壬山丙向兼亥巳按同元取星重算替卦三盘与证�
 
 test('《沈氏玄空学》六运壬山丙向替卦：山二不变、向一替二并顺飞到向六', () => {
   const result = generateXuanKong({ year: 1974, sitMountain: '壬', guaType: '替卦' });
+  // 卷一内页108“六运壬山丙向兼亥巳或子午”图，按宫1至9手录三盘。
+  assert.deepEqual(result.plates, {
+    yun: [2, 3, 4, 5, 6, 7, 8, 9, 1],
+    shan: [6, 5, 4, 3, 2, 1, 9, 8, 7],
+    xiang: [7, 8, 9, 1, 2, 3, 4, 5, 6],
+  });
   assert.deepEqual(result.replacement?.mountain, {
     originalCenterStar: 2,
     referenceMountain: '未',

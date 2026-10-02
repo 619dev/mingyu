@@ -128,6 +128,16 @@ test('只有流年没有性别时只排流曜，不编造行限', () => {
   assert.equal(result.timeLords, undefined);
   assert.ok(result.flowingStars);
   assert.match(result.flowingStars?.timestampNote ?? '', /立春/);
+  assert.equal(
+    result.flowingStars?.timestampNote,
+    '未指定流月时，流曜周期自立春扫描至次年立春；落宫取立春交节，不代替全年',
+  );
+  assert.ok(
+    result.prompt.includes(
+      '流曜周期自立春扫描至次年立春；落宫取立春交节；落宫时刻 2024-02-04T16:27:07。',
+    ),
+  );
+  assert.doesNotMatch(result.prompt, /未指定流月时|不代替全年/u);
   assert.match(result.prompt, /【流曜】/);
   assert.match(result.prompt, /【流曜周期】/);
   assert.equal(result.flowingStars?.periodEvents?.mode, 'yearly');
@@ -408,6 +418,16 @@ test('纽约三月流月周期按两个 IANA 午夜解析并跨越夏令时少�
   });
   const period = result.flowingStars?.periodEvents;
   assert.ok(period);
+  assert.equal(
+    result.flowingStars?.timestampNote,
+    '未指定流日时，流曜周期按2024年3月整月扫描；落宫取月中 15日 12:00，不代替整月',
+  );
+  assert.ok(
+    result.prompt.includes(
+      '流曜周期按2024年3月整月扫描；落宫取月中 15日 12:00；落宫时刻 2024-03-15T12:00:00。',
+    ),
+  );
+  assert.doesNotMatch(result.prompt, /未指定流日时|不代替整月/u);
   const expectedStartUtc = resolveCivilTime({
     year: 2024,
     month: 3,

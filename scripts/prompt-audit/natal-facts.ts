@@ -902,14 +902,29 @@ function extractQizhengFlowFacts(
   flowing: QizhengFlowingStarsResult,
   options: { idPrefix: string; flowScope: FactScope; periodScope: FactScope },
 ) {
+  const scanDate = `流曜周期按${flowing.year}年${flowing.month}月${flowing.day}日扫描`;
+  const clockTime = `${String(flowing.hour).padStart(2, '0')}:${String(flowing.minute).padStart(2, '0')}`;
+  const scanDateShown =
+    flowing.localDateTime.split('T')[1]?.slice(0, 5) === clockTime &&
+    (flowing.timestampNote === `${scanDate}；落宫取 ${clockTime}` ||
+      (flowing.hour === 12 &&
+        flowing.minute === 0 &&
+        flowing.timestampNote === `${scanDate}；落宫取当日 12:00`));
+  const monthScan = `流曜周期按${flowing.year}年${flowing.month}月整月扫描；落宫取月中 15日 12:00`;
+  const yearScan = '流曜周期自立春扫描至次年立春；落宫取立春交节';
+  const scanNote = scanDateShown
+    ? scanDate
+    : flowing.timestampNote === `未指定流日时，${monthScan}，不代替整月`
+      ? monthScan
+      : flowing.timestampNote === `未指定流月时，${yearScan}，不代替全年`
+        ? yearScan
+        : flowing.timestampNote;
   facts.push(
     ...collect([
-      fact(
-        `${options.idPrefix}.flow.timestamp`,
-        '落宫时刻',
-        [flowing.localDateTime, flowing.timestampNote],
-        { scope: options.flowScope, unit: 'line' },
-      ),
+      fact(`${options.idPrefix}.flow.timestamp`, '落宫时刻', [flowing.localDateTime, scanNote], {
+        scope: options.flowScope,
+        unit: 'line',
+      }),
     ]),
   );
   for (const [index, star] of flowing.stars.entries()) {

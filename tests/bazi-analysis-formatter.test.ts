@@ -5,25 +5,6 @@ import { baziCalculator } from '@core/bazi/baziCalculator';
 import { formatBaziForPrompt } from '@core/bazi/baziAnalysisFormatter';
 import { analyzeShenShaWithTenGod } from '@core/bazi/baziShenSha/helpers/tenGodAnalysis';
 
-test('命盘基础提示词默认不展开完整大运流年', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1995,
-    month: 8,
-    day: 15,
-    timeIndex: 6,
-    gender: 'male',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const text = formatBaziForPrompt(result);
-
-  assert.equal(result.climate?.nature, '未见明显偏向');
-  assert.doesNotMatch(text, /水火分布参考:|调候特征:/);
-  assert.doesNotMatch(text, /【大运】|大运总览:|含\d{4}-\d{4}年流年|当前大运:|近年流年:/);
-});
-
 test('核心判断与提示词应保留本盘旺衰、格局、取用和柱位证据', () => {
   const result = baziCalculator.calculateBazi({
     year: 1995,
@@ -72,6 +53,7 @@ test('核心判断与提示词应保留本盘旺衰、格局、取用和柱位�
   assert.match(text, /自坐: 绝/);
   assert.match(text, /旬空: 申、酉/);
   assert.doesNotMatch(text, /特殊宫位:|日主十二运:/);
+  assert.doesNotMatch(text, /【大运】|大运总览:|含\d{4}-\d{4}年流年|当前大运:|近年流年:/);
 });
 
 test('神煞互参文案应改为传统辅助提示，避免直接断语', () => {
@@ -88,22 +70,4 @@ test('神煞互参文案应改为传统辅助提示，避免直接断语', () =>
   assert.doesNotMatch(peachKill, /因色生灾/);
   assert.doesNotMatch(peachOfficer, /因妻致富/);
   assert.doesNotMatch(peachCompanion, /因色破财/);
-});
-
-test('八字提示词不默认展开神煞旁证', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1988,
-    month: 1,
-    day: 8,
-    timeIndex: 0,
-    gender: 'male',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const text = formatBaziForPrompt(result);
-
-  assert.doesNotMatch(text, /传统旁证:|传统互参:/);
-  assert.doesNotMatch(text, /因色生灾|因妻致富|因色破财/);
 });

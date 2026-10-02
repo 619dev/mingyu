@@ -76,6 +76,12 @@ test('黄道宫界两侧的零度吊照在出生区间资料中称为合相', ()
     },
   );
   const flowText = formatQizhengBirthRangePrompt(flow);
+  assert.ok(flowText.includes('流曜周期按2024年6月21日扫描；代表时刻2024-06-21T12:00:00。'));
+  assert.doesNotMatch(flowText, /落宫取当日 12:00/u);
+  assert.equal(
+    flow.branches[0].representative.flowingStars!.timestampNote,
+    '流曜周期按2024年6月21日扫描；落宫取当日 12:00',
+  );
   assert.equal(flow.branches[0].representative.timeLords, undefined);
   assert.match(flowText, /结合目标时段的流曜与周期星象解读/u);
   assert.doesNotMatch(flowText, /行限：性别未提供/u);
@@ -133,6 +139,8 @@ test('七政流曜区间资料保留目标窗口、所有分段、行限与事�
   assert.match(text, /【七政四余流曜与出生区间】/);
   assert.match(text, /2024-03-15/);
   assert.match(text, /周期事件窗口/);
+  assert.ok(text.includes('流曜周期按2024年3月15日扫描；代表时刻2024-03-15T12:00:00。'));
+  assert.doesNotMatch(text, /落宫取当日 12:00/u);
   assert.match(text, /大限/);
   assert.match(text, /小限/);
   assert.match(text, /结合目标时段的流曜、小限与太岁解读/u);

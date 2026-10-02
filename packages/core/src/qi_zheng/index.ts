@@ -2209,6 +2209,28 @@ function overlayQizhengFlowingStars(
   };
 }
 
+/** 完整时刻承载日目标时分，月年说明保留扫描范围与取样条件。 */
+export function formatQizhengFlowTimestampNote(
+  flowing: Pick<QizhengFlowingStarsResult, 'timestampNote' | 'localDateTime'>,
+) {
+  const monthNote =
+    /^未指定流日时，(流曜周期按\d+年\d+月整月扫描；落宫取月中 15日 12:00)，不代替整月$/u.exec(
+      flowing.timestampNote,
+    );
+  if (monthNote) return monthNote[1]!;
+  if (
+    flowing.timestampNote ===
+    '未指定流月时，流曜周期自立春扫描至次年立春；落宫取立春交节，不代替全年'
+  ) {
+    return '流曜周期自立春扫描至次年立春；落宫取立春交节';
+  }
+  const repeatedTime = /；落宫取(?:当日 | )(\d{2}:\d{2})$/u.exec(flowing.timestampNote);
+  const clockTime = /T(\d{2}:\d{2}):\d{2}$/u.exec(flowing.localDateTime)?.[1];
+  return repeatedTime && repeatedTime[1] === clockTime
+    ? flowing.timestampNote.slice(0, repeatedTime.index)
+    : flowing.timestampNote;
+}
+
 function formatQizhengFlowingPrompt(
   flowing: QizhengFlowingStarsResult,
   natalStars: QizhengStar[],
@@ -2228,7 +2250,7 @@ function formatQizhengFlowingPrompt(
     : '未见容许度内的流曜与本命吊照';
   return [
     '【流曜】',
-    `${flowing.timestampNote}；落宫时刻 ${flowing.localDateTime}。`,
+    `${formatQizhengFlowTimestampNote(flowing)}；落宫时刻 ${flowing.localDateTime}。`,
     ...flowing.stars.map(
       (star) =>
         `流曜${star.name}：在${star.xiu}宿${star.xiuDegree.toFixed(2)}度，入本命${star.signBranch}宫${star.palace}${star.dignity && star.dignity !== '—' ? `（${star.dignity}）` : ''}${star.retrograde ? '（逆）' : ''}`,
