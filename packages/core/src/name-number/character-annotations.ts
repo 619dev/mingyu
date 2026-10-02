@@ -40,6 +40,16 @@ export const CHARACTER_READING_NOTES: Readonly<
     }
   >
 > = {
+  万: {
+    readings: ['wàn', 'mò'],
+    note: 'wàn 用于数目、极多等义，也用于万姓；mò 用于复姓“万俟”，全姓读 mò qí。',
+    surname: 'wàn',
+  },
+  俟: {
+    readings: ['sì', 'qí'],
+    note: 'sì 表等待，也见俟姓；qí 用于复姓“万俟”，全姓读 mò qí。',
+    surname: 'sì',
+  },
   干: {
     readings: ['gān'],
     note: 'gān 用于干扰、干涉、干支等义。',

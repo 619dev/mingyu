@@ -4,6 +4,7 @@
  */
 import * as AstronomyEngine from 'astronomy-engine';
 import { getMoonPosition, getSunPosition } from '../astrology/engine';
+import { MAX_FIXED_TIMEZONE_HOURS, MIN_FIXED_TIMEZONE_HOURS } from './civil-time';
 import { calculateMoonGeometry } from './moon-geometry';
 
 const astronomyNamespace = AstronomyEngine as unknown as Record<string, unknown>;
@@ -358,8 +359,12 @@ function calculateMoonPhaseEvidenceWithSource(
   positionSource: MoonPhasePositionSource,
 ): MoonPhaseEvidence {
   if (!Number.isFinite(utcTimestamp)) throw new Error('月相证据需要有效的 UTC 时间戳。');
-  const year = new Date(utcTimestamp).getUTCFullYear();
-  if (year < 1900 || year > 2200) throw new Error('月相证据当前支持 1900-2200 年。');
+  // 当地 1900–2200 年钟表按合法 UTC 偏移换算，可进入相邻 UTC 年。
+  const firstUtcTimestamp = Date.UTC(1900, 0, 1) - MAX_FIXED_TIMEZONE_HOURS * 3_600_000;
+  const lastUtcTimestampExclusive = Date.UTC(2201, 0, 1) - MIN_FIXED_TIMEZONE_HOURS * 3_600_000;
+  if (utcTimestamp < firstUtcTimestamp || utcTimestamp >= lastUtcTimestampExclusive) {
+    throw new Error('月相证据需对应 1900-2200 年的当地钟表范围。');
+  }
 
   const positions = positionSource.positionsAt(utcTimestamp);
   const phaseAngleDegrees = positions.phaseAngle;
@@ -578,6 +583,13 @@ function calculateMoonPhaseEvidenceWithSource(
 }
 
 export function calculateMoonPhaseEvidence(utcTimestamp: number): MoonPhaseEvidence {
+  const year = new Date(utcTimestamp).getUTCFullYear();
+  if (year < 1900 || year > 2200) throw new Error('月相证据当前支持 1900-2200 年。');
+  return calculateMoonPhaseEvidenceWithSource(utcTimestamp, CAELUS_SOURCE);
+}
+
+/** 已解析的当地钟表瞬时复用 Caelus 月相位置与四正求根。 */
+export function calculateCivilMoonPhaseEvidence(utcTimestamp: number): MoonPhaseEvidence {
   return calculateMoonPhaseEvidenceWithSource(utcTimestamp, CAELUS_SOURCE);
 }
 

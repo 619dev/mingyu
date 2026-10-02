@@ -17,13 +17,13 @@
 
 import { SolarDay, SolarTime } from 'tyme4ts';
 import {
-  findSolarTermEvidence,
+  findCivilSolarTermEvidence,
   type SolarTermEvidence,
   type SolarTermName,
 } from '../../../../calendar/solar-term-evidence';
 import { DEFAULT_CHINA_TIMEZONE_HOURS } from '../../../../calendar/civil-time';
 import {
-  calculateMoonPhaseEvidence,
+  calculateCivilMoonPhaseEvidence,
   type MoonPhaseEvidence,
 } from '../../../../calendar/moon-phase-evidence';
 import { TimeManager } from '../../../../calendar/timeManager';
@@ -172,7 +172,7 @@ export function getJieQiPhaseByDate(
     jieQi === '冬至' && termStartTime.getMonth() === 12
       ? termStartTime.getYear() + 1
       : termStartTime.getYear();
-  const solarTermEvidence = findSolarTermEvidence(jieQi as SolarTermName, termYear);
+  const solarTermEvidence = findCivilSolarTermEvidence(jieQi as SolarTermName, termYear);
 
   return { jieQi, phase, phaseIndex, solarTermEvidence };
 }
@@ -452,7 +452,11 @@ export function buildSeasonality(
   const phaseIndex = tymePhase.getIndex();
   const lunarPhase = getLunarPhaseByIndex(phaseIndex);
   const lunarPhaseDetail = tymePhase.getName();
-  const moonPhaseEvidence = calculateMoonPhaseEvidence(actualInstant.getTime());
+  const actualCivilTime = TimeManager.getWallClockParts(actualInstant, explicitOffsetMinutes);
+  if (actualCivilTime.year < 1900 || actualCivilTime.year > 2200) {
+    throw new Error('奇门月相证据当前支持 1900-2200 年的当地钟表。');
+  }
+  const moonPhaseEvidence = calculateCivilMoonPhaseEvidence(actualInstant.getTime());
   const lunarPhaseConsistency = lunarPhaseDetail === moonPhaseEvidence.eightPhaseName;
 
   // ── 4. 建除十二神 ──

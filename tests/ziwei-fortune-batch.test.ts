@@ -258,7 +258,7 @@ test('紫微独立批次只计算一个资料 scope 或一个年龄年', async (
   );
 });
 
-test('紫微当前 scope 证据生成器不访问其他运限层', async () => {
+test('紫微同一星盘上当前 scope 不越层且年龄年批次复用运限对象', async () => {
   const astrolabe = await buildAstrolabeFromInput(input);
   const horoscope = await buildHoroscopeFromInput(
     astrolabe,
@@ -314,10 +314,7 @@ test('紫微当前 scope 证据生成器不访问其他运限层', async () => {
     palaces,
   });
   assert.deepEqual(complete.calls, ['decadal', 'yearly', 'monthly', 'daily', 'hourly', 'age']);
-});
 
-test('紫微年龄年在单次请求内复用相同运限对象且不污染动态事实', async () => {
-  const astrolabe = await buildAstrolabeFromInput(input);
   const nativeHoroscope = astrolabe.horoscope.bind(astrolabe);
   const constructions = new Map<string, number>();
   const snapshots = new Map<IztroHoroscope, string>();

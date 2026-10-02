@@ -1516,7 +1516,7 @@ function formatBirthContext(
       `稳定四柱：${context.pillars.join(' ')}；日主${context.dayMaster}。`,
       context.incrementStatus === '待判'
         ? '全段增补喜用：待判'
-        : `全段共同喜用：${range.stableFavorableElements.join('、') || '未见已判定的共同五行，按时段分别比较'}`,
+        : `全段共同喜用：${range.stableFavorableElements.join('、') || '未见已判定的共同五行，按时段分别比较'}${context.incrementStatus === '部分判定' ? '（部分判定）' : ''}`,
       ...(conditional.length ? [`条件喜用：${conditional.join('、')}，只适用于对应时段。`] : []),
       ...range.branches.flatMap((branch, index) => [
         '',
@@ -1533,7 +1533,7 @@ function formatBirthContext(
         `待补时说明：${unknownTime.summary}`,
         ...unknownTime.scenarios.map(
           (scenario) =>
-            `候选${scenario.timeName}：${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}${scenario.favorableWuxing.length ? `；增补喜用${scenario.favorableWuxing.join('、')}` : scenario.incrementStatus === '待判' ? '；增补喜用待判' : ''}`,
+            `候选${scenario.timeName}：${scenario.pillars.year.ganZhi || '—'} ${scenario.pillars.month.ganZhi || '—'} ${scenario.pillars.day.ganZhi || '—'} ${scenario.pillars.hour.ganZhi || '—'}；旺衰${scenario.strength}；格局${scenario.pattern}${scenario.patternStatus ? `（${scenario.patternStatus}）` : ''}${scenario.favorableWuxing.length ? `；增补喜用${scenario.favorableWuxing.join('、')}${scenario.incrementStatus === '部分判定' ? '（部分判定）' : ''}` : scenario.incrementStatus === '待判' ? '；增补喜用待判' : scenario.incrementStatus === '部分判定' ? '；增补取用部分判定' : ''}`,
         ),
       ]
     : [];
@@ -1610,7 +1610,7 @@ function formatBirthContext(
       : [
           context.incrementStatus === '待判'
             ? '增补喜用五行：待判'
-            : `增补喜用五行：${context.favorableElements.join('、') || '待判'}`,
+            : `增补喜用五行：${context.favorableElements.join('、') || '待判'}${context.incrementStatus === '部分判定' ? '（部分判定）' : ''}`,
           `取用依据：${context.usefulGodReason}`,
           ...context.functionalUse,
         ]),

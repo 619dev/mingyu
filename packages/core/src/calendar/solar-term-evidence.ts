@@ -169,7 +169,10 @@ export function calculateSolarTermEvidence(year: number, index: number): SolarTe
   if (!Number.isInteger(index) || index < 0 || index > 23) {
     throw new Error('节气索引需为 0-23 的整数。');
   }
+  return buildSolarTermEvidence(year, index);
+}
 
+function buildSolarTermEvidence(year: number, index: number): SolarTermEvidence {
   const name = TERM_NAMES[index];
   const targetLongitudeDegrees = normalizeLongitude(270 + index * 15);
   const seedTimestamp = tymeSeedUtc(year, index);
@@ -362,4 +365,13 @@ export function findSolarTermEvidence(name: SolarTermName, year: number): SolarT
   const index = TERM_NAMES.indexOf(name);
   if (index < 0) throw new Error(`无法识别节气 ${name}。`);
   return calculateSolarTermEvidence(year, index);
+}
+
+/** 民用 2200 年末的冬至在历表序列中编号为 2201 年第 0 项。 */
+export function findCivilSolarTermEvidence(name: SolarTermName, year: number): SolarTermEvidence {
+  const index = TERM_NAMES.indexOf(name);
+  if (index < 0) throw new Error(`无法识别节气 ${name}。`);
+  return year === 2201 && index === 0
+    ? buildSolarTermEvidence(year, index)
+    : calculateSolarTermEvidence(year, index);
 }

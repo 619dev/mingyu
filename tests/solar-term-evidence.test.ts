@@ -4,7 +4,12 @@ import test from 'node:test';
 import { getYearMonthsGanZhi } from '@core/bazi/calendarTool';
 import { calculateSeasonInfoFromDate } from '@core/bazi/baziCalculatorTime';
 import { getJieQiPhaseByDate } from '@core/divination/algorithms/qimen/helpers/seasonality';
-import { calculateSolarTermEvidence, calculateSolarTermsForYear } from 'mingyu-core/calendar';
+import {
+  calculateSolarTermEvidence,
+  calculateSolarTermsForYear,
+  findCivilSolarTermEvidence,
+  findSolarTermEvidence,
+} from 'mingyu-core/calendar';
 
 test('节气证据应采用历表边界并保留太阳视黄经独立核验', () => {
   const evidence = calculateSolarTermEvidence(2024, 3);
@@ -143,4 +148,28 @@ test('八字本命节令与奇门节令阶段应复用同一节气证据', () =>
 test('节气证据应拒绝越界年份和索引', () => {
   assert.throws(() => calculateSolarTermEvidence(1899, 3), /1900-2200/);
   assert.throws(() => calculateSolarTermEvidence(2024, 24), /0-23/);
+});
+
+test('民用2200年末只读取编号2201的冬至，公共节气年份契约保持不变', () => {
+  const winter = findCivilSolarTermEvidence('冬至', 2201);
+  assert.equal(winter.name, '冬至');
+  assert.equal(winter.index, 0);
+  assert.equal(winter.targetLongitudeDegrees, 270);
+  assert.match(winter.utcDateTime, /^2200-12-/);
+  assert.equal(winter.utcTimestamp, Date.parse(winter.seedUtcDateTime));
+  assert.equal(winter.status, '历表已采用并独立核验');
+  assert.ok(winter.refinementIterations > 0);
+  assert.equal(winter.verificationFact.adoptedStepKey, winter.calculationSteps[1].key);
+  const phase = getJieQiPhaseByDate(new Date('2201-01-01T11:59:59Z'), -720);
+  assert.equal(phase.jieQi, '冬至');
+  assert.deepEqual(phase.solarTermEvidence, winter);
+  assert.deepEqual(findCivilSolarTermEvidence('冬至', 2025), calculateSolarTermEvidence(2025, 0));
+  for (const name of ['小寒', '立春', '大雪'] as const) {
+    assert.throws(() => findCivilSolarTermEvidence(name, 2201), /1900-2200/);
+  }
+  assert.throws(() => findCivilSolarTermEvidence('冬至', 2202), /1900-2200/);
+  assert.throws(() => findCivilSolarTermEvidence('冬至', Number.NaN), /1900-2200/);
+  assert.throws(() => calculateSolarTermEvidence(2201, 0), /1900-2200/);
+  assert.throws(() => findSolarTermEvidence('冬至', 2201), /1900-2200/);
+  assert.throws(() => calculateSolarTermsForYear(2200), /1900-2199/);
 });

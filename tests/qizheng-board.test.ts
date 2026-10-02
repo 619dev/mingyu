@@ -380,6 +380,57 @@ test('2200 年临界太阴宿宫与月相共用同一黄经和四正求根星历
   }
 });
 
+test('当地支持年两端的七政星位、月相和光照保留相同实际UTC瞬时', () => {
+  for (const input of [
+    {
+      year: 1900,
+      month: 1,
+      day: 1,
+      hour: 0,
+      minute: 0,
+      second: 0,
+      timezone: 14,
+      utc: '1899-12-31T10:00:00.000Z',
+      moonSwiss: 264.11900251,
+      sunSwiss: 279.55844607,
+    },
+    {
+      year: 2200,
+      month: 12,
+      day: 31,
+      hour: 23,
+      minute: 59,
+      second: 59,
+      timezone: -12,
+      utc: '2201-01-01T11:59:59.000Z',
+      moonSwiss: 224.21323371,
+      sunSwiss: 280.58814828,
+    },
+  ]) {
+    const { utc, moonSwiss, sunSwiss, ...clock } = input;
+    const result = generateQizheng({ ...clock, latitude: 0, longitude: 180 });
+    const context = result.calculationContext;
+    assert.equal(context.utcDateTime, utc);
+    assert.equal(context.moonPhase.utcDateTime, utc);
+    assert.equal(context.solarIllumination.astronomicalTime.unixMilliseconds, Date.parse(utc));
+    assert.equal(result.stars.length, 11);
+    // Swiss Moshier 在 Astronomy Engine 相同 TT 的地心当日视黄经固定点。
+    assert.ok(Math.abs(context.moonPhase.moonLongitudeDegrees - moonSwiss) < 0.002);
+    assert.ok(Math.abs(context.moonPhase.sunLongitudeDegrees - sunSwiss) < 0.002);
+    for (const [name, longitude] of [
+      ['太阳', context.moonPhase.sunLongitudeDegrees],
+      ['太阴', context.moonPhase.moonLongitudeDegrees],
+    ] as const) {
+      assert.ok(
+        Math.abs(result.stars.find((star) => star.name === name)!.longitude - longitude) < 1e-7,
+      );
+    }
+    assert.ok(context.moonPhase.previousPrincipalPhase.utcTimestamp < Date.parse(utc));
+    assert.ok(context.moonPhase.nextPrincipalPhase.utcTimestamp > Date.parse(utc));
+    assert.match(context.moonPhase.source, /Astronomy Engine/);
+  }
+});
+
 test('宿界查询应接受乱序资料，并拒绝重复宿名、无效宿宽与不连续边界', () => {
   const boundaries = calculateQizhengMansionBoundaries(new Date('2024-06-15T04:00:00Z'));
   const target = boundaries[8];

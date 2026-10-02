@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateMoonPhaseEvidence } from '../packages/core/src/calendar/moon-phase-evidence.ts';
+import {
+  calculateCivilMoonPhaseEvidence,
+  calculateMoonPhaseEvidence,
+  calculateQizhengMoonPhaseEvidence,
+} from '../packages/core/src/calendar/moon-phase-evidence.ts';
 import { generateQimen } from '../packages/core/src/divination/algorithms/qimen/index.ts';
 
 const MINUTE = 60_000;
@@ -178,4 +182,33 @@ test('奇门应携带月相证据且不将其解释为吉凶', () => {
 
   assert.equal(qimen.seasonality?.moonPhaseEvidence.eightPhaseName, '新月');
   assert.equal(typeof qimen.seasonality?.lunarPhaseConsistency, 'boolean');
+});
+
+test('合法民用年界月相仅接受固定偏移可产生的UTC边缘窗口', () => {
+  const first = Date.parse('1899-12-31T10:00:00Z');
+  const endExclusive = Date.parse('2201-01-01T12:00:00Z');
+  for (const calculate of [calculateCivilMoonPhaseEvidence, calculateQizhengMoonPhaseEvidence]) {
+    for (const timestamp of [first, endExclusive - 1]) {
+      const result = calculate(timestamp);
+      assert.equal(result.utcTimestamp, timestamp);
+      assert.ok(result.previousPrincipalPhase.utcTimestamp < timestamp);
+      assert.ok(result.nextPrincipalPhase.utcTimestamp > timestamp);
+      assertEvidenceReferences(result);
+    }
+    for (const timestamp of [first - 1, endExclusive]) {
+      assert.throws(() => calculate(timestamp), /当地钟表范围/);
+    }
+    assert.throws(() => calculate(Number.NaN), /有效的 UTC 时间戳/);
+  }
+  for (const timestamp of [first, endExclusive - 1]) {
+    assert.throws(() => calculateMoonPhaseEvidence(timestamp), /支持 1900-2200 年/);
+  }
+  // 美国海军天文台朔时12:38，JPL同刻地心角距4.4971°、照明0.15470%。
+  const timestamp = Date.parse('2024-06-06T12:38:00Z');
+  const publicResult = calculateMoonPhaseEvidence(timestamp);
+  assert.deepEqual(calculateCivilMoonPhaseEvidence(timestamp), publicResult);
+  const qizheng = calculateQizhengMoonPhaseEvidence(timestamp);
+  assert.ok(Math.abs(qizheng.elongationDegrees - 4.4971) < 0.02);
+  assert.ok(Math.abs(qizheng.illuminationPercent - 0.1547) < 0.02);
+  assert.ok(Math.abs(qizheng.previousPrincipalPhase.utcTimestamp - timestamp) < MINUTE);
 });
