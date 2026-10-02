@@ -8,9 +8,16 @@ import { generateMeihua } from '../packages/core/src/divination/algorithms/meihu
 import { hexagramsData } from '../packages/core/src/divination/hexagram-data.ts';
 
 const fixedDate = new Date('2025-01-01T08:00:00+08:00');
+const fixedNumberChart = generateMeihua(fixedDate, { method: 'number', number: 123 });
+const cloneFixedNumberChart = () => structuredClone(fixedNumberChart);
+const fixedCharacterChart = generateMeihua(fixedDate, {
+  method: 'character',
+  characterText: '西林',
+  characterStrokeCounts: [7, 8],
+});
 
 test('梅花排盘应内置主互变三阶段结构化证据', () => {
-  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const data = cloneFixedNumberChart();
   const evidence = data.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -68,7 +75,7 @@ test('梅花排盘应内置主互变三阶段结构化证据', () => {
 });
 
 test('梅花起卦证据应核对取数与盘面，并准确表达整除时的余数', () => {
-  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const data = cloneFixedNumberChart();
   const evidence = data.evidenceAnalysis;
   const lowerStep = evidence?.calculationFact.steps.find((item) => item.target === '下卦');
 
@@ -107,7 +114,10 @@ test('梅花以时支取数时应核对起卦记录与盘面时柱', () => {
   ];
 
   for (const setting of settings) {
-    const data = structuredClone(generateMeihua(fixedDate, setting));
+    const data =
+      setting.method === 'number'
+        ? cloneFixedNumberChart()
+        : structuredClone(generateMeihua(fixedDate, setting));
     assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
     data.ganzhi.hour = `甲${data.calculation?.timeZhi === '巳' ? '午' : '巳'}`;
     data.evidenceAnalysis = undefined;
@@ -121,7 +131,7 @@ test('梅花以时支取数时应核对起卦记录与盘面时柱', () => {
 });
 
 test('梅花时间起卦应核对时间戳元数据和盘面完整四柱', () => {
-  const source = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const source = cloneFixedNumberChart();
   assert.equal(Date.parse(source.meta!.calculatedAt), source.timestamp);
 
   const staleTimestamp = structuredClone(source);
@@ -142,7 +152,7 @@ test('梅花时间起卦应核对时间戳元数据和盘面完整四柱', () =>
 });
 
 test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () => {
-  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const data = cloneFixedNumberChart();
   const mutations = [
     {
       label: '互卦',
@@ -186,7 +196,7 @@ test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () =>
 });
 
 test('梅花旧盘派生应期或互卦关系被改写时不得作为已核验事实进入解读资料', () => {
-  const data = structuredClone(generateMeihua(fixedDate, { method: 'number', number: 123 }));
+  const data = cloneFixedNumberChart();
   data.analysis.yingQi = ['明日必然成功'];
   data.analysis.inter1Relation = '体互生原体';
   data.evidenceAnalysis = undefined;
@@ -206,7 +216,7 @@ test('梅花旧盘派生应期或互卦关系被改写时不得作为已核验�
   );
   assert.doesNotMatch(rebuilt.promptText, /明日必然成功|体互生原体/);
 
-  const oldData = structuredClone(generateMeihua(fixedDate, { method: 'number', number: 123 }));
+  const oldData = cloneFixedNumberChart();
   delete oldData.analysis.yingQi;
   oldData.evidenceAnalysis = undefined;
   const oldEvidence = analyzeMeihuaEvidence(oldData);
@@ -217,7 +227,7 @@ test('梅花旧盘派生应期或互卦关系被改写时不得作为已核验�
     false,
   );
 
-  const emptyTiming = structuredClone(generateMeihua(fixedDate, { method: 'number', number: 123 }));
+  const emptyTiming = cloneFixedNumberChart();
   emptyTiming.analysis.yingQi = [];
   emptyTiming.evidenceAnalysis = undefined;
   const emptyEvidence = analyzeMeihuaEvidence(emptyTiming);
@@ -233,7 +243,7 @@ test('梅花旧盘派生应期或互卦关系被改写时不得作为已核验�
 });
 
 test('梅花体互用互应沿用原体所在方位，不得上下颠倒', () => {
-  const lowerMoving = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const lowerMoving = cloneFixedNumberChart();
   const lowerProcess = analyzeMeihuaEvidence(lowerMoving).stages.find(
     (item) => item.stage === 'process',
   );
@@ -262,7 +272,7 @@ test('梅花体互用互应沿用原体所在方位，不得上下颠倒', () =>
 });
 
 test('梅花证据只给触发层位，不把动爻和卦数换算成绝对日期', () => {
-  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const data = cloneFixedNumberChart();
   const evidence = analyzeMeihuaEvidence(data);
 
   assert.match(evidence.promptText, /只用于先后、层次和触发条件/);
@@ -271,7 +281,7 @@ test('梅花证据只给触发层位，不把动爻和卦数换算成绝对日�
 });
 
 test('梅花起卦算式、六爻结构、卦象来源和已有应期条件应进入统一证据', () => {
-  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const data = cloneFixedNumberChart();
   const evidence = data.evidenceAnalysis;
   const items = evidence?.evidence.items ?? [];
 
@@ -342,7 +352,7 @@ test('梅花起卦算式、六爻结构、卦象来源和已有应期条件应�
 });
 
 test('梅花旧结果缺少逐爻或互卦阶段时应明确标记缺口且不得反推', () => {
-  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const data = cloneFixedNumberChart();
   const rebuilt = analyzeMeihuaEvidence({
     ...data,
     yaosDetail: data.yaosDetail.slice(0, 5),
@@ -421,11 +431,7 @@ test('梅花字占证据仅在原始笔画或声类与卦数一致时认定计�
     assert.doesNotMatch(fact.promptText, /上卦=.*除8|字数取数：/u);
   }
 
-  const inconsistent = generateMeihua(fixedDate, {
-    method: 'character',
-    characterText: '西林',
-    characterStrokeCounts: [7, 8],
-  });
+  const inconsistent = structuredClone(fixedCharacterChart);
   inconsistent.calculation!.characterUpperNumber = 6;
   const inconsistentFact = analyzeMeihuaEvidence({
     ...inconsistent,
@@ -436,11 +442,7 @@ test('梅花字占证据仅在原始笔画或声类与卦数一致时认定计�
   assert.match(inconsistentFact.promptText, /字占上卦取数记录6，按输入应为7/u);
   assert.doesNotMatch(inconsistentFact.promptText, /上卦=.*除以8|字数取数：/u);
 
-  const missingCache = generateMeihua(fixedDate, {
-    method: 'character',
-    characterText: '西林',
-    characterStrokeCounts: [7, 8],
-  });
+  const missingCache = structuredClone(fixedCharacterChart);
   delete missingCache.calculation!.characterUpperNumber;
   const missingEvidence = analyzeMeihuaEvidence({
     ...missingCache,
@@ -516,7 +518,7 @@ test('梅花六十四卦卦辞爻辞与乾坤用辞应完整生成条件化事�
 });
 
 test('梅花排盘传统事实应只让当前动爻参与提示词', () => {
-  const data = generateMeihua(fixedDate, { method: 'number', number: 123 });
+  const data = cloneFixedNumberChart();
   const facts = data.evidenceAnalysis?.traditionalFacts ?? [];
   const mainYaoFacts = facts.filter((item) => item.stage === '主卦' && item.kind === '爻辞');
   const activeFacts = mainYaoFacts.filter((item) => item.applicability === '当前动爻辅助');

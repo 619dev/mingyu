@@ -11,9 +11,11 @@ import { formatLiuyaoSanxing } from '../packages/core/src/prompt/liuyao-facts.ts
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedYaos = [7, 8, 9, 6, 7, 8] as const;
+const fixedManualChart = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+const cloneFixedManualChart = () => structuredClone(fixedManualChart);
 
 test('六爻证据与提示词拒绝和结果元数据不一致的起卦时间戳', () => {
-  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const source = cloneFixedManualChart();
   assert.equal(Date.parse(source.meta!.calculatedAt), source.timestamp);
 
   const stale = structuredClone(source);
@@ -27,7 +29,7 @@ test('六爻证据与提示词拒绝和结果元数据不一致的起卦时间�
 });
 
 test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
-  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const source = cloneFixedManualChart();
   for (const field of ['originalName', 'interName', 'changedName'] as const) {
     const changed = structuredClone(source);
     changed[field] = changed[field] === '乾为天' ? '坤为地' : '乾为天';
@@ -44,7 +46,7 @@ test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
 });
 
 test('六爻提示词核对日干起六神与逐爻六神', () => {
-  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const source = cloneFixedManualChart();
   const changedList = structuredClone(source);
   changedList.sixGods[0] = source.sixGods[0] === '玄武' ? '青龙' : '玄武';
   assert.throws(() => analyzeLiuyaoEvidence(changedList), /六神顺序与日干不一致/u);
@@ -58,7 +60,7 @@ test('六爻提示词核对日干起六神与逐爻六神', () => {
 });
 
 test('六爻证据拒绝被改写的本爻六亲、动变关系和进退神', () => {
-  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const source = cloneFixedManualChart();
   const mutations: Array<(data: typeof source) => void> = [
     (data) => {
       data.yaosDetail[2].sixRelative = '妻财';
@@ -122,7 +124,7 @@ test('六爻旧盘伏神须与本宫首卦纳甲、六亲差集、旬空及飞�
 });
 
 test('六爻证据与提示词拒绝可复算的纳甲世应、动变和月日空破错位', () => {
-  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const source = cloneFixedManualChart();
   const mutations: Array<(data: typeof source) => void> = [
     (data) => {
       data.voidBranches = ['子'];
@@ -168,7 +170,7 @@ test('六爻证据与提示词拒绝可复算的纳甲世应、动变和月日�
 });
 
 test('六爻旧盘缺少变卦别名时仍核验变爻六亲', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const data = cloneFixedManualChart();
   data.changedName = undefined;
   const changingYao = data.yaosDetail.find((yao) => yao.isChanging)!;
   changingYao.changedYao!.liuqin = changingYao.changedYao!.liuqin === '父母' ? '兄弟' : '父母';
@@ -181,7 +183,7 @@ test('六爻旧盘缺少变卦别名时仍核验变爻六亲', () => {
 });
 
 test('六爻动爻清单须与原始爻值的动静及阴阳一致', () => {
-  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const source = cloneFixedManualChart();
   const wrongMotion = structuredClone(source);
   wrongMotion.changingYaos[0].isChanging = false;
   wrongMotion.evidenceAnalysis = undefined;
@@ -257,7 +259,7 @@ test('六爻旧盘缺少伏神资料时保留用神缺口与已命中辅证', ()
 });
 
 test('六爻通用排盘保留取用候选，不将世爻自动选为用神', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const data = cloneFixedManualChart();
   const evidence = data.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -455,7 +457,7 @@ test('六爻变爻落空时应期事实归属到对应动爻', () => {
 });
 
 test('六爻原神忌神仇神应按生克作用链推导', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const data = cloneFixedManualChart();
   const evidence = analyzeLiuyaoEvidence(data, { topic: 'shiye' });
   const useful = evidence.godChain.find((item) => item.role === '用神');
   const source = evidence.godChain.find((item) => item.role === '原神');
@@ -472,7 +474,7 @@ test('六爻原神忌神仇神应按生克作用链推导', () => {
 });
 
 test('感情和怪异主题只列盘面线索，明确指定六亲时才可取用', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const data = cloneFixedManualChart();
   for (const topic of ['ganqing', 'guaishen'] as const) {
     const evidence = analyzeLiuyaoEvidence(data, { topic });
     assert.equal(evidence.selectionFact.status, '待按问题取用');
@@ -545,7 +547,7 @@ test('六爻全动只形成一条特殊卦象结构事实', () => {
 });
 
 test('六爻证据拒绝被改写的三刑合害和生旺墓绝字段', () => {
-  const source = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const source = cloneFixedManualChart();
   const mutations: Array<(data: typeof source) => void> = [
     (data) => {
       data.yaosDetail[0].isSanxing = !data.yaosDetail[0].isSanxing;
@@ -737,7 +739,7 @@ test('六爻刑支提示区分两支相刑、三支齐备与自刑', () => {
 });
 
 test('鬼神怪异主题必须保留现实解释限制', () => {
-  const data = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+  const data = cloneFixedManualChart();
   const evidence = analyzeLiuyaoEvidence(data, { topic: 'guaishen' });
 
   assert.equal(evidence.candidates[0].relative, '官鬼');

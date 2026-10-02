@@ -13,6 +13,12 @@ import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divinati
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
+const fixedBoard = generateQimen(fixedDate);
+const cloneFixedBoard = () => structuredClone(fixedBoard);
+const promptBoard = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+const clonePromptBoard = () => structuredClone(promptBoard);
+const lateSummerBoard = generateQimen(new Date('2026-08-08T15:14:00+08:00'));
+const cloneLateSummerBoard = () => structuredClone(lateSummerBoard);
 
 test('年家与月家奇门提示词使用对应的三元阴遁依据', () => {
   for (const scope of ['year', 'month'] as const) {
@@ -51,7 +57,7 @@ test('年家与月家奇门提示词使用对应的三元阴遁依据', () => {
 });
 
 test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
-  const data = generateQimen(fixedDate);
+  const data = cloneFixedBoard();
   const evidence = data.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -129,7 +135,7 @@ test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
 });
 
 test('奇门在线提示词只输出任务、盘面与传统依据并去掉重复格局条件', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = clonePromptBoard();
   const evidence = analyzeQimenEvidence(data);
   const prompt = evidence.promptText;
   const classicMenPo = evidence.patternFacts.find(
@@ -187,7 +193,7 @@ test('奇门在线提示词只输出任务、盘面与传统依据并去掉重�
 });
 
 test('奇门格局无可用事实依据时不输出空冒号并保留主客结构词', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = clonePromptBoard();
   const palace = data.jiuGongGe.find((item) => item.gong === 4)!;
   const tag = `主断格（${palace.name}）`;
   data.patternDetails = [{ tag, summary: '主此事必成。' }];
@@ -212,7 +218,7 @@ test('奇门格局无可用事实依据时不输出空冒号并保留主客结�
 });
 
 test('奇门全局特殊条件不重复记作每个候选宫反证', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = clonePromptBoard();
   const specialCondition = '当前时辰特殊条件仅供全局核验';
   data.specialConditions = {
     isLiuJiaHour: true,
@@ -234,7 +240,7 @@ test('奇门全局特殊条件不重复记作每个候选宫反证', () => {
 });
 
 test('奇门全局特殊条件未命中时不把残留说明写入证据提示词', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = clonePromptBoard();
   data.specialConditions = {
     isLiuJiaHour: false,
     isLiuGuiHour: false,
@@ -247,7 +253,7 @@ test('奇门全局特殊条件未命中时不把残留说明写入证据提示�
 });
 
 test('Issue #204：结构化依据中的节令背景应采用正式定局三元', () => {
-  const data = generateQimen(new Date('2026-08-08T15:14:00+08:00'));
+  const data = cloneLateSummerBoard();
   const evidence = analyzeQimenEvidence(data);
 
   assert.equal(data.timeInfo.epoch, '中元');
@@ -256,7 +262,7 @@ test('Issue #204：结构化依据中的节令背景应采用正式定局三元'
 });
 
 test('Issue #204 同类：候选宫支持与制约应按格局类型归类', () => {
-  const evidence = analyzeQimenEvidence(generateQimen(new Date('2026-08-08T15:14:00+08:00')));
+  const evidence = analyzeQimenEvidence(cloneLateSummerBoard());
   const palace = evidence.candidates.find((item) => item.gong === 1);
 
   assert.ok(palace);
@@ -268,7 +274,7 @@ test('Issue #204 同类：候选宫支持与制约应按格局类型归类', () 
 });
 
 test('奇门证据应保留空亡与宫间五行反证', () => {
-  const data = generateQimen(fixedDate);
+  const data = cloneFixedBoard();
   const first = data.evidenceAnalysis?.candidates[0];
   assert.ok(first);
   data.voidPalaces = [
@@ -367,7 +373,7 @@ test('年、月、日家候选来源不随更短周期干支变化', () => {
 });
 
 test('奇门同宫空迫按宫汇总，门迫格局不重复列为自身条件', () => {
-  const data = generateQimen(fixedDate);
+  const data = cloneFixedBoard();
   const [first, second] = data.jiuGongGe;
   data.classicPatterns = [
     { name: '中性组合', type: 'neutral', summary: '组合', palaces: [first.gong] },
@@ -406,7 +412,7 @@ test('奇门同宫空迫按宫汇总，门迫格局不重复列为自身条件',
 });
 
 test('奇门格局空亡事实由旬空位置映射承载，应期来源不重复触发条件', () => {
-  const data = generateQimen(fixedDate);
+  const data = cloneFixedBoard();
   const palace = data.jiuGongGe[0];
   data.classicPatterns = [
     { name: '空亡核验', type: 'good', summary: '盘面事实', palaces: [palace.gong] },
@@ -432,7 +438,7 @@ test('奇门格局空亡事实由旬空位置映射承载，应期来源不重�
 });
 
 test('奇门提示词按问题展示专项复合格局，结构化盘面仍保留完整命中', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = clonePromptBoard();
   assert.ok(data.patternCombos?.some((item) => item.name === '射覆物象克应'));
   assert.ok(data.patternCombos?.some((item) => item.name === '星宫主客'));
 

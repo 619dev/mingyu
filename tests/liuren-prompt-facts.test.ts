@@ -20,8 +20,15 @@ import {
 import { formatLiurenJudgmentFacts } from '../packages/core/src/prompt/liuren-judgment';
 import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules';
 
+const fixedDate = '2026-05-19T10:30:00+08:00';
+const fixedChart = generateLiuren(new Date(fixedDate));
+
+function makeFixedChart() {
+  return structuredClone(fixedChart);
+}
+
 test('大六壬四课和三传分别绑定实际上下位与前传，十二宫绑定天地盘及天将', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   assert.deepEqual(
     data.fourLessons.map((item) => [item.upper, item.lower]),
     [
@@ -35,12 +42,12 @@ test('大六壬四课和三传分别绑定实际上下位与前传，十二宫�
     data.threeTransmissions.map((item) => item.branch),
     ['酉', '丑', '巳'],
   );
-  for (const format of [
-    formatDivinationInfo,
-    formatDetailedDivinationInfo,
-    formatEnhancedDivinationInfo,
+  const enhanced = formatEnhancedDivinationInfo('liuren', data);
+  for (const text of [
+    formatDivinationInfo('liuren', data),
+    formatDetailedDivinationInfo('liuren', data),
+    enhanced,
   ]) {
-    const text = format('liuren', data);
     assert.match(text, /下位癸水克上神巳火/);
     assert.match(text, /下位巳火克上神酉金/);
     assert.match(text, /上神丑土生下位酉金/);
@@ -51,13 +58,12 @@ test('大六壬四课和三传分别绑定实际上下位与前传，十二宫�
     assert.doesNotMatch(text, /directKe|remoteKe|suppressedByPrior|deferredToSpecial/);
     assert.doesNotMatch(text, /上神酉金克下位巳火|初传酉金生中传丑土/);
   }
-  const enhanced = formatEnhancedDivinationInfo('liuren', data);
   assert.match(enhanced, /地盘卯上临天盘未乘朱雀/);
   assert.match(enhanced, /地盘未上临天盘亥乘天空/);
 });
 
 test('大六壬概览只列一组四课与三传，贵人临地仍保留', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   const lines = getDivinationSummaryBlocks('liuren', data).lines;
   assert.equal(lines.filter((line) => line.startsWith('四课：')).length, 1);
   assert.equal(lines.filter((line) => line.startsWith('三传：')).length, 1);
@@ -113,7 +119,7 @@ test('大六壬复合取传规则只列当前有克或无克条件，重复课�
 });
 
 test('大六壬完整提示词写入课体判据、取用定位和应期依据', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   const prompt = formatDivinationInfo('liuren', data);
   assert.ok(data.guaTiFacts?.length);
   for (const fact of data.guaTiFacts) {
@@ -134,7 +140,7 @@ test('大六壬完整提示词写入课体判据、取用定位和应期依据',
 });
 
 test('大六壬详细课体判据已含名称时省略重复摘要，旧数据仍保留摘要', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   const prompt = formatEnhancedDivinationInfo('liuren', data);
 
   assert.ok(data.guaTiFacts?.length);
@@ -152,7 +158,7 @@ test('大六壬详细课体判据已含名称时省略重复摘要，旧数据�
 });
 
 test('大六壬旧盘天地盘缺口时不把未核验课体判据送入在线提示词', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   assert.ok(data.guaTiFacts?.length);
   data.heavenlyPlate = [];
 
@@ -175,7 +181,7 @@ test('大六壬旧盘天地盘缺口时不把未核验课体判据送入在线�
 });
 
 test('大六壬旧盘天地盘缺口时不把未核验的昼夜与贵人写入在线提示词', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   data.heavenlyPlate = [];
   data.dayNight = data.dayNight === '昼占' ? '夜占' : '昼占';
   data.noblemanBranch = data.noblemanBranch === '子' ? '丑' : '子';
@@ -191,23 +197,23 @@ test('大六壬真实旬空状态在三传与应期提示词中一致', () => {
     ['2026-05-19T10:30:00+08:00', false],
     ['2026-05-02T10:30:00+08:00', true],
   ] as const) {
-    const data = generateLiuren(new Date(date));
+    const data = date === fixedDate ? makeFixedChart() : generateLiuren(new Date(date));
     const initial = data.threeTransmissions[0];
     const evidence = analyzeLiurenEvidence(data);
     assert.equal(initial.isVoid, expectedVoid);
-    for (const format of [
-      formatDivinationInfo,
-      formatDetailedDivinationInfo,
-      formatEnhancedDivinationInfo,
+    const enhanced = formatEnhancedDivinationInfo('liuren', data);
+    for (const prompt of [
+      formatDivinationInfo('liuren', data),
+      formatDetailedDivinationInfo('liuren', data),
+      enhanced,
     ]) {
-      const prompt = format('liuren', data);
       assert.equal(
         prompt.includes(`初传${initial.branch}乘${initial.god}，${initial.relation}（空）`),
         expectedVoid,
       );
     }
     for (const prompt of [
-      formatEnhancedDivinationInfo('liuren', data),
+      enhanced,
       buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
     ]) {
       assert.ok(prompt.includes(evidence.timingFacts[0].promptText));
@@ -218,7 +224,7 @@ test('大六壬真实旬空状态在三传与应期提示词中一致', () => {
 });
 
 test('大六壬完整提示词只补充尚未在盘面显示的判断事实', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   const adjudication = formatLiurenOrdinaryTransmissionAdjudication(data);
   assert.ok(adjudication.includes('候选取舍：'));
   assert.ok(formatLiurenJudgmentFacts(data).includes(adjudication));
@@ -250,7 +256,7 @@ test('大六壬完整提示词只补充尚未在盘面显示的判断事实', ()
 });
 
 test('大六壬月令旺衰集中在应期段，取用与乘神仍保留各自依据', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   for (const prompt of [
     buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
     buildAppDivinationPrompt('liuren', '问合作进度', data),
@@ -285,7 +291,7 @@ test('大六壬应期段未列同一初传月令状态时保留取用和乘神�
 });
 
 test('大六壬在线提示词用取传依据和期限条件表达候选取舍', () => {
-  const data = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const data = makeFixedChart();
   const legacyTiming = '未给出目标期限时，只判断先后、快慢和触发条件，不硬换成唯一日期';
   data.timingEvidence = [...(data.timingEvidence ?? []).slice(0, 3), legacyTiming];
 
@@ -308,7 +314,7 @@ test('大六壬在线提示词用取传依据和期限条件表达候选取舍',
 });
 
 test('初传不空及空亡古诀只列发端条件，不直接断定现实进展', () => {
-  const nonVoid = generateLiuren(new Date('2026-05-19T10:30:00+08:00'));
+  const nonVoid = makeFixedChart();
   assert.equal(nonVoid.threeTransmissions[0].isVoid, false);
   assert.equal(nonVoid.threeTransmissions[0].seasonState, '死');
   const nonVoidPrompt = buildDivinationPrompt({

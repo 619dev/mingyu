@@ -10,8 +10,11 @@ import {
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
 import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination';
 
+const fixedQimen = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+const cloneFixedQimen = () => structuredClone(fixedQimen);
+
 test('奇门证据提示词保留命中条件并省略同宫格局的重复前提', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const prompt = analyzeQimenEvidence(data).promptText;
   const patterns = prompt.split('【传统格局】\n')[1]?.split('【应期资料】')[0] ?? '';
 
@@ -27,7 +30,7 @@ test('奇门证据提示词保留命中条件并省略同宫格局的重复前�
 });
 
 test('奇门完整在线提示词只保留一处旬空与驿马位置映射', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const prompt = formatEnhancedDivinationInfo('qimen', data);
   const palaceTable = prompt.match(/九宫简表：\r?\n((?:  [^\r\n]*(?:\r?\n|$))*)/u)?.[1] ?? '';
 
@@ -38,7 +41,7 @@ test('奇门完整在线提示词只保留一处旬空与驿马位置映射', ()
 });
 
 test('三奇得、马星和击刑在在线提示词中各保留一次有效事实', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const analysis = analyzeQimenEvidence(data);
   const prompt = analysis.promptText;
   const patterns = prompt.split('【传统格局】\n')[1]?.split('【应期资料】')[0] ?? '';
@@ -69,7 +72,7 @@ test('三奇入墓在固定盘与证据提示词中只保留三奇专名', () =>
 });
 
 test('复合格局引用同盘经典格局时省略占位复述并保留独有兵事依据', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const prompt = formatEnhancedDivinationInfo('qimen', data, '军事战术如何行动');
   const combos = prompt.split('复合格局：\n')[1]?.split('\n值符宫应期参考')[0] ?? '';
 
@@ -95,7 +98,7 @@ test('奇门提示词合并相同宫位相同条件的命中记录，保留不�
     additional,
   ]);
 
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const hit = data.classicPatterns!.find((item) => item.name === '天遁')!;
   data.classicPatterns!.push(structuredClone(hit));
   const evidence = analyzeQimenEvidence(data);
@@ -105,7 +108,7 @@ test('奇门提示词合并相同宫位相同条件的命中记录，保留不�
 });
 
 test('奇门详细在线资料复用命中条件，摘要不重复格局且不采样专项复合格局', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const prompt = formatDetailedDivinationInfo('qimen', data);
   assert.equal(prompt.match(/生门、丙奇、地盘戊同宫/gu)?.length, 1);
   assert.match(prompt, /凶格：门迫；惊门（金）克巽四宫（木）/u);
@@ -122,7 +125,7 @@ test('奇门详细在线资料复用命中条件，摘要不重复格局且不�
 });
 
 test('奇门空命中资料在证据与详细入口省略格局标题', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   data.classicPatterns = [];
   data.patternDetails = [];
   data.patternTags = [];
@@ -132,7 +135,7 @@ test('奇门空命中资料在证据与详细入口省略格局标题', () => {
 });
 
 test('奇门专项复合格局合并重复说明并省略空名称与空条件', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const bird = data.patternCombos!.find((item) => item.name === '飞鸟跌穴利客')!;
   assert.ok(bird);
   data.patternCombos!.push(

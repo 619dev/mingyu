@@ -14,8 +14,16 @@ import {
   getQimenActiveSpecialConditionText,
 } from '../packages/core/src/divination/qimen-evidence';
 
+const fixedQimen = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+const cloneFixedQimen = () => structuredClone(fixedQimen);
+const fixedAppTaskPrompt = buildDivinationPrompt(
+  'qimen',
+  '请做整体解读。',
+  structuredClone(fixedQimen),
+);
+
 test('奇门提示词按当前盘面重算格局与宫位证据', () => {
-  const data = structuredClone(generateQimen(new Date('2026-05-19T10:30:00+08:00')));
+  const data = cloneFixedQimen();
   assert.ok(data.evidenceAnalysis?.patternFacts.length);
   data.evidenceAnalysis.patternFacts[0].name = '伪造的旧格局';
   data.evidenceAnalysis.palaceFacts[0].promptText = '伪造的旧宫位';
@@ -26,8 +34,7 @@ test('奇门提示词按当前盘面重算格局与宫位证据', () => {
 });
 
 test('奇门原生提示词绑定符使宫生克、天地盘时干和取用宫干冲', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
-  const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
+  const prompt = fixedAppTaskPrompt;
   assert.match(prompt, /值符值使与时干：[^\n]*时干丁/);
   assert.match(prompt, /离九宫（正南，火）：[^\n]*天盘丁，地盘庚/);
   assert.match(prompt, /巽四宫（东南，木）：[^\n]*天盘癸，地盘丁/);
@@ -38,8 +45,7 @@ test('奇门原生提示词绑定符使宫生克、天地盘时干和取用宫�
 });
 
 test('奇门时家任务保留取象换象造象流程且不追加重复通用框架', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
-  const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
+  const prompt = fixedAppTaskPrompt;
   const task = prompt.split('【任务】\n')[1]?.split('\n\n【问题】')[0] ?? '';
 
   assert.match(task, /取象：先按问题确定主体、事项用神、主客与原宫/);
@@ -52,8 +58,8 @@ test('奇门时家任务保留取象换象造象流程且不追加重复通用�
 });
 
 test('奇门完整提示词按问题写入复合格局与值符宫应期触发', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
-  const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
+  const data = cloneFixedQimen();
+  const prompt = fixedAppTaskPrompt;
   assert.ok(data.yingQi);
   assert.ok(prompt.includes(`值符宫应期参考：盘内相对节奏${data.yingQi.rhythm}`));
   for (const source of data.yingQi.sources) {
@@ -76,8 +82,8 @@ test('奇门完整提示词按问题写入复合格局与值符宫应期触发',
 });
 
 test('奇门经典格局保留各宫命中且省略重复条件与通用叠加', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
-  const prompt = buildDivinationPrompt('qimen', '请做整体解读。', data);
+  const data = cloneFixedQimen();
+  const prompt = fixedAppTaskPrompt;
   const patternBlock = prompt.split('盘面命中格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
   for (const pattern of data.classicPatterns ?? []) {
     const strongerPattern = (data.classicPatterns ?? []).find(
@@ -113,7 +119,7 @@ test('奇门经典格局保留各宫命中且省略重复条件与通用叠加',
 });
 
 test('奇门在线格局省略重复的规则名称和前置条件', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const prompt = formatEnhancedDivinationInfo('qimen', data);
   assert.match(prompt, /天遁（吉格，兑七宫）：生门、丙奇、地盘戊同宫/);
   assert.doesNotMatch(prompt, /乃天遁之格/);
@@ -126,7 +132,7 @@ test('奇门在线格局省略重复的规则名称和前置条件', () => {
 });
 
 test('奇门无命中格局时省略格局标题，重复命中只列一次', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const duplicate = data.classicPatterns?.find((item) => item.name === '天遁');
   assert.ok(duplicate);
   data.classicPatterns?.push({ ...duplicate });
@@ -225,7 +231,7 @@ test('奇门年日月时摘要使用对应排盘范围的主动干支和驿马�
 });
 
 test('奇门特殊条件未命中时不把残留说明写入在线提示词或摘要', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const staleCondition = '五不遇时残留说明';
   data.specialConditions = {
     isLiuJiaHour: false,
@@ -271,7 +277,7 @@ test('日干实际入墓与同宫格局只在提示词出现一次，独立特�
 });
 
 test('奇门同宫比和与寄干五合各自保持身份，五合不直接写成合化', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const palace = structuredClone(data.jiuGongGe.find((item) => item.gong === 4)!);
   palace.tianPan.stem = '丁';
   palace.tianPan.companionStem = '戊';
@@ -284,7 +290,7 @@ test('奇门同宫比和与寄干五合各自保持身份，五合不直接写�
 });
 
 test('同干定位保留寄干、多落点和缺盘层，定位过程不改盘', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   const before = structuredClone(data);
   const locations = formatQimenStemLocations(data);
   for (const palace of data.jiuGongGe) {
@@ -331,7 +337,7 @@ test('转盘与飞盘的换象造象任务保留原盘、转换条件与现实�
 });
 
 test('奇门候选排序不替代问事取用，也不自动决定主客进退', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = cloneFixedQimen();
   for (const question of ['问求财回款', '问面试岗位', '请做整体解读']) {
     const prompt = buildDivinationPrompt('qimen', question, data);
     assert.match(prompt, /先按问题确定主体、事项用神与主客身份/);

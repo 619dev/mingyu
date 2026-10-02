@@ -12,6 +12,11 @@ import {
 import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
+const fixedChart = generateLiuren(fixedDate);
+
+function makeFixedChart() {
+  return structuredClone(fixedChart);
+}
 
 test('甲子日酉将酉时伏吟只标干上一课为发用来源', () => {
   const data = generateLiuren(new Date('2026-04-20T18:00:00+08:00'));
@@ -45,7 +50,7 @@ test('大六壬遥克规则不应因“克法”字样追加贼克法', () => {
 });
 
 test('大六壬排盘应内置四课取传与三传推进结构化证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   const evidence = data.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -189,7 +194,7 @@ test('大六壬排盘应内置四课取传与三传推进结构化证据', () =>
 });
 
 test('大六壬证据应以旬空地支复核三传空亡，避免冗余字段冲突', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   const initialBranch = data.threeTransmissions[0].branch;
   const expectedVoid = data.xunKong?.includes(initialBranch) ?? false;
   data.threeTransmissions[0].isVoid = !expectedVoid;
@@ -208,7 +213,7 @@ test('大六壬证据应以旬空地支复核三传空亡，避免冗余字段�
 });
 
 test('大六壬旧盘旬空与日柱冲突时不得据错误空亡生成证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.xunKong = [data.threeTransmissions[0].branch];
 
   assert.throws(() => analyzeLiurenEvidence(data), /旬空与日柱不一致/);
@@ -224,7 +229,7 @@ test('大六壬旧盘跨中气错配实际占时时不得沿用旧月将证据',
 });
 
 test('大六壬旧盘三传五行与月令冲突时不得生成错误旺衰证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.threeTransmissions[0].seasonState =
     data.threeTransmissions[0].seasonState === '旺' ? '死' : '旺';
 
@@ -232,7 +237,7 @@ test('大六壬旧盘三传五行与月令冲突时不得生成错误旺衰证�
 });
 
 test('大六壬旧结果缺少取传名、应期与焦点时应明确标记来源缺口', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.transmissionRule = undefined;
   data.transmissionPattern = undefined;
   data.evidenceAnalysis = undefined;
@@ -339,7 +344,7 @@ test('大六壬旧盘篡改取传派生资料不得进入证据提示词', () =>
     ],
   ];
   for (const [field, alter] of alterations) {
-    const data = generateLiuren(fixedDate);
+    const data = makeFixedChart();
     alter(data);
     assert.throws(() => analyzeLiurenEvidence(data), /不一致，无法生成证据/, field);
   }
@@ -366,7 +371,7 @@ test('大六壬旧版应期文案与空数组可补齐为当前盘面条件', ()
 });
 
 test('大六壬旧结果只有最终取传名时不得冒充普通宗门竞争可重建', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.ordinaryTransmissionAdjudication = undefined;
 
   const evidence = analyzeLiurenEvidence(data);
@@ -379,7 +384,7 @@ test('大六壬旧结果只有最终取传名时不得冒充普通宗门竞争�
 });
 
 test('大六壬结构化边界保留在字段中，提示词按事项核对类神与应期', () => {
-  const evidence = analyzeLiurenEvidence(generateLiuren(fixedDate));
+  const evidence = analyzeLiurenEvidence(makeFixedChart());
 
   assert.match(evidence.focusSummaryFact.limitation, /缺少焦点时不得/);
   assert.match(evidence.promptText, /类神焦点状态：/);
@@ -406,7 +411,7 @@ test('大六壬资料有缺口且未列反证时提示词不宣称盘内未见�
 });
 
 test('大六壬起盘链、天地盘、课体神煞与天将属性应进入统一证据条目', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   const evidence = data.evidenceAnalysis;
   const items = evidence?.evidence.items ?? [];
 
@@ -464,7 +469,7 @@ test('大六壬起盘链、天地盘、课体神煞与天将属性应进入统�
 });
 
 test('大六壬旧结果缺少天地盘时应明确标为证据缺口，不反推逐位事实', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.heavenlyPlate = data.heavenlyPlate.slice(0, 11);
 
   const evidence = analyzeLiurenEvidence(data);
@@ -481,7 +486,7 @@ test('大六壬旧结果缺少天地盘时应明确标为证据缺口，不反�
 });
 
 test('大六壬天地盘缺口时不直出无法核验的取传派生资料', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.heavenlyPlate = data.heavenlyPlate.slice(0, 11);
   data.transmissionDetail = '明日必成';
   data.patternTags!.push('明日必成');
@@ -498,7 +503,7 @@ test('大六壬天地盘缺口时不直出无法核验的取传派生资料', ()
 });
 
 test('大六壬天地盘十二条记录含重复位置时不得标为完整', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.heavenlyPlate[1] = { ...data.heavenlyPlate[0] };
 
   const evidence = analyzeLiurenEvidence(data);
@@ -510,7 +515,7 @@ test('大六壬天地盘十二条记录含重复位置时不得标为完整', ()
 
 test('大六壬天地盘十二条记录含未知支或天将时不得标为完整', () => {
   for (const field of ['under', 'branch', 'god'] as const) {
-    const data = generateLiuren(fixedDate);
+    const data = makeFixedChart();
     data.heavenlyPlate[0] = { ...data.heavenlyPlate[0], [field]: '未知' };
 
     const evidence = analyzeLiurenEvidence(data);
@@ -521,7 +526,7 @@ test('大六壬天地盘十二条记录含未知支或天将时不得标为完�
 
 test('大六壬天地盘十二支与天将齐全但对应错位时不标为完整', () => {
   for (const field of ['branch', 'god'] as const) {
-    const data = generateLiuren(fixedDate);
+    const data = makeFixedChart();
     const first = data.heavenlyPlate[0][field];
     data.heavenlyPlate[0][field] = data.heavenlyPlate[1][field];
     data.heavenlyPlate[1][field] = first;
@@ -534,28 +539,28 @@ test('大六壬天地盘十二支与天将齐全但对应错位时不标为完�
 });
 
 test('大六壬四课与完整天地盘错位时不生成互相矛盾的提示词证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.fourLessons[0].upper = data.fourLessons[0].upper === '子' ? '丑' : '子';
 
   assert.throws(() => analyzeLiurenEvidence(data), /四课与天地盘不一致/);
 });
 
 test('大六壬三传天将与完整天地盘错位时不生成互相矛盾的提示词证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.threeTransmissions[0].god = data.threeTransmissions[0].god === '贵人' ? '螣蛇' : '贵人';
 
   assert.throws(() => analyzeLiurenEvidence(data), /三传与天地盘不一致/);
 });
 
 test('大六壬取传规则与四课裁决不一致时不生成完整证据链', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.transmissionRule = data.transmissionRule === '元首法' ? '重审法' : '元首法';
 
   assert.throws(() => analyzeLiurenEvidence(data), /取传规则或三传与四课、天地盘不一致/);
 });
 
 test('大六壬普通宗门裁决轨迹与真实发用错位时拒绝生成证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   assert.equal(data.transmissionRule, '重审法');
   assert.equal(data.threeTransmissions[0].branch, '酉');
   assert.equal(data.ordinaryTransmissionAdjudication?.status, 'selected');
@@ -566,7 +571,7 @@ test('大六壬普通宗门裁决轨迹与真实发用错位时拒绝生成证�
 });
 
 test('大六壬普通宗门裁决字段顺序变化但事实相同时仍可生成证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   const adjudication = data.ordinaryTransmissionAdjudication;
   assert.ok(adjudication);
   data.ordinaryTransmissionAdjudication = Object.fromEntries(
@@ -577,19 +582,19 @@ test('大六壬普通宗门裁决字段顺序变化但事实相同时仍可生�
 });
 
 test('大六壬已登记课体条件与当前盘面不一致时拒绝生成证据', () => {
-  const staleCondition = generateLiuren(fixedDate);
+  const staleCondition = makeFixedChart();
   assert.ok(staleCondition.guaTiFacts?.length);
   staleCondition.guaTiFacts[0].matchedConditions = ['错误课体条件'];
   assert.throws(() => analyzeLiurenEvidence(staleCondition), /课体与四课、三传、天地盘不一致/);
 
-  const staleNames = generateLiuren(fixedDate);
+  const staleNames = makeFixedChart();
   assert.ok(staleNames.guaTi?.length);
   staleNames.guaTi[0] = '错误课体名称';
   assert.throws(() => analyzeLiurenEvidence(staleNames), /课体与四课、三传、天地盘不一致/);
 });
 
 test('大六壬三传地支虽与天将关系自洽，仍须符合四课取传与递传', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   const middle = data.threeTransmissions[1];
   const alternative = data.heavenlyPlate.find(
     (item) => item.branch !== middle.branch && item.branch !== data.threeTransmissions[0].branch,
@@ -611,7 +616,7 @@ test('大六壬三传地支虽与天将关系自洽，仍须符合四课取传�
 
 test('大六壬贵人与日干或地盘位置不一致时不标为完整', () => {
   for (const field of ['noblemanBranch', 'noblemanGroundBranch'] as const) {
-    const data = generateLiuren(fixedDate);
+    const data = makeFixedChart();
     data[field] = data.heavenlyPlate.find((item) => item.under !== data[field])!.under;
 
     const evidence = analyzeLiurenEvidence(data);
@@ -622,7 +627,7 @@ test('大六壬贵人与日干或地盘位置不一致时不标为完整', () =>
 
 test('大六壬时柱、占时支与昼夜占互相矛盾时不标为完整', () => {
   for (const field of ['hour', 'dayNight'] as const) {
-    const data = generateLiuren(fixedDate);
+    const data = makeFixedChart();
     if (field === 'hour') {
       data.ganzhi.hour = `${data.ganzhi.hour.charAt(0)}${data.divinationBranch === '子' ? '丑' : '子'}`;
     } else {
@@ -637,7 +642,7 @@ test('大六壬时柱、占时支与昼夜占互相矛盾时不标为完整', ()
 });
 
 test('大六壬传统事实应保留原文并为提示词生成条件化副本', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   const evidence = data.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -667,7 +672,7 @@ test('大六壬传统事实应保留原文并为提示词生成条件化副本',
 });
 
 test('大六壬登记课体应以稳定键、固定古籍版本进入统一证据', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   const evidence = data.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -693,7 +698,7 @@ test('大六壬登记课体应以稳定键、固定古籍版本进入统一证�
 });
 
 test('大六壬旧结果缺少逐项神煞起法时应明确不可复算', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.shenShaFacts = undefined;
 
   const evidence = analyzeLiurenEvidence(data);
@@ -704,7 +709,7 @@ test('大六壬旧结果缺少逐项神煞起法时应明确不可复算', () =>
 });
 
 test('大六壬旧结果未保存神煞时不虚构传统神煞命中', () => {
-  const data = generateLiuren(fixedDate);
+  const data = makeFixedChart();
   data.shenShaFacts = undefined;
   data.shenShaSummary = undefined;
 

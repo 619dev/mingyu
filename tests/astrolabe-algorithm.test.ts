@@ -24,6 +24,12 @@ const validInput: AstrolabeBirthInput = {
   locationName: '北京',
 };
 
+const fixedAstrolabe = generateAstrolabe(validInput);
+
+function cloneFixedAstrolabe(): AstrolabeData {
+  return structuredClone(fixedAstrolabe);
+}
+
 test('星盘底层算法应拒绝无效出生日期和时间', () => {
   assert.throws(
     () => generateAstrolabe({ ...validInput, year: ' ' }),
@@ -56,7 +62,7 @@ test('星盘底层算法应拒绝无效出生日期和时间', () => {
 });
 
 test('星盘可选秒数应贯穿现代星历、UTC和光照证据，省略时保持原有分钟口径', () => {
-  const withoutSecond = generateAstrolabe(validInput);
+  const withoutSecond = cloneFixedAstrolabe();
   const withSecond = generateAstrolabe({ ...validInput, second: '37' });
 
   assert.equal(withoutSecond.birth.dateTime, '1995-05-20 12:30');
@@ -72,7 +78,7 @@ test('星盘可选秒数应贯穿现代星历、UTC和光照证据，省略时�
 });
 
 test('星盘出生时区证据应以时分秒格式化固定历史偏移', () => {
-  const data = generateAstrolabe(validInput);
+  const data = cloneFixedAstrolabe();
   data.birth.timezone = 4 + (51 * 60 + 16) / 3600;
   delete data.evidenceAnalysis;
 
@@ -106,7 +112,7 @@ test('星盘底层算法应拒绝越界经纬度和时区', () => {
 });
 
 test('星盘底层算法应保留扩展计算点，不再只返回十大星体', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const labels = result.planets.map((item) => item.label);
 
   assert.ok(result.planets.length > 10);
@@ -123,7 +129,7 @@ test('星盘底层算法应保留扩展计算点，不再只返回十大星体',
 });
 
 test('星盘格局摘要应按名称去重并保留首次出现顺序', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
 
   assert.deepEqual(result.summary.patterns, [...new Set(result.summary.patterns)]);
   assert.equal(result.summary.patternBasis, 'ten-main-bodies-selected-aspects');
@@ -173,7 +179,7 @@ test('真太阳时结果保留校正产生的秒数', () => {
 });
 
 test('现代星盘不得用真太阳时改写实际出生瞬间和盘面', () => {
-  const standard = generateAstrolabe(validInput);
+  const standard = cloneFixedAstrolabe();
   const withTrueSolarEvidence = generateAstrolabe({ ...validInput, useTrueSolarTime: true });
 
   assert.equal(withTrueSolarEvidence.birth.dateTime, standard.birth.dateTime);
@@ -201,7 +207,8 @@ test('本命盘在线提示词只列盘面与时间事实，不带内部来源�
       useTrueSolarTime: true,
     },
   ]) {
-    const evidence = generateAstrolabe(input).evidenceAnalysis!;
+    const evidence = (input === validInput ? cloneFixedAstrolabe() : generateAstrolabe(input))
+      .evidenceAnalysis!;
     assert.match(evidence.promptText, /出生时刻太阳高度/);
     assert.doesNotMatch(evidence.promptText, /明御|Caelus|tyme4ts|来源：|计算方法：/);
     assert.ok(evidence.evidence.items.some((item) => item.source?.includes('Caelus')));
@@ -209,7 +216,7 @@ test('本命盘在线提示词只列盘面与时间事实，不带内部来源�
 });
 
 test('星盘应返回筛选阈值内全部相位，不得只截取最强十二条', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
 
   assert.ok(result.aspects.length > 12);
   assert.equal(result.evidenceAnalysis?.aspectFacts.length, result.aspects.length);
@@ -221,7 +228,7 @@ test('星盘应返回筛选阈值内全部相位，不得只截取最强十二�
 });
 
 test('星盘结构化位置与相位应对应实际盘面', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const evidence = result.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -290,7 +297,7 @@ test('星盘结构化位置与相位应对应实际盘面', () => {
 });
 
 test('旧星盘缺少相位几何量时不得反推伪精确字段', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const legacy = structuredClone(result) as AstrolabeData;
   delete legacy.evidenceAnalysis;
   for (const aspect of legacy.aspects) {
@@ -326,7 +333,7 @@ test('旧星盘缺少相位几何量时不得反推伪精确字段', () => {
 });
 
 test('旧星盘缺少入相出相字段时保持未判定', () => {
-  const legacy = structuredClone(generateAstrolabe(validInput)) as AstrolabeData;
+  const legacy = cloneFixedAstrolabe();
   delete legacy.evidenceAnalysis;
   delete (legacy.aspects[0] as Partial<AstrolabeData['aspects'][number]>).applying;
 
@@ -337,7 +344,7 @@ test('旧星盘缺少入相出相字段时保持未判定', () => {
 });
 
 test('星盘核心位置缺失时应给出覆盖事实且不得补造位置', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const partial = structuredClone(result) as AstrolabeData;
   delete partial.evidenceAnalysis;
   partial.planets = partial.planets.filter((item) => item.name !== 'Sun');
@@ -362,7 +369,7 @@ test('星盘核心位置缺失时应给出覆盖事实且不得补造位置', ()
 });
 
 test('星盘缺少太阳光照资料时应保留缺失对象而不反推天文量', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const legacy = structuredClone(result) as AstrolabeData;
   delete legacy.evidenceAnalysis;
   delete legacy.solarIllumination;
@@ -381,7 +388,7 @@ test('星盘缺少太阳光照资料时应保留缺失对象而不反推天文�
 });
 
 test('星盘无相位、逆行和格局时应输出逐项反证与汇总', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const empty = structuredClone(result) as AstrolabeData;
   delete empty.evidenceAnalysis;
   empty.aspects = [];
@@ -408,7 +415,7 @@ test('星盘无相位、逆行和格局时应输出逐项反证与汇总', () =>
 });
 
 test('星盘时区诊断应转为限制事实，明确固定偏移消歧后保持完整证据链', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const diagnosed = structuredClone(result) as AstrolabeData;
   delete diagnosed.evidenceAnalysis;
   diagnosed.birth.timezoneDiagnostics = ['历史时区存在回拨歧义，采用较早偏移。'];
@@ -453,7 +460,7 @@ test('星盘时区诊断应转为限制事实，明确固定偏移消歧后保�
 });
 
 test('星盘北交点相位应统一名称并兼容旧节点别名引用', () => {
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   assert.ok(result.aspects.every((item) => !/True|Mean/.test(`${item.body1}${item.body2}`)));
   const nodeAspectIndex = result.aspects.findIndex(
     (item) => item.body1 === '北交点' || item.body2 === '北交点',
@@ -491,7 +498,7 @@ test('星盘行星尊贵力量（Essential Dignities）应准确识别入庙、�
   });
   assert.equal(getEssentialDignity('Sun', 'Taurus'), null);
 
-  const result = generateAstrolabe(validInput);
+  const result = cloneFixedAstrolabe();
   const sun = result.planets.find((p) => p.name === 'Sun');
   assert.ok(sun);
   assert.ok('dignity' in sun);
