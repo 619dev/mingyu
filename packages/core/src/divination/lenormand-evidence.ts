@@ -1201,6 +1201,10 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
   const inputCards = data.cards;
   const mismatchesByIndex = inputCards.map(() => [] as string[]);
   const columns = data.spreadType === 'grandTableau' ? 9 : data.spreadType === 'nine' ? 3 : 0;
+  const positions = LENORMAND_SPREAD_POSITIONS[data.spreadType];
+  const normalizedPositions = inputCards.map((card) =>
+    normalizeCoveragePosition(data.spreadType, card.position),
+  );
   data = {
     ...data,
     cards: inputCards.map((input, index) => {
@@ -1222,10 +1226,20 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
         if (input.meaning !== canonical.meaning) mismatches.push('基础牌义');
       }
 
+      const normalizedPosition = normalizedPositions[index];
+      const positionIndex =
+        normalizedPositions.indexOf(normalizedPosition) ===
+        normalizedPositions.lastIndexOf(normalizedPosition)
+          ? (positions?.indexOf(normalizedPosition) ?? -1)
+          : -1;
       const expectedHouse =
-        data.spreadType === 'grandTableau' ? LENORMAND_CARDS[index]?.name : undefined;
-      const expectedRow = columns ? Math.floor(index / columns) + 1 : undefined;
-      const expectedColumn = columns ? (index % columns) + 1 : undefined;
+        data.spreadType === 'grandTableau' && positionIndex >= 0
+          ? LENORMAND_CARDS[positionIndex]?.name
+          : undefined;
+      const expectedRow =
+        columns && positionIndex >= 0 ? Math.floor(positionIndex / columns) + 1 : undefined;
+      const expectedColumn =
+        columns && positionIndex >= 0 ? (positionIndex % columns) + 1 : undefined;
       if (input.house !== expectedHouse) mismatches.push('宫位');
       if (input.row !== expectedRow) mismatches.push('行号');
       if (input.column !== expectedColumn) mismatches.push('列号');
@@ -1276,7 +1290,11 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
   const spreadCoverageFact = buildSpreadCoverageFact(data, cards);
   const sequenceFacts = buildSequenceFacts(cards);
   const sequence = sequenceFacts.map((fact) => fact.promptText);
-  const structuredLayoutFacts = buildStructuredLayoutFacts(data, cards);
+  const structuredLayoutFacts =
+    spreadCoverageFact.status === '完整' &&
+    cards.every((card) => LENORMAND_CARDS.some((reference) => reference.id === card.cardId))
+      ? buildStructuredLayoutFacts(data, cards)
+      : [];
   const layoutFacts = data.layoutEvidence ?? [];
   const layoutCoverageFact = buildLayoutCoverageFact(data, structuredLayoutFacts, layoutFacts);
   const drawOrderFacts = buildDrawOrderFacts(data, cards);
@@ -1391,6 +1409,73 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
       });
     }
     if (data.combinations !== undefined) verifiedCombinations = expected;
+  } else {
+    verifiedCombinations = verifiedCombinations.filter((actual) => {
+      const firstMatches = data.cards.filter((card) => card.name === actual.card1);
+      const secondMatches = data.cards.filter((card) => card.name === actual.card2);
+      if (firstMatches.length !== 1 || secondMatches.length !== 1) return false;
+      const first = firstMatches[0];
+      const second = secondMatches[0];
+      if (
+        first.id === second.id ||
+        !LENORMAND_CARDS.some((card) => card.id === first.id) ||
+        !LENORMAND_CARDS.some((card) => card.id === second.id) ||
+        !positions
+      ) {
+        return false;
+      }
+      const firstIndex = positions.indexOf(
+        normalizeCoveragePosition(data.spreadType, first.position),
+      );
+      const secondIndex = positions.indexOf(
+        normalizeCoveragePosition(data.spreadType, second.position),
+      );
+      const grid = data.spreadType === 'nine' || data.spreadType === 'grandTableau';
+      if (
+        grid &&
+        (firstIndex < 0 ||
+          secondIndex <= firstIndex ||
+          !first.row ||
+          !first.column ||
+          !second.row ||
+          !second.column)
+      ) {
+        return false;
+      }
+      if (
+        !grid &&
+        (firstIndex < 0 || secondIndex < 0) &&
+        [
+          actual.position1,
+          actual.position2,
+          actual.relation,
+          actual.rowDistance,
+          actual.columnDistance,
+        ].some((value) => value !== undefined)
+      ) {
+        return false;
+      }
+      if (!grid && firstIndex >= 0 && secondIndex >= 0 && secondIndex !== firstIndex + 1) {
+        return false;
+      }
+      const calculated = buildLenormandCombinations(data.spreadType, [first, second])[0];
+      if (!calculated) return false;
+      const previousSequentialMeaning =
+        data.spreadType !== 'three' &&
+        calculated.relation === '牌序相邻' &&
+        calculated.source === '相邻牌义合读' &&
+        actual.meaning ===
+          `${first.position}${first.name}的“${first.keywords.slice(0, 2).join('、')}”与${second.position}${second.name}的“${second.keywords.slice(0, 2).join('、')}”前后相接，先按${first.meaning.replace(/[。！？]$/u, '')}，再看${second.meaning}`;
+      return (
+        actual.source === calculated.source &&
+        (actual.meaning === calculated.meaning || previousSequentialMeaning) &&
+        (actual.position1 === undefined || actual.position1 === first.position) &&
+        (actual.position2 === undefined || actual.position2 === second.position) &&
+        (actual.relation === undefined || actual.relation === calculated.relation) &&
+        (actual.rowDistance === undefined || actual.rowDistance === calculated.rowDistance) &&
+        (actual.columnDistance === undefined || actual.columnDistance === calculated.columnDistance)
+      );
+    });
   }
   const fixedCombinations = verifiedCombinations.filter((item) => item.source === '固定组合');
   const adjacentReadings = verifiedCombinations.filter((item) => item.source !== '固定组合');

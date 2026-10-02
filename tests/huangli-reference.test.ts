@@ -10,6 +10,17 @@ import { formatAlmanacGods } from '../packages/core/src/divination/almanac-evide
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
 
+const april2024TravelSelection = generateAlmanacSelection({
+  topic: 'travel',
+  startDate: '2024-04-08',
+  endDate: '2024-04-08',
+});
+const november2026TravelSelection = generateAlmanacSelection({
+  topic: 'travel',
+  startDate: '2026-11-11',
+  endDate: '2026-11-11',
+});
+
 // 所有完整月日表共用同一份确定性神煞结果缓存；断言仍按各自古籍起例独立执行。
 const stems = [...'甲乙丙丁戊己庚辛壬癸'];
 const branches = [...'子丑寅卯辰巳午未申酉戌亥'];
@@ -239,11 +250,7 @@ test('辰月壬寅日天德贯通黄历查询与择日结果', () => {
   assert.ok(
     getHuangliShensha(2024, 4, 8).shensha.some((god) => god.name === '天德' && god.luck === '吉'),
   );
-  const result = generateAlmanacSelection({
-    topic: 'travel',
-    startDate: '2024-04-08',
-    endDate: '2024-04-08',
-  });
+  const result = structuredClone(april2024TravelSelection);
   assert.ok(result.days[0].gods.includes('天德'));
   assert.equal(
     result.days[0].godFacts?.find((fact) => fact.name === '天德')?.classification,
@@ -262,11 +269,7 @@ test('辰月壬寅日天德贯通黄历查询与择日结果', () => {
 test('黄历旧记录只有神煞名称时完整保留且不推定吉凶', () => {
   assert.deepEqual(formatAlmanacGods({ gods: ['天德', '月破', '天德'] }), ['神煞：天德、月破']);
   assert.deepEqual(formatAlmanacGods({ gods: [] }), []);
-  const result = generateAlmanacSelection({
-    topic: 'travel',
-    startDate: '2024-04-08',
-    endDate: '2024-04-08',
-  });
+  const result = structuredClone(april2024TravelSelection);
   const day = result.days[0];
   day.godFacts = undefined;
   const expected = `神煞：${day.gods.join('、')}`;
@@ -369,11 +372,7 @@ test('月恩、四相、月空、月厌、月煞覆盖十二月六十日原典�
 });
 
 test('亥月己丑日择日结果应列月厌而非月空', () => {
-  const day = generateAlmanacSelection({
-    topic: 'travel',
-    startDate: '2026-11-11',
-    endDate: '2026-11-11',
-  }).days[0];
+  const day = structuredClone(november2026TravelSelection).days[0];
   assert.equal(day.ganzhi.day, '己丑');
   assert.equal(day.gods.includes('月空'), false);
   assert.equal(day.gods.includes('六合'), false);
@@ -615,11 +614,7 @@ test('四季七神及九空五墓按古籍覆盖全部月日组合', () => {
 });
 
 test('亥月己丑日保留守日九空并去除时德相日误列', () => {
-  const day = generateAlmanacSelection({
-    topic: 'travel',
-    startDate: '2026-11-11',
-    endDate: '2026-11-11',
-  }).days[0];
+  const day = structuredClone(november2026TravelSelection).days[0];
   assert.ok(day.gods.includes('守日'));
   assert.ok(day.gods.includes('九空'));
   assert.equal(day.gods.includes('时德'), false);

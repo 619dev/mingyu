@@ -54,6 +54,202 @@ test('雷诺曼未完成进度可续抽且36张均不重复，完整入口拒绝
   assert.throws(() => drawLenormandSpread('grandTableau', { interactiveSamples: [0, 0] }));
 });
 
+test('恢复缺牌雷诺曼只保留能逐张绑定的旧组合及其实际关系', () => {
+  const complete = drawLenormandSpread('three', { manualCardIds: [1, 24, 25] });
+  const restored = structuredClone(complete);
+  restored.cards.pop();
+  const evidence = analyzeLenormandEvidence(restored);
+  const fixed = evidence.traditionalFacts.filter((fact) => fact.kind === '固定组合');
+
+  assert.equal(evidence.spreadCoverageFact.status, '牌数不符');
+  assert.equal(evidence.summaryFact.fixedCombinationCount, 1);
+  assert.deepEqual(evidence.fixedCombinations, [
+    {
+      card1: '骑士',
+      card2: '心',
+      position1: '起因',
+      position2: '现状',
+      relation: '牌序相邻',
+      rowDistance: 0,
+      columnDistance: 0,
+      meaning: '消息带来感情进展',
+      source: '固定组合',
+    },
+  ]);
+  assert.deepEqual(
+    fixed.map((fact) => fact.cardFactKeys),
+    [['lenormand:card:1:1', 'lenormand:card:2:24']],
+  );
+  assert.deepEqual(fixed[0].positions, ['起因', '现状']);
+  assert.equal(fixed[0].status, '已映射');
+  assert.doesNotMatch(evidence.promptText, /心\+戒指|感情的承诺或婚约/u);
+
+  for (const change of [
+    (data: LenormandData) => {
+      data.cards[0].id = 2;
+    },
+    (data: LenormandData) => {
+      data.combinations![0].position1 = '走向';
+    },
+    (data: LenormandData) => {
+      data.combinations![0].relation = '纵向相邻';
+    },
+    (data: LenormandData) => {
+      data.combinations![0].meaning = '感情的承诺或婚约';
+    },
+  ]) {
+    const changed = structuredClone(restored);
+    change(changed);
+    const changedEvidence = analyzeLenormandEvidence(changed);
+    assert.equal(changedEvidence.fixedCombinations.length, 0);
+    assert.ok(changedEvidence.traditionalFacts.every((fact) => fact.kind === '单牌牌义'));
+  }
+
+  const missingMiddle = drawLenormandSpread('three', { manualCardIds: [1, 3, 24] });
+  missingMiddle.cards.splice(1, 1);
+  missingMiddle.combinations = [
+    {
+      card1: '骑士',
+      card2: '心',
+      meaning: '消息带来感情进展',
+      source: '固定组合',
+    },
+  ];
+  assert.deepEqual(analyzeLenormandEvidence(missingMiddle).fixedCombinations, []);
+
+  const unknownSlot = structuredClone(missingMiddle);
+  unknownSlot.cards[1].position = '未登记位置';
+  unknownSlot.combinations = [
+    {
+      card1: '骑士',
+      card2: '心',
+      position1: '起因',
+      position2: '未登记位置',
+      relation: '牌序相邻',
+      rowDistance: 0,
+      columnDistance: 0,
+      meaning: '消息带来感情进展',
+      source: '固定组合',
+    },
+  ];
+  const unknownSlotEvidence = analyzeLenormandEvidence(unknownSlot);
+  assert.deepEqual(unknownSlotEvidence.fixedCombinations, []);
+  assert.equal(unknownSlotEvidence.summaryFact.fixedCombinationCount, 0);
+  assert.ok(unknownSlotEvidence.traditionalFacts.every((fact) => fact.kind === '单牌牌义'));
+
+  const legacy = structuredClone(unknownSlot);
+  legacy.cards[0].position = '前牌';
+  legacy.cards[1].position = '后牌';
+  legacy.combinations = [
+    {
+      card1: '骑士',
+      card2: '心',
+      meaning: '消息带来感情进展',
+      source: '固定组合',
+    },
+  ];
+  const legacyFact = analyzeLenormandEvidence(legacy).traditionalFacts.find(
+    (fact) => fact.kind === '固定组合',
+  );
+  assert.ok(legacyFact);
+  assert.equal(legacyFact.status, '已映射');
+  assert.deepEqual(legacyFact.cardFactKeys, ['lenormand:card:1:1', 'lenormand:card:2:24']);
+  assert.deepEqual(legacyFact.positions, ['前牌', '后牌']);
+  assert.doesNotMatch(legacyFact.promptText, /牌序相邻|横向相邻|纵向相邻/u);
+});
+
+test('恢复缺牌网格按原牌位保留坐标和宫位，乱序完整盘保留布局缺口', () => {
+  const nine = drawLenormandSpread('nine', { manualCardIds: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
+  const partialNine = structuredClone(nine);
+  partialNine.cards.shift();
+  const nineEvidence = analyzeLenormandEvidence(partialNine);
+  assert.deepEqual(
+    nineEvidence.cards.map((card) => [card.position, card.row, card.column]),
+    [
+      ['上方', 1, 2],
+      ['右上', 1, 3],
+      ['左侧', 2, 1],
+      ['核心', 2, 2],
+      ['右侧', 2, 3],
+      ['左下', 3, 1],
+      ['下方', 3, 2],
+      ['右下', 3, 3],
+    ],
+  );
+  assert.ok(nineEvidence.cards.every((card) => card.status === '已映射'));
+  assert.deepEqual(nineEvidence.structuredLayoutFacts, []);
+  const partialPrompt = formatEnhancedDivinationInfo('lenormand', partialNine);
+  assert.match(partialPrompt, /上方：三叶草；[^\n]*；第1排第2列/u);
+  assert.match(partialPrompt, /核心：树；[^\n]*；第2排第2列/u);
+  assert.doesNotMatch(partialPrompt, /上方：三叶草；[^\n]*；第1排第1列/u);
+
+  const grand = drawLenormandSpread('grandTableau', {
+    manualCardIds: Array.from({ length: 36 }, (_, index) => index + 1),
+  });
+  grand.cards.shift();
+  const grandEvidence = analyzeLenormandEvidence(grand);
+  assert.deepEqual(
+    [
+      grandEvidence.cards[0].position,
+      grandEvidence.cards[0].house,
+      grandEvidence.cards[0].row,
+      grandEvidence.cards[0].column,
+    ],
+    ['第2宫（三叶草宫）', '三叶草', 1, 2],
+  );
+  assert.deepEqual(
+    [grandEvidence.cards[8].house, grandEvidence.cards[8].row, grandEvidence.cards[8].column],
+    ['镰刀', 2, 1],
+  );
+  assert.ok(grandEvidence.cards.every((card) => card.status === '已映射'));
+
+  const neighboring = drawLenormandSpread('nine', {
+    manualCardIds: [24, 1, 2, 25, 3, 4, 5, 6, 7],
+  });
+  neighboring.cards.splice(1, 1);
+  const neighboringEvidence = analyzeLenormandEvidence(neighboring);
+  const heartRing = neighboringEvidence.traditionalFacts.find(
+    (fact) => fact.kind === '固定组合' && fact.cardNames.join('+') === '心+戒指',
+  );
+  assert.ok(heartRing);
+  assert.deepEqual(heartRing.cardFactKeys, ['lenormand:card:1:24', 'lenormand:card:3:25']);
+  assert.deepEqual(heartRing.positions, ['左上', '左侧']);
+  assert.match(heartRing.promptText, /纵向相邻/u);
+
+  const reordered = structuredClone(nine);
+  [reordered.cards[0], reordered.cards[4]] = [reordered.cards[4], reordered.cards[0]];
+  assert.equal(analyzeLenormandEvidence(reordered).spreadCoverageFact.status, '牌位异常');
+  assert.deepEqual(analyzeLenormandEvidence(reordered).structuredLayoutFacts, []);
+
+  const duplicated = structuredClone(nine);
+  duplicated.cards[0].position = '核心';
+  const duplicateEvidence = analyzeLenormandEvidence(duplicated);
+  assert.deepEqual(
+    duplicateEvidence.cards
+      .filter((card) => card.position === '核心')
+      .map((card) => [card.row, card.column]),
+    [
+      [undefined, undefined],
+      [undefined, undefined],
+    ],
+  );
+  assert.deepEqual(duplicateEvidence.structuredLayoutFacts, []);
+
+  const unknownPosition = structuredClone(nine);
+  unknownPosition.cards[0].position = '未登记位置';
+  const unknownPositionEvidence = analyzeLenormandEvidence(unknownPosition);
+  assert.equal(unknownPositionEvidence.cards[0].row, undefined);
+  assert.equal(unknownPositionEvidence.cards[0].column, undefined);
+  assert.deepEqual(unknownPositionEvidence.structuredLayoutFacts, []);
+
+  const unknownCard = structuredClone(nine);
+  unknownCard.cards[0].id = 100;
+  unknownCard.draw = undefined;
+  unknownCard.meta = undefined;
+  unknownCard.combinations = undefined;
+  assert.deepEqual(analyzeLenormandEvidence(unknownCard).structuredLayoutFacts, []);
+});
+
 test('雷诺曼整组随机记录应与牌面顺序一致并完整消耗', () => {
   for (const data of [
     drawLenormandSpread('three', { seed: '雷诺曼重放' }),

@@ -1,6 +1,95 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeBaZhaiByDoorDegree } from '../packages/core/src/ba_zhai/index.ts';
+import {
+  analyzeBaZhai,
+  analyzeBaZhaiByDoorDegree,
+  type BaZhaiInput,
+} from '../packages/core/src/ba_zhai/index.ts';
+
+test('八宅立春取年资料保留原民用钟表和实际已知精度', () => {
+  const cases: { input: BaZhaiInput; birthFact: string; gua: string; status: string }[] = [
+    {
+      // UTC-12 的 2 月 3 日 23 时对应中国标准时间 2 月 4 日 19 时，已过 16:27:07 立春。
+      input: {
+        birthYear: 2024,
+        birthMonth: 2,
+        birthDay: 3,
+        birthHour: 23,
+        birthMinute: 0,
+        birthSecond: 0,
+        birthTimezone: -12,
+        gender: 'male',
+      },
+      birthFact: '命卦取年资料：男，公历2024年2月3日；民用时刻23时0分0秒，取时按UTC-12:00。',
+      gua: '震',
+      status: '已核定',
+    },
+    {
+      input: {
+        birthYear: 2024,
+        birthMonth: 2,
+        birthDay: 4,
+        birthHour: 3,
+        birthMinute: 30,
+        birthSecond: 8,
+        birthTimeZoneId: 'America/New_York',
+        birthTimezone: -5,
+        gender: 'female',
+      },
+      birthFact:
+        '命卦取年资料：女，公历2024年2月4日；民用时刻3时30分8秒，取时按America/New_York（UTC-05:00）。',
+      gua: '震',
+      status: '已核定',
+    },
+    {
+      // 16:27:00..16:27:59 跨立春；女命前一年为坤，本年为震。
+      input: {
+        birthYear: 2024,
+        birthMonth: 2,
+        birthDay: 4,
+        birthHour: 16,
+        birthMinute: 27,
+        gender: 'female',
+      },
+      birthFact:
+        '命卦取年资料：女，公历2024年2月4日；民用时刻16时27分（秒数未提供），取时按UTC+08:00。',
+      gua: '坤',
+      status: '待复核',
+    },
+    {
+      input: { birthYear: 2024, birthMonth: 2, birthDay: 4, birthHour: 16, gender: 'male' },
+      birthFact:
+        '命卦取年资料：男，公历2024年2月4日；民用时刻16时（分钟、秒数未提供），取时按UTC+08:00。',
+      gua: '巽',
+      status: '待复核',
+    },
+    {
+      input: { birthYear: 2024, birthMonth: 2, birthDay: 4, gender: 'male' },
+      birthFact: '命卦取年资料：男，公历2024年2月4日；出生时刻未提供，年界比较按中国标准时间正午。',
+      gua: '巽',
+      status: '待复核',
+    },
+    {
+      input: { birthYear: 1990, gender: 'male' },
+      birthFact: '命卦取年资料：男，公历1990年（月日未提供）。',
+      gua: '坎',
+      status: '待复核',
+    },
+  ];
+  for (const { input, birthFact, gua, status } of cases) {
+    const result = analyzeBaZhai(input);
+    assert.ok(result.prompt.split('\n').includes(birthFact));
+    assert.equal(result.mingGua, gua);
+    assert.equal(result.birthYearBoundaryStatus, status);
+    assert.equal(result.calculationInput.birthYear, input.birthYear);
+    assert.equal(result.calculationInput.birthDay, input.birthDay);
+    assert.equal(result.calculationInput.birthSecond, input.birthSecond);
+    if (input.gender === 'female' && input.birthMinute === 27) {
+      assert.match(result.prompt, /候选命卦：2023年坤命、2024年震命/);
+      assert.doesNotMatch(result.prompt, /民用时刻16时27分0秒/);
+    }
+  }
+});
 
 test('八宅宅卦跨界时提示词并列候选并标明中心读数盘', () => {
   const result = analyzeBaZhaiByDoorDegree({
@@ -39,6 +128,7 @@ test('八宅宅卦跨界时提示词并列候选并标明中心读数盘', () =>
     northReference: 'true',
   });
   assert.equal(stable.directionMeasurement.stability, '稳定');
+  assert.doesNotMatch(stable.prompt, /命卦取年资料|公历|民用时刻/);
   assert.doesNotMatch(stable.prompt, /候选坐向|中心读数/);
   assert.match(stable.prompt, /测向资料：站在大门处面向屋内测量，读数0°，北向基准真北/);
   assert.match(stable.prompt, /换算为子山午向，距最近二十四山分界7\.5°，测量状态稳定/);

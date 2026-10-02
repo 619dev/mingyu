@@ -77,6 +77,60 @@ test('住宅统一入口把已知出生时分传给八宅立春年界', () => {
   assert.doesNotMatch(result.prompt, /未提供出生时刻/);
 });
 
+test('住宅合参与在线任务书把原出生钟表和年界候选作为同一居住人事实', () => {
+  const cases = [
+    {
+      birth: {
+        birthYear: 2024,
+        birthMonth: 2,
+        birthDay: 3,
+        birthHour: 23,
+        birthMinute: 0,
+        birthSecond: 0,
+        birthTimezone: -12,
+        gender: 'male' as const,
+      },
+      birthFact: '命卦取年资料：男，公历2024年2月3日；民用时刻23时0分0秒，取时按UTC-12:00。',
+      year: 2024,
+      gua: '震',
+      boundary: /出生时刻已过 2024 年立春/,
+    },
+    {
+      birth: {
+        birthYear: 2024,
+        birthMonth: 2,
+        birthDay: 4,
+        birthHour: 16,
+        birthMinute: 27,
+        gender: 'female' as const,
+      },
+      birthFact:
+        '命卦取年资料：女，公历2024年2月4日；民用时刻16时27分（秒数未提供），取时按UTC+08:00。',
+      year: 2023,
+      gua: '坤',
+      boundary: /候选命卦：2023年坤命、2024年震命/,
+    },
+  ];
+  for (const { birth, birthFact, year, gua, boundary } of cases) {
+    const result = generateResidentialFengshui({ ...birth, year: 2008, sitMountain: '子' });
+    assert.equal(result.bazhai?.effectiveBirthYear, year);
+    assert.equal(result.bazhai?.mingGua, gua);
+    assert.equal(result.bazhai?.calculationInput.birthDay, birth.birthDay);
+    assert.equal(result.bazhai?.calculationInput.birthHour, birth.birthHour);
+    const onlinePrompt = buildMetaphysicsPrompt(
+      result.prompt,
+      '立春附近的命卦与住宅方位如何理解？',
+      { method: 'residential' },
+    );
+    for (const prompt of [result.prompt, onlinePrompt]) {
+      assert.equal(prompt.split('\n').filter((line) => line === birthFact).length, 1);
+      assert.match(prompt, boundary);
+      assert.match(prompt, /玄空完整盘面：[\s\S]*下元8运（2004-2023）/);
+      assertPromptIsPortableTaskText(prompt);
+    }
+  }
+});
+
 test('住宅网页输入把已知出生秒数传给八宅立春年界', () => {
   const input = buildResidentialCoreInput({
     birthData: { year: 2024, month: 2, day: 4, hour: 16, minute: 27, second: 8, gender: 'male' },

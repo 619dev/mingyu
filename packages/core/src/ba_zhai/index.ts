@@ -425,6 +425,32 @@ function resolveMingGua(input: BaZhaiInput): {
   throw new Error('需提供 birthYear+gender 或直接给定 mingGua。');
 }
 
+function formatBirthYearBasis(input: BaZhaiResult['calculationInput']): string {
+  if (input.mingGuaSource === '直接给定') return '';
+  const date = `${input.birthYear}年${
+    input.birthMonth === undefined ? '（月日未提供）' : `${input.birthMonth}月${input.birthDay}日`
+  }`;
+  const facts = [`${input.gender === 'male' ? '男' : '女'}，公历${date}`];
+  if (input.birthMonth !== undefined) {
+    if (input.birthHour === undefined) {
+      facts.push('出生时刻未提供，年界比较按中国标准时间正午');
+    } else {
+      const time =
+        input.birthMinute === undefined
+          ? `${input.birthHour}时（分钟、秒数未提供）`
+          : input.birthSecond === undefined
+            ? `${input.birthHour}时${input.birthMinute}分（秒数未提供）`
+            : `${input.birthHour}时${input.birthMinute}分${input.birthSecond}秒`;
+      const offset = `UTC${formatFixedTimezoneOffset(input.birthTimezone ?? 8)}`;
+      const timezone = input.birthTimeZoneId
+        ? `${input.birthTimeZoneId.trim()}${input.birthTimezone !== undefined ? `（${offset}）` : ''}`
+        : offset;
+      facts.push(`民用时刻${time}，取时按${timezone}`);
+    }
+  }
+  return `命卦取年资料：${facts.join('；')}。`;
+}
+
 function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMeasurement): string {
   const lines: string[] = [];
   const houseUnstable = measurement?.stability === '宅卦不稳定';
@@ -457,6 +483,8 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
       );
     }
   }
+  const birthYearBasis = formatBirthYearBasis(r.calculationInput);
+  if (birthYearBasis) lines.push(birthYearBasis);
   lines.push(
     `命卦：${r.mingGua}（${r.mingGroup}${r.birthYearBoundaryStatus === '待复核' ? '，暂按' : ''}）`,
   );

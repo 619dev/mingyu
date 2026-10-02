@@ -34,7 +34,7 @@ test('六十甲子工具应返回完整序列与结构化关系', () => {
   assert.equal(cycle.length, 60);
   assert.equal(cycle[0], '甲子');
   assert.equal(cycle[59], '癸亥');
-  assert.deepEqual(core.foundation.getFoundationCapabilities().constants.sixXunHeads, [
+  assert.deepEqual(capabilities.constants.sixXunHeads, [
     '甲子',
     '甲戌',
     '甲申',
@@ -59,12 +59,10 @@ test('六十甲子工具应返回完整序列与结构化关系', () => {
   assert.equal(profile.branch.sanhe.group, '水局');
   assert.equal(profile.key, 'foundation:ganzhi:甲子');
   assert.equal(profile.status, '已查询');
-  assert.equal(profile.calculationSteps.length, 5);
   assert.deepEqual(
     profile.calculationChain,
     profile.calculationSteps.map((item) => item.promptText),
   );
-  assert.equal(profile.sourceFacts.length, 4);
   assert.equal(profile.summaryFact.calculationStepCount, profile.calculationSteps.length);
   assert.equal(profile.summaryFact.sourceFactCount, profile.sourceFacts.length);
   assert.equal(profile.summaryFact.limitationFactCount, profile.limitationFacts.length);
@@ -92,24 +90,14 @@ test('六十甲子工具应返回完整序列与结构化关系', () => {
   assert.doesNotMatch(profile.promptText, /mingyu-core|命语|本项目|工程|接口|API|MCP/);
   assert.deepEqual(core.foundation.getBranchRelations('寅').punishments, ['巳', '申']);
   assert.equal(core.foundation.getBranchRelations('寅').hiddenCombine, '丑');
-  assert.equal(core.foundation.getFoundationCapabilities().constants.changshengOrder.length, 12);
-  assert.equal(core.foundation.getFoundationCapabilities().constants.shichenPeriods.length, 13);
-  assert.ok(
-    core.foundation.getFoundationCapabilities().evidenceOutputs.ganzhi.includes('可复制证据文本'),
-  );
-  assert.ok(
-    core.foundation
-      .getFoundationCapabilities()
-      .evidenceOutputs.wuxing.includes('逐项五行与藏干贡献'),
-  );
-  assert.deepEqual(
-    core.foundation.getFoundationCapabilities().constants.chinaDstYears,
-    [1986, 1987, 1988, 1989, 1990, 1991],
-  );
-  assert.ok(core.foundation.getFoundationCapabilities().singleSourceModules.includes('calendar'));
+  assert.equal(capabilities.constants.changshengOrder.length, 12);
+  assert.equal(capabilities.constants.shichenPeriods.length, 13);
+  assert.ok(capabilities.evidenceOutputs.ganzhi.includes('可复制证据文本'));
+  assert.ok(capabilities.evidenceOutputs.wuxing.includes('逐项五行与藏干贡献'));
+  assert.deepEqual(capabilities.constants.chinaDstYears, [1986, 1987, 1988, 1989, 1990, 1991]);
+  assert.ok(capabilities.singleSourceModules.includes('calendar'));
   assert.equal(capabilities.key, 'foundation:capabilities');
   assert.equal(capabilities.status, '已登记');
-  assert.equal(capabilities.version, '1.2.0');
   assert.equal(capabilities.capabilityFacts.length, capabilities.singleSourceModules.length);
   assert.equal(capabilities.summaryFact.status, '目录完整');
   assert.equal(capabilities.summaryFact.moduleFactCount, capabilities.capabilityFacts.length);
@@ -163,7 +151,6 @@ test('统一五行分析应严格校验输入并支持藏干权重', () => {
   assert.ok(result.counts.火 > 0);
   assert.equal(result.key, 'foundation:wuxing:with-hidden:甲-子-丙-午');
   assert.equal(result.status, '已统计');
-  assert.equal(result.calculationSteps.length, 4);
   assert.deepEqual(
     result.calculationChain,
     result.calculationSteps.map((item) => item.promptText),

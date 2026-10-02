@@ -17,6 +17,8 @@ import type { DivinationSession } from '../src/lib/divination/engine';
 import type { DivinationData, QimenData } from '../src/types/divination';
 
 const FIXED_DATE = new Date('2026-08-31T10:30:00+08:00');
+const fixedQimenData = generateQimen(FIXED_DATE);
+const fixedWuyun2026Data = calculateWuyunLiuqi({ year: 2026 });
 
 function renderBoard(method: DivinationSession['method'], data: DivinationData) {
   const session: DivinationSession = {
@@ -35,12 +37,12 @@ test('主要占卜传统盘应能使用当前核心数据直接渲染', () => {
     ['meihua', generateMeihua(FIXED_DATE), /梅花易数/],
     ['xiaoliuren', generateXiaoliuren({ customDate: FIXED_DATE }), /小六壬/],
     ['jinkoujue', generateJinkoujue({ method: 'time', customDate: FIXED_DATE }), /金口诀/],
-    ['qimen', generateQimen(FIXED_DATE), /奇门九宫盘/],
+    ['qimen', structuredClone(fixedQimenData), /奇门九宫盘/],
     ['liuren', generateLiuren(FIXED_DATE), /大六壬/],
     ['tarot', drawTarotSpread('single'), /塔罗/],
     ['ssgw', drawRandomSign(FIXED_DATE), /签/],
     ['lenormand', drawLenormandSpread('single'), /雷诺曼/],
-    ['wuyun', calculateWuyunLiuqi({ year: 2026 }), /五运六气年度盘/],
+    ['wuyun', structuredClone(fixedWuyun2026Data), /五运六气年度盘/],
   ];
 
   for (const [method, data, expected] of cases) {
@@ -66,7 +68,7 @@ test('金口诀传统盘展示人元与将神之间的生克关系', () => {
 });
 
 test('五运六气年度盘展示全年主客运气事实', () => {
-  const html = renderBoard('wuyun', calculateWuyunLiuqi({ year: 2026 }));
+  const html = renderBoard('wuyun', structuredClone(fixedWuyun2026Data));
   assert.match(html, /丙午/u);
   assert.match(html, /五步主客运/u);
   assert.match(html, /六步主客气/u);
@@ -74,7 +76,7 @@ test('五运六气年度盘展示全年主客运气事实', () => {
 });
 
 test('五运六气六步在交节当日展示准确时界', () => {
-  const result = calculateWuyunLiuqi({ year: 2026 });
+  const result = structuredClone(fixedWuyun2026Data);
   const first = result.qiSteps[0];
   const second = result.qiSteps[1];
   assert.equal(first.gregorianEnd, '2026-03-20');
@@ -102,7 +104,7 @@ test('五运六气六步在交节当日展示准确时界', () => {
 });
 
 test('缺少可选格局标签的旧奇门记录不显示空格局区', () => {
-  const legacyData = { ...generateQimen(FIXED_DATE) };
+  const legacyData = structuredClone(fixedQimenData);
   delete (legacyData as Partial<QimenData>).patternTags;
 
   const html = renderBoard('qimen', legacyData);
