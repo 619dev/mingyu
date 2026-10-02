@@ -64,8 +64,15 @@ test('北京夏至应给出可复核的日出日落、太阳高度与曙暮光',
   const midnight = calculateSolarIlluminationEvidence({ ...base, hour: 0, timezone: 8 });
   const differentTimezone = calculateSolarIlluminationEvidence({ ...base, hour: 12, timezone: 9 });
 
-  assert.ok(evidence.solarAltitudeDegrees > 72 && evidence.solarAltitudeDegrees < 74);
-  assert.ok(evidence.solarAzimuthDegrees > 160 && evidence.solarAzimuthDegrees < 180);
+  // JPL Horizons：Sun，coord@399，UT，AIRLESS，量2/4，椭球高0 km。
+  // https://ssd-api.jpl.nasa.gov/doc/horizons.html
+  for (const [actual, expected, label] of [
+    [evidence.solarAltitudeDegrees, 73.180510001, '无折射太阳高度'],
+    [evidence.solarAzimuthDegrees, 167.041909454, '真北方位'],
+    [evidence.solarDeclinationDegrees, 23.437238264, '视赤纬'],
+  ] as const) {
+    assert.ok(Math.abs(actual - expected) < 0.01, `${label}与 JPL 固定样本偏差超限`);
+  }
   assert.equal(evidence.sunriseSunset.status, '正常交点');
   assert.equal(evidence.sunriseSunset.crossings.length, 2);
   assert.equal(evidence.apparentSolarNoonEvents.length, 1);
@@ -298,6 +305,14 @@ test('重历民用日保留47小时内四个完整升落交点及各自历史偏
   assert.deepEqual(first.sunriseSunset.crossings, events);
   assert.deepEqual(first.apparentSolarNoonEvents, second.apparentSolarNoonEvents);
   assert.equal(first.apparentSolarNoonEvents.length, 2);
+  // JPL Horizons：同地点太阳无折射方位穿越180°的插值时刻，UT。
+  // https://ssd-api.jpl.nasa.gov/doc/horizons.html
+  for (const [index, utc] of ['1969-09-30T00:39:14.229Z', '1969-10-01T00:38:54.637Z'].entries()) {
+    assert.ok(
+      Math.abs(first.apparentSolarNoonEvents[index].utcTimestamp - Date.parse(utc)) < 1_000,
+      '重历日正午与 JPL 独立交点偏差超限',
+    );
+  }
   assert.deepEqual(
     first.apparentSolarNoonEvents.map((event) => event.utcOffset),
     ['+11:00', '-12:00'],
@@ -310,9 +325,9 @@ test('重历民用日保留47小时内四个完整升落交点及各自历史偏
   );
   assert.equal(first.apparentSolarNoonUtcDateTime, first.apparentSolarNoonEvents[0].utcDateTime);
   assert.equal(second.apparentSolarNoonUtcDateTime, second.apparentSolarNoonEvents[1].utcDateTime);
-  assert.match(first.promptText, /11:39:05（UTC\+11:00）.*12:38:45（UTC-12:00）/);
-  assert.equal(first.promptText.match(/1969-09-30 11:39:05（UTC\+11:00）/g)?.length, 1);
-  assert.equal(first.promptText.match(/1969-09-30 12:38:45（UTC-12:00）/g)?.length, 1);
+  assert.match(first.promptText, /11:39:14（UTC\+11:00）.*12:38:54（UTC-12:00）/);
+  assert.equal(first.promptText.match(/1969-09-30 11:39:14（UTC\+11:00）/g)?.length, 1);
+  assert.equal(first.promptText.match(/1969-09-30 12:38:54（UTC-12:00）/g)?.length, 1);
   assert.deepEqual(
     events.map((event) => event.direction),
     ['上行', '下行', '上行', '下行'],

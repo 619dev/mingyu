@@ -50,15 +50,11 @@ test('四立节气前一日按四绝事项规则进入慎用候选，原始宜�
     assert.equal(candidate?.status, '慎用候选');
     assert.ok(candidate?.decisionFact.limitingFactKeys.includes(fact.key));
     assert.ok(result.evidenceAnalysis?.promptText.includes(fact.promptText));
+    if (date === '2025-11-06') {
+      assert.ok(day.recommends.includes('嫁娶'));
+      assert.ok(!day.gods.includes('四绝'));
+    }
   }
-
-  const marriage = generateAlmanacSelection({
-    topic: 'marriage',
-    startDate: '2025-11-06',
-    endDate: '2025-11-06',
-  });
-  assert.ok(marriage.days[0].recommends.includes('嫁娶'));
-  assert.ok(!marriage.days[0].gods.includes('四绝'));
 
   for (const [topic, date] of [
     ['marriage', '2025-11-07'],

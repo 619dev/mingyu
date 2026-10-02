@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { analyzeAstrolabeSynastry } from '../packages/core/src/divination/astrolabe-synastry.ts';
-import type { AstrolabeData, AstrolabePoint } from 'mingyu-core/types';
+import { generateAstrolabe } from '../packages/core/src/divination/algorithms/astrolabe.ts';
+import type { AstrolabeBirthInput, AstrolabeData, AstrolabePoint } from 'mingyu-core/types';
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 import { buildAstrolabeSynastryPrompt } from '../packages/core/src/prompt/astrolabe';
 
@@ -367,7 +368,7 @@ test('接纳使用全部命中相位且沿用计算点筛选', () => {
   assert.equal(selected.receptions?.length, 0);
 });
 
-test('曜升形成双向接纳时分别保留两人方向', () => {
+test('曜升双向接纳保留两人方向，水星入庙兼曜升同时列明', () => {
   const first = { ...chart('甲', 59, 0), planets: [point('Sun', '太阳', 59)] };
   const second = { ...chart('乙', 0, 0), planets: [point('Moon', '月亮', 0)] };
   const result = analyzeAstrolabeSynastry(first, second, { pointNames: ['Sun', 'Moon'] });
@@ -379,6 +380,41 @@ test('曜升形成双向接纳时分别保留两人方向', () => {
   assert.ok(directed.some((item) => item.summary.includes('乙的月亮接纳甲的太阳')));
   assert.ok(directed.some((item) => item.summary.includes('甲的太阳接纳乙的月亮')));
   assert.ok(directed.every((item) => item.summary.includes('曜升')));
+
+  const birth: Omit<AstrolabeBirthInput, 'name' | 'hour'> = {
+    gender: '女',
+    year: '2024',
+    month: '9',
+    day: '15',
+    minute: '0',
+    latitude: '39.9042',
+    longitude: '116.4074',
+    timezone: '8',
+    locationName: '北京',
+  };
+  const virgoFirst = generateAstrolabe({ ...birth, name: '甲', hour: '12' });
+  const virgoSecond = generateAstrolabe({ ...birth, name: '乙', hour: '13' });
+  assert.equal(
+    virgoFirst.planets.find((planet) => planet.name === 'Mercury')?.dignityLabel,
+    '入庙、曜升',
+  );
+  const virgoSynastry = analyzeAstrolabeSynastry(virgoFirst, virgoSecond, {
+    pointNames: ['Mercury'],
+    includeHouseOverlays: false,
+  });
+  assert.equal(virgoSynastry.aspects[0]?.type, '合相');
+  assert.ok((virgoSynastry.aspects[0]?.actualAngle ?? Infinity) < 0.1);
+  const mercuryReceptions = virgoSynastry.receptions?.filter(
+    (item) => item.type === '接纳' && item.person1Planet === 'Mercury',
+  );
+  assert.equal(mercuryReceptions?.length, 2);
+  assert.ok(mercuryReceptions?.every((item) => item.summary.includes('入庙、曜升星座')));
+  const virgoPrompt = buildAstrolabeSynastryPrompt({
+    chart1: virgoFirst,
+    chart2: virgoSecond,
+    synastry: virgoSynastry,
+  });
+  assert.equal((virgoPrompt.match(/入庙、曜升星座/g) ?? []).length, 2);
 });
 
 test('同名水星接纳分别保留双方实际星座与接纳方向', () => {

@@ -1,6 +1,6 @@
 /**
  * @file 太阳高度、日出日落与曙暮光证据
- * @description 采用太阳星历与 NOAA/Meeus 太阳模型，输出地点相关的光照事件和计算限制。
+ * @description 采用太阳星历与球面天文坐标换算，输出地点相关的光照事件和计算限制。
  */
 import * as AstronomyEngine from 'astronomy-engine';
 import { formatFixedTimezoneOffset, resolveCivilDayEnd, resolveCivilDayStart } from './civil-time';
@@ -15,7 +15,16 @@ const DAY_MS = 86_400_000;
 const astronomyNamespace = AstronomyEngine as unknown as Record<string, unknown>;
 const Astronomy = (Reflect.get(astronomyNamespace, 'default') ??
   AstronomyEngine) as typeof AstronomyEngine;
-const { Body, Equator, Horizon, Observer, SearchAltitude, SearchRiseSet } = Astronomy;
+const {
+  Body,
+  Equator,
+  Horizon,
+  HourAngle,
+  Observer,
+  SearchAltitude,
+  SearchHourAngle,
+  SearchRiseSet,
+} = Astronomy;
 
 export type SolarCrossingStatus = '正常交点' | '全天高于阈值' | '全天低于阈值';
 
@@ -65,7 +74,7 @@ export interface SolarIlluminationCalculationStep {
   result: Record<string, string | number>;
   promptText: string;
   sources: string[];
-  limitation: '太阳光照步骤只证明天文时间、低阶太阳位置、视太阳正午和高度阈值交点如何形成；不得把几何结果解释为实际可见性、建筑采光效果或导航级精度';
+  limitation: '太阳光照步骤只证明天文时间、太阳星历位置、视太阳正午和高度阈值交点如何形成；不得把几何结果解释为实际可见性、建筑采光效果或导航级精度';
 }
 
 export interface SolarIlluminationAssumptionFact {
@@ -114,9 +123,9 @@ export interface SolarIlluminationSummaryFact {
 }
 
 const CROSSING_SOURCES = [
-  'NOAA Solar Calculator 太阳赤纬、时间方程与时角公式',
-  'Meeus《Astronomical Algorithms》低阶太阳模型',
-  'VSOP87 太阳星历与球面天文高度计算',
+  'VSOP87 太阳星历',
+  '球面天文赤道与地平坐标换算',
+  'Meeus《Astronomical Algorithms》日出日落标准折射模型',
 ] as const;
 
 const CROSSING_LIMITATION =
@@ -166,7 +175,7 @@ export interface SolarIlluminationEvidence {
 }
 
 const CALCULATION_STEP_LIMITATION =
-  '太阳光照步骤只证明天文时间、低阶太阳位置、视太阳正午和高度阈值交点如何形成；不得把几何结果解释为实际可见性、建筑采光效果或导航级精度' as const;
+  '太阳光照步骤只证明天文时间、太阳星历位置、视太阳正午和高度阈值交点如何形成；不得把几何结果解释为实际可见性、建筑采光效果或导航级精度' as const;
 const ASSUMPTION_FACT_LIMITATION =
   '假设事实只说明标准太阳半径、折射近似与民用日界及逐事件时区偏移的计算前提；不得当作实际天气、遮挡或时区切换影响已经排除' as const;
 const CROSSING_SUMMARY_LIMITATION =
@@ -175,18 +184,6 @@ const LIMITATION_FACT_LIMITATION =
   '限制事实用于约束太阳高度、方位、日出日落和曙暮光结果可以支持的解释范围，不得被反向当作天气、建筑性能、吉凶或事件证据' as const;
 const SUMMARY_FACT_LIMITATION =
   '太阳光照证据汇总只统计天文时间、太阳位置、视太阳正午、阈值交点、全天状态、假设与限制覆盖；不得按状态生成采光评分、天气结论、吉凶或事件保证' as const;
-
-function degreesToRadians(value: number) {
-  return (value * Math.PI) / 180;
-}
-
-function radiansToDegrees(value: number) {
-  return (value * 180) / Math.PI;
-}
-
-function normalizeDegrees(value: number) {
-  return ((value % 360) + 360) % 360;
-}
 
 function formatLocalTimestamp(timestamp: number, timezone: number, timeZoneId?: string) {
   const offset = timeZoneId
@@ -204,34 +201,17 @@ function normalizeDayMinutes(value: number) {
 function findSolarNoonEvents(
   dayStartUtcTimestamp: number,
   dayEndUtcTimestamp: number,
-  longitude: number,
+  observer: AstronomyEngine.Observer,
   timezone: number,
   timeZoneId?: string,
 ): SolarNoonEvent[] {
-  const start = new Date(dayStartUtcTimestamp);
-  const firstUtcMidnight = Date.UTC(
-    start.getUTCFullYear(),
-    start.getUTCMonth(),
-    start.getUTCDate() - 1,
-  );
   const events: SolarNoonEvent[] = [];
-  for (
-    let midnight = firstUtcMidnight;
-    midnight < dayEndUtcTimestamp + DAY_MS;
-    midnight += DAY_MS
-  ) {
-    // NOAA 的真太阳时在上中天为 720 分钟；直接按 UTC 日求根，避免回拨日依赖参考时刻的偏移。
-    let timestamp =
-      midnight +
-      (720 - 4 * longitude - solarParameters(midnight + 12 * 3_600_000).equationOfTimeMinutes) *
-        60_000;
-    for (let iteration = 0; iteration < 3; iteration += 1) {
-      timestamp =
-        midnight +
-        (720 - 4 * longitude - solarParameters(timestamp).equationOfTimeMinutes) * 60_000;
-    }
-    if (timestamp < dayStartUtcTimestamp || timestamp >= dayEndUtcTimestamp) continue;
-    const utcTimestamp = Math.round(timestamp);
+  let searchTimestamp = dayStartUtcTimestamp;
+  while (searchTimestamp < dayEndUtcTimestamp) {
+    const found = SearchHourAngle(Body.Sun, observer, 0, new Date(searchTimestamp), 1);
+    const utcTimestamp = found.time.date.getTime();
+    if (utcTimestamp >= dayEndUtcTimestamp) break;
+    if (utcTimestamp < searchTimestamp) throw new Error('视太阳正午未按真实瞬时递增。');
     const utcOffsetHours = timeZoneId
       ? getHistoricalTimezoneOffsetAt(new Date(utcTimestamp), timeZoneId)
       : timezone;
@@ -241,40 +221,14 @@ function findSolarNoonEvents(
       localDateTime: formatLocalTimestamp(utcTimestamp, timezone, timeZoneId),
       utcOffset: formatFixedTimezoneOffset(utcOffsetHours),
     });
+    searchTimestamp = utcTimestamp + 1_000;
   }
-  return events.sort((left, right) => left.utcTimestamp - right.utcTimestamp);
+  return events;
 }
 
 function formatTimezoneContext(timezone: number, timeZoneId?: string) {
   const offset = `UTC${timezone >= 0 ? '+' : ''}${timezone}`;
   return timeZoneId ? `${timeZoneId}@${offset}` : offset;
-}
-
-function solarParameters(timestamp: number) {
-  const date = new Date(timestamp);
-  const year = date.getUTCFullYear();
-  const yearStart = Date.UTC(year, 0, 1);
-  const dayOfYear = Math.floor((timestamp - yearStart) / DAY_MS) + 1;
-  const fractionalHour =
-    date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-  const daysInYear = Date.UTC(year + 1, 0, 1) - yearStart === 366 * DAY_MS ? 366 : 365;
-  const gamma = (2 * Math.PI * (dayOfYear - 1 + (fractionalHour - 12) / 24)) / daysInYear;
-  const equationOfTimeMinutes =
-    229.18 *
-    (0.000075 +
-      0.001868 * Math.cos(gamma) -
-      0.032077 * Math.sin(gamma) -
-      0.014615 * Math.cos(2 * gamma) -
-      0.040849 * Math.sin(2 * gamma));
-  const declinationRadians =
-    0.006918 -
-    0.399912 * Math.cos(gamma) +
-    0.070257 * Math.sin(gamma) -
-    0.006758 * Math.cos(2 * gamma) +
-    0.000907 * Math.sin(2 * gamma) -
-    0.002697 * Math.cos(3 * gamma) +
-    0.00148 * Math.sin(3 * gamma);
-  return { equationOfTimeMinutes, declinationRadians };
 }
 
 function crossingEvidence(
@@ -413,30 +367,19 @@ export function calculateSolarIlluminationEvidence(
   const astronomicalTime = buildAstronomicalTimeEvidence(input);
   const referenceTimestamp = astronomicalTime.unixMilliseconds;
   const timezone = astronomicalTime.timezone;
-  const reference = solarParameters(referenceTimestamp);
-  const latitudeRadians = degreesToRadians(input.latitude);
-  const localMinutes = (input.hour ?? 0) * 60 + (input.minute ?? 0) + (input.second ?? 0) / 60;
-  const trueSolarMinutes =
-    (((localMinutes + reference.equationOfTimeMinutes + 4 * input.longitude - 60 * timezone) %
-      1440) +
-      1440) %
-    1440;
-  const hourAngleDegrees = trueSolarMinutes / 4 - 180;
-  const hourAngleRadians = degreesToRadians(hourAngleDegrees);
-  const cosineZenith =
-    Math.sin(latitudeRadians) * Math.sin(reference.declinationRadians) +
-    Math.cos(latitudeRadians) * Math.cos(reference.declinationRadians) * Math.cos(hourAngleRadians);
-  const zenithRadians = Math.acos(Math.max(-1, Math.min(1, cosineZenith)));
-  const solarAltitudeDegrees = 90 - radiansToDegrees(zenithRadians);
-  const solarAzimuthDegrees = normalizeDegrees(
-    radiansToDegrees(
-      Math.atan2(
-        Math.sin(hourAngleRadians),
-        Math.cos(hourAngleRadians) * Math.sin(latitudeRadians) -
-          Math.tan(reference.declinationRadians) * Math.cos(latitudeRadians),
-      ),
-    ) + 180,
+  const observer = new Observer(input.latitude, input.longitude, 0);
+  const referenceDate = new Date(referenceTimestamp);
+  const equator = Equator(Body.Sun, referenceDate, observer, true, true);
+  const horizon = Horizon(referenceDate, observer, equator.ra, equator.dec, '');
+  const solarAltitudeDegrees = horizon.altitude;
+  const solarAzimuthDegrees = horizon.azimuth;
+  const solarDeclinationDegrees = equator.dec;
+  const apparentSolarMinutes = normalizeDayMinutes(
+    HourAngle(Body.Sun, referenceDate, observer) * 60 + 720,
   );
+  const utcMinutes = normalizeDayMinutes(referenceTimestamp / 60_000);
+  const equationOfTimeMinutes =
+    normalizeDayMinutes(apparentSolarMinutes - utcMinutes - 4 * input.longitude + 720) - 720;
   const nominalMidnightUtcTimestamp =
     Date.UTC(input.year, input.month - 1, input.day) - timezone * 3_600_000;
   const timeZoneId = astronomicalTime.timeZoneId;
@@ -456,16 +399,14 @@ export function calculateSolarIlluminationEvidence(
         timeZoneId,
       }).utcTimestamp
     : localMidnightUtcTimestamp + DAY_MS;
-  const localNoonUtcTimestamp = nominalMidnightUtcTimestamp + 12 * 3_600_000;
-  const daily = solarParameters(localNoonUtcTimestamp);
   const solarNoonMinutes = normalizeDayMinutes(
-    720 - 4 * input.longitude - daily.equationOfTimeMinutes + timezone * 60,
+    720 - 4 * input.longitude - equationOfTimeMinutes + timezone * 60,
   );
   const solarNoonTimestamp = nominalMidnightUtcTimestamp + solarNoonMinutes * 60_000;
   const apparentSolarNoonEvents = findSolarNoonEvents(
     localMidnightUtcTimestamp,
     localDayEndUtcTimestamp,
-    input.longitude,
+    observer,
     timezone,
     timeZoneId,
   );
@@ -503,9 +444,8 @@ export function calculateSolarIlluminationEvidence(
   const nauticalTwilight = crossingEvidence('航海曙暮光', -12, ...eventArgs);
   const astronomicalTwilight = crossingEvidence('天文曙暮光', -18, ...eventArgs);
   const method =
-    '参考位置与视太阳正午采用 NOAA/Meeus 低阶太阳赤纬和时间方程；日期内交点按太阳星历计算，日出日落采用标准太阳上缘与近地平折射（太阳中心名义高度约 -0.833°），民用、航海、天文曙暮光分别以太阳中心高度 -6°、-12°、-18° 求交点';
-  const source =
-    'NOAA Solar Calculator equations，Meeus《Astronomical Algorithms》，VSOP87 太阳星历';
+    '参考位置采用太阳星历的视赤道坐标与无折射地平坐标，时间方程由当地视太阳时与平太阳时之差计算；视太阳正午按太阳上中天时角零点求解，日期内高度交点按同一太阳星历计算，日出日落采用标准太阳上缘与近地平折射（太阳中心名义高度约 -0.833°），民用、航海、天文曙暮光分别以太阳中心高度 -6°、-12°、-18° 求交点';
+  const source = 'VSOP87 太阳星历，球面天文坐标换算，Meeus《Astronomical Algorithms》';
   const assumptions = [
     '日出日落的 -0.833° 阈值包含标准太阳半径与近地平大气折射近似。',
     timeZoneId
@@ -515,7 +455,7 @@ export function calculateSolarIlluminationEvidence(
   const limitations = [
     '未考虑实际海拔、山体与建筑遮挡、逐时气象折射和局部地平线起伏，实际可见时刻可能偏移。',
     'IANA 历史时区规则由运行环境的时区数据库提供，数据库版本可能影响历史日界与事件当地时刻。',
-    '参考位置和视太阳正午的低阶模型适合民用历法和光照背景，交点采用太阳星历；均不宣称达到观测级或导航级精度。',
+    '参考位置、视太阳正午和高度交点采用太阳星历，适合民用历法和光照背景；不宣称达到观测级或导航级精度。',
   ];
   const localDate = `${String(input.year).padStart(4, '0')}-${String(input.month).padStart(2, '0')}-${String(input.day).padStart(2, '0')}`;
   const calculationSteps: SolarIlluminationCalculationStep[] = [
@@ -549,10 +489,10 @@ export function calculateSolarIlluminationEvidence(
       result: {
         solarAltitudeDegrees: Number(solarAltitudeDegrees.toFixed(4)),
         solarAzimuthDegrees: Number(solarAzimuthDegrees.toFixed(4)),
-        solarDeclinationDegrees: Number(radiansToDegrees(reference.declinationRadians).toFixed(6)),
-        equationOfTimeMinutes: Number(reference.equationOfTimeMinutes.toFixed(4)),
+        solarDeclinationDegrees: Number(solarDeclinationDegrees.toFixed(6)),
+        equationOfTimeMinutes: Number(equationOfTimeMinutes.toFixed(4)),
       },
-      promptText: `按 NOAA/Meeus 低阶模型计算参考时刻太阳高度${solarAltitudeDegrees.toFixed(4)}°、方位${solarAzimuthDegrees.toFixed(4)}°、赤纬${radiansToDegrees(reference.declinationRadians).toFixed(6)}°`,
+      promptText: `按太阳星历计算参考时刻无折射太阳高度${solarAltitudeDegrees.toFixed(4)}°、方位${solarAzimuthDegrees.toFixed(4)}°、视赤纬${solarDeclinationDegrees.toFixed(6)}°`,
       sources: [...CROSSING_SOURCES],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -576,7 +516,7 @@ export function calculateSolarIlluminationEvidence(
         ),
         apparentSolarNoonCount: apparentSolarNoonEvents.length,
       },
-      promptText: `按经度与时间方程求该民用日的视太阳正午：${solarNoonText}`,
+      promptText: `按太阳上中天时角零点求该民用日的视太阳正午：${solarNoonText}`,
       sources: [...CROSSING_SOURCES],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -725,8 +665,8 @@ export function calculateSolarIlluminationEvidence(
     timezone,
     solarAltitudeDegrees: Number(solarAltitudeDegrees.toFixed(4)),
     solarAzimuthDegrees: Number(solarAzimuthDegrees.toFixed(4)),
-    solarDeclinationDegrees: Number(radiansToDegrees(reference.declinationRadians).toFixed(6)),
-    equationOfTimeMinutes: Number(reference.equationOfTimeMinutes.toFixed(4)),
+    solarDeclinationDegrees: Number(solarDeclinationDegrees.toFixed(6)),
+    equationOfTimeMinutes: Number(equationOfTimeMinutes.toFixed(4)),
     apparentSolarNoonEvents,
     apparentSolarNoonUtcDateTime: new Date(selectedSolarNoonTimestamp).toISOString(),
     apparentSolarNoonLocalDateTime: formatLocalTimestamp(

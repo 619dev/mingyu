@@ -24,7 +24,7 @@ test('命盘基础提示词默认不展开完整大运流年', () => {
   assert.doesNotMatch(text, /【大运】|大运总览:|含\d{4}-\d{4}年流年|当前大运:|近年流年:/);
 });
 
-test('核心判断应保留旺衰、格局和取用的可靠依据', () => {
+test('核心判断与提示词应保留本盘旺衰、格局、取用和柱位证据', () => {
   const result = baziCalculator.calculateBazi({
     year: 1995,
     month: 8,
@@ -39,35 +39,16 @@ test('核心判断应保留旺衰、格局和取用的可靠依据', () => {
   const text = formatBaziForPrompt(result);
 
   assert.match(text, /【核心判断】/);
-  assert.match(text, /旺衰: /);
-  assert.match(text, /格局: /);
   assert.match(text, /取用: 主用/);
   assert.match(text, /；忌/);
-  assert.match(text, /旺衰: [^\n]+（[^\n]+）/);
   assert.match(text, /格局: [^\n]+（[^\n]+）/);
   assert.match(text, /取用主线:/);
   assert.doesNotMatch(text, /取用依据:/);
   assert.match(text, /【五行】/);
   assert.doesNotMatch(text, /旺衰[^\n]*得分|旺衰拆分:[^\n]*[+-]?\d/);
   assert.doesNotMatch(text, /喜忌五行:|喜忌十神:|十神归类:|取用脉络:/);
-});
-
-test('核心判断保留本盘旺衰依据并同时呈现特殊格与常规格局成败', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1995,
-    month: 8,
-    day: 15,
-    timeIndex: 8,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
   const ruleBasis = result.analysis.dayMasterStrength.details.ruleBasis;
   assert.ok(ruleBasis.length > 1);
-  const text = formatBaziForPrompt(result);
-
   const strength = result.analysis.dayMasterStrength.details;
   assert.match(text, /旺衰: [^\n]+（月令[^\n]+；司令[^\n]+；(?:有根|无根)；成局[^\n]+）/);
   assert.match(text, new RegExp(`月令${strength.seasonalEffect}`));
@@ -78,22 +59,6 @@ test('核心判断保留本盘旺衰依据并同时呈现特殊格与常规格�
   assert.match(text, /格局: 食神格/);
   assert.match(text, /^当前成败判定：成格/m);
   assert.doesNotMatch(text, /所取格局：/);
-});
-
-test('八字提示词资料包应输出已计算出的传统节令与柱位证据', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1995,
-    month: 8,
-    day: 15,
-    timeIndex: 8,
-    gender: 'female',
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-
-  const text = formatBaziForPrompt(result);
-
   assert.match(text, /出生历法: 阳历1995年8月15日 \| 农历/);
   assert.doesNotMatch(text, /星座:/);
   assert.match(text, /节令: 秋令 \| 立秋后7天 \| 距处暑8天/);

@@ -144,10 +144,12 @@ export function evaluateAstrolabeSynastryReceptions(
     const l2 = PLANET_LABELS[p2.name] ?? p2.name;
 
     // 双向分别判定并分别记录，两方向同时成立时不只保留第一个方向
-    const p2ReceivesP1 =
-      p2.name === ruler1 ? ('入庙' as const) : p2.name === exalt1 ? ('曜升' as const) : undefined;
-    const p1ReceivesP2 =
-      p1.name === ruler2 ? ('入庙' as const) : p1.name === exalt2 ? ('曜升' as const) : undefined;
+    const p2ReceivesP1 = [p2.name === ruler1 ? '入庙' : '', p2.name === exalt1 ? '曜升' : '']
+      .filter(Boolean)
+      .join('、');
+    const p1ReceivesP2 = [p1.name === ruler2 ? '入庙' : '', p1.name === exalt2 ? '曜升' : '']
+      .filter(Boolean)
+      .join('、');
 
     if (p2ReceivesP1) {
       processedPairs.add(pairKey);
