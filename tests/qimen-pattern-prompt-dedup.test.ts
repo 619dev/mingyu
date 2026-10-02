@@ -13,22 +13,6 @@ import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divinati
 const fixedQimen = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
 const cloneFixedQimen = () => structuredClone(fixedQimen);
 
-test('奇门证据提示词保留命中条件并省略同宫格局的重复前提', () => {
-  const data = cloneFixedQimen();
-  const prompt = analyzeQimenEvidence(data).promptText;
-  const patterns = prompt.split('【传统格局】\n')[1]?.split('【应期资料】')[0] ?? '';
-
-  assert.match(patterns, /吉格：天遁（兑七宫）；生门、丙奇、地盘戊同宫/);
-  assert.doesNotMatch(patterns, /乃天遁之格/);
-  assert.doesNotMatch(patterns, /^吉格：月奇得使（/mu);
-  assert.match(
-    patterns,
-    /吉格：月奇得使临吉门；丙奇加地盘戊（甲子\/甲申所遁）于兑七宫；同宫临生门/,
-  );
-  assert.doesNotMatch(patterns, /月奇得使又临吉门生门/);
-  assert.match(patterns, /凶格：门迫；惊门（金）克巽四宫（木）/);
-});
-
 test('奇门完整在线提示词只保留一处旬空与驿马位置映射', () => {
   const data = cloneFixedQimen();
   const prompt = formatEnhancedDivinationInfo('qimen', data);
@@ -40,12 +24,21 @@ test('奇门完整在线提示词只保留一处旬空与驿马位置映射', ()
   assert.doesNotMatch(prompt, /同干定位：/u);
 });
 
-test('三奇得、马星和击刑在在线提示词中各保留一次有效事实', () => {
+test('奇门证据提示词保留格局条件、三奇得、马星和击刑事实各一次', () => {
   const data = cloneFixedQimen();
   const analysis = analyzeQimenEvidence(data);
   const prompt = analysis.promptText;
   const patterns = prompt.split('【传统格局】\n')[1]?.split('【应期资料】')[0] ?? '';
 
+  assert.match(patterns, /吉格：天遁（兑七宫）；生门、丙奇、地盘戊同宫/);
+  assert.doesNotMatch(patterns, /乃天遁之格/);
+  assert.doesNotMatch(patterns, /^吉格：月奇得使（/mu);
+  assert.match(
+    patterns,
+    /吉格：月奇得使临吉门；丙奇加地盘戊（甲子\/甲申所遁）于兑七宫；同宫临生门/,
+  );
+  assert.doesNotMatch(patterns, /月奇得使又临吉门生门/);
+  assert.match(patterns, /凶格：门迫；惊门（金）克巽四宫（木）/);
   assert.match(patterns, /吉格：三奇得（丙奇（月奇）合生门于兑七宫）\n/u);
   assert.match(patterns, /吉格：三奇得（丁奇（星奇）合开门于离九宫）\n/u);
   assert.doesNotMatch(patterns, /三奇与开休生吉门同宫|中性格局：马星（/u);

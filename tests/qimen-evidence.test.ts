@@ -184,12 +184,6 @@ test('奇门在线提示词只输出任务、盘面与传统依据并去掉重�
       .length,
     0,
   );
-
-  const onlinePrompt = formatEnhancedDivinationInfo('qimen', data, '工作进展如何？');
-  assert.doesNotMatch(onlinePrompt, /来源[：:]|标签[：:]|限制[：:]/);
-  assert.match(onlinePrompt, /盘面命中格局：/);
-  assert.match(onlinePrompt, /门迫（凶格）：惊门（金）克巽四宫（木）/);
-  assert.doesNotMatch(onlinePrompt, /主此宫事务受阻|主破败损失|所谋之事有贵人暗助|百事可为/);
 });
 
 test('奇门格局无可用事实依据时不输出空冒号并保留主客结构词', () => {
@@ -252,17 +246,13 @@ test('奇门全局特殊条件未命中时不把残留说明写入证据提示�
   assert.doesNotMatch(analyzeQimenEvidence(data).promptText, /五不遇时残留说明/u);
 });
 
-test('Issue #204：结构化依据中的节令背景应采用正式定局三元', () => {
+test('Issue #204：结构化依据使用正式定局三元并按格局类型归类候选宫', () => {
   const data = cloneLateSummerBoard();
   const evidence = analyzeQimenEvidence(data);
 
   assert.equal(data.timeInfo.epoch, '中元');
   assert.match(evidence.promptText, /定局立秋中元/);
   assert.doesNotMatch(evidence.promptText, /立秋上元/);
-});
-
-test('Issue #204 同类：候选宫支持与制约应按格局类型归类', () => {
-  const evidence = analyzeQimenEvidence(cloneLateSummerBoard());
   const palace = evidence.candidates.find((item) => item.gong === 1);
 
   assert.ok(palace);
@@ -443,6 +433,9 @@ test('奇门提示词按问题展示专项复合格局，结构化盘面仍保�
   assert.ok(data.patternCombos?.some((item) => item.name === '星宫主客'));
 
   const ordinary = formatEnhancedDivinationInfo('qimen', data, '工作进展如何？');
+  assert.doesNotMatch(ordinary, /来源[：:]|标签[：:]|限制[：:]/);
+  assert.match(ordinary, /盘面命中格局：/);
+  assert.doesNotMatch(ordinary, /主此宫事务受阻|主破败损失|所谋之事有贵人暗助|百事可为/);
   assert.match(ordinary, /旬空与马星：旬空子空落坎一宫、丑空落艮八宫/u);
   const ordinaryPalaceTable = ordinary.split('九宫简表：\n')[1]?.split('\n同干定位：')[0] ?? '';
   assert.doesNotMatch(ordinaryPalaceTable, /逢空|马星/u);
