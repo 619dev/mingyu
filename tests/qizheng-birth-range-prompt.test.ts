@@ -76,6 +76,9 @@ test('黄道宫界两侧的零度吊照在出生区间资料中称为合相', ()
     },
   );
   const flowText = formatQizhengBirthRangePrompt(flow);
+  assert.equal(flow.branches[0].representative.timeLords, undefined);
+  assert.match(flowText, /结合目标时段的流曜与周期星象解读/u);
+  assert.doesNotMatch(flowText, /行限：性别未提供/u);
   assert.match(flowText, /流曜太阳与本命太阳合相/);
   assert.doesNotMatch(flowText, /流曜太阳与本命太阳同宫/);
 
@@ -132,6 +135,7 @@ test('七政流曜区间资料保留目标窗口、所有分段、行限与事�
   assert.match(text, /周期事件窗口/);
   assert.match(text, /大限/);
   assert.match(text, /小限/);
+  assert.match(text, /结合目标时段的流曜、小限与太岁解读/u);
   assert.match(text, /【时段1】/);
   assert.match(text, /【时段2】/);
   const [shared, firstBranch, secondBranch] = text.split(/(?=【时段\d+】)/u);

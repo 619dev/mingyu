@@ -248,6 +248,10 @@ test('七政四余多段真实出生资料超容量时逐段完整消费并汇�
   assert.match(phaseText, /周期事件/u);
   assert.match(phaseText, /连续量（最小至最大）/u);
   assert.match(h.sent.at(-1)?.[0]?.content ?? '', /七政四余出生区间阶段覆盖核对/u);
+  assert.doesNotMatch(
+    h.sent.at(-1)?.[0]?.content ?? '',
+    /本命、流曜、行限、周期事件和连续量均已参与分析/u,
+  );
 });
 
 test('七政四余原始任务书包装在分阶段资料中保留', async () => {

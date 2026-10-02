@@ -84,7 +84,7 @@ function formatFlowDiscreteFacts(data: QizhengResult): string[] {
           `大限：命宫宿度、出童限岁数和当前大限宫位未定；小限：${limits.currentMinorLimit.signBranch}宫${limits.currentMinorLimit.palace}；太岁${limits.annualBranch}入${limits.annualPalace.signBranch}宫${limits.annualPalace.palace}。`,
           `洞微宫序与各宫年数：${limits.majorPalaceYears.map((item) => `${item.signBranch}宫${item.palace}${item.years === null ? '依命度定年数' : `${item.years}年`}`).join('；')}。`,
         ]
-      : ['行限：性别未提供。']),
+      : []),
   ];
 }
 
@@ -127,7 +127,7 @@ export function formatQizhengBirthRangePrompt(
     `区间按整秒核对，共${range.sampleCount}个时刻、${range.branches.length}段。${range.branches.length > 1 ? '共同盘面先列，各段列出变化的命身宫、星曜落宫落宿、吊照与恩难关系，并汇总连续量。' : '本段列出命身宫、星曜落宫落宿、吊照与恩难关系，并汇总连续量。'}`,
     '【任务】',
     flow
-      ? '依据《果老星宗》的落宫、落宿、吊照及恩难仇用关系，结合目标时段的流曜、小限与太岁解读。区分整个出生范围共同成立的判断与各出生分段的差异，逐项写明出生时段和目标周期。周期事件的时刻范围表示出生时间不确定带来的变化。'
+      ? `依据《果老星宗》的落宫、落宿、吊照及恩难仇用关系，结合目标时段的${first.timeLords ? '流曜、小限与太岁' : '流曜与周期星象'}解读。区分整个出生范围共同成立的判断与各出生分段的差异，逐项写明出生时段和目标周期。周期事件的时刻范围表示出生时间不确定带来的变化。`
       : '依据《果老星宗》的落宫、落宿、吊照及恩难仇用关系解读本命根基。区分整个出生范围均成立的结论与仅在部分时段成立的结论，逐项写明适用时间。流年与行限属于另外的时段资料。',
     ...(flow
       ? [
