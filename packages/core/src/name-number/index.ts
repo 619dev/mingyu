@@ -624,6 +624,7 @@ const DEFAULT_TRADITIONAL_STROKES: Readonly<Record<string, number>> = {
   复: 14,
   绣: 19,
   饥: 20,
+  采: 8,
 };
 const DEFAULT_KANGXI_REFERENCE_POSITIONS: Readonly<Record<string, readonly [string, string]>> = {
   复: ['申集下', '衣字部'],

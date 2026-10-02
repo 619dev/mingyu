@@ -36,7 +36,7 @@ const glyphs = [
   ['饑', '饑', 21, 20],
   ['吁', '吁', 6, 6],
   ['籲', '籲', 32, 32],
-  ['采', '采', 7, 7],
+  ['采', '采', 7, 8],
   ['埰', '埰', 11, 11],
   ['征', '征', 8, 8],
   ['徵', '徵', 15, 15],
@@ -156,6 +156,8 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
     assert.doesNotMatch(prompt, /繁体：/u, char);
     assert.match(prompt, new RegExp(`姓名学康熙笔画：${kangxiStrokes}`), char);
   }
+  const caiPrompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters('采') });
+  assert.match(caiPrompt, /笔画用法：现代字形“采”为8画，姓名学康熙取数为7画。/u);
 
   for (const [char, incorrectTraditional] of [
     ['后', '後'],
