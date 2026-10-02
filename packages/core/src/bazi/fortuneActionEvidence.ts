@@ -148,7 +148,26 @@ export function formatFortuneActionFactLine(fact: FortuneActionFact): string {
     ? `｜作用对象：${fact.targetObjects.join('、')}`
     : '';
   const timeRangeText = fact.applicableTimeRange ? `｜适用范围：${fact.applicableTimeRange}` : '';
-  const sourcesText = fact.hitSources.length ? `｜命中：${fact.hitSources.join('、')}` : '';
+  const sourceLabels: Record<FortuneActionHitSourceType, string> = {
+    conditionalFavorableStems: '本命干级喜用',
+    conditionalUnfavorableStems: '本命干级所忌',
+    patternBreakerRestrictions: '本命破格所忌',
+    基础五行喜忌: '基础五行喜忌',
+    条件五行喜用: '条件五行喜用',
+    制化来源: '本命制化作用',
+  };
+  const sources = [
+    ...new Set(
+      fact.hitSources
+        .filter(
+          (source) =>
+            source !== 'conditionalUnfavorableStems' ||
+            !fact.hitSources.includes('patternBreakerRestrictions'),
+        )
+        .map((source) => sourceLabels[source]),
+    ),
+  ];
+  const sourcesText = sources.length ? `｜依据：${sources.join('、')}` : '';
   let rootText = '';
   if (fact.rootEvidence) {
     if (fact.rootEvidence.hasClearRoot) {
@@ -276,8 +295,10 @@ export function analyzeFortuneActionEvidence(params: {
         (c) => c.status !== '满足' && c.status !== '不满足',
       );
       const matchingClimateEffects = climateCandidates
-        .filter((candidate) => candidate.adopted)
+        .filter((candidate) => candidate.adopted && candidate.mode === 'conditional')
         .flatMap((c) => c.effects ?? [])
+        // 五行内排序与次作用仍是参照；动作只引用本命已裁决的主作用干。
+        .filter((effect) => effect.rank === 'primary' && condFavStems.has(effect.stem))
         .filter((e) => e.stem === stem || e.targetStems?.includes(stem));
       if (matchingControls.length > 0 || matchingClimateEffects.length > 0) {
         hitSources.push('制化来源');

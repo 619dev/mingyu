@@ -45,8 +45,9 @@ test('秒级出生精度应保留到各排盘适配器', () => {
     second: 56,
   });
   const { second: _second, ...minuteProfile } = profile;
-  assert.equal(normalizeBirthProfile(minuteProfile).timePrecision, 'minute');
-  assert.equal(normalizeBirthProfile(minuteProfile).timeEvidence.inputFact.clockTime, '12:34');
+  const minuteNormalized = normalizeBirthProfile(minuteProfile);
+  assert.equal(minuteNormalized.timePrecision, 'minute');
+  assert.equal(minuteNormalized.timeEvidence.inputFact.clockTime, '12:34');
   assert.equal(birthProfileToAstrolabeInput(minuteProfile).second, undefined);
 });
 

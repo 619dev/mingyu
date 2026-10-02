@@ -35,6 +35,11 @@ function createChart(gender: 'male' | 'female', day: number) {
   });
 }
 
+const FEMALE_DAY_15_CHART = createChart('female', 15);
+const XIAOLIUREN_FIXED_CHART = generateXiaoliuren({
+  customDate: new Date('2025-06-29T08:00:00+08:00'),
+});
+
 test('八字五行方向随日主转换十神参照并保留生克方向', () => {
   const expectedRoles: Record<string, string[]> = {
     木: ['日主、比劫', '食伤', '财星', '官杀', '印星'],
@@ -66,7 +71,7 @@ test('八字五行方向随日主转换十神参照并保留生克方向', () =>
 
 test('npm 提示词入口应生成自包含的八字任务书', () => {
   const prompt = buildBaziPrompt({
-    result: createChart('female', 15),
+    result: structuredClone(FEMALE_DAY_15_CHART),
     topic: 'career',
     school: 'traditional',
     fortuneScope: 'full',
@@ -84,7 +89,7 @@ test('npm 提示词入口应生成自包含的八字任务书', () => {
 });
 
 test('npm 八字本命提示词入口应输出有差异的盲派与新派资料', () => {
-  const result = createChart('female', 15);
+  const result = structuredClone(FEMALE_DAY_15_CHART);
   const mangpai = buildBaziPrompt({
     result,
     school: 'mangpai',
@@ -102,7 +107,6 @@ test('npm 八字本命提示词入口应输出有差异的盲派与新派资料'
   assert.match(mangpai, /透干通根/);
   assert.match(mangpai, /墓库与空亡/);
   assert.match(xinpai, /旺衰判定/);
-  assert.match(xinpai, /十神结构/);
   assert.match(xinpai, /十神结构/);
   assert.match(xinpai, /喜忌落位/);
   assert.doesNotMatch(xinpai, /动态岁运/);
@@ -126,7 +130,7 @@ test('新派提示词保留十神显隐事实，不把共现组合写成已成�
 });
 
 test('npm 八字提示词应保留所选岁运与上层资料', () => {
-  const result = createChart('female', 15);
+  const result = structuredClone(FEMALE_DAY_15_CHART);
   const cycle = result.luckInfo.cycles.find((item) => item.years.length > 0 && !item.isXiaoyun);
   assert.ok(cycle);
   const year = cycle.years[0];
@@ -174,7 +178,7 @@ test('npm 八字提示词应保留所选岁运与上层资料', () => {
 });
 
 test('八字岁运正文区分同干支冲、岁运并临与天克地冲，并保留流月流日身份', () => {
-  const result = createChart('female', 15);
+  const result = structuredClone(FEMALE_DAY_15_CHART);
   const cycleIndex = result.luckInfo.cycles.findIndex((cycle) => cycle.years.length > 0);
   const context = buildFortuneSelectionContext(result, {
     scope: 'year',
@@ -210,7 +214,7 @@ test('八字岁运正文区分同干支冲、岁运并临与天克地冲，并�
 });
 
 test('npm 提示词入口应生成八字双盘关系资料', () => {
-  const result1 = createChart('female', 15);
+  const result1 = structuredClone(FEMALE_DAY_15_CHART);
   const result2 = createChart('male', 20);
   const prompt = buildBaziCompatibilityPrompt({
     result1,
@@ -232,7 +236,7 @@ test('npm 提示词入口应生成八字双盘关系资料', () => {
 });
 
 test('统一占法摘要应覆盖小六壬且不落回通用文案', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(XIAOLIUREN_FIXED_CHART);
   const summary = getDivinationSummaryBlocks('xiaoliuren', data);
   const info = formatDivinationInfo('xiaoliuren', data);
   const prompt = buildDivinationPrompt({
@@ -307,7 +311,7 @@ test('年家与月家奇门解读选择和主客依据沿用本次盘式', () =>
 });
 
 test('npm 通用占法提示词保留求测人基本资料但不混入梅花设置', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(XIAOLIUREN_FIXED_CHART);
   const prompt = buildDivinationPrompt({
     method: 'xiaoliuren',
     data,
@@ -337,16 +341,10 @@ test('npm 元学提示词入口应覆盖住宅类排盘', () => {
   assert.match(prompt, /【任务】/);
 });
 
-test('当前时间公共格式化入口应包含公历和干支历', () => {
-  const text = formatPromptCurrentTime(new Date('2026-08-06T12:30:00+08:00'));
-  assert.match(text, /公历：/);
-  assert.match(text, /干支历：/);
-  assert.match(text, /（UTC\+08:00）/);
-});
-
 test('当前时间公共格式化入口按北京时间处理 UTC 跨日', () => {
   const text = formatPromptCurrentTime(new Date('2026-08-06T23:30:00Z'));
   assert.match(text, /公历：2026年8月7日 7时30分（UTC\+08:00）/);
+  assert.match(text, /^干支历：.+年 .+月 .+日 .+时$/m);
 });
 
 test('npm 提示词格式化适配器应覆盖时间、补充资料和通用分段', () => {

@@ -146,8 +146,9 @@ test('npm 地点索引应支持级联查询、路径反查和经度读取', () =
   assert.equal(index.findByDisplayName('东城区')?.district?.id, 'dc');
   assert.equal(index.resolveLongitude('dc'), 116.42);
   assert.equal(index.resolveLongitude('不存在'), null);
-  assert.equal(index.resolve('dc')?.latitude, undefined);
-  assert.equal(index.resolve('dc')?.coordinateAccuracy, undefined);
+  const district = index.resolve('dc');
+  assert.equal(district?.latitude, undefined);
+  assert.equal(district?.coordinateAccuracy, undefined);
 });
 
 test('自定义地点索引应拒绝把重名简称静默解析为其中一项', () => {

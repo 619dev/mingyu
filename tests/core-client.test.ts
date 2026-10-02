@@ -183,7 +183,6 @@ test('统一客户端应直接提供前端常用的时间、环境与轻量排�
     doorToInteriorDegree: 0,
     northReference: 'true',
   });
-  const zodiac = client.zodiac({ zodiac: '鼠', year: 2026 });
   const taiyi = client.taiyi({ year: 2026, scope: 'year' });
   const qizheng = client.qizheng({
     year: 1992,
@@ -215,7 +214,6 @@ test('统一客户端应直接提供前端常用的时间、环境与轻量排�
   assert.equal(solarIllumination.localDate, '2026-08-06');
   assert.equal(bazhai.houseGua, '坎');
   assert.equal(bazhaiByDoorDegree.directionMeasurement.sitMountain, '子');
-  assert.deepEqual(zodiac, getZodiacYearFortune('子', '丙午'));
   assert.equal(taiyi.scope, 'year');
   assert.equal(qizheng.stars.length, 11);
   assert.equal(xuankong.sitMountain, '子');

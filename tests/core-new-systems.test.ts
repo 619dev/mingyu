@@ -259,8 +259,9 @@ test('tarot: 全部牌面资料齐全，大小阿卡纳正逆位保留实际牌�
     assert.ok(evidence.archetype, `${card.name}缺少牌阶`);
   }
   assert.deepEqual(getCardEvidence('魔术师').keywords, ['意志力', '创造', '技能']);
-  assert.match(getCardEvidence('权杖骑士').element, /火/);
-  assert.match(getCardEvidence('权杖骑士').archetype, /行动节奏/);
+  const knightEvidence = getCardEvidence('权杖骑士');
+  assert.match(knightEvidence.element, /火/);
+  assert.match(knightEvidence.archetype, /行动节奏/);
 
   const facts = [
     { id: 2, name: '魔术师' },
