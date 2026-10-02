@@ -718,11 +718,57 @@ test('太乙直使甲子开门，三十年后的甲午转为休门', () => {
   const jiazi = generateTaiyi({ year: 724 });
   const jiawu = generateTaiyi({ year: 754 });
   assert.equal(jiazi.ganZhi, '甲子');
+  // 《金镜》甲子岁积 1,937,281；现用《统宗》年积数相差整 22,826 周纪，仍是阳四十九局。
+  assert.equal(jiazi.accumulatedValue - 1937281, 22826 * 360);
+  assert.equal(jiazi.bureau, 49);
   assert.equal(jiazi.conditions.threeGates.directGateRemainder, 1);
   assert.equal(jiazi.conditions.threeGates.directGate, '开门');
   assert.equal(jiawu.ganZhi, '甲午');
   assert.equal(jiawu.conditions.threeGates.directGateRemainder, 31);
   assert.equal(jiawu.conditions.threeGates.directGate, '休门');
+});
+
+test('元大德七年癸卯算外入阳五十二局，完整盘式与太乙秘书局例相合', () => {
+  // 《太乙统宗宝鉴》卷一记该年已积 10,155,219，入局按「算外」进一算。
+  // 《太乙秘书》阳五十二局明列癸卯，太乙、两目、主客算及四将、计神皆可独立核对。
+  // https://www.shidianguji.com/zh/book/CADAL02094393/chapter/1lcppwnrj2wj7
+  // https://zh.wikisource.org/wiki/太乙秘書
+  const result = generateTaiyi({ scope: 'year', year: 1303 });
+  const godAt = (position: string) =>
+    result.sixteenGods.find((item) => item.branch === position)?.god;
+
+  assert.deepEqual(
+    {
+      ganZhi: result.ganZhi,
+      accumulatedValue: result.accumulatedValue,
+      bureau: result.bureau,
+      taiyiPalace: result.taiyiPalace,
+      wenChangGod: godAt(result.wenChangPosition),
+      shiJiGod: godAt(result.shiJiPosition),
+      jiShenPosition: result.jiShenPosition,
+      lordCount: result.lordCount,
+      lordGeneral: result.lordGeneral,
+      lordAssistant: result.lordAssistant,
+      guestCount: result.guestCount,
+      guestGeneral: result.guestGeneral,
+      guestAssistant: result.guestAssistant,
+    },
+    {
+      ganZhi: '癸卯',
+      accumulatedValue: 10155220,
+      bureau: 52,
+      taiyiPalace: 2,
+      wenChangGod: '天道',
+      shiJiGod: '太簇',
+      jiShenPosition: '亥',
+      lordCount: 39,
+      lordGeneral: 9,
+      lordAssistant: 7,
+      guestCount: 31,
+      guestGeneral: 1,
+      guestAssistant: 3,
+    },
+  );
 });
 
 test('太乙三门具只按太乙与文昌主目判定，始击门位单列', () => {

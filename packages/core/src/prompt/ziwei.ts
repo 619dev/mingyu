@@ -19,6 +19,7 @@ import { formatPalaceRelations } from '../ziwei/prompt/builders';
 import { formatObjectList } from '../ziwei/prompt/formatters';
 import { getSelectedScopeHits } from '../ziwei/prompt/scope-selection';
 import { buildZiweiMatchedPatternSummary } from '../ziwei/prompt/snapshot';
+import { formatZiweiTrueSolarEvidence } from '../ziwei/prompt/combined';
 import {
   buildPromptDocument,
   buildPromptSection,
@@ -627,12 +628,6 @@ export function formatZiweiFullScopeText(runtime: ZiweiRuntimeFacts) {
     .join('\n\n');
 }
 
-function formatTrueSolarEvidence(runtime: ZiweiRuntimeFacts) {
-  return runtime.trueSolarEvidence?.promptText
-    ? `出生时间校正：${runtime.trueSolarEvidence.promptText}`
-    : '';
-}
-
 export interface ZiweiPromptOptions extends PromptBuildOptions {
   runtime: ZiweiRuntimeFacts;
   scope?: ZiweiPromptScope;
@@ -700,12 +695,11 @@ export function buildZiweiPromptDocument(options: ZiweiPromptOptions): PromptDoc
     scope === 'origin' ? 'ziwei-natal' : 'ziwei',
   );
   const selectedTask = options.selection ? buildPromptSelectionTask(task, options.selection) : task;
+  const trueSolarText = formatZiweiTrueSolarEvidence(options.runtime.trueSolarEvidence);
   const user = joinPromptSections([
     buildPromptGuidance('ziwei'),
     buildPromptSection('当前时间', formatPromptCurrentTime(options.currentTime)),
-    formatTrueSolarEvidence(options.runtime)
-      ? buildPromptSection('出生时间校正', formatTrueSolarEvidence(options.runtime))
-      : '',
+    trueSolarText ? buildPromptSection('出生时间校正', trueSolarText) : '',
     formatZiweiTopicFocus(options.topic)
       ? buildPromptSection('主题取用', formatZiweiTopicFocus(options.topic))
       : '',

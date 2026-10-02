@@ -29,6 +29,7 @@ import {
 import { formatPromptCurrentTime } from './current-time';
 import { buildCustomQuestionTask, buildPromptGuidance, buildPromptTask } from './guidance';
 import { getPromptMutagenItems } from '../ziwei/prompt/mutagen';
+import { formatZiweiTrueSolarEvidence } from '../ziwei/prompt/combined';
 import { formatPalaceRelations } from '../ziwei/prompt/builders';
 import {
   buildPromptSelectionTask,
@@ -580,19 +581,6 @@ export function formatZiweiEvidenceText(
     .join('\n\n');
 }
 
-function formatPublicTrueSolarEvidence(evidence?: ZiweiRuntimeFacts['trueSolarEvidence']) {
-  if (!evidence) return '';
-  const corrected = evidence.correctionFacts
-    .find((fact) => fact.type === '总校正')
-    ?.promptText.match(/真太阳时为(.+)$/)?.[1];
-  const shichen = evidence.correctionFacts
-    .find((fact) => fact.type === '时辰结果')
-    ?.promptText.match(/唯一时辰为(.+?)（/)?.[1];
-  return [corrected ? `真太阳时：${corrected}` : '', shichen ? `时辰：${shichen}` : '']
-    .filter(Boolean)
-    .join('，');
-}
-
 export function buildPublicZiweiPromptForRuntime(params: {
   result: ZiweiRuntimeFacts;
   question?: string;
@@ -656,12 +644,11 @@ export function buildPublicZiweiPromptForRuntime(params: {
       ? buildCustomQuestionTask('紫微盘面资料', scope === 'origin' ? 'ziwei-natal' : 'ziwei')
       : buildPromptTask('请依据紫微盘面完成解读。', scope === 'origin' ? 'ziwei-natal' : 'ziwei');
   const selectedTask = promptSelection ? buildPromptSelectionTask(task, promptSelection) : task;
+  const trueSolarText = formatZiweiTrueSolarEvidence(params.result.trueSolarEvidence);
   const prompt = joinSections([
     buildPromptGuidance('ziwei'),
     section('当前时间', formatPromptCurrentTime()),
-    formatPublicTrueSolarEvidence(params.result.trueSolarEvidence)
-      ? section('出生时间校正', formatPublicTrueSolarEvidence(params.result.trueSolarEvidence))
-      : '',
+    trueSolarText ? section('出生时间校正', trueSolarText) : '',
     section(
       '分析背景',
       `分析主题：${ZIWEI_TOPIC_LABELS[topic]}\n分析范围：${batchedFullScope ? '本次所列资料' : scopeLabel(scope)}`,

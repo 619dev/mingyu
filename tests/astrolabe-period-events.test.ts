@@ -472,6 +472,11 @@ test('同一日停逆前后两次越过本命点与同一宫头应完整列出',
     stations.map((event) => event.stationDirection),
     ['逆行'],
   );
+  // Swiss Moshier 在同一 TT 求木星黄经速度零点：2028-01-12T08:53:41Z。
+  assert.ok(
+    Math.abs(stations[0].julianDate - unixToJulianDate(Date.parse('2028-01-12T08:53:41Z'))) <
+      2 / 1440,
+  );
   assert.ok(conjunctions[0].julianDate < stations[0].julianDate);
   assert.ok(stations[0].julianDate < conjunctions[1].julianDate);
   for (const event of conjunctions) {

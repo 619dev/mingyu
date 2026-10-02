@@ -102,7 +102,7 @@ test('原局制化作用保留对象与基线忌性，不能转写成增补喜�
   assert.deepEqual(usefulGod.favorableWuxing, ['水']);
 });
 
-test('实际冬盘的丙条件喜与丁条件忌贯穿本命提示词和结构化证据', () => {
+test('实际冬盘的丙条件喜与丁条件忌贯穿本命和合盘消费者', () => {
   const chart = baziCalculator.calculateBazi(WINTER_INPUT);
   const usefulGod = chart.analysis.usefulGod;
 
@@ -123,6 +123,17 @@ test('实际冬盘的丙条件喜与丁条件忌贯穿本命提示词和结构�
   assert.match(usefulFact.promptText, new RegExp(CONDITIONAL_FUNCTION));
   assert.match(usefulFact.promptText, new RegExp(CONDITIONAL_AVOID));
   assert.doesNotMatch(usefulFact.promptText, /ruleId|mode/);
+
+  const compatibility = analyzeBaziCompatibility(chart, chart);
+  const conditional = compatibility.usefulGodCoverage
+    .map((item) => item.functionalEvidence)
+    .find((item) => item?.favorableStems.includes('丙'));
+
+  assert.ok(conditional);
+  assert.deepEqual(conditional.favorableStems, ['丙']);
+  assert.deepEqual(conditional.unfavorableStems, ['丁']);
+  assert.deepEqual(conditional.descriptions, [CONDITIONAL_FUNCTION, CONDITIONAL_AVOID]);
+  assert.doesNotMatch(JSON.stringify(conditional), /ruleId|mode/);
 });
 
 test('起名消费者沿用完整喜用五行，条件火只保留为干级功能资料', () => {
@@ -217,18 +228,4 @@ test('起名缺时入口沿用八字输入校验，不静默转换非法标志�
     () => calculateNamingBirthContext({ ...input, timeIndex: 'invalid' as never }),
     /出生时辰必须是整数/,
   );
-});
-
-test('合盘结构化喜用覆盖保留条件干作用和作用对象', () => {
-  const chart = baziCalculator.calculateBazi(WINTER_INPUT);
-  const compatibility = analyzeBaziCompatibility(chart, chart);
-  const conditional = compatibility.usefulGodCoverage
-    .map((item) => item.functionalEvidence)
-    .find((item) => item?.favorableStems.includes('丙'));
-
-  assert.ok(conditional);
-  assert.deepEqual(conditional.favorableStems, ['丙']);
-  assert.deepEqual(conditional.unfavorableStems, ['丁']);
-  assert.deepEqual(conditional.descriptions, [CONDITIONAL_FUNCTION, CONDITIONAL_AVOID]);
-  assert.doesNotMatch(JSON.stringify(conditional), /ruleId|mode/);
 });

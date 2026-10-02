@@ -1,4 +1,12 @@
 import { LunarHour, SolarTime } from 'tyme4ts';
+import {
+  Body,
+  EquatorFromVector,
+  GeoVector,
+  RotateVector,
+  Rotation_EQJ_EQD,
+  SiderealTime,
+} from 'astronomy-engine';
 import { daysInSolarMonth, getBirthDateValidationMessage } from './date-validation';
 import { getShichenFromClock } from './dateUtils';
 import { checkChinaDst, type ChinaDstCheckResult } from './china-dst';
@@ -193,6 +201,9 @@ interface TrueSolarTimeEvidenceInput {
 function buildTrueSolarTimeEvidence(
   input: TrueSolarTimeEvidenceInput,
 ): TrueSolarTimeEvidenceFields {
+  const utcDateTime = new Date(
+    Date.parse(`${input.standardDateTime}Z`) - input.timezone * 3600000,
+  ).toISOString();
   const inputStepKey = 'true-solar-time:calculation:input';
   const timezoneStepKey = 'true-solar-time:calculation:historical-timezone';
   const dstStepKey = 'true-solar-time:calculation:china-dst';
@@ -281,10 +292,10 @@ function buildTrueSolarTimeEvidence(
       stage: '均时差计算',
       status: '已计算',
       dependsOnStepKeys: [dstStepKey],
-      inputs: { standardDateTime: input.standardDateTime },
+      inputs: { utcDateTime },
       result: { equationOfTimeMinutes: input.equationOfTimeMinutes },
-      promptText: `按当地平太阳日期计算均时差${input.equationOfTimeMinutes.toFixed(3)}分钟`,
-      sources: ['基于年内日序的均时差近似公式'],
+      promptText: `按 UTC 瞬时${utcDateTime}的太阳地心视赤经与格林尼治视恒星时计算均时差${input.equationOfTimeMinutes.toFixed(3)}分钟`,
+      sources: ['Astronomy Engine 太阳地心视位置与视恒星时'],
       limitation: TRUE_SOLAR_STEP_LIMITATION,
     },
     {
@@ -368,7 +379,7 @@ function buildTrueSolarTimeEvidence(
       ownerFactKeys: [equationStepKey],
       ownerStepKeys: [equationStepKey],
       promptText: `均时差为${input.equationOfTimeMinutes.toFixed(3)}分钟`,
-      sources: ['年内日序均时差近似公式'],
+      sources: ['Astronomy Engine 太阳地心视位置与视恒星时'],
       limitation: TRUE_SOLAR_CORRECTION_LIMITATION,
     },
     {
@@ -406,7 +417,7 @@ function buildTrueSolarTimeEvidence(
     },
   ];
   const equationLimitation =
-    '均时差采用年内日序近似公式，用于民用排盘校正，不宣称达到观测级或航海级精度。';
+    '均时差采用当前瞬时太阳星历，以 UTC 近似 UT1，时间尺度和底层星历仍含近似。';
   const longitudeTimezoneLimitation =
     '经度时差依赖已确认的出生地经度与当地法定时区；时区口径错误会直接改变校正结果。';
   const historicalTimezoneLimitation =
@@ -430,7 +441,7 @@ function buildTrueSolarTimeEvidence(
       ownerFactKeys: ['true-solar-time:fact:equation-of-time'],
       ownerStepKeys: [equationStepKey],
       promptText: equationLimitation,
-      sources: ['均时差近似公式精度说明'],
+      sources: ['太阳星历与 UT1≈UTC 的时间尺度口径'],
       limitation: TRUE_SOLAR_LIMITATION_FACT_LIMITATION,
     },
     {
@@ -511,7 +522,7 @@ function buildTrueSolarTimeEvidence(
     ...(input.timezoneEvidence ? ['IANA 历史时区由 Intl.DateTimeFormat 所带时区数据库解析'] : []),
     '中国历史夏令时按明确规则还原',
     '经度时差按4分钟/度',
-    '均时差采用年内日序近似公式',
+    '均时差采用 Astronomy Engine 太阳地心视位置与格林尼治视恒星时',
   ].join('；');
   return {
     key: input.key,
@@ -526,12 +537,6 @@ function buildTrueSolarTimeEvidence(
     source,
     promptText: `真太阳时证据：钟表时间${input.clockDateTime}${input.timezoneEvidence ? `，IANA 时区 ${input.timezoneEvidence.timeZoneId} 的历史偏移为 UTC${formatFixedTimezoneOffset(input.timezone)}` : ''}，标准时间${input.standardDateTime}，经度时差${input.longitudeCorrectionMinutes.toFixed(3)}分钟，均时差${input.equationOfTimeMinutes.toFixed(3)}分钟，总校正${input.totalCorrectionMinutes.toFixed(3)}分钟，采用${input.correctedDateTime}与${input.shichen.name}。计算链：${calculationSteps.map((item) => item.promptText).join(' → ')}。证据汇总：${summaryFact.promptText}。来源：${source}。限制：${limitations.join('；')}`,
   };
-}
-
-function getDayOfYear(year: number, month: number, day: number): number {
-  const current = new Date(Date.UTC(year, month - 1, day));
-  const start = new Date(Date.UTC(year, 0, 1));
-  return Math.floor((current.getTime() - start.getTime()) / 86400000) + 1;
 }
 
 function assertIntegerInRange(value: number, label: string, min: number, max: number): void {
@@ -616,15 +621,18 @@ export function parseLocalDateTime(value: string): SolarDateTimeParts {
   return result;
 }
 
+/** 返回所给公历日 UTC 正午的均时差，单位为分钟。 */
 export function calculateEquationOfTimeMinutes(year: number, month: number, day: number): number {
   validateSolarDate(year, month, day);
-  return equationOfTimeMinutesForDate(year, month, day);
+  return equationOfTimeMinutesForInstant(new Date(Date.UTC(year, month - 1, day, 12)));
 }
 
-function equationOfTimeMinutesForDate(year: number, month: number, day: number): number {
-  const dayOfYear = getDayOfYear(year, month, day);
-  const angle = (2 * Math.PI * (dayOfYear - 81)) / 364;
-  return 9.87 * Math.sin(2 * angle) - 7.53 * Math.cos(angle) - 1.5 * Math.sin(angle);
+function equationOfTimeMinutesForInstant(date: Date): number {
+  const geocentric = GeoVector(Body.Sun, date, true);
+  const equator = EquatorFromVector(RotateVector(Rotation_EQJ_EQD(date), geocentric));
+  const utcMinutes = (date.getTime() / 60000) % 1440;
+  const differenceMinutes = (SiderealTime(date) - equator.ra) * 60 + 720 - utcMinutes;
+  return ((((differenceMinutes + 720) % 1440) + 1440) % 1440) - 720;
 }
 
 export function calculateTrueSolarTime(
@@ -641,38 +649,20 @@ export function calculateTrueSolarTime(
 
   // 保留日期线两侧的整日差：太阳时钟表可按 24 小时取模，但排盘日期需要完整校正量。
   const longitudeCorrectionMinutes = (longitude - standardMeridian) * 4;
-  // 同一瞬时点可能以夏令钟表或标准时表示；先落到当地平太阳日，
-  // 再取日粒度均时差，避免跨午夜时两种时区口径选到相邻两日。
-  const meanSolarDate = new Date(
-    Date.UTC(
-      standardTime.year,
-      standardTime.month - 1,
-      standardTime.day,
-      standardTime.hour,
-      standardTime.minute,
-      second,
-    ) +
-      longitudeCorrectionMinutes * 60000,
+  const standardTimestamp = Date.UTC(
+    standardTime.year,
+    standardTime.month - 1,
+    standardTime.day,
+    standardTime.hour,
+    standardTime.minute,
+    second,
   );
-  // 合法输入经经度换算后可落在 1899 或 2101 年，边界日仍须计算均时差。
-  const equationOfTimeMinutes = equationOfTimeMinutesForDate(
-    meanSolarDate.getUTCFullYear(),
-    meanSolarDate.getUTCMonth() + 1,
-    meanSolarDate.getUTCDate(),
+  // 标准经线表达法定 UTC 偏移；同一瞬时的不同钟表口径使用相同星历。
+  const equationOfTimeMinutes = equationOfTimeMinutesForInstant(
+    new Date(standardTimestamp - standardMeridian * 4 * 60000),
   );
   const totalCorrectionMinutes = equationOfTimeMinutes + longitudeCorrectionMinutes;
-
-  const correctedDate = new Date(
-    Date.UTC(
-      standardTime.year,
-      standardTime.month - 1,
-      standardTime.day,
-      standardTime.hour,
-      standardTime.minute,
-      second,
-    ),
-  );
-  correctedDate.setTime(correctedDate.getTime() + totalCorrectionMinutes * 60000);
+  const correctedDate = new Date(standardTimestamp + totalCorrectionMinutes * 60000);
 
   return {
     correctedTime: toDateTimeParts(correctedDate),

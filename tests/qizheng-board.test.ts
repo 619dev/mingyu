@@ -38,13 +38,33 @@ test('七政四余页面应能直接渲染并显示典籍折叠区', () => {
 test('七政四余未定义恒星黄道零点时只输出目标日期黄经', () => {
   const result = generateQizheng({
     year: 2024,
-    month: 6,
-    day: 15,
-    hour: 12,
-    latitude: 39.9042,
-    longitude: 116.4074,
-    timezone: 8,
+    month: 3,
+    day: 20,
+    hour: 3,
+    minute: 6,
+    latitude: 0,
+    longitude: 0,
+    timezone: 0,
   });
+
+  const sun = result.stars.find((star) => star.name === '太阳');
+  assert.ok(sun);
+  // JPL Horizons 地心 TT 2024-03-20T03:07:14 给出太阳黄经 359.9997646°。
+  assert.ok(Math.abs(sun.longitude - 359.9997646) < 0.001);
+  assert.equal(sun.signIndex, 11);
+  const afterZero = generateQizheng({
+    year: 2024,
+    month: 3,
+    day: 20,
+    hour: 3,
+    minute: 7,
+    latitude: 0,
+    longitude: 0,
+    timezone: 0,
+  }).stars.find((star) => star.name === '太阳');
+  assert.ok(afterZero);
+  assert.ok(afterZero.longitude < 0.001);
+  assert.equal(afterZero.signIndex, 0);
 
   assert.equal(
     result.ziqi.tropicalLongitude,
@@ -292,7 +312,7 @@ test('宿界前后必须落入相邻两宿，边界本身归入新宿', () => {
   assert.equal(longitudeToQizhengMansion(angle.longitude + 5e-8, boundaries).xiu, '角');
 });
 
-test('二十八宿边界应覆盖公开年份上限 2200 年', () => {
+test('2200 年临界太阴宿宫与月相共用同一黄经和四正求根星历', () => {
   const boundaries = calculateQizhengMansionBoundaries(new Date('2200-06-15T12:00:00Z'));
   assert.equal(boundaries.length, 28);
   assert.ok(
@@ -301,6 +321,63 @@ test('二十八宿边界应覆盖公开年份上限 2200 年', () => {
         longitudeToQizhengMansion(boundary.longitude, boundaries).xiu === boundary.mansion,
     ),
   );
+
+  const result = generateQizheng({
+    year: 2200,
+    month: 6,
+    day: 15,
+    hour: 18,
+    minute: 27,
+    timezone: 0,
+    latitude: 0,
+    longitude: 0,
+  });
+  const moon = result.stars.find((star) => star.name === '太阴');
+  const sun = result.stars.find((star) => star.name === '太阳');
+  assert.ok(moon && sun);
+  // JPL Horizons 地心观测表在同一 TT 18:34:23 的太阴黄经为 120.0173364°。
+  assert.ok(Math.abs(moon.longitude - 120.0173364) < 0.002);
+  assert.equal(moon.xiu, '井');
+  assert.equal(moon.signBranch, '午');
+  assert.ok(
+    Math.abs(result.calculationContext.moonPhase.moonLongitudeDegrees - moon.longitude) < 1e-7,
+  );
+  assert.ok(
+    Math.abs(result.calculationContext.moonPhase.sunLongitudeDegrees - sun.longitude) < 1e-7,
+  );
+  assert.match(result.calculationContext.moonPhase.source, /Astronomy Engine/);
+  // Swiss Moshier 同 TT 的朔时约为 2200-06-12T15:28:46Z。
+  assert.ok(
+    Math.abs(
+      result.calculationContext.moonPhase.previousPrincipalPhase.utcTimestamp -
+        Date.parse('2200-06-12T15:28:46Z'),
+    ) <
+      2 * 60_000,
+  );
+  assert.ok(result.calculationContext.moonPhase.previousPrincipalPhase.residualDegrees < 0.001);
+  assert.ok(result.calculationContext.moonPhase.nextPrincipalPhase.residualDegrees < 0.001);
+
+  const mansionSamples = [
+    { minute: 13, swissLongitude: 98.09896055, xiu: '参' },
+    { minute: 15, swissLongitude: 98.11607115, xiu: '井' },
+  ];
+  for (const sample of mansionSamples) {
+    const chart = generateQizheng({
+      year: 2200,
+      month: 6,
+      day: 13,
+      hour: 23,
+      minute: sample.minute,
+      timezone: 0,
+      latitude: 0,
+      longitude: 0,
+    });
+    const sampleMoon = chart.stars.find((star) => star.name === '太阴');
+    assert.ok(sampleMoon);
+    // Swiss Moshier 在两处 Astronomy Engine TT 的太阴黄经均位于井宿真实距星界两侧。
+    assert.ok(Math.abs(sampleMoon.longitude - sample.swissLongitude) < 0.002);
+    assert.equal(sampleMoon.xiu, sample.xiu);
+  }
 });
 
 test('宿界查询应接受乱序资料，并拒绝重复宿名、无效宿宽与不连续边界', () => {

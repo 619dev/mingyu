@@ -2027,6 +2027,7 @@ const testCases: Array<{
     expected: {
       favorableEq: ['金', '水', '木'],
       ruleHas: 'shen-month-wu-bing-gui-jia-all',
+      ruleNotHas: 'shen-month-wu-gui-jia-no-bing',
       baseFavorableEq: ['金', '水', '木'],
       baseUnfavorableEq: ['火', '土'],
       climate: {
@@ -2065,22 +2066,6 @@ const testCases: Array<{
         order: ['水', '木', '火'],
       },
     },
-  },
-  {
-    name: '戊日申月丙癸并透时，不应仍按无丙得癸甲规则误判',
-    args: [
-      '身强',
-      { pattern: '偏印格', isSpecial: false },
-      '土',
-      '申',
-      undefined,
-      '戊',
-      {
-        visibleStems: ['戊', '丙', '癸', '甲'],
-        wuxingCounts: { 木: 1, 火: 1, 土: 2, 金: 1, 水: 3 },
-      },
-    ],
-    expected: { ruleNotHas: 'shen-month-wu-gui-jia-no-bing' },
   },
   {
     name: '调候候选分层：shen-month-wu-no-bing-no-gui-no-jia（满足，reference，不覆盖扶抑基线，场景1）',
@@ -4372,6 +4357,7 @@ const testCases: Array<{
     expected: {
       favorableEq: ['水', '木', '火'],
       ruleHas: 'mao-month-xin-ren-flood-no-wu-meager',
+      ruleNotHas: 'mao-month-xin-pure-ren-no-bing-prominent',
       baseFavorableEq: ['水', '木', '火'],
       baseUnfavorableEq: ['土', '金'],
       climate: {
@@ -4525,6 +4511,7 @@ const testCases: Array<{
     expected: {
       favorableEq: ['水', '木', '火'],
       ruleHas: 'mao-month-xin-fire-formation-double-ren-marvel',
+      ruleNotHas: 'mao-month-xin-fire-formation-base-low',
       baseFavorableEq: ['水', '木', '火'],
       baseUnfavorableEq: ['土', '金'],
       climate: {
@@ -4599,28 +4586,6 @@ const testCases: Array<{
     },
   },
   {
-    name: '辛日卯月支成火局而二壬透出时，不应再落入火局下流规则',
-    args: [
-      '身强',
-      { pattern: '七杀格', isSpecial: false },
-      '金',
-      '卯',
-      undefined,
-      '辛',
-      {
-        visibleStems: ['辛', '壬', '壬', '丁'],
-        hiddenStems: ['乙'],
-        hiddenStemSources: [{ pillar: 'month', branch: '卯', stems: ['乙'] }],
-        formationWuxings: ['火'],
-        wuxingCounts: { 木: 2, 火: 4, 土: 0, 金: 1, 水: 2 },
-      },
-    ],
-    expected: {
-      ruleNotHas: 'mao-month-xin-fire-formation-base-low',
-      ruleHas: 'mao-month-xin-fire-formation-double-ren-marvel',
-    },
-  },
-  {
     name: '调候候选分层：mao-month-xin-pure-ren-no-bing-prominent（满足，reference，不覆盖扶抑基线，场景1）',
     args: [
       '身强',
@@ -4649,27 +4614,6 @@ const testCases: Array<{
         adopted: false,
         order: ['水', '金'],
       },
-    },
-  },
-  {
-    name: '辛日卯月若壬水已成汪洋三重时，不应误按纯壬无丙显达规则处理',
-    args: [
-      '身强',
-      { pattern: '偏印格', isSpecial: false },
-      '金',
-      '卯',
-      undefined,
-      '辛',
-      {
-        visibleStems: ['壬', '辛', '壬', '丁'],
-        hiddenStems: ['壬', '甲'],
-        hiddenStemSources: [{ pillar: 'hour', branch: '亥', stems: ['壬', '甲'] }],
-        wuxingCounts: { 木: 1, 火: 1, 土: 0, 金: 1, 水: 4 },
-      },
-    ],
-    expected: {
-      ruleNotHas: 'mao-month-xin-pure-ren-no-bing-prominent',
-      ruleHas: 'mao-month-xin-ren-flood-no-wu-meager',
     },
   },
   {
@@ -5355,26 +5299,6 @@ const testCases: Array<{
     },
   },
   {
-    name: '辛日午月支成火局但仅癸透无壬时，不应误按壬透破火生员规则处理',
-    args: [
-      '身弱',
-      { pattern: '偏官格', isSpecial: false },
-      '金',
-      '午',
-      undefined,
-      '辛',
-      {
-        visibleStems: ['辛', '癸', '癸', '己'],
-        formationWuxings: ['火'],
-        wuxingCounts: { 木: 0, 火: 4, 土: 2, 金: 1, 水: 2 },
-      },
-    ],
-    expected: {
-      ruleNotHas: 'wu-month-xin-fire-formation-ren-break-fire',
-      traceNotIncludes: '成格层次:必主生员',
-    },
-  },
-  {
     name: '调候候选分层：wu-month-xin-fire-formation-gui-heavy-no-ren（资料不足，reference，不覆盖扶抑基线，场景1）',
     args: [
       '身弱',
@@ -5395,6 +5319,7 @@ const testCases: Array<{
         'wu-month-xin-no-ren-gui-weak-substitute',
         'wu-month-xin-fire-formation-ren-break-fire',
       ],
+      traceNotIncludes: '成格层次:必主生员',
       baseFavorableEq: ['土', '金'],
       baseUnfavorableEq: ['水', '木', '火'],
       climate: {
@@ -6782,28 +6707,6 @@ const testCases: Array<{
         order: ['水', '金'],
       },
     },
-  },
-  {
-    name: '辛日酉月白虎格若丙火透出时，不应仍按无火白虎规则误判',
-    args: [
-      '身强',
-      { pattern: '比肩格', isSpecial: false },
-      '金',
-      '酉',
-      undefined,
-      '辛',
-      {
-        visibleStems: ['辛', '戊', '丙', '壬'],
-        hiddenStems: ['辛', '庚'],
-        hiddenStemSources: [
-          { pillar: 'month', branch: '酉', stems: ['辛'] },
-          { pillar: 'day', branch: '申', stems: ['庚', '壬', '戊'] },
-        ],
-        formationWuxings: ['金'],
-        wuxingCounts: { 木: 0, 火: 1, 土: 2, 金: 4, 水: 2 },
-      },
-    ],
-    expected: { ruleNotHas: 'you-month-xin-white-tiger' },
   },
   {
     name: '调候候选分层：you-month-xin-white-tiger-with-fire-ordinary（满足，reference，不覆盖扶抑基线，场景1）',

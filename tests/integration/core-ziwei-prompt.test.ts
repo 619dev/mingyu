@@ -5,6 +5,7 @@ import { baziCalculator } from 'mingyu-core/bazi';
 import {
   buildBaziZiweiPrompt,
   buildZiweiCompatibilityPrompt,
+  buildZiweiPromptDocument,
   buildZiweiTaskBookPrompt,
 } from 'mingyu-core/prompt';
 import { buildCombinedZiweiPrompt } from 'mingyu-core/ziwei/prompt';
@@ -20,6 +21,11 @@ test('npm 提示词入口应覆盖紫微任务书、紫微合盘和八字紫微�
     day: 15,
     timeIndex: 4,
     isLeapMonth: false,
+    useTrueSolarTime: true,
+    birthHour: '8',
+    birthMinute: '30',
+    birthLongitude: '116.4074',
+    timezone: 8,
   } as const;
   const input = buildZiweiChartInput(draft);
   const first = await calculateZiweiChart(input, {
@@ -37,6 +43,7 @@ test('npm 提示词入口应覆盖紫微任务书、紫微合盘和八字紫微�
     topic: 'career-wealth',
     focusPalaceNames: ['命宫', '官禄'],
   });
+  const document = buildZiweiPromptDocument({ runtime: first, scope: 'origin' });
   const compatibility = buildZiweiCompatibilityPrompt({
     payload1: first.payloadByScope.origin,
     payload2: second.payloadByScope.origin,
@@ -60,6 +67,16 @@ test('npm 提示词入口应覆盖紫微任务书、紫微合盘和八字紫微�
   assert.match(taskBook, /【任务】/);
   assert.match(taskBook, /事业财运/);
   assert.match(taskBook, /身宫落宫：/);
+  assert.match(document.user, /【出生时间校正】/);
+  assert.match(
+    document.user,
+    /当地钟表时间：1990-05-15T08:30:00；法定时区：UTC\+08:00；出生经度：116\.4074°；真太阳时：/,
+  );
+  assert.match(document.user, /；时辰：辰时/);
+  assert.doesNotMatch(
+    document.user,
+    /Astronomy Engine|Caelus|来源：|限制：|证据汇总|证据状态|计算链|已核验|未请求/,
+  );
   assert.match(compatibility, /【双盘关系资料】/);
   assert.match(compatibility, /【多派合参】/);
   assert.match(baziZiwei, /【八字盘面资料】/);

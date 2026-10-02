@@ -36,7 +36,7 @@ import {
   type AstronomicalTimeEvidence,
 } from '../calendar/astronomical-time';
 import {
-  calculateMoonPhaseEvidence,
+  calculateQizhengMoonPhaseEvidence,
   type MoonPhaseEvidence,
 } from '../calendar/moon-phase-evidence';
 import {
@@ -1074,7 +1074,7 @@ function buildCalculationContext(
   const hasLongitude = input.longitude !== undefined;
   const coordinateAccuracy =
     hasLatitude && hasLongitude ? (input.coordinateAccuracy ?? 'user-provided') : undefined;
-  const moonPhase = calculateMoonPhaseEvidence(astronomicalTime.unixMilliseconds);
+  const moonPhase = calculateQizhengMoonPhaseEvidence(astronomicalTime.unixMilliseconds);
   const solarIllumination = calculateSolarIlluminationEvidence({
     year: input.year,
     month: input.month,

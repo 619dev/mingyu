@@ -2967,9 +2967,13 @@ test('公开 API 紫微排盘应支持真太阳时精确时分和经度', async 
   assert.equal(promptResult.body.data.result.trueSolarEvidence.status, '已计算');
   assert.match(promptResult.body.data.prompt, /【出生时间校正】/);
   assert.match(promptResult.body.data.prompt, /真太阳时：[\s\S]*时辰：/);
+  assert.match(
+    promptResult.body.data.prompt,
+    /当地钟表时间：1990-04-15T01:20:00；法定时区：UTC\+08:00；出生经度：73\.5°/,
+  );
   assert.doesNotMatch(
     promptResult.body.data.prompt,
-    /已核验|未请求|经度时差|均时差|总校正|校正后唯一时辰|计算步骤：|候选时辰|敏感性结果|缺时柱命盘/,
+    /Astronomy Engine|Caelus|来源：|限制：|证据汇总|计算链|已核验|未请求|经度时差|均时差|总校正|校正后唯一时辰|计算步骤：|候选时辰|敏感性结果|缺时柱命盘/,
   );
 });
 
