@@ -359,6 +359,7 @@ test('连续两次准备格式错误时最终上下文说明资料状态', async
   const final = h.sent.at(-1)![0].content;
   assert.match(final, /本轮资料准备未取得可执行的补充动作/);
   assert.doesNotMatch(final, /资料准备修正/);
+  assert.equal(h.notices.length, 1);
   assert.deepEqual(h.chunks, ['已有资料解读']);
 });
 
@@ -550,16 +551,7 @@ test('没有主体快照时跳过自动补算并明确提示', async () => {
   assert.deepEqual(h.chunks, ['已有盘面解读']);
 });
 
-test('准备格式不兼容时明确提示并继续已有资料解读，网络失败保留重试', async () => {
-  const h = harness(['不是JSON', '仍不是JSON', '已有资料解读']);
-  await runReadingWorkflow([{ role: 'user', content: '塔罗：星星正位' }], h.options, {
-    stream: h.stream,
-    execute: async () => {
-      throw new Error('不应执行');
-    },
-  });
-  assert.equal(h.notices.length, 1);
-  assert.deepEqual(h.chunks, ['已有资料解读']);
+test('资料准备网络失败时保留错误与重试状态', async () => {
   const failed = harness([]);
   await runReadingWorkflow([{ role: 'user', content: '原始盘面' }], failed.options, {
     stream: async (_messages, callbacks) => callbacks.onError('网络失败'),
@@ -1317,7 +1309,6 @@ test('真实双人八字紫微全文自然超限时合并相邻运段且完整�
   const initial = `${baziPrompts.join('\n\n')}\n\n【问题】结合双方完整运限分析关系的发展阶段。`;
   assert.ok(initial.length < 49_000);
   assert.ok(initial.length + primary.text.length + partner.text.length > 49_000);
-  assert.deepEqual(structuredClone([primary, partner]), [primary, partner]);
   await runReadingWorkflow([{ role: 'user', content: initial }], h.options, {
     stream: h.stream,
     execute: async () => primary,

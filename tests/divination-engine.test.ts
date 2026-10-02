@@ -2313,29 +2313,13 @@ test('奇门乙加乙应识别为日奇伏刑，不应退化为比和', () => {
   );
 });
 
-test('奇门丙加辛、丁加辛和乙加丁应按多书互证命名格局输出', () => {
-  assert.equal(getStemPairPattern('丙', '辛')?.name, '月精合佑');
-  assert.equal(getStemPairPattern('丁', '辛')?.name, '朱雀入狱');
-  assert.equal(getStemPairPattern('乙', '丁')?.name, '朱雀入江');
-
-  const zhuQueRuJiang = findQimenStemPairSample('乙', '丁');
-  assert.ok(
-    zhuQueRuJiang.data.classicPatterns?.some(
-      (pattern) => pattern.name === '朱雀入江' && pattern.palaces.includes(zhuQueRuJiang.gong),
-    ),
-  );
-  assert.ok(
-    zhuQueRuJiang.data.stemRelations?.some(
-      (relation) =>
-        relation.gong === zhuQueRuJiang.gong &&
-        relation.relation === '命名格局' &&
-        relation.pattern?.includes('朱雀入江'),
-    ),
-  );
-});
-
 test('奇门乙组天地盘干克应应按古籍格局输出', () => {
   const cases = [
+    {
+      heaven: '乙',
+      earth: '丁',
+      name: '朱雀入江',
+    },
     {
       heaven: '乙',
       earth: '戊',

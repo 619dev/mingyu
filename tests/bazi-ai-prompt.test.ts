@@ -53,43 +53,135 @@ function createBaziResult(overrides: Partial<BaziInput> = {}) {
   return baziCalculator.calculateBazi({ ...base, ...overrides });
 }
 
+type BaziResult = ReturnType<typeof baziCalculator.calculateBazi>;
+
+let cachedDefaultBaziResult: BaziResult | undefined;
+
+function getDefaultBaziResult() {
+  return structuredClone((cachedDefaultBaziResult ??= createBaziResult()));
+}
+
 let cachedOrdinaryZhengyinResult: ReturnType<typeof baziCalculator.calculateBazi> | undefined;
 
 function getOrdinaryZhengyinResult() {
-  return (cachedOrdinaryZhengyinResult ??= createBaziResult({
+  const result = (cachedOrdinaryZhengyinResult ??= createBaziResult({
     year: 1990,
     month: 9,
     day: 5,
     timeIndex: 6,
   }));
+  return structuredClone(result);
 }
 
-let cachedMarriagePromptFixture:
-  | {
-      result: ReturnType<typeof baziCalculator.calculateBazi>;
-      prompt: ReturnType<typeof buildPromptFromConfig>;
-    }
-  | undefined;
+let cached2013SeptemberBaziResult: BaziResult | undefined;
+
+function get2013SeptemberBaziResult() {
+  return structuredClone(
+    (cached2013SeptemberBaziResult ??= createBaziResult({
+      year: 2013,
+      month: 9,
+      day: 25,
+      timeIndex: 3,
+    })),
+  );
+}
+
+let cached1980MayBaziResult: BaziResult | undefined;
+
+function get1980MayBaziResult() {
+  return structuredClone(
+    (cached1980MayBaziResult ??= createBaziResult({
+      year: 1980,
+      month: 5,
+      day: 3,
+      timeIndex: 0,
+    })),
+  );
+}
+
+let cached1988JanuaryFemaleBaziResult: BaziResult | undefined;
+
+function get1988JanuaryFemaleBaziBase() {
+  return (cached1988JanuaryFemaleBaziResult ??= createBaziResult({
+    year: 1988,
+    month: 1,
+    day: 1,
+    timeIndex: 0,
+    gender: 'female',
+  }));
+}
+
+function clone1988JanuaryFemaleBaziResult() {
+  return structuredClone(get1988JanuaryFemaleBaziBase());
+}
+
+let cached1990JuneBaziResult: BaziResult | undefined;
+
+function get1990JuneBaziResult() {
+  return structuredClone(
+    (cached1990JuneBaziResult ??= createBaziResult({
+      year: 1990,
+      month: 6,
+      day: 15,
+      timeIndex: 5,
+      gender: 'male',
+    })),
+  );
+}
+
+let cached1993AprilSingaporeBaziResult: BaziResult | undefined;
+
+function get1993AprilSingaporeBaziResult() {
+  return structuredClone(
+    (cached1993AprilSingaporeBaziResult ??= createBaziResult({
+      year: 1993,
+      month: 4,
+      day: 8,
+      timeIndex: 12,
+      birthPlace: '新加坡',
+    })),
+  );
+}
+
+let cached1994MarchBaziResult: BaziResult | undefined;
+
+function get1994MarchBaziResult() {
+  return structuredClone(
+    (cached1994MarchBaziResult ??= createBaziResult({
+      year: 1994,
+      month: 3,
+      day: 17,
+      timeIndex: 4,
+    })),
+  );
+}
+
+let cached1994FebruaryBaziResult: BaziResult | undefined;
+
+function get1994FebruaryBaziResult() {
+  return structuredClone(
+    (cached1994FebruaryBaziResult ??= createBaziResult({
+      year: 1994,
+      month: 2,
+      day: 15,
+      timeIndex: 6,
+    })),
+  );
+}
+
+let cachedMarriagePrompt: ReturnType<typeof buildPromptFromConfig> | undefined;
 
 function getMarriagePromptFixture() {
-  return (cachedMarriagePromptFixture ??= (() => {
-    const result = createBaziResult({
-      year: 1988,
-      month: 1,
-      day: 1,
-      timeIndex: 0,
-      gender: 'female',
-    });
-    const prompt = buildPromptFromConfig(
-      '请分析我的婚恋。',
-      { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
-      result,
-      null,
-      '婚恋',
-      { isCustomQuestion: false },
-    );
-    return { result, prompt };
-  })());
+  const baseResult = get1988JanuaryFemaleBaziBase();
+  const prompt = (cachedMarriagePrompt ??= buildPromptFromConfig(
+    '请分析我的婚恋。',
+    { id: 'ai-marriage', prompt: '测试', scopeLabel: '婚恋' },
+    structuredClone(baseResult),
+    null,
+    '婚恋',
+    { isCustomQuestion: false },
+  ));
+  return { result: structuredClone(baseResult), prompt };
 }
 
 test('夏令时跨日任务书分别列原始出生钟表与排盘历法，时辰盘不虚构精确时刻', () => {
@@ -116,7 +208,7 @@ test('夏令时跨日任务书分别列原始出生钟表与排盘历法，时�
     }
   }
 
-  const shichen = buildBaziPrompt({ result: createBaziResult(), fortuneScope: 'natal' });
+  const shichen = buildBaziPrompt({ result: getDefaultBaziResult(), fortuneScope: 'natal' });
   assert.doesNotMatch(shichen, /出生钟表时间:/);
   const unknown = baziCalculator.calculateBazi({ year: 2024, month: 5, day: 19, gender: 'male' });
   assert.doesNotMatch(buildBaziPrompt({ result: unknown, fortuneScope: 'natal' }), /出生钟表时间:/);
@@ -124,20 +216,8 @@ test('夏令时跨日任务书分别列原始出生钟表与排盘历法，时�
 
 function createCompatibilityBaziResults() {
   return {
-    result1: createBaziResult({
-      year: 1988,
-      month: 1,
-      day: 1,
-      timeIndex: 0,
-      gender: 'female',
-    }),
-    result2: createBaziResult({
-      year: 1990,
-      month: 6,
-      day: 15,
-      timeIndex: 5,
-      gender: 'male',
-    }),
+    result1: clone1988JanuaryFemaleBaziResult(),
+    result2: get1990JuneBaziResult(),
   };
 }
 
@@ -165,8 +245,8 @@ test('八字合盘不再附加系统提示词，并保留双盘资料与简明�
 });
 
 test('八字合盘喜忌覆盖不复述已在个人盘面呈现的功能事实', () => {
-  const result1 = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
-  const result2 = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
+  const result1 = getOrdinaryZhengyinResult();
+  const result2 = get2013SeptemberBaziResult();
   const prompts = [
     getCompatibilityPrompt('请分析双方关系。', result1, result2).user,
     buildBaziCompatibilityPrompt({ result1, result2 }),
@@ -187,7 +267,7 @@ test('八字合盘喜忌覆盖不复述已在个人盘面呈现的功能事实',
 
 test('合参任务书保留喜忌待判方向及另一人的已核覆盖', () => {
   const result1 = getOrdinaryZhengyinResult();
-  const result2 = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
+  const result2 = get2013SeptemberBaziResult();
   const facts = formatBaziCompatibilityFacts(result1, result2);
   const prompt = getCompatibilityPrompt('请分析双方关系。', result1, result2).user;
 
@@ -217,13 +297,7 @@ test('八字紫微合参只复用双方关系事实，不嵌套整份八字合�
 });
 
 test('八字输出提示词应是可复制给在线 AI 的独立任务书，不暴露工程提示词', () => {
-  const result = createBaziResult({
-    year: 1990,
-    month: 6,
-    day: 15,
-    timeIndex: 5,
-    gender: 'male',
-  });
+  const result = get1990JuneBaziResult();
   const prompt = buildPromptFromConfig(
     '请分析事业方向。',
     { id: 'ai-career', prompt: '测试', scopeLabel: '事业' },
@@ -337,13 +411,7 @@ test('财格身承财条件已在成败理由和旺衰事实呈现时不另起�
 });
 
 test('多候选格局提示词只在格局行列选中依据，另列未选候选', () => {
-  const result = createBaziResult({
-    year: 1993,
-    month: 4,
-    day: 8,
-    timeIndex: 12,
-    birthPlace: '新加坡',
-  });
+  const result = get1993AprilSingaporeBaziResult();
   const selected = result.analysis.mingGe.patternCandidates?.find(
     (candidate) => candidate.selected,
   );
@@ -368,7 +436,7 @@ test('多候选格局提示词只在格局行列选中依据，另列未选候�
 });
 
 test('同名取格路径不作为其他格局重复列示', () => {
-  const result = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const result = getOrdinaryZhengyinResult();
   const pattern = result.analysis.mingGe.pattern;
   result.analysis.mingGe.patternCandidates = [
     { pattern, source: '月令本气', basis: '月令本气取格', selected: true },
@@ -386,13 +454,7 @@ test('同名取格路径不作为其他格局重复列示', () => {
 });
 
 test('独立流派资料中的选中取格依据和其他候选各出现一次', () => {
-  const result = createBaziResult({
-    year: 1993,
-    month: 4,
-    day: 8,
-    timeIndex: 12,
-    birthPlace: '新加坡',
-  });
+  const result = get1993AprilSingaporeBaziResult();
   const basis = result.analysis.mingGe.basis;
   const alternative = result.analysis.mingGe.patternCandidates?.find(
     (candidate) => !candidate.selected && candidate.pattern !== result.analysis.mingGe.pattern,
@@ -414,7 +476,7 @@ test('独立流派资料中的选中取格依据和其他候选各出现一次',
 });
 
 test('已成化格保留结论与取用，省略重复的逐项核验', () => {
-  const result = createBaziResult({ year: 1994, month: 3, day: 17, timeIndex: 4 });
+  const result = get1994MarchBaziResult();
   assert.equal(result.analysis.mingGe.transformation?.status, '成化');
 
   for (const school of [undefined, 'ziping' as const]) {
@@ -426,8 +488,8 @@ test('已成化格保留结论与取用，省略重复的逐项核验', () => {
 });
 
 test('成化状态在合盘与多派提示词只呈现一次', () => {
-  const formed = createBaziResult({ year: 1994, month: 3, day: 17, timeIndex: 4 });
-  const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const formed = get1994MarchBaziResult();
+  const other = getOrdinaryZhengyinResult();
 
   for (const prompt of [
     getCompatibilityPrompt('请分析双方关系。', formed, other).user,
@@ -451,7 +513,7 @@ test('成化状态在合盘与多派提示词只呈现一次', () => {
 });
 
 test('流派格局资料只保留本盘成败理由与实际旺衰事实', () => {
-  const formed = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const formed = getOrdinaryZhengyinResult();
   const schoolPrompt = buildBaziPrompt({ result: formed, school: 'ziping' });
   assert.match(schoolPrompt, /当前成败判定：成格/);
   assert.doesNotMatch(schoolPrompt, /^条件核验：满足；/m);
@@ -467,7 +529,7 @@ test('流派格局资料只保留本盘成败理由与实际旺衰事实', () =>
 });
 
 test('破格救应已在核心判断列明时省略重复格局条件', () => {
-  const result = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
+  const result = get2013SeptemberBaziResult();
   assert.equal(result.analysis.mingGe.fulfillment?.status, '破格');
 
   const conditions = formatBaziPatternConditions(result);
@@ -522,7 +584,7 @@ test('格神前提未满足时不附加救应条件，从儿格不重复已有�
   const uncertainConditions = formatBaziPatternConditions(uncertain);
   assert.equal(uncertainConditions, '');
 
-  const conger = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  const conger = get1980MayBaziResult();
   assert.equal(formatBaziPatternConditions(conger), '');
   for (const prompt of [
     buildBaziPrompt({ result: conger }),
@@ -538,14 +600,14 @@ test('格神前提未满足时不附加救应条件，从儿格不重复已有�
 });
 
 test('从儿格缺少明确财气承接依据时仍保留本盘五行流向', () => {
-  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  const result = get1980MayBaziResult();
   result.analysis.mingGe.basis = result.analysis.mingGe.basis?.replace('承接食伤所生', '财星明透');
   assert.match(formatBaziPatternConditions(result), /从儿五行流向：食伤土生财金/);
 });
 
 test('从儿格月建条件在页面、公开提示词与合盘中只列一次', () => {
-  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
-  const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const result = get1980MayBaziResult();
+  const other = getOrdinaryZhengyinResult();
   const prompts = [
     buildBaziPrompt({ result }),
     buildBaziPromptForResult({ result }),
@@ -566,7 +628,7 @@ test('从儿格月建条件在页面、公开提示词与合盘中只列一次',
 });
 
 test('从儿格流派资料不重复五行流向与已列的财星明透条件', () => {
-  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  const result = get1980MayBaziResult();
   assert.equal(result.analysis.mingGe.specialAdjudication?.kind, '从儿格');
   const basis = result.analysis.mingGe.basis!;
   const satisfied = result.analysis.mingGe.specialAdjudication!.satisfied;
@@ -601,7 +663,7 @@ test('从儿格流派资料不重复五行流向与已列的财星明透条件',
     assert.equal(multiSchoolFacts.split(formatPatternBasisForPrompt(condition)).length - 1, 1);
   }
 
-  const partiallySummarized = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  const partiallySummarized = get1980MayBaziResult();
   const omittedCondition = partiallySummarized.analysis.mingGe.specialAdjudication!.satisfied[1];
   partiallySummarized.analysis.mingGe.basis = partiallySummarized.analysis.mingGe.basis!.replace(
     omittedCondition,
@@ -614,7 +676,7 @@ test('从儿格流派资料不重复五行流向与已列的财星明透条件',
 });
 
 test('从儿格已列顺局作用时不在特殊格条件重复财星制印', () => {
-  const result = createBaziResult({ year: 1994, month: 2, day: 15, timeIndex: 6 });
+  const result = get1994FebruaryBaziResult();
   const action = '月干丙财星有可用根，制日柱申藏庚偏印，印夺食有救';
   assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
   assert.ok(result.analysis.mingGe.specialAdjudication?.satisfied.includes(action));
@@ -631,7 +693,7 @@ test('从儿格已列顺局作用时不在特殊格条件重复财星制印', ()
 });
 
 test('从儿格顺局作用已列于取用配合时不另列格局条件', () => {
-  const result = createBaziResult({ year: 1994, month: 2, day: 15, timeIndex: 6 });
+  const result = get1994FebruaryBaziResult();
   const action = result.analysis.mingGe.specialAdjudication?.functionalResolutions[0];
   const evidence = result.analysis.usefulGod.decisionEvidence;
   assert.ok(action);
@@ -721,7 +783,7 @@ test('曲直格依据已包含亥卯未木局与成立事实时不再另列格�
     assert.equal(result.analysis.mingGe.specialAdjudication?.kind, '曲直格');
     assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
     assert.equal(formatBaziPatternConditions(result), '');
-    const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+    const other = getOrdinaryZhengyinResult();
     for (const prompt of [
       buildBaziPrompt({ result }),
       buildBaziPromptForResult({ result }),
@@ -753,7 +815,7 @@ test('寅卯辰曲直格只保留成格依据，不重复列路线裁决和藏�
   assert.equal(result.analysis.mingGe.specialAdjudication?.route, '寅卯辰东方');
   assert.equal(result.analysis.mingGe.specialAdjudication?.status, '成立');
   assert.equal(formatBaziPatternConditions(result), '');
-  const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const other = getOrdinaryZhengyinResult();
   for (const prompt of [
     buildBaziPrompt({ result }),
     buildBaziPromptForResult({ result }),
@@ -776,7 +838,7 @@ test('寅卯辰曲直格只保留成格依据，不重复列路线裁决和藏�
 });
 
 test('从儿格在线流派资料只补充成格关系，不复述四柱中的透干与藏根', () => {
-  const result = createBaziResult({ year: 1980, month: 5, day: 3, timeIndex: 0 });
+  const result = get1980MayBaziResult();
   for (const prompt of [
     buildBaziPrompt({ result, school: 'ziping' }),
     buildBaziPrompt({ result, schools: ['ziping', 'mangpai'] }),
@@ -842,7 +904,7 @@ test('破而复成的破格与救应已见于核心判断和取用时不重复�
   const repaired = createBaziResult({ year: 2016, month: 3, day: 17, timeIndex: 3 });
   assert.equal(repaired.analysis.mingGe.fulfillment?.status, '破而复成');
   assert.equal(formatBaziPatternConditions(repaired), '');
-  const other = createBaziResult({ year: 1990, month: 9, day: 5, timeIndex: 6 });
+  const other = getOrdinaryZhengyinResult();
   for (const prompt of [
     buildBaziPrompt({ result: repaired }),
     buildBaziPrompt({ result: repaired, school: 'ziping' }),
@@ -880,7 +942,7 @@ test('破而复成的破格与救应已见于核心判断和取用时不重复�
     assert.match(prompt, /救应路径：印星制伤官护官/);
   }
 
-  const broken = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
+  const broken = get2013SeptemberBaziResult();
   assert.equal(broken.analysis.mingGe.fulfillment?.status, '破格');
   assert.match(buildBaziPrompt({ result: broken }), /格局破格所忌：丁伤官（时柱）/);
 });
@@ -911,7 +973,7 @@ test('破格候选未判定时移除夹在事实与结论之间的通用规则',
 });
 
 test('流派提示词只补充格局的盘面证据，不复述共同判定和未激活破格候选', () => {
-  const result = createBaziResult({ year: 2013, month: 9, day: 25, timeIndex: 3 });
+  const result = get2013SeptemberBaziResult();
   for (const build of [buildBaziPrompt, buildBaziPromptForResult]) {
     for (const options of [
       { school: 'ziping' as const },
@@ -1036,7 +1098,7 @@ test('未知时辰完整盘与单页候选任务只依据已列候选及稳定�
 });
 
 test('八字单盘空问题补通用问题，分类不再塞本地固定问题', () => {
-  const result = createBaziResult();
+  const result = getDefaultBaziResult();
 
   const prompt = buildPromptFromConfig(
     '',
@@ -1059,7 +1121,7 @@ test('八字单盘空问题补通用问题，分类不再塞本地固定问题',
 });
 
 test('八字提示词写入年限选择后应保留岁运资料并省略控制话术', () => {
-  const result = createBaziResult();
+  const result = getDefaultBaziResult();
   const fortuneContext = buildFortuneSelectionContext(result, {
     scope: 'year',
     cycleIndex: 0,
@@ -1099,7 +1161,7 @@ test('八字提示词写入年限选择后应保留岁运资料并省略控制�
 });
 
 test('八字完整输出版会附加完整大运流年资料', () => {
-  const result = createBaziResult();
+  const result = getDefaultBaziResult();
 
   const prompt = buildPromptFromConfig(
     '整体事业阶段怎么判断？',
@@ -1119,7 +1181,7 @@ test('八字完整输出版会附加完整大运流年资料', () => {
 });
 
 test('八字流月提示词应突出所选日期范围并保留必要触发资料', () => {
-  const result = createBaziResult();
+  const result = getDefaultBaziResult();
   let fortuneContext = null;
 
   for (const [cycleIndex, cycle] of result.luckInfo.cycles.entries()) {
@@ -1170,7 +1232,7 @@ test('八字流月提示词应突出所选日期范围并保留必要触发资�
 });
 
 test('八字提示词未选择年限时输出本命资料且不输出岁运重点', () => {
-  const result = createBaziResult();
+  const result = getDefaultBaziResult();
 
   const prompt = buildPromptFromConfig(
     '请分析事业方向。',
