@@ -16,6 +16,7 @@ import {
   isSheng,
 } from '../ganzhi';
 import { getSixAnimals, getVoidBranches } from '../calendar/lunar';
+import { getDivinationTime } from '../calendar/timeManager';
 import {
   hexagramNaJia,
   hexagramPalaceMap,
@@ -1752,6 +1753,29 @@ export function analyzeLiuyaoEvidence(
   if (!data?.yaosDetail?.length) throw new Error('六爻证据分析缺少完整爻位资料。');
   if (data.meta && Date.parse(data.meta.calculatedAt) !== data.timestamp) {
     throw new Error('六爻起卦时间戳与结果元数据不一致，无法生成证据。');
+  }
+  if (data.timezoneOffsetMinutes !== undefined) {
+    const offset = data.timezoneOffsetMinutes;
+    if (
+      !Number.isInteger(offset) ||
+      offset < -720 ||
+      offset > 840 ||
+      !Number.isSafeInteger(data.timestamp) ||
+      (data.termReferenceTimestamp !== undefined &&
+        !Number.isSafeInteger(data.termReferenceTimestamp))
+    ) {
+      throw new Error('六爻起卦时刻、时区或节气参考资料无效，无法生成证据。');
+    }
+    const sourceTime = getDivinationTime(
+      new Date(data.timestamp),
+      offset,
+      data.termReferenceTimestamp === undefined ? undefined : new Date(data.termReferenceTimestamp),
+    );
+    for (const pillar of ['year', 'month', 'day', 'hour'] as const) {
+      if (data.ganzhi[pillar] !== sourceTime.ganzhi[pillar]) {
+        throw new Error('六爻盘面四柱与起卦时刻、时区及节气参考不一致，无法生成证据。');
+      }
+    }
   }
   const topic = options.topic ?? 'general';
   const monthBranch = branchOf(data.ganzhi.month);

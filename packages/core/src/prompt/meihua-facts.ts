@@ -153,10 +153,10 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
     for (const [role, gua] of [
       ['原体', data.tiGua],
       ['原用', data.yongGua],
-      ['体互', data.interTiGua],
-      ['用互', data.interYongGua],
-      ['变后体卦', data.changedTiGua],
-      ['变后用卦', data.changedYongGua],
+      ['体互', data.interHexagram ? data.interTiGua : undefined],
+      ['用互', data.interHexagram ? data.interYongGua : undefined],
+      ['变后体卦', data.changedHexagram ? data.changedTiGua : undefined],
+      ['变后用卦', data.changedHexagram ? data.changedYongGua : undefined],
     ] as const) {
       if (!gua) continue;
       const subject = `${role}${gua.name}${gua.element}`;

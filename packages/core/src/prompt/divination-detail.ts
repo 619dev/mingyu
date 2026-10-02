@@ -20,6 +20,7 @@ import type {
 } from '../types/divination';
 import { formatAstrolabeForPrompt } from './astrolabe';
 import { formatDivinationInfo } from './divination';
+import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
 import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
 import { analyzeAlmanacEvidence, formatAlmanacGods } from '../divination/almanac-evidence';
@@ -109,6 +110,10 @@ function formatMeihuaCalculation(data: MeihuaData) {
 }
 
 function formatMeihuaDetail(data: MeihuaData) {
+  const evidence = analyzeMeihuaEvidence(data);
+  const resultStage = evidence.stages.find(
+    (stage) => stage.stage === 'result' && stage.status === '已计算',
+  );
   const hexagrams = [data.mainHexagram, data.interHexagram, data.changedHexagram]
     .map((item) => (item ? item : null))
     .filter((item) => item !== null)
@@ -127,7 +132,7 @@ function formatMeihuaDetail(data: MeihuaData) {
       )
       .join('；')}`,
     data.analysis
-      ? `体用分析：体卦${data.tiGua.name}（${data.tiGua.element}），用卦${data.yongGua.name}（${data.yongGua.element}），体用关系为【${data.analysis.tiYongRelation}】，体卦月令${data.analysis.tiSeasonState}，变后体用为【${data.analysis.changedTiYongRelation}】`
+      ? `体用分析：体卦${data.tiGua.name}（${data.tiGua.element}），用卦${data.yongGua.name}（${data.yongGua.element}），体用关系为【${data.analysis.tiYongRelation}】，体卦月令${data.analysis.tiSeasonState}${resultStage && data.analysis.changedTiYongRelation ? `，变后体用为【${data.analysis.changedTiYongRelation}】` : ''}`
       : '',
     formatMeihuaCalculation(data),
   ].filter(Boolean);

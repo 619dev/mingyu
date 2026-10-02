@@ -5,6 +5,12 @@ import {
   analyzeLiuyaoEvidence,
 } from '../packages/core/src/divination/algorithms/liuyao.ts';
 import { isKe, isSheng } from 'mingyu-core/ganzhi';
+import { TimeManager } from '../packages/core/src/calendar/timeManager.ts';
+import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination.ts';
+import {
+  buildTimeInfoText,
+  buildSolarTimeInfoText,
+} from '../packages/core/src/prompt/formatters.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 import { formatLiuyaoSanxing } from '../packages/core/src/prompt/liuyao-facts.ts';
@@ -759,5 +765,68 @@ test('六爻伏神应推导飞伏生克实效断诀', () => {
     assert.ok(spirit.underYao);
     assert.ok(spirit.interactionEffect);
     assert.match(spirit.interactionEffect, /飞|伏/);
+  }
+});
+
+test('六爻恢复按起卦实际时区核对四柱并保留无时区旧盘的结构核验', () => {
+  assert.equal(fixedManualChart.timezoneOffsetMinutes, 480);
+  assert.deepEqual(fixedManualChart.ganzhi, {
+    year: '乙巳',
+    month: '壬午',
+    day: '戊午',
+    hour: '丁巳',
+  });
+  for (const change of [
+    (data: typeof fixedManualChart) => {
+      data.timestamp += 2 * 3_600_000;
+    },
+    ...(['year', 'month', 'day', 'hour'] as const).map(
+      (pillar) => (data: typeof fixedManualChart) => {
+        data.ganzhi[pillar] = '甲子';
+      },
+    ),
+    (data: typeof fixedManualChart) => {
+      data.timezoneOffsetMinutes = 0;
+    },
+  ]) {
+    const wrong = cloneFixedManualChart();
+    delete wrong.meta;
+    change(wrong);
+    for (const consume of [
+      () => analyzeLiuyaoEvidence(wrong),
+      () => formatEnhancedDivinationInfo('liuyao', wrong),
+      () => formatDetailedDivinationInfo('liuyao', wrong),
+      () => getDivinationSummaryBlocks('liuyao', wrong),
+    ])
+      assert.throws(consume, /四柱与起卦时刻、时区及节气参考不一致/u);
+  }
+  const legacy = cloneFixedManualChart();
+  delete legacy.meta;
+  delete legacy.timezoneOffsetMinutes;
+  legacy.timestamp += 2 * 3_600_000;
+  assert.doesNotThrow(() => analyzeLiuyaoEvidence(legacy));
+
+  try {
+    TimeManager.setTimezoneOffsetMinutesOverride(0);
+    const utc = generateLiuyao(fixedDate, { method: 'manual', yaos: fixedYaos });
+    assert.equal(utc.timezoneOffsetMinutes, 0);
+    assert.deepEqual(utc.ganzhi, { year: '乙巳', month: '壬午', day: '戊午', hour: '癸丑' });
+    const originalTime = buildTimeInfoText(utc);
+    const originalSolar = buildSolarTimeInfoText(utc);
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+    assert.doesNotThrow(() => analyzeLiuyaoEvidence(utc));
+    assert.equal(buildTimeInfoText(utc), originalTime);
+    assert.equal(buildSolarTimeInfoText(utc), originalSolar);
+    assert.match(buildTimeInfoText(utc), /癸丑/u);
+    const corrected = generateLiuyao(new Date('2025-06-29T21:15:00+08:00'), {
+      method: 'manual',
+      yaos: fixedYaos,
+      termReferenceDate: new Date('2025-06-30T00:20:00+08:00'),
+    });
+    assert.equal(corrected.termReferenceTimestamp, Date.parse('2025-06-30T00:20:00+08:00'));
+    assert.equal(corrected.ganzhi.hour.slice(-1), '亥');
+    assert.doesNotThrow(() => analyzeLiuyaoEvidence(corrected));
+  } finally {
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
   }
 });

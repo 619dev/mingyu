@@ -1,5 +1,7 @@
 import type { XiaoliurenRule } from '../types/divination';
 
+export const XIAOLIUREN_PALACE_NAMES = ['大安', '留连', '速喜', '赤口', '小吉', '空亡'] as const;
+
 export const XIAOLIUREN_RULE_OPTIONS = [
   { value: 'common', label: '通行掌诀' },
   { value: 'duoneng', label: '《多能鄙事》' },

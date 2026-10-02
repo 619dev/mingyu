@@ -7,6 +7,7 @@ import {
   formatDivinationInfo,
   getDivinationSummaryBlocks,
 } from '@core/prompt/divination';
+import { formatDetailedDivinationInfo } from '@core/prompt/divination-detail';
 import { formatMeihuaFacts } from '@core/prompt/meihua-facts';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 import { ZHOUYI_HEXAGRAMS_TEXT } from '@core/classics/zhouyi';
@@ -420,9 +421,12 @@ test('梅花旧盘缺少互变与应期时不输出空内容行', () => {
     ...data,
     interName: complete.interName,
     changedName: complete.changedName,
-    analysis: { ...data.analysis, inter1Relation: '', inter2Relation: '', changedRelation: '' },
   });
-  assert.match(nameOnly, /核心结构：主卦天水讼；互卦风火家人；变卦天泽履/u);
+  assert.match(nameOnly, /^核心结构：主卦天水讼$/mu);
+  assert.match(nameOnly, /互卦体用资料未列/u);
+  assert.match(nameOnly, /变卦体用资料未列/u);
+  assert.doesNotMatch(nameOnly, /风火家人|天泽履|原体克体互|用互克原体/u);
+  assert.doesNotMatch(nameOnly, /变后体用(?:为)?【?体用比和|结果关系体用比和/u);
   assert.doesNotMatch(nameOnly, /^互卦：|^变卦：/mu);
 });
 
@@ -668,4 +672,48 @@ test('梅花各卦月令作用覆盖火令下五种关系，随机法保留自�
     assert.ok(facts.includes(`原体为${state}`), facts);
     assert.doesNotMatch(facts, /起卦取数：/);
   }
+});
+
+test('梅花旧盘缺失互变结构时摘要与完整任务书保留阶段待核而不借缓存关系', () => {
+  const source = generateMeihua(new Date('2025-06-18T10:30:00+08:00'), {
+    method: 'number',
+    number: 123,
+  });
+  assert.deepEqual(
+    [source.originalName, source.interName, source.changedName],
+    ['火水未济', '水火既济', '火风鼎'],
+  );
+  assert.equal(source.movingYao.position, 3);
+  assert.equal(source.analysis.inter1Relation, '体互克原体');
+  assert.equal(source.analysis.changedTiYongRelation, '用生体');
+  for (const removePairs of [false, true]) {
+    const partial = structuredClone(source);
+    partial.interHexagram = null;
+    partial.changedHexagram = null;
+    if (removePairs) {
+      partial.interTiGua = undefined;
+      partial.interYongGua = undefined;
+      partial.changedTiGua = undefined;
+      partial.changedYongGua = undefined;
+    }
+    partial.evidenceAnalysis = undefined;
+    const summary = getDivinationSummaryBlocks('meihua', partial);
+    assert.deepEqual(summary.tags.slice(0, 3), ['主卦：火水未济', '互卦：未列', '变卦：未列']);
+    for (const text of [
+      summary.lines.join('\n'),
+      formatDivinationInfo('meihua', partial),
+      formatDetailedDivinationInfo('meihua', partial),
+      buildCoreDivinationPrompt({ method: 'meihua', data: partial, question: '工作进展如何？' }),
+      buildDivinationPrompt('meihua', '工作进展如何？', partial),
+    ]) {
+      assert.match(text, /体卦离/u);
+      assert.match(text, /互卦体用资料未列/u);
+      assert.doesNotMatch(text, /体互克原体|用互与原体比和|变后体用为【用生体】|结果关系用生体/u);
+      assert.doesNotMatch(text, /月令作用：(?:体互|用互|变后体卦|变后用卦)/u);
+    }
+  }
+  const complete = formatDivinationInfo('meihua', source);
+  assert.match(complete, /互卦：水火既济/u);
+  assert.match(complete, /体互克原体/u);
+  assert.match(complete, /变卦火风鼎/u);
 });

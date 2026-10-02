@@ -72,7 +72,8 @@ import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
 import { analyzeLenormandEvidence } from '../divination/lenormand-evidence';
 import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import type { KongmingHexagramResult, ZhugeNumberResult } from '../name-number';
-import { getKongmingInterpretation } from '../name-number/kongming-interpretations';
+import { castKongmingHexagram } from '../name-number/oracles';
+import { ZHUGE_SIGNS } from '../name-number/zhuge-signs';
 import { getZhugeInterpretation } from '../name-number/zhuge-interpretations';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
 import { resolveSsgwSignFacts, resolveSsgwStoryContent } from '../divination/ssgw-content';
@@ -86,10 +87,14 @@ import {
 import { formatLiuyaoSanxing } from './liuyao-facts';
 
 function formatZhugeInfo(data: ZhugeNumberResult) {
-  const interpretation = data.interpretation ?? getZhugeInterpretation(data.number);
+  const sign = Number.isInteger(data.number) ? ZHUGE_SIGNS[data.number - 1] : undefined;
+  if (!sign || data.sign?.number !== sign.number || data.sign.poem !== sign.poem) {
+    throw new Error('诸葛签号与签诗资料不一致');
+  }
+  const interpretation = getZhugeInterpretation(data.number);
   const basicInterpretation = interpretation
     ? [interpretation.quote, interpretation.imageMeaning, interpretation.interpretation].join('；')
-    : data.sign.summary;
+    : sign.summary;
   return [
     `签号：第${data.number}签`,
     `签诗：${data.sign.poem}`,
@@ -102,7 +107,19 @@ function formatZhugeInfo(data: ZhugeNumberResult) {
 }
 
 function formatKongmingInfo(data: KongmingHexagramResult) {
-  const interpretation = data.interpretation ?? getKongmingInterpretation(data.symbol);
+  if (typeof data.symbol !== 'string') {
+    throw new Error('孔明卦象与签谱资料不一致');
+  }
+  const resolved = castKongmingHexagram(data.symbol);
+  if (
+    data.number !== resolved.number ||
+    data.name !== resolved.name ||
+    data.grade !== resolved.grade ||
+    data.poem !== resolved.poem
+  ) {
+    throw new Error('孔明卦象与签谱资料不一致');
+  }
+  const interpretation = resolved.interpretation;
   const classicalImage = interpretation.classicalImage;
   return [
     `签号：第${data.number}签`,
@@ -595,31 +612,35 @@ function formatMeihuaInfo(data: MeihuaData) {
   );
   const hasCompleteStages =
     stages.length === 3 && stages.every((stage) => stage.status === '已计算');
-  const processHexagram = data.interHexagram?.name || data.interName || '无';
-  const resultHexagram = data.changedHexagram?.name || data.changedName || '无';
+  const processStage = stages.find((stage) => stage.stage === 'process');
+  const processHexagram = processStage
+    ? data.interHexagram?.name || data.interName || '互卦'
+    : '无';
+  const resultHexagram = hasResultStage
+    ? data.changedHexagram?.name || data.changedName || '变卦'
+    : '无';
   const interRoleText =
-    data.interTiGua && data.interYongGua
+    processStage && data.interTiGua && data.interYongGua
       ? `；体互${data.interTiGua.name}（${data.interTiGua.element}）；用互${data.interYongGua.name}（${data.interYongGua.element}）`
       : '';
-  const interRelationText = [data.analysis.inter1Relation, data.analysis.inter2Relation]
+  const interRelationText = (
+    processStage ? [data.analysis.inter1Relation, data.analysis.inter2Relation] : []
+  )
     .filter(Boolean)
     .map((relation) => `；${relation}`)
     .join('');
-  const changedTiYongText =
-    data.changedTiGua && data.changedYongGua
-      ? `；变后体卦${data.changedTiGua.name}（${data.changedTiGua.element}）；变后用卦${data.changedYongGua.name}（${data.changedYongGua.element}）；变后体用${data.analysis.changedTiYongRelation}`
-      : '';
   const classicalLines = formatMeihuaClassicalText(data);
   const yingQiConditions = evidence.timingFacts
     .filter((fact) => fact.type === '原应期条件')
     .map((fact) => fact.promptText.replace('，只作取数来源旁证，不换算绝对日期', '；取数来源旁证'));
   const originStage = stages.find((stage) => stage.stage === 'origin');
-  const processStage = stages.find((stage) => stage.stage === 'process');
   const resultStage = stages.find((stage) => stage.stage === 'result');
   const stagePromptTexts = stages.map((stage) =>
-    stage.stage === 'origin' && stage.relation
-      ? stage.promptText.replace(`，关系${stage.relation}`, '')
-      : stage.promptText,
+    stage.status !== '已计算'
+      ? `${stage.label}：卦象结构资料未记录，体用关系待核`
+      : stage.stage === 'origin' && stage.relation
+        ? stage.promptText.replace(`，关系${stage.relation}`, '')
+        : stage.promptText,
   );
   const originRelation = originStage?.relation;
   const originSeasonEvaluation = originStage
@@ -668,12 +689,9 @@ function formatMeihuaInfo(data: MeihuaData) {
     processHexagram !== '无' && (interRoleText || interRelationText)
       ? `互卦：${processHexagram}${interRoleText}${interRelationText}`
       : '',
-    !hasResultStage &&
-    resultHexagram !== '无' &&
-    (changedTiYongText || data.analysis.changedRelation)
-      ? `变卦：${resultHexagram}${changedTiYongText}${data.analysis.changedRelation ? `；结果关系${data.analysis.changedRelation}` : ''}`
-      : '',
     stagePromptTexts.length ? `体用阶段：\n${stagePromptTexts.join('\n')}` : '',
+    !processStage ? '互卦体用资料未列' : '',
+    !hasResultStage && !resultStage ? '变卦体用资料未列' : '',
     generationText,
     originStage?.status === '已计算' ? `主卦体用月令条件：${originSeasonConditions}` : '',
     timelineText,

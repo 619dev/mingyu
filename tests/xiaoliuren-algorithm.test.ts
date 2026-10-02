@@ -432,3 +432,26 @@ test('小六壬旧盘的历法说明与起课方式必须和当前采用口径�
   wrongMethodLabel.methodLabel = '数字起课';
   assert.throws(() => analyzeXiaoliurenEvidence(wrongMethodLabel), /顺数或占得宫与盘面不一致/u);
 });
+
+test('小六壬恢复不能用同一旧宫序表证明被改写的月日时宫名', () => {
+  const source = generateXiaoliuren({ customDate: new Date('2025-06-18T10:30:00+08:00') });
+  assert.deepEqual([source.lunarMonth, source.lunarDay, source.calculation.hourNumber], [5, 23, 6]);
+  // 月宫(5-1)%6=4，日宫(5+23-2)%6=2，时宫(2+6-1)%6=1。
+  assert.deepEqual(
+    [source.sequence.month.name, source.sequence.day.name, source.sequence.hour.name],
+    ['小吉', '速喜', '留连'],
+  );
+  const wrong = structuredClone(source);
+  for (const palace of [...wrong.palaceOrder, ...Object.values(wrong.sequence), wrong.primary]) {
+    if (palace.name === '小吉') palace.name = '空亡';
+    else if (palace.name === '空亡') palace.name = '小吉';
+  }
+  assert.throws(() => analyzeXiaoliurenEvidence(wrong), /顺数或占得宫与盘面不一致/u);
+  assert.throws(
+    () => buildDivinationPrompt({ method: 'xiaoliuren', data: wrong, question: '进展如何？' }),
+    /顺数或占得宫与盘面不一致/u,
+  );
+  const wrongIndex = structuredClone(source);
+  wrongIndex.palaceOrder[4].index = 5;
+  assert.throws(() => analyzeXiaoliurenEvidence(wrongIndex), /顺数或占得宫与盘面不一致/u);
+});

@@ -352,6 +352,8 @@ export interface BaseHexagramData {
 }
 
 export interface LiuyaoData extends BaseHexagramData {
+  /** 起卦时实际采用的民用时区偏移；旧盘未记录时保持原有结构核验。 */
+  timezoneOffsetMinutes?: number;
   /** 真太阳时模式下用于节气与月建的实际占时戳（毫秒）。 */
   termReferenceTimestamp?: number;
   /** 用神候选、原神忌神仇神与逐爻支持/反证结构。 */

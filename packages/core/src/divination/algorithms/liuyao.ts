@@ -808,7 +808,7 @@ function toHexagramBinary(yaos: string[]): string {
 
 export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOptions) {
   // 1. 获取占卜时间的干支信息
-  const { ganzhi, timestamp } = getDivinationTime(
+  const { ganzhi, timestamp, timezoneOffsetMinutes } = getDivinationTime(
     customDate,
     undefined,
     options?.termReferenceDate,
@@ -1059,12 +1059,14 @@ export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOpti
     guaShen,
     generation: resolvedGeneration.generation,
     timestamp,
+    timezoneOffsetMinutes,
   };
   const resultWithMeta = attachResultMeta(result, {
     algorithm: 'liuyao',
     input: {
       method: resolvedGeneration.generation.method,
       timestamp,
+      timezoneOffsetMinutes,
       ...(options?.termReferenceDate
         ? { termReferenceTimestamp: options.termReferenceDate.getTime() }
         : {}),

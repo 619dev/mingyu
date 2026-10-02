@@ -20,6 +20,7 @@ import {
   formatXiaoliurenCalendarBoundary,
 } from '../divination/xiaoliuren-evidence';
 import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
+import { analyzeLiuyaoEvidence } from '../divination/liuyao-evidence';
 import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
 import { getQimenActiveSpecialConditionText } from '../divination/qimen-evidence';
 import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
@@ -293,6 +294,7 @@ export function getDivinationSummaryBlocks(
   switch (method) {
     case 'liuyao': {
       const item = data as LiuyaoData;
+      analyzeLiuyaoEvidence(item);
       const hexagramRelationText = formatLiuyaoHexagramRelationSummary(item);
       const fanfuRelationText = formatLiuyaoFanFuRelationSummary(item);
       return {
@@ -326,12 +328,16 @@ export function getDivinationSummaryBlocks(
       if (evidence.calculationFact.status === '计算不一致') {
         throw new Error(`梅花盘面与起卦资料不一致：${evidence.calculationFact.promptText}`);
       }
+      const processStage = evidence.stages.find((stage) => stage.stage === 'process');
+      const resultStage = evidence.stages.find(
+        (stage) => stage.stage === 'result' && stage.status === '已计算',
+      );
       return {
         title: '梅花起卦结果',
         tags: [
           `主卦：${item.originalName}`,
-          `互卦：${item.interName || '无'}`,
-          `变卦：${item.changedName || '无'}`,
+          `互卦：${processStage ? item.interName || item.interHexagram?.name || '未列' : '未列'}`,
+          `变卦：${resultStage ? item.changedName || item.changedHexagram?.name || '未列' : '未列'}`,
           `动爻：第${item.movingYao.position}爻`,
         ],
         lines: [
@@ -339,10 +345,12 @@ export function getDivinationSummaryBlocks(
           `体卦：${item.tiGua.name}（${item.tiGua.element}）`,
           `用卦：${item.yongGua.name}（${item.yongGua.element}）`,
           `动爻：第${item.movingYao.position}爻`,
-          `体用关系：${item.analysis.tiYongRelation}；${item.analysis.changedRelation}`,
+          `体用关系：${item.analysis.tiYongRelation}${resultStage && item.analysis.changedRelation ? `；${item.analysis.changedRelation}` : ''}`,
           formatMeihuaSeasonSummary(item, evidence),
-          `过程：${item.analysis.inter1Relation}、${item.analysis.inter2Relation}`,
-          item.changedTiGua && item.changedYongGua
+          processStage
+            ? `过程：${item.analysis.inter1Relation}、${item.analysis.inter2Relation}`
+            : '互卦体用资料未列',
+          resultStage && item.changedTiGua && item.changedYongGua
             ? `变后：体卦${item.changedTiGua.name}（${item.changedTiGua.element}）；用卦${item.changedYongGua.name}（${item.changedYongGua.element}）；关系${item.analysis.changedTiYongRelation}`
             : '',
           item.calculation?.method || item.calculation?.methodKey

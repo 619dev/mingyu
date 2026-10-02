@@ -205,6 +205,9 @@ function buildSolarTermEvidence(year: number, index: number): SolarTermEvidence 
 
   const modelRootUtcTimestamp = Math.round((left + right) / 2 / 1000) * 1000;
   const modelRootUtcDateTime = new Date(modelRootUtcTimestamp).toISOString();
+  const modelRootResidualDegrees = Math.abs(
+    signedDifference(apparentSunLongitudeAt(modelRootUtcTimestamp), targetLongitudeDegrees),
+  );
   // 排盘边界继续采用 tyme4ts 历表；低阶视黄经求根只作为独立核验，不覆盖更精细的历表结果。
   const utcTimestamp = seedTimestamp;
   const solarLongitudeDegrees = apparentSunLongitudeAt(utcTimestamp);
@@ -238,7 +241,12 @@ function buildSolarTermEvidence(year: number, index: number): SolarTermEvidence 
       status: '已采用',
       dependsOnStepKeys: [`solar-term:${year}:${index}:calculation:target`],
       inputs: { year, index },
-      result: { utcDateTime, utcTimestamp },
+      result: {
+        utcDateTime,
+        utcTimestamp,
+        solarLongitudeDegrees: Number(solarLongitudeDegrees.toFixed(8)),
+        residualDegrees: Number(residualDegrees.toFixed(8)),
+      },
       promptText: `排盘边界采用 tyme4ts 历表 UTC ${utcDateTime}`,
       sources: ['tyme4ts 节气历表'],
       limitation: CALCULATION_STEP_LIMITATION,
@@ -249,7 +257,11 @@ function buildSolarTermEvidence(year: number, index: number): SolarTermEvidence 
       status: '已计算',
       dependsOnStepKeys: [`solar-term:${year}:${index}:calculation:target`],
       inputs: { searchWindowHours, refinementToleranceSeconds, targetLongitudeDegrees },
-      result: { modelRootUtcDateTime, refinementIterations, residualDegrees },
+      result: {
+        modelRootUtcDateTime,
+        refinementIterations,
+        residualDegrees: Number(modelRootResidualDegrees.toFixed(8)),
+      },
       promptText: `Meeus/NOAA 低阶太阳视黄经在前后${searchWindowHours}小时窗口二分至${refinementToleranceSeconds}秒区间，独立求根为${modelRootUtcDateTime}`,
       sources: ['Meeus/NOAA 低阶太阳视黄经公式', '二分求根'],
       limitation: CALCULATION_STEP_LIMITATION,

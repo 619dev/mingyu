@@ -8,6 +8,39 @@ import {
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { buildDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 
+test('孔明恢复签谱按本卦重取解释并核对卦象所指的签谱', () => {
+  const first = castKongmingHexagram('●●●●●');
+  const second = castKongmingHexagram('●○○○○');
+  assert.equal(first.number, 1);
+  assert.equal(first.name, '星震卦');
+  const formatters = [
+    (data: typeof first) => formatEnhancedDivinationInfo('kongming', data),
+    (data: typeof first) =>
+      buildDivinationPrompt({ method: 'kongming', data, question: '这件事如何推进？' }),
+  ];
+  for (const format of formatters) {
+    const prompt = format({ ...first, interpretation: second.interpretation });
+    assert.equal(prompt, format(first));
+    assert.match(prompt, /签题：星震卦/u);
+    assert.match(prompt, /彩凤呈祥瑞，麒麟降帝都，祸除迎福到，喜气自然生/u);
+    assert.doesNotMatch(prompt, /金曰从革|龙门鱼跃过/u);
+    const legacy = { ...first };
+    Reflect.deleteProperty(legacy, 'interpretation');
+    assert.equal(format(legacy), prompt);
+    const missingSymbol = { ...first };
+    Reflect.deleteProperty(missingSymbol, 'symbol');
+    assert.throws(() => format(missingSymbol), /孔明卦象与签谱资料不一致/u);
+    for (const conflicting of [
+      { ...first, number: 2 },
+      { ...first, name: second.name },
+      { ...first, grade: second.grade },
+      { ...first, poem: second.poem },
+    ]) {
+      assert.throws(() => format(conflicting), /孔明卦象与签谱资料不一致/u);
+    }
+  }
+});
+
 test('孔明32卦均有与本卦诗句对应的独立释义及转机条件', () => {
   const readings = new Set<string>();
   const numbers = new Set<number>();

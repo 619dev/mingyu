@@ -35,12 +35,19 @@ const start = Date.parse('2024-03-20T11:00:00+08:00');
 const independentNatalCharts = [0, 1, 2].map((second) =>
   generateAstrolabe({ ...input, second: String(second) }),
 );
+const fixedDailyScopeSample = (() => {
+  const natal = structuredClone(independentNatalCharts[0]!);
+  return {
+    natal,
+    scopes: [buildAstrolabeScopeContext(natal, 'daily', '2028-03-20')],
+  };
+})();
 
 test('精确周期缓存跨本命、经纬度和目标范围复用时保留逐项结果', () => {
   const calculationCache = new AstrolabePeriodCalculationCache();
-  for (const birth of [
-    input,
-    {
+  for (const natal of [
+    structuredClone(independentNatalCharts[0]!),
+    generateAstrolabe({
       ...input,
       year: '2022',
       month: '9',
@@ -49,9 +56,8 @@ test('精确周期缓存跨本命、经纬度和目标范围复用时保留逐�
       latitude: '70',
       longitude: '-74.0060',
       timezone: '0',
-    },
+    }),
   ]) {
-    const natal = generateAstrolabe(birth);
     for (const scope of ['monthly', 'daily'] as const) {
       const target = { year: scope === 'monthly' ? 2028 : 2030, month: 3, day: 20 };
       assert.deepEqual(
@@ -92,7 +98,10 @@ test('流年、流月、流日和完整范围锁定输入与目标并逐出生�
     assert.equal(result.referenceDate, request.referenceDate);
     assert.equal(result.source.startTimestamp, start);
     assert.equal(result.source.endTimestamp, start + 3000);
-    const independent = independentNatalCharts.map((birthChart) => {
+    const independent = independentNatalCharts.map((birthChart, secondIndex) => {
+      if (request.scope === 'daily' && secondIndex === 0) {
+        return structuredClone(fixedDailyScopeSample);
+      }
       const natal = structuredClone(birthChart);
       return {
         natal,
@@ -180,8 +189,7 @@ test('流年、流月、流日和完整范围锁定输入与目标并逐出生�
 });
 
 test('动态离散变化独立于本命盘，事件时刻微移进入连续统计', () => {
-  const natal = structuredClone(independentNatalCharts[0]!);
-  const sample = { natal, scopes: [buildAstrolabeScopeContext(natal, 'daily', '2028-03-20')] };
+  const sample = structuredClone(fixedDailyScopeSample);
   const baseline = projectAstrolabeDynamicSample(sample);
   const changed = structuredClone(sample);
   const aspect = changed.scopes[0].transitFacts!.facts[0];

@@ -16,7 +16,11 @@ import { getDivinationTime } from '../../calendar/timeManager';
 import { assertOptionalRecord } from '../../shared/validation';
 import { attachResultMeta } from '../../shared/result';
 import { analyzeXiaoliurenEvidence } from '../xiaoliuren-evidence';
-import { DUONENG_XIAOLIUREN_VERSES, resolveXiaoliurenRule } from '../xiaoliuren-rules';
+import {
+  DUONENG_XIAOLIUREN_VERSES,
+  resolveXiaoliurenRule,
+  XIAOLIUREN_PALACE_NAMES,
+} from '../xiaoliuren-rules';
 
 export { XIAOLIUREN_RULE_OPTIONS } from '../xiaoliuren-rules';
 
@@ -81,7 +85,7 @@ function palaceAt(index: number, rule: XiaoliurenRule): XiaoliurenPalaceDetail {
 }
 
 function assertReferenceData(): void {
-  const expected = ['大安', '留连', '速喜', '赤口', '小吉', '空亡'];
+  const expected = XIAOLIUREN_PALACE_NAMES;
   if (
     XIAOLIUREN_PALACES.length !== 6 ||
     XIAOLIUREN_PALACES.some(
