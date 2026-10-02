@@ -1,10 +1,58 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scanQizhengPeriodEvents } from '../packages/core/src/qi_zheng/period-events.ts';
+import {
+  createQizhengPeriodEventScanner,
+  scanQizhengPeriodEvents,
+} from '../packages/core/src/qi_zheng/period-events.ts';
 
 const start = Date.UTC(2022, 5, 1);
 const hour = 3_600_000;
 const normalize = (angle: number) => ((angle % 360) + 360) % 360;
+
+test('月年周期按当前流曜求根，共享同一瞬时采样并兼容单参数采样器', () => {
+  const samples = (utcMs: number) => [
+    { name: '太阳', longitude: 4 + (utcMs - start) / hour },
+    { name: '太白(金)', longitude: 29 + (utcMs - start) / hour },
+  ];
+  const natal = {
+    natalStars: [{ name: '太阳', longitude: 5 }],
+    twelvePalaces: [{ palace: '财帛', signIndex: 1, signBranch: '酉' as const }],
+  };
+  for (const mode of ['monthly', 'yearly'] as const) {
+    const input = { startUtcMs: start, endUtcMs: start + 2 * hour, timezone: 0, mode };
+    const calls: Array<{ utcMs: number; names: readonly string[] }> = [];
+    const scan = createQizhengPeriodEventScanner({
+      ...input,
+      sampleLongitudes: (utcMs, names) => {
+        assert.ok(names?.length);
+        calls.push({ utcMs, names: [...names] });
+        return samples(utcMs).filter((sample) => names.includes(sample.name));
+      },
+    });
+    const result = scan(natal);
+    const legacy = scanQizhengPeriodEvents({ ...input, ...natal, sampleLongitudes: samples });
+    assert.deepEqual(result, legacy);
+    assert.deepEqual(
+      result.events.map((event) => [event.kind, event.movingStar, Math.round(event.utcMs)]),
+      [
+        ['精确吊照', '太阳', start + hour],
+        ['换宫', '太白(金)', start + hour],
+      ],
+    );
+    assert.ok(calls.some((call) => call.names.length === 1));
+    const pairs = calls.flatMap((call) => call.names.map((name) => `${call.utcMs}:${name}`));
+    assert.equal(new Set(pairs).size, pairs.length);
+
+    // 已交付的事件与主轴只持有事实值，调用方改动不会进入下一本命扫描。
+    const expected = structuredClone(result);
+    result.events[0].promptText = '调用方修改';
+    result.axis.length = 0;
+    result.windows.length = 0;
+    const callCount = calls.length;
+    assert.deepEqual(scan(natal), expected);
+    assert.equal(calls.length, callCount);
+  }
+});
 
 test('流曜周期缺少目标星曜采样时不把未覆盖对象写成空结果', () => {
   const result = scanQizhengPeriodEvents({

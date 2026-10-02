@@ -9,12 +9,23 @@ import {
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 
+const annualResults = new Map<string, ReturnType<typeof calculateWuyunLiuqi>>();
+
+function getWuyunResult(yearGanZhi: string) {
+  const cached = annualResults.get(yearGanZhi);
+  if (cached) return cached;
+
+  const result = calculateWuyunLiuqi({ yearGanZhi });
+  annualResults.set(yearGanZhi, result);
+  return result;
+}
+
 test('五运六气原生正文按六十甲子保留中运与司天实际五行方向', () => {
   const sheng: Record<string, string> = { 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' };
   const ke: Record<string, string> = { 木: '土', 火: '金', 土: '水', 金: '木', 水: '火' };
   const seen = new Set<string>();
   for (const yearGanZhi of SIXTY_CYCLE) {
-    const result = calculateWuyunLiuqi({ yearGanZhi });
+    const result = getWuyunResult(yearGanZhi);
     const source = result.annualMovement.element;
     const target = result.sitian.element;
     const from = `中运（${source}）`;
@@ -46,7 +57,7 @@ test('五运六气原生正文按六十甲子保留中运与司天实际五行�
 });
 
 test('丙午年保留运克气、客生主与客克主的施受双方', () => {
-  const { prompt } = calculateWuyunLiuqi({ yearGanZhi: '丙午' });
+  const { prompt } = getWuyunResult('丙午');
   assert.match(prompt, /中运（水）克司天少阴君火（火）/);
   assert.match(prompt, /在泉阳明燥金（金）生中运（水）/);
   assert.match(prompt, /客运太羽（水）生主运太角（木）/);
@@ -58,7 +69,7 @@ test('丙午年保留运克气、客生主与客克主的施受双方', () => {
 });
 
 test('丁亥年同气事实只列一次，平气参考条件仍保持独立', () => {
-  const result = calculateWuyunLiuqi({ yearGanZhi: '丁亥' });
+  const result = getWuyunResult('丁亥');
   assert.equal(result.annualRelation.kind, '同气');
   assert.equal(result.movementSteps[0].hostGuestRelation.kind, '同气');
   assert.match(result.prompt, /中运（木）与司天厥阴风木（木）同气；/);
@@ -94,7 +105,7 @@ test('五运六气各事实出口保留实际平气待核及条件成立后的�
     },
   ];
   for (const expected of cases) {
-    const result = calculateWuyunLiuqi({ yearGanZhi: expected.yearGanZhi });
+    const result = getWuyunResult(expected.yearGanZhi);
     assert.equal(result.pathomechanism!.isPingQi, null);
     assert.equal(result.pathomechanism!.pingQiType, expected.status);
     assert.deepEqual(result.pathomechanism!.pingQiConditions, expected.conditions);

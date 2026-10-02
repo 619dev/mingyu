@@ -172,8 +172,11 @@ export type QizhengPeriodEventParams = {
   /** 有 IANA 时区时逐个事件按该时刻的历史偏移格式化，timezone 仅保留固定偏移兼容路径。 */
   timeZoneId?: string;
   mode: QizhengPeriodMode;
-  sampleLongitudes: (utcMs: number) => QizhengLongitudeSample[];
+  /** 求根可只请求当前流曜；省略星名参数的既有采样器仍可返回全部星曜。 */
+  sampleLongitudes: (utcMs: number, names?: readonly string[]) => QizhengLongitudeSample[];
 };
+
+const MAX_PERIOD_LONGITUDE_SAMPLES = 100_000;
 
 /** 固定目标周期的黄经帧、停逆点只扫描一次；本命宫位和精确吊照仍逐出生盘计算。 */
 export function createQizhengPeriodEventScanner(
@@ -185,26 +188,41 @@ export function createQizhengPeriodEventScanner(
   const startDateTime = formatEventTime(params.startUtcMs);
   const endDateTime = formatEventTime(params.endUtcMs);
   const bodies = bodiesForMode(params.mode);
+  const longitudeSamples = new Map<number, Map<string, number | undefined>>();
+  const sampleAt = (utc: number, names: readonly string[]) => {
+    let samples = longitudeSamples.get(utc);
+    if (!samples) {
+      if (longitudeSamples.size >= MAX_PERIOD_LONGITUDE_SAMPLES) {
+        const oldest = longitudeSamples.keys().next().value;
+        if (oldest !== undefined) longitudeSamples.delete(oldest);
+      }
+      samples = new Map();
+      longitudeSamples.set(utc, samples);
+    }
+    const missing = names.filter((name) => !samples.has(name));
+    if (missing.length) {
+      const fresh = mapByName(params.sampleLongitudes(utc, missing));
+      for (const [name, longitude] of fresh) samples.set(name, longitude);
+      for (const name of missing) {
+        if (!samples.has(name)) samples.set(name, undefined);
+      }
+    }
+    return samples;
+  };
   const step = stepMs(params.mode);
   const times: number[] = [];
   for (let utc = params.startUtcMs; utc < params.endUtcMs; utc += step) times.push(utc);
   times.push(params.endUtcMs);
-  const frames = times.map((utc) => ({ utc, map: mapByName(params.sampleLongitudes(utc)) }));
+  const frames = times.map((utc) => ({ utc, map: sampleAt(utc, bodies) }));
   // 只有窗口每个采样点都具备黄经的流曜，才能用于整段事件扫描与空结果判断。
   const coveredBodies = bodies.filter((name) =>
     frames.every((frame) => Number.isFinite(frame.map.get(name))),
   );
-  const velocitySamples = new Map<number, Map<string, number>>();
   const missingVelocityBodies = new Set<string>();
   const velocityAt = (utc: number, name: string) => {
     const delta = 60_000;
-    for (const time of [utc - delta, utc + delta]) {
-      if (!velocitySamples.has(time)) {
-        velocitySamples.set(time, mapByName(params.sampleLongitudes(time)));
-      }
-    }
-    const before = velocitySamples.get(utc - delta)?.get(name);
-    const after = velocitySamples.get(utc + delta)?.get(name);
+    const before = sampleAt(utc - delta, [name]).get(name);
+    const after = sampleAt(utc + delta, [name]).get(name);
     if (
       before === undefined ||
       after === undefined ||
@@ -246,7 +264,7 @@ export function createQizhengPeriodEventScanner(
   }
   const stationAwareFrames = [
     ...frames,
-    ...[...stationTimes].map((utc) => ({ utc, map: mapByName(params.sampleLongitudes(utc)) })),
+    ...[...stationTimes].map((utc) => ({ utc, map: sampleAt(utc, coveredBodies) })),
   ].sort((left, right) => left.utc - right.utc);
   const missingStationFrame = stationAwareFrames.some((frame) =>
     coveredBodies.some((name) => !Number.isFinite(frame.map.get(name))),
@@ -343,7 +361,7 @@ export function createQizhengPeriodEventScanner(
               : isLongitudeBoundary(after)
                 ? currentUtc
                 : refineCrossing(previousUtc, currentUtc, (value) => {
-                    const sample = mapByName(params.sampleLongitudes(value)).get(name);
+                    const sample = sampleAt(value, [name]).get(name);
                     if (sample === undefined) throw new Error(`换宫求根缺少${name}的黄经采样。`);
                     return signIndexOf(sample) === beforeSign ? -1 : 1;
                   });
@@ -386,7 +404,7 @@ export function createQizhengPeriodEventScanner(
                 : endsAtBoundary
                   ? currentUtc
                   : refineCrossing(previousUtc, currentUtc, (value) => {
-                      const sample = mapByName(params.sampleLongitudes(value)).get(name);
+                      const sample = sampleAt(value, [name]).get(name);
                       if (sample === undefined)
                         throw new Error(`精确吊照求根缺少${name}的黄经采样。`);
                       return wrap180(wrap180(sample - natal.longitude) - target);

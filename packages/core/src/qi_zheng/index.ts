@@ -1000,10 +1000,15 @@ function astronomyEclipticLongitude(body: Body, utcMs: number): number {
   return Ecliptic(GeoVector(body, time, true)).elon;
 }
 
-function sampleQizhengLongitudes(utcMs: number): Array<{ name: string; longitude: number }> {
-  const north = trueNodeLongitude(utcMs);
+function sampleQizhengLongitudes(
+  utcMs: number,
+  names?: readonly string[],
+): Array<{ name: string; longitude: number }> {
+  const selected = names ? new Set(names) : undefined;
+  const needs = (name: string) => !selected || selected.has(name);
   const samples: Array<{ name: string; longitude: number }> = [];
   for (const [celestialName, meta] of Object.entries(PLANET_NAMES)) {
+    if (!needs(meta.label)) continue;
     const body = PLANET_BODIES[celestialName];
     if (!body) continue;
     samples.push({
@@ -1011,17 +1016,25 @@ function sampleQizhengLongitudes(utcMs: number): Array<{ name: string; longitude
       longitude: normalizeLongitude(astronomyEclipticLongitude(body, utcMs)),
     });
   }
-  samples.push({ name: '罗睺(火余)', longitude: normalizeLongitude(north) });
-  samples.push({ name: '计都(土余)', longitude: normalizeLongitude(north + 180) });
-  samples.push({
-    name: '月孛(水余)',
-    longitude: normalizeLongitude(moshierMeanLilithLongitude(utcMs)),
-  });
-  const elapsedDays = (utcMs - ZIQI_MODERN_EPOCH_UTC_MS) / 86_400_000;
-  samples.push({
-    name: '紫炁(木余)',
-    longitude: normalizeLongitude(ZIQI_MODERN_EPOCH_LONGITUDE + elapsedDays * ZIQI_DAILY_MOTION),
-  });
+  if (needs('罗睺(火余)') || needs('计都(土余)')) {
+    const north = trueNodeLongitude(utcMs);
+    if (needs('罗睺(火余)'))
+      samples.push({ name: '罗睺(火余)', longitude: normalizeLongitude(north) });
+    if (needs('计都(土余)'))
+      samples.push({ name: '计都(土余)', longitude: normalizeLongitude(north + 180) });
+  }
+  if (needs('月孛(水余)'))
+    samples.push({
+      name: '月孛(水余)',
+      longitude: normalizeLongitude(moshierMeanLilithLongitude(utcMs)),
+    });
+  if (needs('紫炁(木余)')) {
+    const elapsedDays = (utcMs - ZIQI_MODERN_EPOCH_UTC_MS) / 86_400_000;
+    samples.push({
+      name: '紫炁(木余)',
+      longitude: normalizeLongitude(ZIQI_MODERN_EPOCH_LONGITUDE + elapsedDays * ZIQI_DAILY_MOTION),
+    });
+  }
   return samples;
 }
 
@@ -2014,8 +2027,6 @@ type QizhengFlowRangeContext = {
   scanPeriodEvents: ReturnType<typeof createQizhengPeriodEventScanner>;
 };
 
-const MAX_FLOW_RANGE_TARGET_SAMPLES = 100_000;
-
 function getQizhengFlowRangeInvariant(input: QizhengInput): string {
   return JSON.stringify({
     latitude: input.latitude ?? null,
@@ -2039,18 +2050,6 @@ function createQizhengFlowRangeContext(input: QizhengInput): QizhengFlowRangeCon
   if (!flow) throw new Error('七政出生区间流曜目标必须提供 flowYear。');
   const target = collectQizhengStars(flow.flowInput);
   const window = resolveQizhengPeriodWindow(input);
-  const cache = new Map<number, Array<{ name: string; longitude: number }>>();
-  const sampleLongitudes = (utcMs: number) => {
-    const cached = cache.get(utcMs);
-    if (cached) return cached;
-    if (cache.size >= MAX_FLOW_RANGE_TARGET_SAMPLES) {
-      const oldest = cache.keys().next().value as number | undefined;
-      if (oldest !== undefined) cache.delete(oldest);
-    }
-    const sampled = sampleQizhengLongitudes(utcMs);
-    cache.set(utcMs, sampled);
-    return sampled;
-  };
   return {
     flow,
     target,
@@ -2061,7 +2060,7 @@ function createQizhengFlowRangeContext(input: QizhengInput): QizhengFlowRangeCon
       timezone: input.timezone ?? 8,
       timeZoneId: input.timeZoneId,
       mode: window.mode,
-      sampleLongitudes,
+      sampleLongitudes: sampleQizhengLongitudes,
     }),
   };
 }
