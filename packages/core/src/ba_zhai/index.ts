@@ -483,6 +483,9 @@ function buildPrompt(r: Omit<BaZhaiResult, 'prompt'>, measurement?: BaZhaiDoorMe
       );
     }
   }
+  if (!measurement && r.calculationInput.sitMountain) {
+    lines.push(`坐山：${r.calculationInput.sitMountain}`);
+  }
   const birthYearBasis = formatBirthYearBasis(r.calculationInput);
   if (birthYearBasis) lines.push(birthYearBasis);
   lines.push(

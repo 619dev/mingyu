@@ -7,6 +7,8 @@ import {
   getBaZhaiSitFacingFromDoorDegree,
 } from 'mingyu-core/bazhai';
 import { TWENTY_FOUR_MOUNTAINS } from '../packages/core/src/direction/index.ts';
+import { extractDivinationPromptFacts } from '../scripts/prompt-audit/divination-facts';
+import { auditPromptFacts } from '../scripts/prompt-audit/facts';
 import { assertPromptIsPortableTaskText } from './prompt-assertions.ts';
 
 const TRIGRAMS = ['坎', '坤', '震', '巽', '乾', '兑', '艮', '离'];
@@ -585,6 +587,30 @@ test('八宅逐宫计算星宫生克，并区分命宅分组与五行关系', ()
   assert.match(equal.gasRegulation!.doorMasterSummary, /同组，五行关系为命卦与宅卦比和/);
   assert.match(sameGroup.gasRegulation!.doorMasterSummary, /同组，五行关系为命卦克宅卦/);
   assert.match(otherGroup.gasRegulation!.doorMasterSummary, /异组，五行关系为宅卦生命卦/);
+  for (const [result, sitMountain, house, group, match, relation] of [
+    [equal, '子', '坎', '东四宅', '相合', '命卦与宅卦比和'],
+    [sameGroup, '午', '离', '东四宅', '相合', '命卦克宅卦'],
+    [otherGroup, '乾', '乾', '西四宅', '相冲', '宅卦生命卦'],
+  ] as const) {
+    const lines = result.prompt.split('\n');
+    assert.equal(lines.filter((line) => line === `坐山：${sitMountain}`).length, 1);
+    assert.equal(lines.filter((line) => line === '命卦：坎（东四命）').length, 1);
+    assert.equal(lines.filter((line) => line === `宅卦：${house}（${group}）`).length, 1);
+    assert.equal(lines.filter((line) => line === `命宅配合：${match}`).length, 1);
+    assert.equal(lines.filter((line) => line === `命宅五行：${relation}。`).length, 1);
+    assert.doesNotMatch(result.prompt, /^命宅关系：/mu);
+    const expectations = extractDivinationPromptFacts('bazhai', result);
+    assert.ok(expectations.some((fact) => fact.id === 'bazhai.orientation'));
+    assert.deepEqual(auditPromptFacts(result.prompt, expectations).missing, []);
+    for (const changedPrompt of [
+      result.prompt.replace(`坐山：${sitMountain}\n`, ''),
+      result.prompt.replace(`坐山：${sitMountain}`, '坐山：卯'),
+    ]) {
+      assert.deepEqual(auditPromptFacts(changedPrompt, expectations).missing, [
+        'bazhai.orientation',
+      ]);
+    }
+  }
   const elements: Record<string, string> = {
     坎: '水',
     艮: '土',
@@ -640,7 +666,10 @@ test('八宅逐宫计算星宫生克，并区分命宅分组与五行关系', ()
     assert.doesNotMatch(result.prompt, /贪狼制绝命|门主同元|福力深厚|化凶为吉/);
   }
   assert.equal(observed.size, 5);
-  assert.match(analyzeBaZhai({ mingGua: '坎' }).prompt, /命卦星宫生克/);
+  const personal = analyzeBaZhai({ mingGua: '坎' });
+  assert.match(personal.prompt, /命卦星宫生克/);
+  assert.match(personal.prompt, /^命卦：坎（东四命）$/mu);
+  assert.doesNotMatch(personal.prompt, /命宅关系：|命宅五行：|坐山：|命卦取年资料/u);
 });
 
 test('命卦三元一百八十年符合男女九宫顺逆与寄宫规则', () => {

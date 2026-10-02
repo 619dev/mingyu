@@ -1229,6 +1229,7 @@ function extractBaZhaiFacts(data: unknown): DivinationPromptFact[] {
   const mingPalace = records(d.mingPalace);
   const housePalace = records(d.housePalace);
   const measurement = record(d.directionMeasurement);
+  const mingHeading = d.birthYearBoundaryStatus === '待复核' ? '命卦八方（暂按）：' : '命卦八方：';
   const houseHeading =
     measurement?.stability === '宅卦不稳定' ? '宅卦八方（中心读数）：' : '宅卦八方：';
   const alternateHouseGuas = new Set<string>();
@@ -1246,6 +1247,9 @@ function extractBaZhaiFacts(data: unknown): DivinationPromptFact[] {
     );
   });
   return collect([
+    measurement
+      ? fact('bazhai.orientation', '测向资料：', [measurement.label])
+      : fact('bazhai.orientation', '坐山：', [record(d.calculationInput)?.sitMountain]),
     fact('bazhai.ming', '命卦：', [d.mingGua, d.mingGroup]),
     fact('bazhai.house', '宅卦：', [d.houseGua, d.houseGroup]),
     fact('bazhai.match', '命宅配合：', [d.match]),
@@ -1254,7 +1258,7 @@ function extractBaZhaiFacts(data: unknown): DivinationPromptFact[] {
         `bazhai.ming-palace.${index}`,
         `${item.direction}${item.label}`,
         [item.luck, `约${item.degree}°`],
-        { scope: { start: '命卦八方：', ...(housePalace.length ? { end: houseHeading } : {}) } },
+        { scope: { start: mingHeading, ...(housePalace.length ? { end: houseHeading } : {}) } },
       ),
     ),
     ...housePalace.map((item, index) =>

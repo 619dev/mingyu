@@ -7896,7 +7896,22 @@ test('八宅公开提示词完整保留八宫生克及命宅分组', async () =>
     }),
   });
   assert.equal(response.status, 200);
-  assert.match(body.data.prompt, /命宅同组，五行关系为命卦克宅卦/);
+  for (const fact of [
+    '坐山：午',
+    '命卦：坎（东四命）',
+    '宅卦：离（东四宅）',
+    '命宅配合：相合',
+    '命宅五行：命卦克宅卦。',
+  ]) {
+    assert.equal(
+      String(body.data.prompt)
+        .split('\n')
+        .filter((line) => line === fact).length,
+      1,
+      fact,
+    );
+  }
+  assert.doesNotMatch(body.data.prompt, /^命宅关系：/mu);
   assert.match(body.data.prompt, /宅卦星宫生克（伏位取左辅木）/);
   for (const gua of ['坎', '艮', '震', '巽', '离', '坤', '兑', '乾']) {
     assert.match(body.data.prompt, new RegExp(`${gua}宫[木火土金水]：`));

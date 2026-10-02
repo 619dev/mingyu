@@ -62,6 +62,10 @@ test('八宅与住宅核心盘及在线包装各保留一份完整任务', () =>
     assert.match(prompt, /【问题】\n办公方位怎样安排？/);
     assert.match(prompt, /候选坐向：寅山申向/);
     assert.match(prompt, /候选震宅八方：/);
+    assert.match(prompt, /^命宅五行：宅卦克命卦。$/mu);
+    assert.doesNotMatch(prompt, /^命宅关系：|^坐山：/mu);
+    assert.equal(prompt.split('命卦：坎（东四命）').length - 1, 1);
+    assert.equal(prompt.split('宅卦：艮（西四宅，中心读数）').length - 1, 1);
     assertPromptIsPortableTaskText(prompt);
   }
 });

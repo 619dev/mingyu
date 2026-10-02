@@ -5,6 +5,8 @@ import {
   analyzeBaZhaiByDoorDegree,
   type BaZhaiInput,
 } from '../packages/core/src/ba_zhai/index.ts';
+import { extractDivinationPromptFacts } from '../scripts/prompt-audit/divination-facts';
+import { auditPromptFacts } from '../scripts/prompt-audit/facts';
 
 test('八宅立春取年资料保留原民用钟表和实际已知精度', () => {
   const cases: { input: BaZhaiInput; birthFact: string; gua: string; status: string }[] = [
@@ -128,10 +130,27 @@ test('八宅宅卦跨界时提示词并列候选并标明中心读数盘', () =>
     northReference: 'true',
   });
   assert.equal(stable.directionMeasurement.stability, '稳定');
+  assert.doesNotMatch(stable.prompt, /^坐山：|^命宅关系：/mu);
+  assert.match(stable.prompt, /^命宅五行：命卦与宅卦比和。$/mu);
   assert.doesNotMatch(stable.prompt, /命卦取年资料|公历|民用时刻/);
   assert.doesNotMatch(stable.prompt, /候选坐向|中心读数/);
   assert.match(stable.prompt, /测向资料：站在大门处面向屋内测量，读数0°，北向基准真北/);
   assert.match(stable.prompt, /换算为子山午向，距最近二十四山分界7\.5°，测量状态稳定/);
+  for (const [chart, orientation] of [
+    [result, '寅山申向'],
+    [stable, '子山午向'],
+  ] as const) {
+    const expectations = extractDivinationPromptFacts('bazhai', chart);
+    assert.deepEqual(auditPromptFacts(chart.prompt, expectations).missing, []);
+    const measurementLine = chart.prompt.split('\n').find((line) => line.startsWith('测向资料：'))!;
+    assert.ok(measurementLine.includes(orientation));
+    for (const changedLine of ['', measurementLine.replace(orientation, '午山子向')]) {
+      assert.deepEqual(
+        auditPromptFacts(chart.prompt.replace(measurementLine, changedLine), expectations).missing,
+        ['bazhai.orientation'],
+      );
+    }
+  }
 });
 
 test('八宅同宅卦跨山界时提示词保留候选山向和测向事实', () => {

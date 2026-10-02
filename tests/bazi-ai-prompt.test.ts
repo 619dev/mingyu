@@ -1005,6 +1005,29 @@ test('内嵌多派提示词共用通根事实，并省略排盘信息已有的�
   assert.match(prompt, /【五行】/);
   assert.match(prompt, /四柱宫位参照：/);
   assert.match(prompt, /当前成败判定：成格/);
+  for (const current of [
+    prompt,
+    buildBaziPrompt({ result, schools: ['xinpai', 'mangpai', 'ziping'] }),
+    buildBaziPrompt({ result, schools: ['ziping', 'xinpai'] }),
+    buildBaziPrompt({ result, schools: ['mangpai', 'xinpai'] }),
+  ]) {
+    assert.equal(current.match(/^(?:日主旺衰|旺衰判定)：/gm)?.length, 1);
+    assert.equal(current.match(/得令是，通根有，强根无，帮扶可见，克泄耗可见/g)?.length, 1);
+    assert.equal(current.match(/月令作用支持，司令作用生身，成局作用中性/g)?.length, 1);
+    const tenGodLines = current
+      .split('\n')
+      .filter((line) => /^(?:十神显隐|十神结构)：/u.test(line));
+    assert.deepEqual(
+      tenGodLines.map((line) => line.slice(line.indexOf('：') + 1)),
+      [
+        '已见正官透藏并见（透1、藏1）、正印透藏并见（透1、藏1）、偏财仅藏（透0、藏2）、七杀仅藏（透0、藏2）、伤官透出（透1、藏0）、劫财仅藏（透0、藏1）、偏印仅藏（透0、藏1）；原局未见比肩、食神、正财',
+      ],
+    );
+    assert.match(current, /喜忌落位：/);
+    if (current.includes('八字流派：盲派') || current.includes('：盲派\n')) {
+      assert.match(current, /主宾定位：主位为日柱癸酉与时柱戊午/);
+    }
+  }
 });
 
 test('子平内嵌流派资料不重复核心判断已列的喜忌取用', () => {

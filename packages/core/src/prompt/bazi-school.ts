@@ -572,9 +572,24 @@ export function formatBaziSchoolsPrompt(
       : [];
   const blocks = selected.map((school, index) => {
     const profile = BAZI_SCHOOL_PROFILES[school];
+    const priorSchools = selected.slice(0, index);
     const facts = formatBaziSchoolFacts(result, school, embedded, selected.length === 1)
       .split('\n')
       .filter((line) => !(embedded && selected.length > 1 && line.startsWith('透干通根：')))
+      .flatMap((line) => {
+        if (!embedded) return [line];
+        if (line.startsWith('日主旺衰：') && priorSchools.includes('xinpai')) return [];
+        if (line.startsWith('旺衰判定：') && priorSchools.includes('ziping')) {
+          return [`旺衰作用：${line.slice(line.indexOf('；月令作用') + 1)}`];
+        }
+        if (
+          (line.startsWith('十神显隐：') && priorSchools.includes('xinpai')) ||
+          (line.startsWith('十神结构：') && priorSchools.includes('mangpai'))
+        ) {
+          return [];
+        }
+        return [line];
+      })
       .join('\n');
     return [
       `派系${index + 1}：${profile.label}`,

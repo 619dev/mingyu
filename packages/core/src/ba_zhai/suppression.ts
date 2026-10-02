@@ -80,11 +80,15 @@ export function evaluateBaZhaiRegulation(params: {
       ? `${mingGua}命属${mingGroup}，按命卦列八方星宫关系。`
       : `${mingGua}命属${mingGroup}，${houseGua}宅属${houseGroup}；命宅${getEastWestGroup(mingGua) === getEastWestGroup(houseGua) ? '同组' : '异组'}，五行关系为${relation(PALACE_ELEMENTS[mingGua], PALACE_ELEMENTS[houseGua], '命卦', '宅卦')}。`;
   const promptSummary = [
-    `命宅关系：${doorMasterSummary}`,
+    houseGua === null
+      ? ''
+      : `命宅五行：${relation(PALACE_ELEMENTS[mingGua], PALACE_ELEMENTS[houseGua], '命卦', '宅卦')}。`,
     `${scope}星宫生克（伏位取左辅木）：`,
     ...suppressionLaws.map(
       (fact) => `${fact.counterpart}：${fact.star}，${fact.suppressionRule}。`,
     ),
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
   return { suppressionLaws, doorMasterSummary, promptSummary };
 }
