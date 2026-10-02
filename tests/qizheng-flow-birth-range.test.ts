@@ -310,6 +310,20 @@ test('七政流曜出生区间支持日、月、年三种既有目标模式', ()
     assert.equal(range.target.mode, mode);
     assert.equal(range.sampleCount, 2);
     assert.ok(range.branches[0]!.representative.flowingStars);
+    for (const branch of range.branches) {
+      const first = generateQizheng(inputAt(branch.startTimestamp, input));
+      const last = generateQizheng(inputAt(branch.endTimestamp - SECOND, input));
+      assert.deepEqual(
+        branch.representative.flowingStars?.periodEvents,
+        first.flowingStars?.periodEvents,
+        `${mode} 首秒的换宫、停逆及精确吊照须与单点实盘一致`,
+      );
+      assert.deepEqual(
+        branch.last.flowingStars?.periodEvents,
+        last.flowingStars?.periodEvents,
+        `${mode} 末秒的事件时间与本命归属须与单点实盘一致`,
+      );
+    }
     if (mode === 'yearly') {
       const lichun = calculateSolarTermEvidence(2024, 3);
       assert.equal(range.target.startUtcTimestamp, lichun.utcTimestamp);

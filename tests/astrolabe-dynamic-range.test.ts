@@ -32,6 +32,9 @@ const input: AstrolabeBirthInput = {
   timezone: '8',
 };
 const start = Date.parse('2024-03-20T11:00:00+08:00');
+const independentNatalCharts = [0, 1, 2].map((second) =>
+  generateAstrolabe({ ...input, second: String(second) }),
+);
 
 test('精确周期缓存跨本命、经纬度和目标范围复用时保留逐项结果', () => {
   const calculationCache = new AstrolabePeriodCalculationCache();
@@ -76,8 +79,8 @@ test('流年、流月、流日和完整范围逐出生秒等价且连续统计�
     assert.deepEqual(progress, [1, 2, 3]);
     assert.equal(result.coverage, 'natal+dynamic');
     assert.equal(result.sampleCount, 3);
-    const independent = [0, 1, 2].map((second) => {
-      const natal = generateAstrolabe({ ...input, second: String(second) });
+    const independent = independentNatalCharts.map((birthChart) => {
+      const natal = structuredClone(birthChart);
       return {
         natal,
         scopes:
@@ -164,7 +167,7 @@ test('流年、流月、流日和完整范围逐出生秒等价且连续统计�
 });
 
 test('动态离散变化独立于本命盘，事件时刻微移进入连续统计', () => {
-  const natal = generateAstrolabe(input);
+  const natal = structuredClone(independentNatalCharts[0]!);
   const sample = { natal, scopes: [buildAstrolabeScopeContext(natal, 'daily', '2028-03-20')] };
   const baseline = projectAstrolabeDynamicSample(sample);
   const changed = structuredClone(sample);
@@ -181,7 +184,7 @@ test('动态离散变化独立于本命盘，事件时刻微移进入连续统�
 });
 
 test('返照盘宫头和盘内相位完整进入动态区间投影', () => {
-  const natal = generateAstrolabe(input);
+  const natal = structuredClone(independentNatalCharts[0]!);
   const sample = {
     natal,
     scopes: [buildAstrolabeScopeContext(natal, 'yearly', '2028', { includePeriodEvents: false })],

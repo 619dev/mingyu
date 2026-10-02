@@ -202,6 +202,10 @@ function formatSynastryFacts(
   chart1: AstrolabeData,
   chart2: AstrolabeData,
 ) {
+  const personLabel = (person: 'person1' | 'person2', name: string) => {
+    const role = person === 'person1' ? '第一人' : '第二人';
+    return name && name !== role ? `${role}${name}` : role;
+  };
   const position = (chart: AstrolabeData, name: string) => {
     const point = [...chart.planets, ...chart.angles].find((item) => item.name === name);
     return point
@@ -210,11 +214,11 @@ function formatSynastryFacts(
   };
   const aspects = data.aspects.map(
     (item) =>
-      `  第一人${item.person1}的${item.point1}${position(chart1, item.point1Name)}与第二人${item.person2}的${item.point2}${position(chart2, item.point2Name)}：${item.type}，目标角${item.exactAngle}°，实际夹角${item.actualAngle.toFixed(2)}°，偏差${item.orb.toFixed(2)}°，容许偏差上限${item.allowedOrb}°，${item.closeness}。`,
+      `  ${personLabel('person1', item.person1)}的${item.point1}${position(chart1, item.point1Name)}与${personLabel('person2', item.person2)}的${item.point2}${position(chart2, item.point2Name)}：${item.type}，目标角${item.exactAngle}°，实际夹角${item.actualAngle.toFixed(2)}°，偏差${item.orb.toFixed(2)}°，容许偏差上限${item.allowedOrb}°，${item.closeness}。`,
   );
   const overlays = data.houseOverlays.map(
     (item) =>
-      `  ${item.visitorPerson === 'person1' ? '第一人' : '第二人'}${item.visitor}的${item.point}${position(item.visitorPerson === 'person1' ? chart1 : chart2, item.pointName)}落入${item.ownerPerson === 'person1' ? '第一人' : '第二人'}${item.owner}的本命盘第${item.house}宫。`,
+      `  ${personLabel(item.visitorPerson, item.visitor)}的${item.point}${position(item.visitorPerson === 'person1' ? chart1 : chart2, item.pointName)}落入${personLabel(item.ownerPerson, item.owner)}的本命盘第${item.house}宫。`,
   );
   const overlayCoverage = data.counterEvidenceFacts.find((item) => item.type === '跨盘落宫覆盖');
   return [
@@ -241,6 +245,14 @@ export interface AstrolabeSynastryPromptOptions extends PromptBuildOptions {
 export function buildAstrolabeSynastryPromptDocument(
   options: AstrolabeSynastryPromptOptions,
 ): PromptDocument {
+  const chart1 = {
+    ...options.chart1,
+    birth: { ...options.chart1.birth, name: options.chart1.birth.name?.trim() || '第一人' },
+  };
+  const chart2 = {
+    ...options.chart2,
+    birth: { ...options.chart2.birth, name: options.chart2.birth.name?.trim() || '第二人' },
+  };
   const question =
     options.question?.trim() || '请分析双方互动主轴、互补点、张力点与需要结合现实核对的部分。';
   const factSources = [
@@ -256,12 +268,9 @@ export function buildAstrolabeSynastryPromptDocument(
   const user = joinPromptSections([
     buildPromptGuidance('astrolabe-synastry'),
     buildPromptSection('当前时间', formatPromptCurrentTime(options.currentTime)),
-    buildPromptSection('第一人本命盘', formatAstrolabeForPrompt(options.chart1)),
-    buildPromptSection('第二人本命盘', formatAstrolabeForPrompt(options.chart2)),
-    buildPromptSection(
-      '跨盘资料',
-      formatSynastryFacts(options.synastry, options.chart1, options.chart2),
-    ),
+    buildPromptSection('第一人本命盘', formatAstrolabeForPrompt(chart1)),
+    buildPromptSection('第二人本命盘', formatAstrolabeForPrompt(chart2)),
+    buildPromptSection('跨盘资料', formatSynastryFacts(options.synastry, chart1, chart2)),
     buildPromptSchoolSection('astrolabe', options.schools),
     options.selection
       ? buildPromptSection('解读选择', getPromptSelectionSection(options.selection))

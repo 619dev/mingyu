@@ -331,12 +331,22 @@ function calculateCrossMutagensWithIztro(
     if (!sourcePalace) {
       throw new Error(`iztro 来源盘第 ${sourceIztroPalace.index} 宫无法映射到结构化十二宫。`);
     }
+    if (sourcePalace.earthly_branch !== sourceIztroPalace.earthlyBranch) {
+      throw new Error(`iztro 来源盘第 ${sourceIztroPalace.index} 宫地支与结构化十二宫不一致。`);
+    }
 
     allIztroStars(sourceIztroPalace).forEach((sourceStar) => {
       const mutagen = sourceStar.mutagen as MutagenName | undefined;
       if (!mutagen) return;
       if (!sourceStar.withMutagen(mutagen as never)) {
         throw new Error(`iztro 星曜 ${sourceStar.name} 的四化属性与原生判断不一致。`);
+      }
+      if (
+        !allStars(sourcePalace).some(
+          (star) => star.name === sourceStar.name && star.birth_mutagen === mutagen,
+        )
+      ) {
+        throw new Error(`iztro 来源盘 ${sourceStar.name} 生年四化与结构化十二宫不一致。`);
       }
 
       let targetIztroPalace: IztroPalace | undefined;
@@ -353,6 +363,12 @@ function calculateCrossMutagensWithIztro(
       );
       if (!targetPalace) {
         throw new Error(`iztro 目标盘第 ${targetIztroPalace.index} 宫无法映射到结构化十二宫。`);
+      }
+      if (targetPalace.earthly_branch !== targetIztroPalace.earthlyBranch) {
+        throw new Error(`iztro 目标盘第 ${targetIztroPalace.index} 宫地支与结构化十二宫不一致。`);
+      }
+      if (!allStars(targetPalace).some((star) => star.name === sourceStar.name)) {
+        throw new Error(`iztro 目标盘 ${sourceStar.name} 落宫与结构化十二宫不一致。`);
       }
 
       const sourcePalaceName = palaceDisplayName(sourcePalace);

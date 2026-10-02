@@ -262,6 +262,45 @@ test('紫微双盘真实星盘应以 iztro 原生星曜对象定位跨盘四化'
       branch: astrolabe2.star(placement.star as never).palace()?.earthlyBranch,
     },
   );
+
+  const targetIndex = astrolabe2.star(placement.star as never).palace()?.index;
+  assert.notEqual(targetIndex, undefined);
+  const targetPalace = payload2.palaces.find((item) => item.index === targetIndex);
+  const otherPalace = payload2.palaces.find((item) => item.index !== targetIndex);
+  assert.ok(targetPalace && otherPalace);
+  [targetPalace.earthly_branch, otherPalace.earthly_branch] = [
+    otherPalace.earthly_branch,
+    targetPalace.earthly_branch,
+  ];
+  assert.throws(
+    () => analyzeZiweiCompatibility(payload1, payload2, { astrolabe1, astrolabe2 }),
+    /目标盘第 \d+ 宫地支与结构化十二宫不一致/,
+  );
+  [targetPalace.earthly_branch, otherPalace.earthly_branch] = [
+    otherPalace.earthly_branch,
+    targetPalace.earthly_branch,
+  ];
+  [payload1.palaces[0].earthly_branch, payload1.palaces[1].earthly_branch] = [
+    payload1.palaces[1].earthly_branch,
+    payload1.palaces[0].earthly_branch,
+  ];
+  assert.throws(
+    () => analyzeZiweiCompatibility(payload1, payload2, { astrolabe1, astrolabe2 }),
+    /来源盘第 \d+ 宫地支与结构化十二宫不一致/,
+  );
+  [payload1.palaces[0].earthly_branch, payload1.palaces[1].earthly_branch] = [
+    payload1.palaces[1].earthly_branch,
+    payload1.palaces[0].earthly_branch,
+  ];
+  const sourceStar = payload1.palaces
+    .flatMap((palace) => [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars])
+    .find((star) => star.name === placement.star && star.birth_mutagen === placement.mutagen);
+  assert.ok(sourceStar);
+  sourceStar.birth_mutagen = undefined;
+  assert.throws(
+    () => analyzeZiweiCompatibility(payload1, payload2, { astrolabe1, astrolabe2 }),
+    /来源盘 .* 生年四化与结构化十二宫不一致/,
+  );
 });
 
 test('紫微双盘提示词应包含主证、限制且不输出匹配总分', () => {

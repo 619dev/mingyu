@@ -407,6 +407,27 @@ test('跨盘相位在同名人物与反向星体组合中保持各自位置和�
     pointNames: ['Mercury', 'Chiron', 'Ascendant'],
   });
   const prompt = buildAstrolabeSynastryPrompt({ chart1: first, chart2: second, synastry });
+  assert.deepEqual(synastry.people, ['同名', '同名']);
+  assert.match(
+    synastry.aspects.find((item) => item.point1Name === 'Mercury' && item.point2Name === 'Chiron')
+      ?.promptText ?? '',
+    /第一人同名水星与第二人同名凯龙星/,
+  );
+  assert.match(
+    synastry.houseOverlays.find(
+      (item) =>
+        item.ownerPerson === 'person1' &&
+        item.visitorPerson === 'person2' &&
+        item.pointName === 'Mercury',
+    )?.promptText ?? '',
+    /第二人同名水星.*第一人同名第\d+宫/,
+  );
+  assert.ok(
+    synastry.evidence.items.some(
+      (item) => item.title.includes('第一人同名水星') && item.title.includes('第二人同名凯龙星'),
+    ),
+  );
+  assert.match(synastry.receptionSummary ?? '', /第一人同名的水星.*第二人同名的水星/);
   const cross = prompt.slice(prompt.indexOf('【跨盘资料】'));
   assert.match(
     cross,
@@ -418,4 +439,36 @@ test('跨盘相位在同名人物与反向星体组合中保持各自位置和�
   );
   assert.match(cross, /第二人同名的水星（77°，自身本命第10宫）落入第一人同名的本命盘第3宫/);
   assert.match(cross, /第一人同名的水星（351°，自身本命第3宫）落入第二人同名的本命盘第12宫/);
+});
+
+test('姓名未填或仅空白时，双盘相位、落宫与完整任务书保留两方身份', () => {
+  const first = chart('', 359, 120);
+  const second = chart('  ', 1, 210);
+  const synastry = analyzeAstrolabeSynastry(first, second);
+  const prompt = buildAstrolabeSynastryPrompt({ chart1: first, chart2: second, synastry });
+
+  assert.deepEqual(synastry.people, ['第一人', '第二人']);
+  assert.equal(first.birth.name, '');
+  assert.equal(second.birth.name, '  ');
+  assert.match(
+    synastry.aspects.find((item) => item.point1 === '太阳' && item.point2 === '太阳')?.promptText ??
+      '',
+    /第一人太阳与第二人太阳/,
+  );
+  assert.match(
+    synastry.houseOverlays.find(
+      (item) =>
+        item.ownerPerson === 'person1' &&
+        item.visitorPerson === 'person2' &&
+        item.pointName === 'Sun',
+    )?.promptText ?? '',
+    /第二人太阳.*第一人第1宫/,
+  );
+  assert.match(prompt, /【第一人本命盘】[\s\S]*?出生信息：第一人；/);
+  assert.match(prompt, /【第二人本命盘】[\s\S]*?出生信息：第二人；/);
+  assert.match(
+    prompt,
+    /第一人的太阳（359°，自身本命第1宫）与第二人的太阳（1°，自身本命第1宫）：合相/,
+  );
+  assert.doesNotMatch(prompt, /第一人第一人|第二人第二人|出生信息：；/);
 });

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  getBaziDayIndexByCivilDate,
   getBaziDayIndexByDate,
   getBaziMonthIndexByDate,
   getCalendarInfo,
@@ -34,13 +35,21 @@ test('交节当小时内应按实际分钟区分前后节气', () => {
 });
 
 test('交节当天应按具体时刻切换节令月，不应整天一起切换', () => {
-  const before = new Date('2024-03-05T10:21:00+08:00');
-  const after = new Date('2024-03-05T10:23:00+08:00');
+  const before = new Date('2024-03-05T10:22:44.999+08:00');
+  const after = new Date('2024-03-05T10:22:45+08:00');
 
   assert.equal(getBaziMonthIndexByDate(2024, before), 1);
   assert.equal(getBaziMonthIndexByDate(2024, after), 2);
   assert.equal(getBaziDayIndexByDate(2024, 1, before), 31);
   assert.equal(getBaziDayIndexByDate(2024, 2, after), 1);
+  assert.equal(getBaziDayIndexByDate(2024, 2, before), undefined);
+  assert.equal(getBaziDayIndexByDate(2024, 1, after), undefined);
+  assert.equal(
+    getBaziDayIndexByDate(2024, 1, new Date('2024-02-04T16:27:06.999+08:00')),
+    undefined,
+  );
+  assert.equal(getBaziDayIndexByDate(2024, 1, new Date('2024-02-04T16:27:07+08:00')), 1);
+  assert.equal(getBaziDayIndexByCivilDate(2024, 2, new Date(Date.UTC(2024, 2, 5, 10, 22, 45))), 1);
   assert.deepEqual(resolveBaziFortuneDate('2024-03-05'), {
     date: '2024-03-05',
     referenceTimestamp: Date.parse('2024-03-05T12:00:00+08:00'),

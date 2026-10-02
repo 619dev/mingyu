@@ -210,12 +210,7 @@ function collectSolarTerms(years: number[]): Array<{
   return Array.from(termMap.values()).sort((left, right) => left.jd - right.jd);
 }
 
-function buildBaziMonthInfoFromTerm(
-  term: SolarTermInstance,
-  index: number,
-  termYear: number,
-  termIndex: number,
-): DetailedBaziMonthInfo {
+function buildBaziMonthInfoFromTerm(term: SolarTermInstance, index: number): DetailedBaziMonthInfo {
   const nextTerm = term.next(2);
   const startSolarTime = term.getJulianDay().getSolarTime() as SolarTimeInstance;
   const endSolarTime = nextTerm.getJulianDay().getSolarTime() as SolarTimeInstance;
@@ -223,8 +218,6 @@ function buildBaziMonthInfoFromTerm(
   const endAt = toNativeDate(endSolarTime);
   const monthColumn = startSolarTime.next(60).getLunarHour().getEightChar().getMonth();
   const zhi = monthColumn.getEarthBranch().getName();
-  const startEvidenceYear = termYear + Math.floor(termIndex / 24);
-  const endEvidenceYear = termYear + Math.floor((termIndex + 2) / 24);
 
   return {
     index,
@@ -236,38 +229,26 @@ function buildBaziMonthInfoFromTerm(
     endDateTime: formatDateTime(endAt),
     startTermName: term.getName(),
     endTermName: nextTerm.getName(),
-    // 独立节气核验目前只覆盖 1900-2200；范围外保留历表交节时刻，不伪造核验资料。
-    startTermEvidence:
-      startEvidenceYear >= 1900 && startEvidenceYear <= 2200
-        ? calculateSolarTermEvidence(startEvidenceYear, termIndex % 24)
-        : undefined,
-    endTermEvidence:
-      endEvidenceYear >= 1900 && endEvidenceYear <= 2200
-        ? calculateSolarTermEvidence(endEvidenceYear, (termIndex + 2) % 24)
-        : undefined,
     timeRange: createLocalTimeRange(startAt, endAt),
     startAt,
     endAt,
   };
 }
 
+function getBaziMonthInfoDetailed(year: number, monthIndex: number): DetailedBaziMonthInfo {
+  const termIndex = 3 + (monthIndex - 1) * 2;
+  return buildBaziMonthInfoFromTerm(SolarTerm.fromIndex(year, termIndex), monthIndex);
+}
+
 function getYearMonthsGanZhiDetailed(year: number): DetailedBaziMonthInfo[] {
   assertYear(year);
-  return Array.from({ length: 12 }, (_, offset) => {
-    const termIndex = 3 + offset * 2;
-    return buildBaziMonthInfoFromTerm(
-      SolarTerm.fromIndex(year, termIndex),
-      offset + 1,
-      year,
-      termIndex,
-    );
-  });
+  return Array.from({ length: 12 }, (_, offset) => getBaziMonthInfoDetailed(year, offset + 1));
 }
 
 function getMonthDaysInfoDetailed(year: number, month: number): DetailedBaziMonthDayInfo[] {
   assertYear(year);
   assertBaziMonthIndex(month);
-  const monthInfo = getYearMonthsGanZhiDetailed(year)[month - 1];
+  const monthInfo = getBaziMonthInfoDetailed(year, month);
 
   const termDateMap = buildTermDateMap([year - 1, year, year + 1, year + 2]);
   // 命理日以子初换日：日期标签 D 对应 D-1 日 23:00 至 D 日 23:00。
@@ -457,9 +438,23 @@ export function getCurrentTimeDescription(): string {
 }
 
 export function getYearMonthsGanZhi(year: number): BaziMonthInfo[] {
-  return getYearMonthsGanZhiDetailed(year).map(
-    ({ startAt: _startAt, endAt: _endAt, ...item }) => item,
-  );
+  return getYearMonthsGanZhiDetailed(year).map(({ startAt: _startAt, endAt: _endAt, ...item }) => {
+    const termIndex = 3 + (item.index - 1) * 2;
+    const startEvidenceYear = year + Math.floor(termIndex / 24);
+    const endEvidenceYear = year + Math.floor((termIndex + 2) / 24);
+    return {
+      ...item,
+      // 独立节气核验只用于对外月份资料，覆盖范围为 1900-2200 年。
+      startTermEvidence:
+        startEvidenceYear >= 1900 && startEvidenceYear <= 2200
+          ? calculateSolarTermEvidence(startEvidenceYear, termIndex % 24)
+          : undefined,
+      endTermEvidence:
+        endEvidenceYear >= 1900 && endEvidenceYear <= 2200
+          ? calculateSolarTermEvidence(endEvidenceYear, (termIndex + 2) % 24)
+          : undefined,
+    };
+  });
 }
 
 export function getBaziMonthIndexByCivilDate(year: number, civilDate: Date): number | undefined {
@@ -495,11 +490,24 @@ export function getBaziDayIndexByCivilDate(
   assertBaziMonthIndex(monthIndex);
   assertValidDate(civilDate, '民用参考时间');
   const referenceDate = toChinaInstant(fromCivilDate(civilDate));
-  return getMonthDaysInfoDetailed(year, monthIndex).find(
-    (item) =>
-      referenceDate.getTime() >= item.startAt.getTime() &&
-      referenceDate.getTime() < item.endAt.getTime(),
-  )?.day;
+  return getBaziDayIndexInMonth(year, monthIndex, referenceDate);
+}
+
+function getBaziDayIndexInMonth(
+  year: number,
+  monthIndex: number,
+  referenceDate: Date,
+): number | undefined {
+  const month = getBaziMonthInfoDetailed(year, monthIndex);
+  const timestamp = referenceDate.getTime();
+  if (timestamp < month.startAt.getTime() || timestamp >= month.endAt.getTime()) return undefined;
+
+  // 北京时间加一小时后取日期，将 23:00 的子初归入次日。
+  const dayOffsetMilliseconds = 9 * 60 * 60 * 1000;
+  const dayMilliseconds = 24 * 60 * 60 * 1000;
+  const dayNumber = (instant: number) =>
+    Math.floor((instant + dayOffsetMilliseconds) / dayMilliseconds);
+  return dayNumber(timestamp) - dayNumber(month.startAt.getTime()) + 1;
 }
 
 export function getBaziDayIndexByDate(
@@ -510,11 +518,7 @@ export function getBaziDayIndexByDate(
   assertYear(year);
   assertBaziMonthIndex(monthIndex);
   assertValidDate(referenceDate, '参考时间');
-  return getMonthDaysInfoDetailed(year, monthIndex).find(
-    (item) =>
-      referenceDate.getTime() >= item.startAt.getTime() &&
-      referenceDate.getTime() < item.endAt.getTime(),
-  )?.day;
+  return getBaziDayIndexInMonth(year, monthIndex, referenceDate);
 }
 
 export function getYearInfo(year: number): {

@@ -83,6 +83,11 @@ function normalizeLongitude(longitude: number) {
   return ((longitude % 360) + 360) % 360;
 }
 
+function personLabel(person: 'person1' | 'person2', name: string, otherName: string) {
+  const role = person === 'person1' ? '第一人' : '第二人';
+  return name === otherName ? (name === role ? role : `${role}${name}`) : name;
+}
+
 function angularDistance(left: number, right: number) {
   const distance = Math.abs(normalizeLongitude(left) - normalizeLongitude(right));
   return Math.min(distance, 360 - distance);
@@ -144,7 +149,7 @@ function calculateAspects(
           sourcePointKey: `astrolabe:synastry:point:person1:${point1.name}`,
           targetPointKey: `astrolabe:synastry:point:person2:${point2.name}`,
           calculationStepKey: 'astrolabe:synastry:calculation:aspect-filter',
-          promptText: `${chart1.birth.name}${point1.label}与${chart2.birth.name}${point2.label}实际夹角${actualAngle.toFixed(4)}°，距${definition.type}精确角${definition.angle}°偏差${orb.toFixed(4)}°，进入允许容许度${allowedOrb}°`,
+          promptText: `${personLabel('person1', chart1.birth.name, chart2.birth.name)}${point1.label}与${personLabel('person2', chart2.birth.name, chart1.birth.name)}${point2.label}实际夹角${actualAngle.toFixed(4)}°，距${definition.type}精确角${definition.angle}°偏差${orb.toFixed(4)}°，进入允许容许度${allowedOrb}°`,
           sources: ['双方本命计算点黄经', '主要相位精确角与当前容许度配置'],
           limitation: ASPECT_FACT_LIMITATION,
           tendency: definition.tendency,
@@ -239,7 +244,7 @@ function calculateOverlays(
             ownerChartKey: `astrolabe:synastry:chart:${ownerPerson}`,
             visitorPointKey: `astrolabe:synastry:point:${visitorPerson}:${point.name}`,
             calculationStepKey: 'astrolabe:synastry:calculation:house-overlays',
-            promptText: `${visitor.birth.name}${point.label}黄经${normalizeLongitude(point.longitude).toFixed(4)}°落入${owner.birth.name}第${placement.house}宫区间${normalizeLongitude(placement.start).toFixed(4)}°至${normalizeLongitude(placement.end).toFixed(4)}°`,
+            promptText: `${personLabel(visitorPerson, visitor.birth.name, owner.birth.name)}${point.label}黄经${normalizeLongitude(point.longitude).toFixed(4)}°落入${personLabel(ownerPerson, owner.birth.name, visitor.birth.name)}第${placement.house}宫区间${normalizeLongitude(placement.start).toFixed(4)}°至${normalizeLongitude(placement.end).toFixed(4)}°`,
             sources: ['访客本命计算点黄经', '宫主本命十二宫宫头黄经区间'],
             limitation: HOUSE_OVERLAY_LIMITATION,
           },
@@ -278,7 +283,7 @@ function buildBaseCalculationSteps(params: {
         person2HouseCount: params.chart2.houses.length,
       },
       dependsOnStepKeys: [],
-      promptText: `已校验${params.chart1.birth.name}与${params.chart2.birth.name}两份本命盘及计算点黄经`,
+      promptText: `已校验${personLabel('person1', params.chart1.birth.name, params.chart2.birth.name)}与${personLabel('person2', params.chart2.birth.name, params.chart1.birth.name)}两份本命盘及计算点黄经`,
       sources: ['双方本命出生资料、计算点黄经与宫头资料'],
       limitation: CALCULATION_STEP_LIMITATION,
     },
@@ -614,7 +619,7 @@ function createEvidence(
 ): PromptEvidenceBundle {
   const aspectItems = aspects.slice(0, 16).map((aspect): PromptEvidenceItem => ({
     level: aspect.closeness === '紧密' && aspect.tags.includes('核心点') ? '主证' : '辅证',
-    title: `${aspect.person1}${aspect.point1}${aspect.symbol}${aspect.person2}${aspect.point2}`,
+    title: `${personLabel('person1', aspect.person1, aspect.person2)}${aspect.point1}${aspect.symbol}${personLabel('person2', aspect.person2, aspect.person1)}${aspect.point2}`,
     detail: `${aspect.promptText}，属于${aspect.closeness}等级；此处只记录跨盘相位事实，不单独推导关系吉凶；边界：${aspect.limitation}`,
     source: aspect.sources.join('、'),
     tags: [...aspect.tags, aspect.tendency],
@@ -624,7 +629,7 @@ function createEvidence(
     .slice(0, 12)
     .map((overlay): PromptEvidenceItem => ({
       level: '辅证',
-      title: `${overlay.visitor}${overlay.point}落入${overlay.owner}第${overlay.house}宫`,
+      title: `${personLabel(overlay.visitorPerson, overlay.visitor, overlay.owner)}${overlay.point}落入${personLabel(overlay.ownerPerson, overlay.owner, overlay.visitor)}第${overlay.house}宫`,
       detail: `${overlay.promptText}；边界：${overlay.limitation}`,
       source: overlay.sources.join('、'),
       tags: ['西占合盘', '跨盘落宫'],
@@ -682,6 +687,8 @@ export function analyzeAstrolabeSynastry(
   options: AstrolabeSynastryOptions = {},
 ): AstrolabeSynastryData {
   if (!chart1?.birth || !chart2?.birth) throw new Error('西占合盘需要两份完整本命盘。');
+  chart1 = { ...chart1, birth: { ...chart1.birth, name: chart1.birth.name?.trim() || '第一人' } };
+  chart2 = { ...chart2, birth: { ...chart2.birth, name: chart2.birth.name?.trim() || '第二人' } };
   if (
     options.maxAspects !== undefined &&
     (!Number.isInteger(options.maxAspects) || options.maxAspects < 1 || options.maxAspects > 200)
@@ -776,8 +783,20 @@ export function analyzeAstrolabeSynastry(
   });
   // 接纳与互溶基于全部命中相位计算，不受返回上限截断影响，并沿用计算点筛选
   const receptionsResult = evaluateAstrolabeSynastryReceptions(
-    chart1,
-    chart2,
+    {
+      ...chart1,
+      birth: {
+        ...chart1.birth,
+        name: personLabel('person1', chart1.birth.name, chart2.birth.name),
+      },
+    },
+    {
+      ...chart2,
+      birth: {
+        ...chart2.birth,
+        name: personLabel('person2', chart2.birth.name, chart1.birth.name),
+      },
+    },
     aspectCalculation.matchedAspects,
     { pointNames: selectedNames },
   );

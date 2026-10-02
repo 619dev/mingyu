@@ -56,6 +56,7 @@ import {
   type QizhengMansionBoundary,
 } from './mansion-boundaries';
 import {
+  createQizhengPeriodEventScanner,
   scanQizhengPeriodEvents,
   type QizhengPeriodEventCollection,
   type QizhengPeriodMode,
@@ -2010,7 +2011,7 @@ type QizhengFlowRangeContext = {
   };
   target: ReturnType<typeof collectQizhengStars>;
   window: ReturnType<typeof resolveQizhengPeriodWindow>;
-  sampleLongitudes: (utcMs: number) => Array<{ name: string; longitude: number }>;
+  scanPeriodEvents: ReturnType<typeof createQizhengPeriodEventScanner>;
 };
 
 const MAX_FLOW_RANGE_TARGET_SAMPLES = 100_000;
@@ -2039,21 +2040,29 @@ function createQizhengFlowRangeContext(input: QizhengInput): QizhengFlowRangeCon
   const target = collectQizhengStars(flow.flowInput);
   const window = resolveQizhengPeriodWindow(input);
   const cache = new Map<number, Array<{ name: string; longitude: number }>>();
+  const sampleLongitudes = (utcMs: number) => {
+    const cached = cache.get(utcMs);
+    if (cached) return cached;
+    if (cache.size >= MAX_FLOW_RANGE_TARGET_SAMPLES) {
+      const oldest = cache.keys().next().value as number | undefined;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    const sampled = sampleQizhengLongitudes(utcMs);
+    cache.set(utcMs, sampled);
+    return sampled;
+  };
   return {
     flow,
     target,
     window,
-    sampleLongitudes: (utcMs) => {
-      const cached = cache.get(utcMs);
-      if (cached) return cached;
-      if (cache.size >= MAX_FLOW_RANGE_TARGET_SAMPLES) {
-        const oldest = cache.keys().next().value as number | undefined;
-        if (oldest !== undefined) cache.delete(oldest);
-      }
-      const sampled = sampleQizhengLongitudes(utcMs);
-      cache.set(utcMs, sampled);
-      return sampled;
-    },
+    scanPeriodEvents: createQizhengPeriodEventScanner({
+      startUtcMs: window.startUtcMs,
+      endUtcMs: window.endUtcMs,
+      timezone: input.timezone ?? 8,
+      timeZoneId: input.timeZoneId,
+      mode: window.mode,
+      sampleLongitudes,
+    }),
   };
 }
 
@@ -2145,16 +2154,22 @@ function overlayQizhengFlowingStars(
   }
   transits.sort((a, b) => a.orbRatio - b.orbRatio || a.orb - b.orb);
   const window = flowContext?.window ?? resolveQizhengPeriodWindow(natal);
-  const periodEvents = scanQizhengPeriodEvents({
-    natalStars: natalStars.map((star) => ({ name: star.name, longitude: star.longitude })),
-    twelvePalaces,
-    startUtcMs: window.startUtcMs,
-    endUtcMs: window.endUtcMs,
-    timezone: natal.timezone ?? 8,
-    timeZoneId: natal.timeZoneId,
-    mode: window.mode,
-    sampleLongitudes: flowContext?.sampleLongitudes ?? sampleQizhengLongitudes,
-  });
+  const natalReferences = natalStars.map((star) => ({
+    name: star.name,
+    longitude: star.longitude,
+  }));
+  const periodEvents = flowContext
+    ? flowContext.scanPeriodEvents({ natalStars: natalReferences, twelvePalaces })
+    : scanQizhengPeriodEvents({
+        natalStars: natalReferences,
+        twelvePalaces,
+        startUtcMs: window.startUtcMs,
+        endUtcMs: window.endUtcMs,
+        timezone: natal.timezone ?? 8,
+        timeZoneId: natal.timeZoneId,
+        mode: window.mode,
+        sampleLongitudes: sampleQizhengLongitudes,
+      });
   return {
     year: flow.flowInput.year,
     month: flow.flowInput.month,
