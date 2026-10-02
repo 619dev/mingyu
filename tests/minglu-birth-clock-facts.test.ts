@@ -36,7 +36,7 @@ test('命录按实盘原始钟表列生辰，跨日校正另列完整日期', ()
     day: 18,
     hour: 21,
     minute: 34,
-    second: 20,
+    second: 13,
   });
   assert.deepEqual(chart.solarDate, { year: 2024, month: 5, day: 18 });
 
@@ -48,7 +48,7 @@ test('命录按实盘原始钟表列生辰，跨日校正另列完整日期', ()
   assert.equal(metadata.exactBirthTime, '00:30:42');
   assert.equal(metadata.birthSecond, 42);
   assert.equal(metadata.isTrueSolarTime, true);
-  assert.equal(metadata.trueSolarTimeStr, '2024年5月18日 21时34分20秒');
+  assert.equal(metadata.trueSolarTimeStr, '2024年5月18日 21时34分13秒');
   assert.equal(metadata.birthPlace, '盘面出生地点');
   assert.equal(metadata.longitude, 75);
   assert.equal(metadata.timezone, 8);
@@ -66,7 +66,7 @@ test('命录按实盘原始钟表列生辰，跨日校正另列完整日期', ()
   );
   assert.match(html, /2024年5月19日 00:30:42/u);
   assert.match(html, /农历四月十二/u);
-  assert.match(html, /已校正 \(2024年5月18日 21时34分20秒\)/u);
+  assert.match(html, /已校正 \(2024年5月18日 21时34分13秒\)/u);
 
   const conflictingPerson = {
     ...person,
@@ -108,7 +108,7 @@ test('命录原始农历生肖、星座与跨年公历均随同一出生日期',
       lunar: '农历正月初一',
       zodiac: '龙',
       constellation: '水瓶',
-      correctedText: '2024年2月9日 21时16分12秒',
+      correctedText: '2024年2月9日 21时16分32秒',
     },
     {
       input: {
@@ -124,7 +124,7 @@ test('命录原始农历生肖、星座与跨年公历均随同一出生日期',
       lunar: '农历十一月十九',
       zodiac: '兔',
       constellation: '摩羯',
-      correctedText: '2024年1月1日 3时26分23秒',
+      correctedText: '2024年1月1日 3时27分5秒',
     },
     {
       input: { year: 2024, month: 5, day: 21, birthHour: 0, birthMinute: 30, birthLongitude: 75 },
@@ -169,7 +169,7 @@ test('命录同日校正沿用时分格式，结果中非零秒仍如实列出',
     useTrueSolarTime: true,
     gender: 'male' as const,
   };
-  const minuteChart = baziCalculator.calculateBazi({ ...input, birthLongitude: 75.105 });
+  const minuteChart = baziCalculator.calculateBazi({ ...input, birthLongitude: 75.125 });
   assert.equal(minuteChart.timing?.standardTime.second, 0);
   assert.equal(minuteChart.timing?.correctedTime.second, 0);
   const minuteMetadata = buildMingluArticle({
@@ -188,14 +188,14 @@ test('命录同日校正沿用时分格式，结果中非零秒仍如实列出',
   assert.equal(explicitSecondMetadata.trueSolarTimeStr, '9时34分0秒');
 
   const secondChart = baziCalculator.calculateBazi({ ...input, birthLongitude: 75 });
-  assert.equal(secondChart.timing?.correctedTime.second, 35);
+  assert.equal(secondChart.timing?.correctedTime.second, 30);
   const secondMetadata = buildMingluArticle({
     person: { name: '校正秒样本' },
     baziResult: secondChart,
   }).metadata;
   assert.equal(secondMetadata.exactBirthTime, '12:30');
   assert.equal(secondMetadata.birthSecond, undefined);
-  assert.equal(secondMetadata.trueSolarTimeStr, '9时33分35秒');
+  assert.equal(secondMetadata.trueSolarTimeStr, '9时33分30秒');
 });
 
 test('夏令时两种输入路径均保留校正前原始公历生辰', () => {
@@ -261,7 +261,7 @@ test('农历精确输入先转原始公历，时辰代表值不冒充出生钟�
   assert.equal(lunarMetadata.solarDateStr, '2024年5月19日');
   assert.equal(lunarMetadata.lunarDateStr, '农历四月十二');
   assert.equal(lunarMetadata.exactBirthTime, '00:30:42');
-  assert.equal(lunarMetadata.trueSolarTimeStr, '2024年5月18日 21时34分20秒');
+  assert.equal(lunarMetadata.trueSolarTimeStr, '2024年5月18日 21时34分13秒');
 
   const indexedChart = baziCalculator.calculateBazi({
     year: 2024,

@@ -329,8 +329,8 @@ test('八字真太阳时本命证据采用唯一校正时刻并保留秒精度',
   assert.match(analysis.promptText, /当前命盘只采用明确时辰或真太阳时校正后的唯一时刻/);
   assert.doesNotMatch(analysis.promptText, /候选盘\d|候选时辰为/);
   const prompt = formatBaziForPrompt(result);
-  assert.equal(result.timing.correctedTime.second, 30);
-  assert.match(prompt, /真太阳时: 1990年4月14日 22:13:30 \| 出生地:新疆喀什 \| 经度:73\.5/);
+  assert.equal(result.timing.correctedTime.second, 44);
+  assert.match(prompt, /真太阳时: 1990年4月14日 22:13:44 \| 出生地:新疆喀什 \| 经度:73\.5/);
   assert.match(prompt, /基本信息: 乾造 \| 1990年4月14日 亥时/);
   assert.doesNotMatch(prompt, /结构化证据|证据汇总|候选盘|出生时间敏感性/);
 });

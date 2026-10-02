@@ -158,20 +158,21 @@ test('皇极精确占时的秒数在钟表、真太阳时盘面与完整任务�
   });
   const trueSolarData = trueSolar.data as ReturnType<typeof calculateHuangjiJingshi>;
   assert.equal(trueSolar.timeContext?.clockDateTime, '2025-12-21T23:04:42');
-  assert.equal(trueSolar.timeContext?.effectiveDateTime, '2025-12-21T19:59:43');
+  assert.equal(trueSolar.timeContext?.effectiveDateTime, '2025-12-21T20:00:27');
   assert.equal(
     new Date(`${trueSolar.timeContext?.effectiveDateTime}+08:00`).toISOString(),
-    '2025-12-21T11:59:43.000Z',
+    '2025-12-21T12:00:27.000Z',
   );
-  assert.equal(trueSolarData.dateTimeForecast?.civilTime.dateTime, '2025-12-21 19:59:43');
+  assert.equal(trueSolarData.dateTimeForecast?.civilTime.dateTime, '2025-12-21 20:00:27');
+  assert.equal(trueSolarData.dateTimeForecast?.calendar.hourSegment, 6);
   assert.equal(
     trueSolarData.dateTimeForecast?.civilTime.termReferenceDateTime,
     '2025-12-21 23:04:42',
   );
   for (const fact of [
     '当地钟表时间：2025-12-21 23:04:42',
-    '采用真太阳时：2025-12-21 19:59:43',
-    '起盘时间：2025-12-21 19:59:43',
+    '采用真太阳时：2025-12-21 20:00:27',
+    '起盘时间：2025-12-21 20:00:27',
     '节气与皇极年参照实际占时：2025-12-21 23:04:42',
   ]) {
     assert.ok(trueSolar.prompt.includes(fact), `缺少${fact}`);

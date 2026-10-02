@@ -126,7 +126,7 @@ test('四柱时间模式必须保留秒、使用北京时间并把候选区间�
 
 test('六种时间起局在真太阳时跨晚子时保留原秒、校正秒与实际时柱', async () => {
   const clockTimestamp = Date.parse('2025-02-01T23:13:42+08:00');
-  const correctedTimestamp = Date.parse('2025-02-01T23:00:01+08:00');
+  const correctedTimestamp = Date.parse('2025-02-01T23:00:05+08:00');
   for (const method of [
     'liuyao',
     'meihua',
@@ -151,13 +151,13 @@ test('六种时间起局在真太阳时跨晚子时保留原秒、校正秒与�
       ganzhi: { day: string; hour: string };
     };
     assert.equal(session.timeContext?.clockDateTime, '2025-02-01T23:13:42', method);
-    assert.equal(session.timeContext?.effectiveDateTime, '2025-02-01T23:00:01', method);
+    assert.equal(session.timeContext?.effectiveDateTime, '2025-02-01T23:00:05', method);
     assert.equal(Date.parse(`${session.timeContext?.clockDateTime}+08:00`), clockTimestamp, method);
     assert.equal(data.timestamp, correctedTimestamp, method);
     assert.equal(data.ganzhi.day, '壬寅', method);
     assert.equal(data.ganzhi.hour, '庚子', method);
     assert.match(session.prompt, /当地钟表时间：2025-02-01 23:13:42/u, method);
-    assert.match(session.prompt, /采用真太阳时：2025-02-01 23:00:01/u, method);
+    assert.match(session.prompt, /采用真太阳时：2025-02-01 23:00:05/u, method);
     assert.match(session.prompt, /干支：甲辰年 丁丑月 壬寅日 庚子时/u, method);
   }
 });
@@ -227,13 +227,13 @@ test('旧占问恢复以保存盘面的秒级占时重建北京时间任务书�
     const restored = getDivinationHistoryById(saved.id)?.session;
     assert.ok(restored);
     assert.deepEqual(restored.data, JSON.parse(JSON.stringify(minuteBasedOldChart.data)));
-    assert.equal(restored.timeContext?.effectiveDateTime, '2025-02-01T22:59:19');
+    assert.equal(restored.timeContext?.effectiveDateTime, '2025-02-01T22:59:23');
     assert.equal(
       (restored.data as { timestamp: number }).timestamp,
-      Date.parse('2025-02-01T22:59:19+08:00'),
+      Date.parse('2025-02-01T22:59:23+08:00'),
     );
-    assert.match(restored.prompt, /采用真太阳时：2025-02-01 22:59:19/u);
-    assert.doesNotMatch(restored.prompt, /采用真太阳时：2025-02-01 23:00:01/u);
+    assert.match(restored.prompt, /采用真太阳时：2025-02-01 22:59:23/u);
+    assert.doesNotMatch(restored.prompt, /采用真太阳时：2025-02-01 23:00:05/u);
   } finally {
     if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
     else Reflect.deleteProperty(globalThis, 'window');

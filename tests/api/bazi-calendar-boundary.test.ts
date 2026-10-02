@@ -131,7 +131,7 @@ test('八字公开结果在农历精确真太阳时输入中保留换算后的�
     day: 18,
     hour: 21,
     minute: 34,
-    second: 20,
+    second: 13,
   });
 
   const compact = await post('bazi/calculate', { ...input, detailMode: 'compact' });

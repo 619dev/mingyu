@@ -89,7 +89,7 @@ test('紫微真太阳时落入宿主夏令时缺口时四柱与任务书保持�
   const newYork = runInTimeZone<Result>('America/New_York', script);
   assert.deepEqual(newYork, utc);
   assert.equal(utc.birthDate, '2024-03-10');
-  assert.deepEqual(utc.birthTime, { hour: 2, minute: 19, second: 13 });
+  assert.deepEqual(utc.birthTime, { hour: 2, minute: 19, second: 41 });
   assert.equal(utc.birthTimeIndex, 1);
   assert.equal(utc.astrolabeTime, '丑时');
   assert.deepEqual(utc.fourPillars, {

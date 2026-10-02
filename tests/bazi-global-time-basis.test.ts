@@ -222,8 +222,11 @@ test('纽约固定偏移与 IANA 夏令时应得到同一年月、司令和起�
   );
   assert.equal(iana.timing?.timezone, -4);
   assert.equal(iana.timing?.timeZoneId, 'America/New_York');
+  assert.equal(iana.timing?.correctedTime.hour, 10);
+  assert.equal(iana.timing?.correctedTime.minute, 59);
+  assert.equal(iana.timing?.correctedTime.second, 57);
   assertPublicTimeAxes(iana, {
-    pillars: { year: '甲辰', month: '庚午', day: '丙寅', hour: '甲午' },
+    pillars: { year: '甲辰', month: '庚午', day: '丙寅', hour: '癸巳' },
     currentJieqi: '夏至',
     nextJieqi: '小暑',
     monthCommander: '丁',
