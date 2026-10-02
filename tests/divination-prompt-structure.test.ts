@@ -535,10 +535,13 @@ test('各类占卜提示词都使用统一的角色加信息加问题结构', as
       );
       assert.doesNotMatch(prompt, /兄弟持世，主竞争、破财、朋友/);
       assert.doesNotMatch(prompt, /取用评分表|权重\d/);
+      assert.match(prompt, /第1爻兄弟子水[^\n]*冲月建、日辰午，动，旬空，月破，日辰冲动/);
+      assert.match(prompt, /第6爻兄弟子水[^\n]*冲月建、日辰午，旬空，月破，日冲成破/u);
       assert.match(
         prompt,
-        /月日触发：月建、日辰午：未直接同支入爻，冲第1爻兄弟子水、第6爻兄弟子水/,
+        /月日五行：[^\n]*第1爻兄弟子水克月建、日辰午火[^\n]*第6爻兄弟子水克月建、日辰午火/u,
       );
+      assert.doesNotMatch(prompt, /月日触发：|未直接同支入爻/u);
       assert.match(prompt, /用神主线：事项用神待按具体问题取用/);
       assert.doesNotMatch(prompt, /应期资料：|组合时机：|六亲持世：|应爻与动变：/);
       assert.doesNotMatch(prompt, /结构化证据|证据汇总|解释边界|只使用上方/);
@@ -547,7 +550,8 @@ test('各类占卜提示词都使用统一的角色加信息加问题结构', as
       assert.doesNotMatch(prompt, /【分析思路】/);
       assert.match(prompt, /核心结构：主卦火风鼎；互卦泽天夬；变卦火山旅/);
       assert.match(prompt, /体用：体卦离（火）；用卦巽（木）；动爻第2爻；体用关系用生体/);
-      assert.match(prompt, /互卦：泽天夬；体互兑（金）；用互乾（金）；原体克体互；原体克用互/);
+      assert.match(prompt, /互卦：泽天夬；原体克体互；原体克用互/);
+      assert.match(prompt, /互卦泽天夬：体卦兑金，用卦乾金，关系比和/u);
       assert.match(prompt, /变卦火山旅：体卦离火，用卦艮土，关系体生用/);
       assert.match(prompt, /月令作用：子月令水克变后体卦离火，变后体卦为死/);
       assert.match(prompt, /月令作用：变后用卦艮土克子月令水，卦气耗用，变后用卦为囚/);

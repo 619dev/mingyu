@@ -19,10 +19,16 @@ test('历史六爻简版任务书保留本课月日、动变空亡与飞伏关�
   assert.equal(data.yaosDetail[0].changedYao?.isVoid, true);
   assert.match(session.aiPrompt, /【当前时间】[\s\S]*2026年9月30日/);
   assert.match(session.aiPrompt, /【起课时间】[\s\S]*2025年1月28日/);
-  assert.match(session.aiPrompt, /月日触发：月建丑：[\s\S]*日辰酉：/);
+  assert.match(
+    session.aiPrompt,
+    /月日五行：[^\n]*第1爻父母寅木克月建丑土[^\n]*日辰酉金克第1爻父母寅木/u,
+  );
+  assert.match(session.aiPrompt, /第4爻妻财酉金[^\n]*值日辰酉，刑日辰酉（自刑）/u);
+  assert.match(session.aiPrompt, /第5爻子孙未土[^\n]*冲月建丑，刑月建丑（恃势之刑）[^\n]*月破/u);
   assert.match(session.aiPrompt, /第1爻父母寅木[^\n]*化兄弟巳火（化泄、化空）/);
   assert.match(session.aiPrompt, /官鬼伏第3爻亥水，伏于兄弟午火下（伏神克飞/);
-  assert.equal((session.aiPrompt.match(/月日触发：/g) ?? []).length, 1);
+  assert.doesNotMatch(session.aiPrompt, /月日触发：|月建、日辰/u);
+  assert.equal((session.aiPrompt.match(/月日五行：/g) ?? []).length, 1);
   assert.equal((session.aiPrompt.match(/六爻全表：/g) ?? []).length, 1);
   assert.doesNotMatch(session.aiPrompt, /evidenceAnalysis|sourceUrl|schemaVersion/);
 });

@@ -28,10 +28,10 @@ test('梅花在线任务书保留动爻阴阳变化与互卦体用关系', () =>
   assert.equal(data.analysis.inter2Relation, '原体生用互');
 
   assert.ok(full.includes('动爻变化：主卦第2爻阳变阴'));
-  assert.ok(full.includes('互卦：水火既济；体互坎（水）；用互离（火）'));
+  assert.ok(full.includes('互卦：水火既济；体互生原体；原体生用互'));
   assert.ok(full.includes('互卦水火既济：体卦坎水，用卦离火，关系体克用'));
   assert.ok(session.aiPrompt.includes('动爻变化：主卦第2爻阳变阴'));
-  assert.ok(session.aiPrompt.includes('互卦：水火既济；体互坎（水）；用互离（火）'));
+  assert.ok(session.aiPrompt.includes('互卦：水火既济；体互生原体；原体生用互'));
   assert.ok(session.aiPrompt.includes('互卦水火既济：体卦坎水，用卦离火，关系体克用'));
   assert.match(session.aiPrompt, /【任务】[\s\S]*【问题】\n这项申请的推进结果怎样？/);
 });

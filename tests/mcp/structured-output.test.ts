@@ -4828,10 +4828,15 @@ test('MCP 梅花排盘与提示词应返回主互变体用推进证据', async (
     const promptText = String(prompt.structuredContent?.prompt);
     assert.match(promptText, /占法：梅花易数/);
     assert.match(promptText, /核心结构：主卦[\s\S]*体用：[\s\S]*互卦：[\s\S]*体用阶段：/);
+    assert.ok(
+      promptText.includes(
+        `体用：体卦${result.tiGua.name}（${result.tiGua.element}）；用卦${result.yongGua.name}（${result.yongGua.element}）；动爻第${result.movingYao.position}爻；体用关系${result.analysis.tiYongRelation}`,
+      ),
+    );
     for (const stage of result.evidenceAnalysis.stages) {
       const displayedStage =
-        stage.stage === 'origin' && stage.relation
-          ? stage.promptText.replace(`，关系${stage.relation}`, '')
+        stage.stage === 'origin'
+          ? '主卦体用依据：主卦以动爻所在经卦为用、另一经卦为体。'
           : stage.promptText;
       assert.ok(promptText.includes(displayedStage), `${stage.stage}阶段事实应进入提示词`);
     }
@@ -4949,7 +4954,11 @@ test('MCP 六爻与大六壬提示词工具保留用户模板范围', async () =
     assert.equal(liuyaoResult.isError, undefined, 'liuyao_prompt 不应返回错误');
     const liuyaoPrompt = String(liuyaoResult.structuredContent?.prompt);
     assert.match(liuyaoPrompt, /占法：六爻/);
-    assert.match(liuyaoPrompt, /世应：[\s\S]*六爻全表：[\s\S]*月日触发：/);
+    assert.match(
+      liuyaoPrompt,
+      /世应：[\s\S]*六爻全表：[\s\S]*月日五行：[^\n]*月建子水[^\n]*日辰午火/u,
+    );
+    assert.doesNotMatch(liuyaoPrompt, /月日触发：/u);
     assert.doesNotMatch(liuyaoPrompt, /^动变：/m);
     assert.match(liuyaoPrompt, /【问题范围】\n鬼神怪异/);
     assert.doesNotMatch(liuyaoPrompt, /结构化证据|计算链|证据汇总|解释限制|断卦要点/);

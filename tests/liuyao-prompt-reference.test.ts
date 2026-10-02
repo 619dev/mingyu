@@ -83,6 +83,23 @@ test('六爻事业用神与世爻不同五行时保留原忌仇神的作用对�
   assert.equal(text.split('动变五行：本爻酉金克变爻寅木').length - 1, 1);
   assert.doesNotMatch(text, /^动变：/m);
   assert.doesNotMatch(text, /变爻寅木克本爻酉金|变爻子水生本爻未土/);
+  for (const content of [
+    text,
+    buildSourceDivinationPrompt({
+      method: 'liuyao',
+      data,
+      question: '请分析工作进展。',
+      currentTime: new Date('2026-05-19T10:30:00+08:00'),
+      liuyaoTemplate: 'shiye',
+    }),
+  ]) {
+    assert.match(content, /第2爻父母巳火[^\n]*值月建、日辰巳/u);
+    assert.match(content, /第5爻妻财亥水[^\n]*冲月建、日辰巳，月破，日冲成破/u);
+    assert.equal(content.split('值月建、日辰巳').length - 1, 1);
+    assert.equal(content.split('冲月建、日辰巳').length - 1, 1);
+    assert.doesNotMatch(content, /月日触发：|值月建巳，值日辰巳|冲月建巳，冲日辰巳/u);
+    assert.match(content, /月日五行：[^\n]*月建、日辰巳火与第2爻父母巳火同五行/u);
+  }
 });
 
 test('六爻通用与感情提示词不把世爻写成事项用神', () => {
@@ -125,6 +142,9 @@ test('六爻旧结果缺爻位或伏神字段时提示资料覆盖状态', () =>
   assert.match(text, /资料覆盖：逐爻资料已列第1、2、3、4、5爻；缺少第6爻；伏神记录未提供/);
   assert.doesNotMatch(text, /六爻全表：/);
   assert.doesNotMatch(text, /伏神0爻/);
+  assert.match(text, /^月日触发：月建、日辰午：冲第1爻兄弟子水$/mu);
+  assert.doesNotMatch(text, /未直接同支入爻|冲第6爻/u);
+  assert.match(text, /第1爻兄弟子水[^\n]*冲月建、日辰午[^\n]*月破，日冲成破/u);
 });
 
 test('六爻静卦按实际世应和空爻给出月日生克及冲空对象', () => {
@@ -141,6 +161,23 @@ test('六爻静卦按实际世应和空爻给出月日生克及冲空对象', ()
   assert.match(text, /第2爻父母午火（本爻空亡；本爻午逢值，子冲午）/);
   assert.doesNotMatch(text, /动变五行：/);
   assert.match(text, /明伏分布：本卦明爻6爻，六亲为兄弟、父母、子孙、妻财、官鬼；伏神0爻/);
+  for (const content of [
+    text,
+    buildSourceDivinationPrompt({
+      method: 'liuyao',
+      data,
+      question: '请分析静卦。',
+      currentTime: new Date('2026-05-19T10:30:00+08:00'),
+      liuyaoTemplate: 'shiye',
+    }),
+  ]) {
+    assert.match(content, /第3爻子孙申金[^\n]*合月建、日辰巳，刑月建、日辰巳（无恩之刑）/u);
+    assert.match(content, /第6爻官鬼寅木[^\n]*害月建、日辰巳，刑月建、日辰巳（无恩之刑）/u);
+    assert.equal(content.split('合月建、日辰巳').length - 1, 1);
+    assert.equal(content.split('害月建、日辰巳').length - 1, 1);
+    assert.equal(content.split('刑月建、日辰巳（无恩之刑）').length - 1, 2);
+    assert.doesNotMatch(content, /月日触发：|未直接同支入爻/u);
+  }
 });
 
 test('六爻逐爻表同时呈现化空、回头关系与进神', () => {
@@ -150,6 +187,10 @@ test('六爻逐爻表同时呈现化空、回头关系与进神', () => {
   const voidLine = voidText.split('\n').find((line) => line.startsWith('  第6爻'));
   assert.deepEqual(voidData.yaosDetail[5].changeRelations, ['回头生', '化空']);
   assert.match(voidLine ?? '', /化兄弟戌土（回头生、化空）/);
+  assert.match(voidText, /第1爻兄弟未土[^\n]*害月建子，合日辰午/u);
+  assert.match(voidText, /第4爻兄弟丑土[^\n]*合月建子，害日辰午/u);
+  assert.match(voidText, /月日五行：[^\n]*第1爻兄弟未土克月建子水[^\n]*日辰午火生第1爻兄弟未土/u);
+  assert.doesNotMatch(voidText, /月建、日辰|月日触发：/u);
   const legacyVoidData = structuredClone(voidData);
   delete legacyVoidData.yaosDetail[5].changeRelations;
   assert.match(formatSourceLiuyaoPrompt('liuyao', legacyVoidData), /化兄弟戌土（化空）/);

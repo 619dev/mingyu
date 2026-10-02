@@ -171,13 +171,13 @@ function extractLiuyaoFacts(data: unknown): DivinationPromptFact[] {
       : null,
     changing.length
       ? fact('liuyao.changing', '六爻全表：', changing.flatMap(yaoChangeFacts), {
-          scope: { start: '六爻全表：', end: '月日触发：' },
+          scope: { start: '六爻全表：', end: '\n旬空' },
           unit: 'block',
         })
       : null,
     ...yaos.map((item, index) =>
       fact(`liuyao.yao.${index}`, yaoBrief(item) ?? '', [`六神${text(item.sixGod)}`], {
-        scope: { start: '六爻全表：', end: '月日触发：' },
+        scope: { start: '六爻全表：', end: '\n旬空' },
       }),
     ),
     fact('liuyao.void', '旬空', [voidBranches.length ? voidBranches.join('、') : '未列']),
@@ -193,6 +193,12 @@ function extractMeihuaFacts(data: unknown): DivinationPromptFact[] {
   const changedTi = record(d.changedTiGua);
   const changedYong = record(d.changedYongGua);
   const analysis = record(d.analysis);
+  const interName = text(d.interName) || text(record(d.interHexagram)?.name) || '无';
+  const interTi = record(d.interTiGua);
+  const interYong = record(d.interYongGua);
+  const processStage = records(record(d.evidenceAnalysis)?.stages).find(
+    (stage) => stage.stage === 'process' && stage.status === '已计算',
+  );
   const changedName = text(d.changedName) || text(record(d.changedHexagram)?.name) || '无';
   const hasResultStage = records(record(d.evidenceAnalysis)?.stages).some(
     (stage) => stage.stage === 'result' && stage.status === '已计算',
@@ -209,11 +215,18 @@ function extractMeihuaFacts(data: unknown): DivinationPromptFact[] {
       d.movingYao && isRecord(d.movingYao) ? `动爻第${text(d.movingYao.position)}爻` : undefined,
       analysis ? `体用关系${text(analysis.tiYongRelation)}` : undefined,
     ]),
-    fact('meihua.inter', '互卦：', [
-      ` ${text(d.interName) || text(record(d.interHexagram)?.name) || '无'}`,
-      record(d.interTiGua) ? `体互${text(record(d.interTiGua)?.name)}` : undefined,
-      record(d.interYongGua) ? `用互${text(record(d.interYongGua)?.name)}` : undefined,
+    fact('meihua.inter', `互卦${interName}：`, [
+      interTi ? `体卦${text(interTi.name)}${text(interTi.element)}` : undefined,
+      interYong ? `用卦${text(interYong.name)}${text(interYong.element)}` : undefined,
+      processStage ? `关系${text(processStage.relation)}` : undefined,
     ]),
+    analysis && (text(analysis.inter1Relation) || text(analysis.inter2Relation))
+      ? fact('meihua.inter-original-relations', '互卦：', [
+          interName,
+          analysis.inter1Relation,
+          analysis.inter2Relation,
+        ])
+      : null,
     fact('meihua.changed', hasResultStage ? `变卦${changedName}：` : '变卦：', [
       changedName,
       changedTi ? `${hasResultStage ? '' : '变后'}体卦${text(changedTi.name)}` : undefined,

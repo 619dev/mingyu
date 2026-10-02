@@ -266,7 +266,8 @@ test('npm 占法增强格式化应直接提供前端使用的关键证据', () =
   const qimenText = formatEnhancedDivinationInfo('qimen', qimen);
 
   assert.match(liuyaoText, /用神主线：事项用神待按具体问题取用/);
-  assert.match(liuyaoText, /月日触发：/);
+  assert.match(liuyaoText, /月日五行：[^\n]*月建子水[^\n]*日辰午火/u);
+  assert.doesNotMatch(liuyaoText, /月日触发：/u);
   assert.doesNotMatch(liuyaoText, /应期资料：/);
   assert.match(qimenText, /值符值使与时干：/);
   assert.match(qimenText, /节令：/);

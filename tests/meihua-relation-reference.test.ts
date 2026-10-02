@@ -52,11 +52,13 @@ test('梅花五种主卦体用关系仅展示命中原文，并附本盘月令�
       ? seasonEvaluation.slice(seasonPrefix.length)
       : seasonEvaluation;
     assert.ok(prompt.includes(`主卦体用月令条件：${displayedSeasonEvaluation}`), relation);
-    const originStage = data.evidenceAnalysis!.stages[0]!;
     assert.ok(
-      prompt.includes(originStage.promptText.replace(`，关系${originStage.relation}`, '')),
+      prompt.includes(
+        `体用：体卦${data.tiGua.name}（${data.tiGua.element}）；用卦${data.yongGua.name}（${data.yongGua.element}）；动爻第${data.movingYao.position}爻；体用关系${relation}`,
+      ),
       relation,
     );
+    assert.ok(prompt.includes('主卦体用依据：主卦以动爻所在经卦为用、另一经卦为体。'), relation);
     for (const judgement of Object.values(MEIHUA_RELATION_JUDGEMENTS)) {
       assert.ok(!prompt.includes(judgement.classicSummary), relation);
     }

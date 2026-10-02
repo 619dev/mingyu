@@ -11,6 +11,8 @@ import { formatDetailedDivinationInfo } from '@core/prompt/divination-detail';
 import { formatMeihuaFacts } from '@core/prompt/meihua-facts';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
 import { ZHOUYI_HEXAGRAMS_TEXT } from '@core/classics/zhouyi';
+import { extractDivinationPromptFacts } from '../scripts/prompt-audit/divination-facts';
+import { auditPromptFacts } from '../scripts/prompt-audit/facts';
 
 test('梅花兼容起卦入口的在线提示只显示实际年月日时取数法', () => {
   const date = new Date('2026-05-19T10:30:00+08:00');
@@ -222,48 +224,89 @@ test('梅花字占保留原字及分笔，方位取象使用中文资料', () =>
 });
 
 test('梅花在线提示词保留六个体用角色的月令关系且阶段不重复状态分类', () => {
-  const data = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
-    method: 'number',
-    number: 42,
-  });
-  const prompt = buildCoreDivinationPrompt({
-    method: 'meihua',
-    data,
-    question: '请做整体解读。',
-    currentTime: new Date('2026-05-19T10:30:00+08:00'),
-  });
-  assert.ok(data.evidenceAnalysis?.stages.length);
-  for (const stage of data.evidenceAnalysis.stages) {
-    const displayedStage =
-      stage.stage === 'origin' && stage.relation
-        ? stage.promptText.replace(`，关系${stage.relation}`, '')
-        : stage.promptText;
-    assert.ok(prompt.includes(displayedStage));
-    assert.doesNotMatch(stage.promptText, /月令|支持：|限制：/u);
-  }
-  const stageSection = prompt.split('体用阶段：\n')[1]?.split('\n起卦法：')[0] ?? '';
-  assert.ok(stageSection);
-  assert.doesNotMatch(stageSection, /月令|支持：|限制：/u);
-
-  const monthFacts = formatMeihuaFacts(data).filter((fact) => fact.startsWith('月令作用：'));
-  assert.equal(monthFacts.length, 6);
-  for (const fact of monthFacts) assert.equal(prompt.split(fact).length - 1, 1, fact);
-
-  const origin = data.evidenceAnalysis.stages.find((stage) => stage.stage === 'origin');
-  assert.ok(origin);
-  assert.match(prompt, new RegExp(`体用关系${origin.relation}`, 'u'));
-  assert.doesNotMatch(prompt, new RegExp(`主卦${origin.relation}，体卦月令`, 'u'));
-  for (const [role, state] of [
-    ['体', origin.ti.seasonState],
-    ['用', origin.yong.seasonState],
-  ] as const) {
-    if (state === '旺' || state === '相') {
-      assert.ok(origin.support.includes(`${role}卦得月令${state}`));
-    } else {
-      assert.ok(origin.constraints.includes(`${role}卦月令${state}`));
+  for (const fixture of [
+    {
+      number: 42,
+      origin: '体用：体卦坎（水）；用卦兑（金）；动爻第6爻；体用关系用生体',
+      inter: '互卦：风火家人；原体克体互；原体生用互',
+      process: '互卦风火家人：体卦离火，用卦巽木，关系用生体',
+      misplacedProcess: '互卦风火家人：体卦巽木，用卦离火，关系用生体',
+      misplacedOriginalRelation: '互卦：风火家人；体互克原体；原体生用互',
+      result: '变卦天水讼：体卦坎水，用卦乾金，关系用生体',
+    },
+    {
+      number: 123,
+      origin: '体用：体卦离（火）；用卦坎（水）；动爻第3爻；体用关系用克体',
+      inter: '互卦：水火既济；体互克原体；用互与原体比和',
+      process: '互卦水火既济：体卦坎水，用卦离火，关系体克用',
+      misplacedProcess: '互卦水火既济：体卦离火，用卦坎水，关系体克用',
+      misplacedOriginalRelation: '互卦：水火既济；原体克体互；用互与原体比和',
+      result: '变卦火风鼎：体卦离火，用卦巽木，关系用生体',
+    },
+  ]) {
+    const data = generateMeihua(new Date('2026-05-19T10:30:00+08:00'), {
+      method: 'number',
+      number: fixture.number,
+    });
+    const structuredBefore = structuredClone(data);
+    const prompt = buildCoreDivinationPrompt({
+      method: 'meihua',
+      data,
+      question: '请做整体解读。',
+      currentTime: new Date('2026-05-19T10:30:00+08:00'),
+    });
+    assert.ok(data.evidenceAnalysis?.stages.length);
+    for (const stage of data.evidenceAnalysis.stages) {
+      const displayedStage =
+        stage.stage === 'origin'
+          ? '主卦体用依据：主卦以动爻所在经卦为用、另一经卦为体。'
+          : stage.promptText;
+      assert.ok(prompt.includes(displayedStage));
+      assert.doesNotMatch(stage.promptText, /月令|支持：|限制：/u);
     }
+    const stageSection = prompt.split('体用阶段：\n')[1]?.split('\n起卦法：')[0] ?? '';
+    assert.ok(stageSection);
+    assert.doesNotMatch(stageSection, /月令|支持：|限制：/u);
+    assert.ok(stageSection.startsWith('主卦体用依据：主卦以动爻所在经卦为用、另一经卦为体。'));
+    assert.doesNotMatch(stageSection, /主卦[^\n]*：体卦/u);
+    for (const text of [fixture.origin, fixture.inter, fixture.process, fixture.result]) {
+      assert.equal(prompt.split(text).length - 1, 1, text);
+    }
+    assert.doesNotMatch(prompt, /^互卦：[^\n]*；体互.+（.+）；用互/u);
+    const monthFacts = formatMeihuaFacts(data).filter((fact) => fact.startsWith('月令作用：'));
+    assert.equal(monthFacts.length, 6);
+    for (const fact of monthFacts) assert.equal(prompt.split(fact).length - 1, 1, fact);
+    const origin = data.evidenceAnalysis.stages.find((stage) => stage.stage === 'origin');
+    assert.ok(origin);
+    assert.match(prompt, new RegExp(`体用关系${origin.relation}`, 'u'));
+    assert.doesNotMatch(prompt, new RegExp(`主卦${origin.relation}，体卦月令`, 'u'));
+    for (const [role, state] of [
+      ['体', origin.ti.seasonState],
+      ['用', origin.yong.seasonState],
+    ] as const) {
+      if (state === '旺' || state === '相') {
+        assert.ok(origin.support.includes(`${role}卦得月令${state}`));
+      } else {
+        assert.ok(origin.constraints.includes(`${role}卦月令${state}`));
+      }
+    }
+    assert.doesNotMatch(prompt, /ownerFactKeys|limitationFacts|sourceStatus/);
+    const expectations = extractDivinationPromptFacts('meihua', data);
+    assert.deepEqual(auditPromptFacts(prompt, expectations).missing, []);
+    assert.ok(
+      auditPromptFacts(
+        prompt.replace(fixture.process, fixture.misplacedProcess),
+        expectations,
+      ).missing.includes('meihua.inter'),
+    );
+    assert.ok(
+      auditPromptFacts(
+        prompt.replace(fixture.inter, fixture.misplacedOriginalRelation),
+        expectations,
+      ).missing.includes('meihua.inter-original-relations'),
+    );
+    assert.deepEqual(data, structuredBefore);
   }
-  assert.doesNotMatch(prompt, /ownerFactKeys|limitationFacts|sourceStatus/);
 });
 
 test('梅花在线提示词对缺少卦象结构的阶段使用中性事实', () => {

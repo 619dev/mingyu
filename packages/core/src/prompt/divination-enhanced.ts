@@ -231,10 +231,13 @@ function formatLiuyaoElementChange(item: LiuyaoData['yaosDetail'][number]) {
 function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: LiuyaoData) {
   const monthBranch = getGanzhiBranch(data.ganzhi.month);
   const dayBranch = getGanzhiBranch(data.ganzhi.day);
-  const triggerRelations = [
-    ...formatLiuyaoTriggerRelations(item, '月建', monthBranch),
-    ...formatLiuyaoTriggerRelations(item, '日辰', dayBranch),
-  ];
+  const triggerRelations =
+    monthBranch && monthBranch === dayBranch
+      ? formatLiuyaoTriggerRelations(item, '月建、日辰', monthBranch)
+      : [
+          ...formatLiuyaoTriggerRelations(item, '月建', monthBranch),
+          ...formatLiuyaoTriggerRelations(item, '日辰', dayBranch),
+        ];
   const activity = [
     item.isWorld ? '世' : '',
     item.isResponse ? '应' : '',
@@ -391,7 +394,7 @@ function createLiuyaoMonthDayEvidence(data: LiuyaoData) {
       .filter((item) => item.najiaDizhi === clashBranch)
       .map(formatLiuyaoYaoBrief);
     const parts = [
-      sameYaos.length ? `同支${sameYaos.join('、')}` : '未直接同支入爻',
+      sameYaos.length ? `同支${sameYaos.join('、')}` : '',
       clashYaos.length ? `冲${clashYaos.join('、')}` : '',
     ].filter(Boolean);
     const element = BRANCH_WUXING[branch];
@@ -406,7 +409,7 @@ function createLiuyaoMonthDayEvidence(data: LiuyaoData) {
           ),
         ),
       );
-    return `${label}${branch || '未列'}：${parts.join('，')}`;
+    return parts.length ? `${label}${branch}：${parts.join('，')}` : '';
   };
 
   const branchText =
@@ -415,8 +418,10 @@ function createLiuyaoMonthDayEvidence(data: LiuyaoData) {
       : [
           describeBranchHit('月建', monthBranch, monthClash),
           describeBranchHit('日辰', dayBranch, dayClash),
-        ].join('；');
-  return `${branchText}${directions.length ? `\n月日五行：${directions.join('；')}` : ''}`;
+        ]
+          .filter(Boolean)
+          .join('；');
+  return { branchText, elementText: directions.join('；') };
 }
 
 function formatLiuyaoInfo(
@@ -537,7 +542,10 @@ function formatLiuyaoInfo(
         ].join('\n')
       : '',
     `旬空${data.voidBranches?.length ? data.voidBranches.join('、') : '未列'}${voidYaoText.length ? `；命中${voidYaoText.join('、')}` : ''}`,
-    `月日触发：${monthDayEvidence}`,
+    lineCoverage.status !== '完整' && monthDayEvidence.branchText
+      ? `月日触发：${monthDayEvidence.branchText}`
+      : '',
+    monthDayEvidence.elementText ? `月日五行：${monthDayEvidence.elementText}` : '',
     sanheDetail ? sanheDetail : '',
     sanxingDetail ? sanxingDetail : '',
     createLiuyaoTimingEvidence(data) ? `应期观察条件：${createLiuyaoTimingEvidence(data)}` : '',
@@ -619,10 +627,6 @@ function formatMeihuaInfo(data: MeihuaData) {
   const resultHexagram = hasResultStage
     ? data.changedHexagram?.name || data.changedName || '变卦'
     : '无';
-  const interRoleText =
-    processStage && data.interTiGua && data.interYongGua
-      ? `；体互${data.interTiGua.name}（${data.interTiGua.element}）；用互${data.interYongGua.name}（${data.interYongGua.element}）`
-      : '';
   const interRelationText = (
     processStage ? [data.analysis.inter1Relation, data.analysis.inter2Relation] : []
   )
@@ -638,8 +642,8 @@ function formatMeihuaInfo(data: MeihuaData) {
   const stagePromptTexts = stages.map((stage) =>
     stage.status !== '已计算'
       ? `${stage.label}：卦象结构资料未记录，体用关系待核`
-      : stage.stage === 'origin' && stage.relation
-        ? stage.promptText.replace(`，关系${stage.relation}`, '')
+      : stage.stage === 'origin'
+        ? `主卦体用依据：${stage.basis}`
         : stage.promptText,
   );
   const originRelation = originStage?.relation;
@@ -686,8 +690,8 @@ function formatMeihuaInfo(data: MeihuaData) {
     `体用：体卦${data.tiGua.name}（${data.tiGua.element}）；用卦${data.yongGua.name}（${data.yongGua.element}）；动爻第${data.movingYao.position}爻；体用关系${data.analysis.tiYongRelation}`,
     ...facts,
     classicalLines.length ? `卦辞与爻辞：\n${classicalLines.join('\n')}` : '',
-    processHexagram !== '无' && (interRoleText || interRelationText)
-      ? `互卦：${processHexagram}${interRoleText}${interRelationText}`
+    processHexagram !== '无' && interRelationText
+      ? `互卦：${processHexagram}${interRelationText}`
       : '',
     stagePromptTexts.length ? `体用阶段：\n${stagePromptTexts.join('\n')}` : '',
     !processStage ? '互卦体用资料未列' : '',
