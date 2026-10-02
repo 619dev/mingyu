@@ -1,12 +1,5 @@
 import { LunarHour, SolarTime } from 'tyme4ts';
-import {
-  Body,
-  EquatorFromVector,
-  GeoVector,
-  RotateVector,
-  Rotation_EQJ_EQD,
-  SiderealTime,
-} from 'astronomy-engine';
+import * as AstronomyEngine from 'astronomy-engine';
 import { daysInSolarMonth, getBirthDateValidationMessage } from './date-validation';
 import { getShichenFromClock } from './dateUtils';
 import { checkChinaDst, type ChinaDstCheckResult } from './china-dst';
@@ -17,6 +10,10 @@ import {
   type CivilDateTimeParts,
 } from './civil-time';
 import type { HistoricalTimezoneEvidence } from './historical-timezone';
+
+const astronomyNamespace = AstronomyEngine as unknown as Record<string, unknown>;
+const Astronomy = (Reflect.get(astronomyNamespace, 'default') ??
+  AstronomyEngine) as typeof AstronomyEngine;
 
 export interface SolarDateTimeParts extends CivilDateTimeParts {}
 
@@ -628,10 +625,12 @@ export function calculateEquationOfTimeMinutes(year: number, month: number, day:
 }
 
 function equationOfTimeMinutesForInstant(date: Date): number {
-  const geocentric = GeoVector(Body.Sun, date, true);
-  const equator = EquatorFromVector(RotateVector(Rotation_EQJ_EQD(date), geocentric));
+  const geocentric = Astronomy.GeoVector(Astronomy.Body.Sun, date, true);
+  const equator = Astronomy.EquatorFromVector(
+    Astronomy.RotateVector(Astronomy.Rotation_EQJ_EQD(date), geocentric),
+  );
   const utcMinutes = (date.getTime() / 60000) % 1440;
-  const differenceMinutes = (SiderealTime(date) - equator.ra) * 60 + 720 - utcMinutes;
+  const differenceMinutes = (Astronomy.SiderealTime(date) - equator.ra) * 60 + 720 - utcMinutes;
   return ((((differenceMinutes + 720) % 1440) + 1440) % 1440) - 720;
 }
 
