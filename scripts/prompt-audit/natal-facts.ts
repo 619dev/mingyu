@@ -745,28 +745,67 @@ export function extractAstrolabeFacts(
       );
     }
   }
+  const solarReturn = context.solarReturnEvidence;
+  const solarReturnPrefix = `astrolabe.${context.scope}.太阳返照`;
+  const solarReturns = context.solarReturnPeriods?.length
+    ? context.solarReturnPeriods.map((period, index) => ({
+        evidence: period.evidence,
+        idPrefix:
+          period.evidence.dateTime === solarReturn?.dateTime
+            ? solarReturnPrefix
+            : `${solarReturnPrefix}.period.${index}`,
+        owner: `太阳返照有效期${period.startsAt}至${period.endsAt}（结束时刻不含）${period.isReferencePeriod ? '，覆盖本次参考日期' : ''}：返照时刻${period.evidence.dateTime}`,
+      }))
+    : solarReturn
+      ? [
+          {
+            evidence: solarReturn,
+            idPrefix: solarReturnPrefix,
+            owner: `太阳返照${solarReturn.dateTime ? `（${solarReturn.dateTime}）` : ''}`,
+          },
+        ]
+      : [];
+  for (const { evidence, idPrefix, owner } of solarReturns) {
+    const timeFact = evidence.dateTime
+      ? fact(`${idPrefix}.time`, owner, [owner, ...(evidence.returnChart ? ['太阳返照盘'] : [])], {
+          scope: periodScope,
+          unit: 'line',
+        })
+      : null;
+    const aspects = evidence.aspectFacts.map((item, index) =>
+      fact(
+        `${idPrefix}.${index}`,
+        owner,
+        [
+          `${item.movingPoint}${item.aspectName}${item.natalPoint}（偏差${item.deviation.toFixed(2)}°，${item.closeness}）`,
+        ],
+        { scope: periodScope, unit: 'line' },
+      ),
+    );
+    for (const expectation of collect([timeFact, ...aspects])) {
+      // 各返照盘行紧随本期标题，其他窗口不能补足时间归属或相位。
+      if (evidence.returnChart) expectation.includeNextLine = true;
+      facts.push(expectation);
+    }
+  }
   const advanced = [
-    ['太阳返照', context.solarReturnEvidence],
     ['次限相位', context.secondaryProgressionEvidence],
     ['太阳弧相位', context.solarArcEvidence],
   ] as const;
   for (const [label, evidence] of advanced) {
     if (!evidence) continue;
     for (const [index, item] of evidence.aspectFacts.entries()) {
-      facts.push(
-        ...collect([
-          fact(
-            `astrolabe.${context.scope}.${label}.${index}`,
-            label,
-            [
-              `${item.movingPoint}${item.aspectName}${item.natalPoint}`,
-              `偏差${item.deviation.toFixed(2)}°`,
-              item.closeness,
-            ],
-            { scope: periodScope, unit: 'line' },
-          ),
-        ]),
+      const expectation = fact(
+        `astrolabe.${context.scope}.${label}.${index}`,
+        label,
+        [
+          `${item.movingPoint}${item.aspectName}${item.natalPoint}`,
+          `偏差${item.deviation.toFixed(2)}°`,
+          item.closeness,
+        ],
+        { scope: periodScope, unit: 'line' },
       );
+      if (expectation) facts.push(expectation);
     }
   }
   return facts;
@@ -818,14 +857,18 @@ export function extractAstrolabeSynastryFacts(
       ]),
     );
   }
+  const personLabel = (person: 'person1' | 'person2', name: string) => {
+    const role = person === 'person1' ? '第一人' : '第二人';
+    return name && name !== role ? `${role}${name}` : role;
+  };
   for (const [index, item] of relation.houseOverlays.entries()) {
     facts.push(
       ...collect([
         fact(
           `astrolabe.synastry.overlay.${index}`,
-          item.point,
-          [item.visitor, `第${item.house}宫`, item.owner],
-          { scope: relationScope, unit: 'line' },
+          `${personLabel(item.visitorPerson, item.visitor)}的${item.point}`,
+          [`落入${personLabel(item.ownerPerson, item.owner)}的本命盘第${item.house}宫`],
+          { scope: { start: '【跨盘落宫】', end: '【任务】' }, unit: 'line' },
         ),
       ]),
     );

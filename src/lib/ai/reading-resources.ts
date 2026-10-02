@@ -62,10 +62,8 @@ const LABELS: Record<string, string> = {
   classicVerse: '条文参考',
   classicSummary: '原文',
   context: '合参',
-  modernMeaning: '取义',
   modernExplanation: '释义',
   explanation: '释义',
-  modernAdvice: '取义',
   careerAdvice: '事业取义',
   nature: '性质',
   dayMaster: '日主',
@@ -350,10 +348,15 @@ const QIZHENG_BIRTH_RANGE_FLOW_FIELDS = [
 function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
+const CLASSIC_MODERN_INTERPRETATION_FIELDS = new Set(['modernAdvice', 'modernMeaning']);
+
 function textValues(value: unknown): string[] {
   if (typeof value === 'string') return [value];
   if (Array.isArray(value)) return value.flatMap(textValues);
-  if (record(value)) return Object.values(value).flatMap(textValues);
+  if (record(value))
+    return Object.entries(value).flatMap(([key, item]) =>
+      CLASSIC_MODERN_INTERPRETATION_FIELDS.has(key) ? [] : textValues(item),
+    );
   return [];
 }
 
@@ -406,6 +409,7 @@ export function formatClassicEntry(value: unknown): string {
   if (!record(value)) return textValues(value).join('；');
   return Object.entries(value)
     .flatMap(([key, item]) => {
+      if (CLASSIC_MODERN_INTERPRETATION_FIELDS.has(key)) return [];
       if (['id', 'key', 'score', 'type', 'category'].includes(key)) return [];
       if (key === 'yaos' && Array.isArray(item)) return item.map(formatClassicEntry);
       const text = textValues(item).join('；');

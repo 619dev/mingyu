@@ -283,6 +283,91 @@ test('相同干支出现在另一主体或另一时段不能填补缺失事实',
   );
 });
 
+test('跨盘落宫审查隔离关系区段并绑定连续方向短句', () => {
+  const overlay: PromptFactExpectation[] = [
+    {
+      id: '甲太阳落乙第五宫',
+      owner: '第一人甲的太阳',
+      values: ['落入第二人乙的本命盘第5宫'],
+      scope: { start: '【跨盘落宫】', end: '【任务】' },
+      unit: 'line',
+    },
+  ];
+  const correct = '第一人甲的太阳（白羊座，第2宫）落入第二人乙的本命盘第5宫。';
+  const aspect = '第一人甲的太阳（自身本命第5宫）与第二人乙的月亮：合相。';
+  const text = `【跨盘相位】\n${aspect}\n【跨盘落宫】\n${correct}\n【任务】`;
+  assert.equal(auditPromptFacts(text, overlay).present, 1);
+  assert.deepEqual(auditPromptFacts(text, overlay).repeated, []);
+  assert.equal(auditPromptFacts(text.replace(correct, ''), overlay).present, 0);
+  assert.equal(
+    auditPromptFacts(text.replace(correct, '').replace(aspect, correct), overlay).present,
+    0,
+  );
+  assert.equal(
+    auditPromptFacts(text.replace(correct, '第二人乙的太阳落入第一人甲的本命盘第5宫。'), overlay)
+      .present,
+    0,
+  );
+  assert.equal(
+    auditPromptFacts(
+      text.replace(correct, '第一人甲的太阳（自身本命第5宫）落入第二人乙的本命盘第6宫。'),
+      overlay,
+    ).present,
+    0,
+  );
+});
+
+test('返照审查把完整相位归到相邻窗口标题，其他相位偏差不能拼补', () => {
+  const owner = '太阳返照有效期2026-04-08至2027-01-01（结束时刻不含）：返照时刻2026-04-08 10:00:00';
+  const relation = '太阳合相太阳（偏差0.00°，紧密）';
+  const otherHeader =
+    '太阳返照有效期2026-01-01至2026-04-08（结束时刻不含）：返照时刻2025-04-08 09:00:00';
+  const expectations: PromptFactExpectation[] = [
+    {
+      id: '本年度太阳返照',
+      owner,
+      values: [relation],
+      scope: { start: '【周期】', end: '【任务】' },
+      unit: 'line',
+      includeNextLine: true,
+    },
+    {
+      id: '上期太阳返照',
+      owner: otherHeader,
+      values: [relation],
+      scope: { start: '【周期】', end: '【任务】' },
+      unit: 'line',
+      includeNextLine: true,
+    },
+  ];
+  const otherBody = `太阳返照盘：对本命主要相位${relation}。`;
+  const selectedBody = `太阳返照盘：月亮落第5宫；对本命主要相位${relation}。`;
+  const text = `【周期】\n${otherHeader}\n${otherBody}\n${owner}。\n${selectedBody}\n【任务】`;
+  const original = auditPromptFacts(text, expectations);
+  assert.equal(original.expected, 2);
+  assert.equal(original.present, 2);
+  assert.deepEqual(original.repeated, []);
+  const mixed = selectedBody.replace(
+    relation,
+    '太阳合相太阳（偏差0.20°，紧密）、月亮拱相火星（偏差0.00°，紧密）',
+  );
+  assert.deepEqual(auditPromptFacts(text.replace(selectedBody, mixed), expectations).missing, [
+    '本年度太阳返照',
+  ]);
+  assert.deepEqual(auditPromptFacts(text.replace(owner, otherHeader), expectations).missing, [
+    '本年度太阳返照',
+  ]);
+  assert.deepEqual(
+    auditPromptFacts(text.replace(`${owner}。\n${selectedBody}`, selectedBody), expectations)
+      .missing,
+    ['本年度太阳返照'],
+  );
+  assert.deepEqual(
+    auditPromptFacts(text.replace(otherBody, '太阳返照盘：对本命相位未列。'), expectations).missing,
+    ['上期太阳返照'],
+  );
+});
+
 test('报告区分缺失与重复，整段删除或空事实清单不能通过', () => {
   assert.equal(
     auditPromptFacts(prompt.replace('月柱：乙丑', '月柱：乙丑\n月柱：乙丑'), facts).repeated[0]

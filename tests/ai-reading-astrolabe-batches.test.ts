@@ -78,7 +78,7 @@ test('自定义星盘范围补算核对结构化范围与完整提示词', async
   }
 });
 
-test('完整星盘分批补算经真实接口保持三个范围事件及完整提示资料', async (context) => {
+test('完整星盘补算复用一次接口批次并保持本地及三段事件一致', async (context) => {
   context.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-16T04:00:00Z') });
   const input = {
     name: '合成验证',
@@ -97,15 +97,43 @@ test('完整星盘分批补算经真实接口保持三个范围事件及完整�
     question: '请分析各阶段变化。',
   };
   const previousFetch = globalThis.fetch;
+  const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
+  Reflect.deleteProperty(globalThis, 'Worker');
   let baseCount = 0;
-  const scopes = new Set<string>();
+  const periodRequests = new Map<string, Array<{ startDate: string; endDate: string }>>();
   globalThis.fetch = (async (url, init) => {
     const request = new Request(new URL(String(url), 'https://aov.cc'), init);
-    const payload = JSON.parse(String(init?.body));
-    if (request.url.endsWith('/period-events')) scopes.add(payload.astrolabeScope);
-    else {
+    const payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    if (request.url.endsWith('/period-events')) {
+      const scope = String(payload.astrolabeScope);
+      const range = payload.astrolabePeriodRange as { startDate: string; endDate: string };
+      const requests = periodRequests.get(scope) ?? [];
+      requests.push({ startDate: range.startDate, endDate: range.endDate });
+      periodRequests.set(scope, requests);
+      const expectedDateByScope: Record<string, string> = {
+        yearly: '2028',
+        monthly: '2028-06',
+        daily: '2028-06-12',
+      };
+      assert.equal(payload.astrolabeScopeDate, expectedDateByScope[scope]);
+    } else {
       baseCount += 1;
+      assert.ok(request.url.endsWith('/astrolabe/prompt'));
+      assert.equal(payload.gender, '女');
       assert.equal(payload.astrolabeIncludePeriodEvents, false);
+      assert.equal(payload.responseMode, 'full');
+      assert.equal(payload.year, input.year);
+      assert.equal(payload.month, input.month);
+      assert.equal(payload.day, input.day);
+      assert.equal(payload.hour, input.hour);
+      assert.equal(payload.minute, input.minute);
+      assert.equal(payload.second, input.second);
+      assert.equal(payload.latitude, input.latitude);
+      assert.equal(payload.longitude, input.longitude);
+      assert.equal(payload.timezone, input.timezone);
+      assert.equal(payload.astrolabeScope, 'full');
+      assert.equal(payload.astrolabeScopeDate, input.astrolabeScopeDate);
+      assert.equal(payload.question, input.question);
     }
     return handlePublicApiRequest(request);
   }) as typeof fetch;
@@ -126,72 +154,104 @@ test('完整星盘分批补算经真实接口保持三个范围事件及完整�
     const body = await original.json();
     assert.equal(body.ok, true);
     assert.equal(resource.text, body.data.prompt);
-    assert.equal(baseCount, 1);
-    assert.deepEqual([...scopes], ['yearly', 'monthly', 'daily']);
-    const actual = resource.structured?.scopeEvidence as {
+    const expectedScopes = ['yearly', 'monthly', 'daily'];
+    const resourceStructured = resource.structured;
+    assert.ok(resourceStructured);
+    const remoteEvidence = resourceStructured.scopeEvidence as {
       contexts: Record<
         string,
-        { periodEvents: { events: AstrolabePeriodEvent[] }; promptText: string }
+        { periodEvents?: { events: AstrolabePeriodEvent[] }; promptText: string }
       >;
     };
-    for (const scope of scopes) {
+    for (const scope of expectedScopes) {
       const expected = body.data.result.scopeEvidence.contexts[scope];
-      assert.deepEqual(actual.contexts[scope].periodEvents.events, expected.periodEvents.events);
-      assert.equal(actual.contexts[scope].promptText, expected.promptText);
+      assert.deepEqual(
+        remoteEvidence.contexts[scope].periodEvents?.events,
+        expected.periodEvents.events,
+      );
+      assert.equal(remoteEvidence.contexts[scope].promptText, expected.promptText);
       assert.ok(resource.text.includes(expected.promptText));
     }
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
 
-test('本地七日 Worker 计算与公共接口完整星盘 prompt 及三段事件逐项一致', async (context) => {
-  context.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-16T04:00:00Z') });
-  const input = {
-    name: '合成本地验证',
-    gender: '女',
-    year: 1995,
-    month: 5,
-    day: 20,
-    hour: 12,
-    minute: 30,
-    second: 37,
-    latitude: 39.9042,
-    longitude: 116.4074,
-    timezone: 8,
-    astrolabeScope: 'full',
-    astrolabeScopeDate: '2028-06-12',
-    question: '请分析各阶段变化。',
-  };
-  const originalFetch = globalThis.fetch;
-  const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
-  Reflect.deleteProperty(globalThis, 'Worker');
-  globalThis.fetch = (async (url, init) =>
-    handlePublicApiRequest(
-      new Request(new URL(String(url), 'https://aov.cc'), init),
-    )) as typeof fetch;
-  try {
-    const remote = await executeReadingAction({ kind: 'calculate', method: 'astrolabe', input });
+    const requestsBeforeLocal = {
+      baseCount,
+      periodRequests: Object.fromEntries(
+        [...periodRequests].map(([scope, requests]) => [scope, structuredClone(requests)]),
+      ),
+    };
     const local = await generateAstrolabeReadingLocally({
       ...input,
+      gender: '女',
       responseMode: 'full',
       astrolabeIncludePeriodEvents: false,
     });
-    assert.equal(local.prompt, remote.text);
-    const remoteEvidence = (remote.structured as Record<string, unknown>).scopeEvidence as Record<
-      string,
-      unknown
-    >;
+    assert.equal(local.prompt, resource.text);
     assert.deepEqual(JSON.parse(JSON.stringify(local.result.scopeEvidence)), remoteEvidence);
     if (local.result.scopeEvidence.scope !== 'full') {
       throw new Error('本地完整星盘结果缺少 full 范围身份。');
     }
-    const contexts = local.result.scopeEvidence.contexts;
-    assert.ok(contexts.yearly.periodEvents?.events.length);
-    assert.ok(contexts.monthly.periodEvents?.events.length);
-    assert.ok(contexts.daily.periodEvents?.events.length);
+    const localContexts = local.result.scopeEvidence.contexts;
+    assert.ok(localContexts.yearly.periodEvents?.events.length);
+    assert.ok(localContexts.monthly.periodEvents?.events.length);
+    assert.ok(localContexts.daily.periodEvents?.events.length);
+
+    assert.equal(DEFAULT_ASTROLABE_PERIOD_BATCH_DAYS, 7);
+    const expectedRanges = {
+      yearly: {
+        dateStr: '2028',
+        startDate: '2028-01-01',
+        endDate: '2029-01-01',
+        days: 366,
+        requests: 53,
+      },
+      monthly: {
+        dateStr: '2028-06',
+        startDate: '2028-06-01',
+        endDate: '2028-07-01',
+        days: 30,
+        requests: 5,
+      },
+      daily: {
+        dateStr: '2028-06-12',
+        startDate: '2028-06-12',
+        endDate: '2028-06-13',
+        days: 1,
+        requests: 1,
+      },
+    } as const;
+    assert.deepEqual([...periodRequests.keys()], expectedScopes);
+    for (const scope of expectedScopes) {
+      const expected = expectedRanges[scope as keyof typeof expectedRanges];
+      const requests = periodRequests.get(scope) ?? [];
+      assert.equal(requests.length, expected.requests);
+      assert.equal(requests[0]?.startDate, expected.startDate);
+      let nextStart = expected.startDate;
+      for (const [index, range] of requests.entries()) {
+        assert.equal(range.startDate, nextStart);
+        const elapsedDays = index * DEFAULT_ASTROLABE_PERIOD_BATCH_DAYS;
+        const expectedBatchDays = Math.min(
+          DEFAULT_ASTROLABE_PERIOD_BATCH_DAYS,
+          expected.days - elapsedDays,
+        );
+        const actualBatchDays =
+          (Date.parse(`${range.endDate}T00:00:00Z`) - Date.parse(`${range.startDate}T00:00:00Z`)) /
+          86_400_000;
+        assert.equal(actualBatchDays, expectedBatchDays);
+        nextStart = range.endDate;
+      }
+      assert.equal(nextStart, expected.endDate);
+    }
+    assert.equal(baseCount, requestsBeforeLocal.baseCount);
+    assert.deepEqual(Object.fromEntries(periodRequests), requestsBeforeLocal.periodRequests);
+    assert.equal(baseCount, 1);
+    const periodRequestCount = [...periodRequests.values()].reduce(
+      (total, requests) => total + requests.length,
+      0,
+    );
+    assert.equal(periodRequestCount, 59);
+    assert.equal(baseCount + periodRequestCount, 60);
   } finally {
-    globalThis.fetch = originalFetch;
+    globalThis.fetch = previousFetch;
     if (originalWorker) Object.defineProperty(globalThis, 'Worker', originalWorker);
   }
 });
