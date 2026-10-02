@@ -51,7 +51,7 @@ export function generateLiuren(
   options?: { termReferenceDate?: Date },
 ): LiurenData {
   // 真太阳时只校正日时坐标；节气、年/月柱和月将仍按实际占时交节。
-  const { ganzhi, timeInfo, timestamp } = getDivinationTime(
+  const { ganzhi, timeInfo, timestamp, timezoneOffsetMinutes } = getDivinationTime(
     customDate,
     undefined,
     options?.termReferenceDate,
@@ -207,6 +207,7 @@ export function generateLiuren(
   const result: LiurenData = {
     ganzhi,
     timestamp,
+    timezoneOffsetMinutes,
     ...(options?.termReferenceDate
       ? { termReferenceTimestamp: options.termReferenceDate.getTime() }
       : {}),

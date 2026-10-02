@@ -10,6 +10,7 @@ import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidenc
 import { stableStringify } from '../shared/result';
 import { getBranchWuxing, getSeasonState, getStemWuxing, isKe, isSheng } from '../ganzhi';
 import { getVoidBranches } from '../calendar/lunar';
+import { getDivinationTime } from '../calendar/timeManager';
 import {
   buildHeavenlyPlate,
   DAYTIME_BRANCHES,
@@ -931,6 +932,22 @@ function buildPlateCoverageFact(
   const dayNightFromHour = DAYTIME_BRANCHES.has(data.divinationBranch) ? '昼占' : '夜占';
   const timeAligned =
     data.ganzhi.hour.charAt(1) === data.divinationBranch && data.dayNight === dayNightFromHour;
+  const expectedGanzhi =
+    data.timezoneOffsetMinutes === undefined
+      ? undefined
+      : getDivinationTime(
+          new Date(data.timestamp),
+          data.timezoneOffsetMinutes,
+          data.termReferenceTimestamp === undefined
+            ? undefined
+            : new Date(data.termReferenceTimestamp),
+        ).ganzhi;
+  const pillarsAligned =
+    expectedGanzhi === undefined ||
+    (data.ganzhi.year === expectedGanzhi.year &&
+      data.ganzhi.month === expectedGanzhi.month &&
+      data.ganzhi.day === expectedGanzhi.day &&
+      data.ganzhi.hour === expectedGanzhi.hour);
   const noblemanMatchesDayStem =
     TIANGAN.includes(dayStem as (typeof TIANGAN)[number]) &&
     (data.dayNight === '昼占' || data.dayNight === '夜占') &&
@@ -953,6 +970,7 @@ function buildPlateCoverageFact(
   const byEarthBranch = new Map(positions.map((item) => [item.earthBranch, item]));
   const positionsAligned =
     timeAligned &&
+    pillarsAligned &&
     expectedPlate.length === 12 &&
     expectedPlate.find((item) => item.branch === noblemanBranch)?.under ===
       data.noblemanGroundBranch &&
@@ -970,7 +988,7 @@ function buildPlateCoverageFact(
     promptText:
       status === '完整'
         ? '天地盘十二位与十二天将资料完整，可逐位核验月将加时和贵人顺逆排布。'
-        : `${positions.length < 12 ? `当前结果仅保留${positions.length}/12位天地盘资料` : !completeBranches ? `当前结果保留${positions.length}/12位天地盘资料，地盘、天盘或天将有缺漏或重复` : !timeAligned ? '占时支、时柱或昼夜占记录不一致' : '当前结果的月将加时或贵人布将与逐位记录不一致'}；月将加时和十二天将排布待复核。`,
+        : `${positions.length < 12 ? `当前结果仅保留${positions.length}/12位天地盘资料` : !completeBranches ? `当前结果保留${positions.length}/12位天地盘资料，地盘、天盘或天将有缺漏或重复` : !timeAligned ? '占时支、时柱或昼夜占记录不一致' : !pillarsAligned ? '占时四柱与保存的起课时刻不一致' : '当前结果的月将加时或贵人布将与逐位记录不一致'}；月将加时和十二天将排布待复核。`,
     sources: ['当前大六壬结果的天地盘逐位记录', '十二地支与十二天将完整性检查'],
     limitation: PLATE_COVERAGE_LIMITATION,
   };
@@ -1396,6 +1414,14 @@ function buildOrdinaryTransmissionAdjudicationFact(
 }
 
 export function analyzeLiurenEvidence(data: LiurenData): LiurenEvidenceAnalysis {
+  if (
+    data.timezoneOffsetMinutes !== undefined &&
+    (!Number.isInteger(data.timezoneOffsetMinutes) ||
+      data.timezoneOffsetMinutes < -720 ||
+      data.timezoneOffsetMinutes > 840)
+  ) {
+    throw new Error('大六壬四柱时区偏移无效，无法生成证据。');
+  }
   if (data.fourLessons.length !== 4 || data.threeTransmissions.length !== 3) {
     throw new Error('大六壬证据分析需要完整四课与三传。');
   }

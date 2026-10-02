@@ -675,6 +675,8 @@ export interface QimenPatternCombo {
 export type QimenScope = 'hour' | 'day' | 'month' | 'year';
 
 export interface QimenData {
+  /** 本次排盘实际采用的民用钟表时区偏移（分钟）；旧记录可缺省。 */
+  timezoneOffsetMinutes?: number;
   /** 真太阳时模式下用于节气、定局与月建的实际占时戳（毫秒）。 */
   termReferenceTimestamp?: number;
   /** 用神宫候选、宫内组合、宫间作用、反证与触发条件。 */
@@ -1141,6 +1143,8 @@ export interface LiurenData {
   ganzhi: BaseGanZhi;
   /** Unix 时间戳（毫秒） */
   timestamp: number;
+  /** 本次起课实际采用的钟表时区偏移（分钟）；旧记录可缺省。 */
+  timezoneOffsetMinutes?: number;
   /** 真太阳时模式下用于节气、年/月柱与月将的实际占时戳（毫秒）。 */
   termReferenceTimestamp?: number;
   /** 昼夜占：昼占或夜占 */

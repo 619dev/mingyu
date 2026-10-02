@@ -16,7 +16,7 @@ import { generateDivinationSession, type DivinationDraft } from '../src/lib/divi
 import { getDivinationSessionSummary } from '../src/lib/divination/summary';
 import { addDivinationHistory, getDivinationHistoryById } from '../src/lib/history-records';
 
-async function createRangeSession(day = 19) {
+function createRangeFacts(day: number) {
   const pillars = getGanZhiFromDate(
     new Date(`2024-02-${String(day).padStart(2, '0')}T12:00:00+08:00`),
   );
@@ -27,6 +27,20 @@ async function createRangeSession(day = 19) {
   assert.ok(candidate);
   const selection = resolveBaziReverseCandidate(candidate);
   assert.ok(selection);
+  return { candidate, source: selection.source };
+}
+
+const rangeFactsByDay = new Map<number, ReturnType<typeof createRangeFacts>>();
+
+function createRangeFixture(day = 19) {
+  let fixedFacts = rangeFactsByDay.get(day);
+  if (!fixedFacts) {
+    fixedFacts = createRangeFacts(day);
+    rangeFactsByDay.set(day, fixedFacts);
+  }
+
+  const candidate = structuredClone(fixedFacts.candidate);
+  const source = structuredClone(fixedFacts.source);
   const draft: DivinationDraft = {
     ...defaultDraft,
     method: 'liuren',
@@ -34,9 +48,14 @@ async function createRangeSession(day = 19) {
     divinationTimeMode: 'pillars',
     customDivinationDate: candidate.start.text.slice(0, 10),
     customDivinationTime: candidate.start.text.slice(11),
-    divinationReverseSource: selection.source,
+    divinationReverseSource: structuredClone(source),
     divinationTimeStandard: 'beijing',
   };
+  return { candidate, source, draft };
+}
+
+async function createRangeSession(day = 19) {
+  const { draft } = createRangeFixture(day);
   return { draft, session: await generateDivinationSession(draft) };
 }
 
@@ -141,7 +160,7 @@ test('稳定区间与普通单时刻大六壬提示词保留取传条件与反�
 });
 
 test('大六壬感情事业财运主题按各时间分支定位类神', async () => {
-  const { draft } = await createRangeSession();
+  const { draft } = createRangeFixture();
   for (const liurenTemplate of ['ganqing', 'shiye', 'caifu'] as const) {
     const session = await generateDivinationSession({ ...draft, liurenTemplate });
     const section = session.prompt.split('【问题范围】')[1]?.split('【任务】')[0];

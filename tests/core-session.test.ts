@@ -252,6 +252,32 @@ test('太乙简版任务书应按计式保留目标时间且不输出代表时�
   }
 });
 
+test('太乙月日时会话保留传入年份并按实际东八区起局日期核对', () => {
+  for (const scope of ['month', 'day', 'hour'] as const) {
+    const request = {
+      method: 'taiyi' as const,
+      question: '核对太乙起局年份。',
+      divinationTime: '2025-12-31T16:30:15Z',
+      currentTime: '2026-01-01T00:30:15+08:00',
+    };
+    const omitted = generateDivinationSession({ ...request, taiyi: { scope } });
+    const matched = generateDivinationSession({ ...request, taiyi: { scope, year: 2026 } });
+    const data = matched.data as import('../packages/core/src/types/divination').TaiyiResult;
+    assert.equal(data.scope, scope);
+    assert.equal(data.dateTime, '2026-01-01 00:30:15');
+    assert.deepEqual(matched.data, omitted.data);
+    assert.equal(matched.prompt, omitted.prompt);
+    assert.equal(matched.aiPrompt, omitted.aiPrompt);
+    for (const year of [2025, 0]) {
+      assert.throws(
+        () => generateDivinationSession({ ...request, taiyi: { scope, year } }),
+        /太乙 year 与 date 的公历年份不一致/u,
+        `${scope}计必须核对传入的${year}年`,
+      );
+    }
+  }
+});
+
 test('随机占法会话应完整消费重放记录并拒绝剩余样本', () => {
   const request = {
     method: 'random' as const,

@@ -12,11 +12,18 @@ import { formatJinkoujueJudgmentFacts } from '../packages/core/src/prompt/jinkou
 import { formatJinkoujuePositionPromptText } from '../packages/core/src/divination/jinkoujue-utils.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
+const fixedShenChart = generateJinkoujue({
+  method: 'branch',
+  branch: '申',
+  customDate: SAMPLE_DATE,
+});
+
+function createShenChart() {
+  return structuredClone(fixedShenChart);
+}
 
 test('金口诀判断依据不读取旧反证缓存', () => {
-  const data = structuredClone(
-    generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE }),
-  );
+  const data = createShenChart();
   assert.ok(data.evidenceAnalysis);
   Object.assign(data.evidenceAnalysis, {
     counterEvidenceFacts: [{ promptText: '伪造的旧反证' }],
@@ -25,11 +32,7 @@ test('金口诀判断依据不读取旧反证缓存', () => {
 });
 
 test('金口诀旧盘证据拒绝与结果时间元数据矛盾的起课时刻', () => {
-  const data = generateJinkoujue({
-    method: 'branch',
-    branch: '申',
-    customDate: SAMPLE_DATE,
-  });
+  const data = createShenChart();
   const stale = structuredClone(data);
   stale.timestamp += 24 * 60 * 60 * 1000;
 
@@ -43,7 +46,7 @@ test('金口诀旧盘证据拒绝与结果时间元数据矛盾的起课时刻',
 });
 
 test('金口诀新盘去掉结果元数据后仍按保存的时区复核起课时刻与四柱', () => {
-  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const source = createShenChart();
   const stale = structuredClone(source);
   delete stale.meta;
   stale.timestamp += 24 * 60 * 60 * 1000;
@@ -80,7 +83,7 @@ test('金口诀四柱复核沿用生成时的时区与节气参考时刻', () =>
 });
 
 test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () => {
-  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const source = createShenChart();
   const wrongRelation = structuredClone(source);
   wrongRelation.relations.guiToJiang = wrongRelation.relations.guiToJiang === '克' ? '生' : '克';
   assert.throws(() => analyzeJinkoujueEvidence(wrongRelation), /四位关系与五行不一致/);
@@ -100,7 +103,7 @@ test('金口诀证据与提示词拒绝四位关系和阴阳发用错位', () =>
 });
 
 test('金口诀证据按五子元遁复核人元，并拒绝四位结构字段与提示文本错配', () => {
-  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const source = createShenChart();
   const wrongHumanStem = structuredClone(source);
   const alternateStem: Record<string, string> = {
     甲: '乙',
@@ -130,7 +133,7 @@ test('金口诀证据按五子元遁复核人元，并拒绝四位结构字段�
 });
 
 test('金口诀证据从日干、昼夜、地分复核贵神本属并拒绝改写后的焦点依据', () => {
-  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const source = createShenChart();
   assert.ok(analyzeJinkoujueEvidence(source).focusFacts.length === 4);
 
   const wrongGod = structuredClone(source);
@@ -244,7 +247,7 @@ test('金口诀随机记录应重放拒绝采样并核对起课数字与地分',
 });
 
 test('金口诀证据拒绝地分与人元、月将加时及五动条件错位', () => {
-  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const source = createShenChart();
   const wrongDiFen = structuredClone(source);
   wrongDiFen.positions.diFen.branch = '子';
   assert.throws(() => analyzeJinkoujueEvidence(wrongDiFen), /地分与四位不一致/);
@@ -270,7 +273,7 @@ test('金口诀证据拒绝地分与人元、月将加时及五动条件错位',
 });
 
 test('金口诀证据拒绝旬空和月令旺衰与日月柱错位', () => {
-  const source = generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE });
+  const source = createShenChart();
   const wrongXunKong = structuredClone(source);
   wrongXunKong.xunKong = [];
   assert.throws(() => analyzeJinkoujueEvidence(wrongXunKong), /旬空或月令旺衰/);
@@ -444,11 +447,7 @@ test('金口诀：时间起课应形成四位、阴阳发用与动爻', () => {
 });
 
 test('金口诀：指定地分应直接采用所选地支并保留起课时间规则', () => {
-  const data = generateJinkoujue({
-    method: 'branch',
-    branch: '申',
-    customDate: SAMPLE_DATE,
-  });
+  const data = createShenChart();
 
   assert.equal(data.method, 'branch');
   assert.equal(data.diFenBranch, '申');
@@ -469,7 +468,7 @@ test('金口诀：闲置起课字段不改变实际采用输入的结果身份',
       generateJinkoujue({ branch: '子', number: 1, customDate: SAMPLE_DATE }),
     ],
     [
-      generateJinkoujue({ method: 'branch', branch: '申', customDate: SAMPLE_DATE }),
+      createShenChart(),
       generateJinkoujue({
         method: 'branch',
         branch: '申',

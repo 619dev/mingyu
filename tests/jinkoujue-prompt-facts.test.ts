@@ -3,17 +3,74 @@ import test from 'node:test';
 
 import { generateJinkoujue } from '../packages/core/src/divination/algorithms/jinkoujue.ts';
 import {
+  buildDivinationPrompt,
   formatDivinationInfo,
   getDivinationSummaryBlocks,
 } from '../packages/core/src/prompt/divination.ts';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail.ts';
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
+import { TimeManager } from '../packages/core/src/calendar/timeManager';
+import { buildTimeInfoText, buildSolarTimeInfoText } from '../packages/core/src/prompt/formatters';
 
 const formatters = [
   formatDivinationInfo,
   formatDetailedDivinationInfo,
   formatEnhancedDivinationInfo,
 ];
+
+test('金口诀完整任务书重开沿用保存时区与原四位占时', () => {
+  const cases = [
+    {
+      offset: 480,
+      zone: 'UTC+08:00',
+      solar: '公历：2025年6月18日 10时30分',
+      day: '戊午',
+      hour: '丁巳',
+    },
+    {
+      offset: -720,
+      zone: 'UTC-12:00',
+      solar: '公历：2025年6月17日 14时30分',
+      day: '丁巳',
+      hour: '丁未',
+    },
+    {
+      offset: 840,
+      zone: 'UTC+14:00',
+      solar: '公历：2025年6月18日 16时30分',
+      day: '戊午',
+      hour: '庚申',
+    },
+  ];
+  try {
+    for (const { offset, zone, solar, day, hour } of cases) {
+      TimeManager.setTimezoneOffsetMinutesOverride(offset);
+      const data = generateJinkoujue({
+        method: 'branch',
+        branch: '申',
+        customDate: new Date('2025-06-18T02:30:00Z'),
+      });
+      assert.equal(data.timezoneOffsetMinutes, offset);
+      assert.deepEqual(data.ganzhi, { year: '乙巳', month: '壬午', day, hour });
+      TimeManager.setTimezoneOffsetMinutesOverride(offset === 480 ? 0 : 480);
+      assert.equal(buildSolarTimeInfoText(data), solar);
+      assert.match(buildTimeInfoText(data), new RegExp(`${day}日 ${hour}时`));
+      const prompt = buildDivinationPrompt({
+        method: 'jinkoujue',
+        data,
+        question: '核对同一占时四位',
+        currentTime: new Date('2025-06-19T00:00:00Z'),
+      });
+      const origin = prompt.match(/【起课时间】\n([\s\S]*?)(?:\n\n【|$)/)?.[1].trim();
+      assert.equal(origin, `${solar}（${zone}）`);
+      assert.match(prompt, /【当前时间】\n公历：2025年6月19日 8时0分（UTC\+08:00）/);
+      assert.equal(data.evidenceAnalysis?.calculationFact.status, '完整');
+      assert.match(prompt, /^四位：地分申（[^\n]+）；将神[^\n]+；贵神[^\n]+；人元[^\n]+/mu);
+    }
+  } finally {
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+  }
+});
 
 test('金口诀摘要和详细提示不重复展开四位、发用、动爻与比合资料', () => {
   const data = generateJinkoujue({

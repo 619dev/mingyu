@@ -561,6 +561,7 @@ function generateData(
       return generateTaiyi({
         date: customDate ?? new Date(),
         scope: taiyi.scope,
+        ...(taiyi.year !== undefined ? { year: taiyi.year } : {}),
       }) as TaiyiResult;
     }
     case 'huangji':

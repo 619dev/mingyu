@@ -6,6 +6,34 @@ import {
   generateAlmanacSelection,
 } from '../packages/core/src/divination/algorithms/almanac.ts';
 
+const moveSingleDaySelection = generateAlmanacSelection({
+  topic: 'move',
+  startDate: '2026-06-01',
+  endDate: '2026-06-01',
+});
+const travelThreeDaySelection = generateAlmanacSelection({
+  topic: 'travel',
+  startDate: '2025-01-01',
+  endDate: '2025-01-03',
+});
+const moveTenDaySelection = generateAlmanacSelection({
+  topic: 'move',
+  startDate: '2026-06-01',
+  endDate: '2026-06-10',
+});
+
+function createMoveSingleDaySelection() {
+  return structuredClone(moveSingleDaySelection);
+}
+
+function createTravelThreeDaySelection() {
+  return structuredClone(travelThreeDaySelection);
+}
+
+function createMoveTenDaySelection() {
+  return structuredClone(moveTenDaySelection);
+}
+
 test('原始宜项未命中当前事项时列为条件候选并保留证据', () => {
   const result = generateAlmanacSelection({
     topic: 'opening',
@@ -253,11 +281,7 @@ test('旧黄历候选日期及非空时辰盘须逐项复验', () => {
 });
 
 test('旧黄历月相与宿曜附文不得覆盖重新计算的传统依据', () => {
-  const data = generateAlmanacSelection({
-    topic: 'move',
-    startDate: '2026-06-01',
-    endDate: '2026-06-01',
-  });
+  const data = createMoveSingleDaySelection();
   const originalPhase = data.evidenceAnalysis?.candidates[0].moonPhaseFact.eightPhaseName;
   const day = data.days[0];
   day.moonPhaseEvidence = { ...day.moonPhaseEvidence!, eightPhaseName: '伪月相' };
@@ -270,11 +294,7 @@ test('旧黄历月相与宿曜附文不得覆盖重新计算的传统依据', ()
 });
 
 test('旧黄历原始宜忌和值日神煞遭篡改时不能进入证据', () => {
-  const data = generateAlmanacSelection({
-    topic: 'move',
-    startDate: '2026-06-01',
-    endDate: '2026-06-01',
-  });
+  const data = createMoveSingleDaySelection();
   const day = data.days[0];
   day.recommends.push('伪宜项');
   assert.throws(() => analyzeAlmanacEvidence(data), /原始宜忌.*请重新排盘/);
@@ -387,11 +407,7 @@ test('在线提示词保留时段偏好、无可用时辰原因和值日神煞�
 });
 
 test('旧盘额外时辰限制不能改变候选时辰结论', () => {
-  const data = generateAlmanacSelection({
-    topic: 'travel',
-    startDate: '2025-01-01',
-    endDate: '2025-01-03',
-  });
+  const data = createTravelThreeDaySelection();
   const firstUsableHour = data.evidenceAnalysis?.candidates[0]?.usableHours[0];
   assert.ok(firstUsableHour);
   const day = data.days[0];
@@ -422,11 +438,7 @@ test('缺少逐时资料时应标记未提供，不误报无可用时辰', () =>
 });
 
 test('择日证据应保留日课、宿曜、九星、百忌、方位神与逐时时课来源', () => {
-  const result = generateAlmanacSelection({
-    topic: 'travel',
-    startDate: '2025-01-01',
-    endDate: '2025-01-03',
-  });
+  const result = createTravelThreeDaySelection();
   const candidate = result.evidenceAnalysis?.candidates[0];
 
   assert.ok(candidate);
@@ -462,11 +474,7 @@ test('择日证据应保留日课、宿曜、九星、百忌、方位神与逐�
 });
 
 test('择日证据应让明确事项忌项决定慎用分组', () => {
-  const data = generateAlmanacSelection({
-    topic: 'move',
-    startDate: '2026-06-01',
-    endDate: '2026-06-10',
-  });
+  const data = createMoveTenDaySelection();
   const target = data.days.find((day) =>
     day.cautions.some((item) => item.includes('黄历忌项触及')),
   );
@@ -703,11 +711,7 @@ test('旧黄历只有合并彭祖百忌时也应拆分并去除后果保证', ()
 });
 
 test('择日公开证据不得暴露内部加分措辞', () => {
-  const result = generateAlmanacSelection({
-    topic: 'move',
-    startDate: '2026-06-01',
-    endDate: '2026-06-10',
-  });
+  const result = createMoveTenDaySelection();
 
   assert.doesNotMatch(result.evidenceAnalysis?.promptText ?? '', /辅助加分|加\d+分|扣\d+分/);
   assert.ok(result.days.every((day) => day.highlights.every((item) => !item.includes('辅助支持'))));

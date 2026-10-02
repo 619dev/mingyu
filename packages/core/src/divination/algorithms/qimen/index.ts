@@ -275,27 +275,20 @@ export function generateQimen(
   // ──────────────────────────────────────────────────────────────────────────
   // 步骤 1：获取统一占卜时间信息
   // ──────────────────────────────────────────────────────────────────────────
-  const { timeInfo, ganzhi, timestamp } = getDivinationTime(
-    chartDate,
-    effectiveOffsetMinutes,
-    referenceDate,
-  );
+  const {
+    timeInfo,
+    ganzhi,
+    timestamp,
+    timezoneOffsetMinutes: actualOffsetMinutes,
+  } = getDivinationTime(chartDate, effectiveOffsetMinutes, referenceDate);
   const solarSecond = TimeManager.getWallClockParts(
     new Date(timestamp),
     effectiveOffsetMinutes,
   ).second;
   const { jieQi } = timeInfo;
-  // 未指定时区时，TimeManager 仍可能采用全局覆盖或运行环境时区。
-  // 从已解析的民用钟表反推本次实际偏移，避免按当地时刻误取中国历表的节气。
-  const wallMinute = new Date(0);
-  wallMinute.setUTCFullYear(timeInfo.solar.year, timeInfo.solar.month - 1, timeInfo.solar.day);
-  wallMinute.setUTCHours(timeInfo.solar.hour, timeInfo.solar.minute);
-  const localOffsetMinutes =
-    effectiveOffsetMinutes ??
-    (wallMinute.getTime() - Math.floor(timestamp / 60000) * 60000) / 60000;
   const termContext: QimenTermContext = {
     referenceDate: referenceDate ?? new Date(timestamp),
-    localOffsetMinutes,
+    localOffsetMinutes: actualOffsetMinutes,
     timeZoneId,
   };
 
@@ -495,6 +488,7 @@ export function generateQimen(
   // ──────────────────────────────────────────────────────────────────────────
   const isYearOrMonthScope = scope === 'year' || scope === 'month';
   const result: QimenData = {
+    timezoneOffsetMinutes: actualOffsetMinutes,
     ...(referenceDate ? { termReferenceTimestamp: referenceDate.getTime() } : {}),
     method,
     scope,

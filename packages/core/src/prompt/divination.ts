@@ -43,7 +43,7 @@ import type {
   XiaoliurenData,
   SupplementaryInfo,
 } from '../types/divination';
-import { formatPromptCurrentTime } from './current-time';
+import { formatPromptCivilTime, formatPromptCurrentTime } from './current-time';
 import { buildPromptGuidance, buildPromptTask } from './guidance';
 import { buildPromptDocument, buildPromptSection, joinPromptSections } from './sections';
 import { buildPromptSchoolSection, type PromptSchoolMethod } from './schools';
@@ -56,7 +56,11 @@ import {
   getMeihuaMethodLabel,
 } from './divination-enhanced';
 import { resolveSsgwSignFacts, resolveSsgwStoryContent } from '../divination/ssgw-content';
-import { buildSolarTimeInfoText, buildTimeInfoText } from './formatters';
+import {
+  buildSolarTimeInfoText,
+  buildTimeInfoText,
+  resolveDivinationTimezoneOffset,
+} from './formatters';
 import { buildTarotSpreadTask } from './tarot-spread';
 import type { HuangjiJingshiResult } from '../huangji-jingshi';
 import { formatHuangjiCivilYear } from '../huangji-jingshi/standard';
@@ -84,7 +88,7 @@ const HISTORICAL_CAST_METHODS = new Set<SupportedDivinationMethod>([
   'liuren',
 ]);
 
-/** 起课时间与当前时间不同才单列；真太阳时同时保留实际民用占时。 */
+/** 起课钟表时间与当前时间不同才单列；真太阳时同时保留实际民用占时。 */
 export function formatDivinationOriginTime(
   method: SupportedDivinationMethod,
   data: DivinationData,
@@ -95,16 +99,19 @@ export function formatDivinationOriginTime(
     'termReferenceTimestamp' in data && data.termReferenceTimestamp !== undefined
       ? data.termReferenceTimestamp
       : data.timestamp;
+  const savedOffset = resolveDivinationTimezoneOffset(data) ?? 480;
   const repeatsCurrentTime =
+    savedOffset === 480 &&
     Math.floor(civilTimestamp / 60_000) === Math.floor(currentTime.getTime() / 60_000);
-  const civilTime = formatPromptCurrentTime(new Date(civilTimestamp)).split('\n')[0];
+  const civilTime = formatPromptCivilTime(new Date(civilTimestamp), savedOffset);
   const trueSolarTime =
     'termReferenceTimestamp' in data &&
     data.termReferenceTimestamp !== undefined &&
     Math.floor(data.timestamp / 60_000) !== Math.floor(civilTimestamp / 60_000)
-      ? `真太阳时校正时刻：${formatPromptCurrentTime(new Date(data.timestamp))
-          .split('\n')[0]
-          .replace(/^公历：/, '')}（用于排盘）`
+      ? `真太阳时校正时刻：${formatPromptCivilTime(new Date(data.timestamp), savedOffset).replace(
+          /^公历：/,
+          '',
+        )}（用于排盘）`
       : '';
   return [repeatsCurrentTime ? '' : civilTime, trueSolarTime].filter(Boolean).join('\n');
 }

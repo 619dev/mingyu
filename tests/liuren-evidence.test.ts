@@ -10,6 +10,9 @@ import {
   TIANJIANG_ATTRIBUTES,
 } from '../packages/core/src/divination/algorithms/liuren/helpers/plate';
 import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules';
+import { TimeManager } from '../packages/core/src/calendar/timeManager';
+import { buildTimeInfoText, buildSolarTimeInfoText } from '../packages/core/src/prompt/formatters';
+import { buildDivinationPrompt } from '../packages/core/src/prompt/divination';
 
 const fixedDate = new Date('2025-06-18T10:30:00+08:00');
 const fixedChart = generateLiuren(fixedDate);
@@ -17,6 +20,88 @@ const fixedChart = generateLiuren(fixedDate);
 function makeFixedChart() {
   return structuredClone(fixedChart);
 }
+
+test('大六壬保存实际占时时区，跨区重开仍按原钟表与四柱核课', () => {
+  // 同一 UTC 瞬时点按偏移换算钟表；戊日子时起壬，丁日子时起庚。
+  const cases = [
+    {
+      offset: 480,
+      zone: 'UTC+08:00',
+      solar: '公历：2025年6月18日 10时30分',
+      day: '戊午',
+      hour: '丁巳',
+    },
+    {
+      offset: -720,
+      zone: 'UTC-12:00',
+      solar: '公历：2025年6月17日 14时30分',
+      day: '丁巳',
+      hour: '丁未',
+    },
+    {
+      offset: 840,
+      zone: 'UTC+14:00',
+      solar: '公历：2025年6月18日 16时30分',
+      day: '戊午',
+      hour: '庚申',
+    },
+  ];
+  try {
+    for (const { offset, zone, solar, day, hour } of cases) {
+      TimeManager.setTimezoneOffsetMinutesOverride(offset);
+      const data = generateLiuren(new Date('2025-06-18T02:30:00Z'));
+      assert.equal(data.timezoneOffsetMinutes, offset);
+      assert.deepEqual(data.ganzhi, { year: '乙巳', month: '壬午', day, hour });
+      TimeManager.setTimezoneOffsetMinutesOverride(offset === 480 ? 0 : 480);
+      assert.equal(buildSolarTimeInfoText(data), solar);
+      assert.match(buildTimeInfoText(data), new RegExp(`${day}日 ${hour}时`));
+      const prompt = buildDivinationPrompt({
+        method: 'liuren',
+        data,
+        question: '核对同一占时课盘',
+        currentTime: new Date('2025-06-19T00:00:00Z'),
+      });
+      const origin = prompt.match(/【起课时间】\n([\s\S]*?)(?:\n\n【|$)/)?.[1].trim();
+      assert.equal(origin, `${solar}（${zone}）`);
+      assert.match(prompt, /【当前时间】\n公历：2025年6月19日 8时0分（UTC\+08:00）/);
+      assert.equal(analyzeLiurenEvidence(data).summaryFact.status, '证据链完整');
+
+      const stale = structuredClone(data);
+      stale.timestamp += 24 * 60 * 60 * 1000;
+      const evidence = analyzeLiurenEvidence(stale);
+      assert.equal(evidence.plateFact.status, '缺少');
+      assert.equal(evidence.summaryFact.status, '证据链有缺口');
+      assert.match(evidence.plateFact.promptText, /占时四柱与保存的起课时刻不一致/);
+      const legacy = structuredClone(data);
+      delete legacy.timezoneOffsetMinutes;
+      assert.equal(analyzeLiurenEvidence(legacy).summaryFact.status, '证据链完整');
+    }
+
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+    const corrected = generateLiuren(new Date('2024-02-19T13:00:00+08:00'), {
+      termReferenceDate: new Date('2024-02-19T11:30:00+08:00'),
+    });
+    TimeManager.setTimezoneOffsetMinutesOverride(0);
+    assert.equal(corrected.monthLeader, '子');
+    assert.equal(analyzeLiurenEvidence(corrected).summaryFact.status, '证据链完整');
+    assert.match(buildTimeInfoText(corrected), /公历：2024年2月19日 13时0分[\s\S]*节气：立春/);
+    const correctedPrompt = buildDivinationPrompt({
+      method: 'liuren',
+      data: corrected,
+      question: '核对实际中气与校正钟表',
+      currentTime: new Date('2025-06-19T00:00:00Z'),
+    });
+    assert.equal(
+      correctedPrompt.match(/【起课时间】\n([\s\S]*?)(?:\n\n【|$)/)?.[1].trim(),
+      '公历：2024年2月19日 11时30分（UTC+08:00）\n真太阳时校正时刻：2024年2月19日 13时0分（UTC+08:00）（用于排盘）',
+    );
+    const invalid = structuredClone(corrected);
+    invalid.timezoneOffsetMinutes = Number.NaN;
+    assert.throws(() => analyzeLiurenEvidence(invalid), /四柱时区偏移无效/);
+  } finally {
+    TimeManager.setTimezoneOffsetMinutesOverride(480);
+  }
+});
 
 test('甲子日酉将酉时伏吟只标干上一课为发用来源', () => {
   const data = generateLiuren(new Date('2026-04-20T18:00:00+08:00'));
