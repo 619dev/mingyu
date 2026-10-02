@@ -39,6 +39,7 @@ test('浏览器八字补算使用本地 Worker 并保留主体核验、取消和
   let networkRequests = 0;
   let terminated = 0;
   let workerUrl = '';
+  let canonicalResult: Awaited<ReturnType<typeof calculateBaziReading>> | undefined;
   class LocalWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
     onerror: ((event: ErrorEvent) => void) | null = null;
@@ -58,7 +59,8 @@ test('浏览器八字补算使用本地 Worker 并保留主体核验、取消和
           return;
         }
         try {
-          const result = await calculateBaziReading(message.calculationRequest);
+          canonicalResult ??= await calculateBaziReading(message.calculationRequest);
+          const result = structuredClone(canonicalResult);
           if (mode === 'wrong-subject' || mode === 'wrong-clock') {
             const identity = result.result.calculationIdentity as {
               birth: Record<string, unknown>;
@@ -123,6 +125,7 @@ test('浏览器八字补算使用本地 Worker 并保留主体核验、取消和
 test('八字补算按原始钟表核主体，并按校正日期核盘面与时辰', async () => {
   const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
   let altered: 'none' | 'birth-clock' | 'chart-date' = 'none';
+  const canonicalResults = new Map<string, ReturnType<typeof calculateBaziReading>>();
   class LocalWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
     onerror: ((event: ErrorEvent) => void) | null = null;
@@ -131,7 +134,13 @@ test('八字补算按原始钟表核主体，并按校正日期核盘面与时�
     postMessage(message: { id: string; calculationRequest: Record<string, unknown> }) {
       queueMicrotask(() => {
         try {
-          const result = calculateBaziReading(message.calculationRequest);
+          const key = JSON.stringify(message.calculationRequest);
+          let canonicalResult = canonicalResults.get(key);
+          if (!canonicalResult) {
+            canonicalResult = calculateBaziReading(message.calculationRequest);
+            canonicalResults.set(key, canonicalResult);
+          }
+          const result = structuredClone(canonicalResult);
           if (altered === 'birth-clock') result.result.birthClockTime!.day = 2;
           if (altered === 'chart-date') result.result.solarDate.day = 30;
           this.onmessage?.({ data: { id: message.id, type: 'result', result } } as MessageEvent);

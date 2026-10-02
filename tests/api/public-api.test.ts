@@ -4553,7 +4553,7 @@ test('公开 API 星盘提示词支持完整输出版行运资料', async () => 
   assert.match(body.data.prompt, /太阳返照有效期/);
   assert.match(body.data.prompt, /次限相位：/);
   assert.match(body.data.prompt, /太阳弧相位：/);
-  assert.match(body.data.prompt, /分别判断普通行运、太阳返照、次限推进和太阳弧/);
+  assert.match(body.data.prompt, /本次已列星象和时限资料/);
   assertPromptIsPortableTaskText(body.data.prompt);
 
   const detailed = await callApi('divination/astrolabe/prompt', {
@@ -4779,7 +4779,7 @@ test('公开 API 星盘范围事实在各 responseMode 中保持一致', async (
     assert.ok(fullScope.body.data.prompt.includes(fullEvidence.contexts[scope].promptText));
   }
 
-  const customText = '仅依据本次自定义的星盘范围资料分析。';
+  const customText = '太阳返照有效期：2028-06-12 至 2029-06-12。';
   const customRequest = await callApi('divination/astrolabe/prompt', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -4791,6 +4791,12 @@ test('公开 API 星盘范围事实在各 responseMode 中保持一致', async (
     promptText: customText,
   });
   assert.ok(customRequest.body.data.prompt.includes(customText));
+  const customTask = customRequest.body.data.prompt
+    .split('【任务】\n')[1]
+    ?.split('\n\n【问题】')[0];
+  assert.ok(customTask);
+  assert.match(customTask, /本次已列星象和时限资料/u);
+  assert.doesNotMatch(customTask, /四类证据|普通行运|太阳返照|次限|太阳弧/u);
 });
 
 test('公开 API 星盘周期端点只返回紧凑事件批次并拒绝非法上下文', async () => {

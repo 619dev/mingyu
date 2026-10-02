@@ -459,7 +459,7 @@ export function buildDivinationPrompt(
             : method === 'astrolabe' && !isCustomQuestion
               ? buildPromptTask(
                   hasAstrolabeAdvancedTiming
-                    ? '请分别判断普通行运、太阳返照、次限推进和太阳弧，再综合四类证据的共同主题、时间触发与分歧回答【问题】。'
+                    ? '请依据本次已列星象和时限资料，分别判断各盘层的主题与时间触发，再比较共同点和分歧，回答【问题】。'
                     : buildAstrolabeTopicTask(astrolabeTopic),
                   'astrolabe',
                 )

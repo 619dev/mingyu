@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { taiyi } from 'mingyu-core';
 
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
+import { buildDivinationPrompt as buildCoreDivinationPrompt } from '../packages/core/src/prompt/divination.ts';
 import { generateQimen } from '../packages/core/src/divination/algorithms/qimen/index.ts';
 import { generateLiuyao } from '../packages/core/src/divination/algorithms/liuyao.ts';
 import { generateMeihua } from '../packages/core/src/divination/algorithms/meihua/index.ts';
@@ -1194,4 +1195,33 @@ test('星盘提示词写入年限选择后应包含分析对象与行运边界',
   assert.doesNotMatch(prompt, /强度\d+%/);
   assert.doesNotMatch(prompt, /【应期判断方法】/);
   assert.ok(prompt.indexOf('【分析对象】') < prompt.indexOf('【占卜信息】'));
+
+  for (const scopeText of [
+    '太阳返照有效期：2028-01-01 至 2029-01-01。',
+    '次限相位：太阳与月亮成拱，偏差0.50°。',
+    '太阳弧相位：金星与太阳成合，偏差0.40°。',
+  ]) {
+    const appPrompt = buildDivinationPrompt(
+      'astrolabe',
+      '我现在适合换工作吗？',
+      astrolabeData,
+      undefined,
+      { astrolabeTopic: 'job-change', astrolabeScopeText: scopeText },
+    );
+    const corePrompt = buildCoreDivinationPrompt({
+      method: 'astrolabe',
+      data: astrolabeData,
+      question: '我现在适合换工作吗？',
+      astrolabeTopic: 'job-change',
+      astrolabeScopeText: scopeText,
+    });
+    for (const scopedPrompt of [appPrompt, corePrompt]) {
+      assert.ok(scopedPrompt.includes(scopeText));
+      const task = scopedPrompt.split('【任务】\n')[1]?.split('\n\n【问题】')[0];
+      assert.ok(task);
+      assert.match(task, /本次已列星象和时限资料/u);
+      assert.doesNotMatch(task, /四类证据|普通行运|太阳返照|次限|太阳弧/u);
+      assertPromptIsPortableTaskText(scopedPrompt);
+    }
+  }
 });

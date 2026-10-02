@@ -25,6 +25,23 @@ const glyphs = [
   ['钟', '鐘', 20, 20],
   ['鍾', '鍾', 17, 17],
   ['鐘', '鐘', 20, 20],
+  ['线', '線', 15, 15],
+  ['綫', '綫', 14, 14],
+  ['線', '線', 15, 15],
+  ['绣', '繡', 18, 19],
+  ['綉', '綉', 13, 13],
+  ['繡', '繡', 18, 19],
+  ['饥', '饑', 21, 20],
+  ['飢', '飢', 11, 10],
+  ['饑', '饑', 21, 20],
+  ['吁', '吁', 6, 6],
+  ['籲', '籲', 32, 32],
+  ['采', '采', 7, 7],
+  ['埰', '埰', 11, 11],
+  ['征', '征', 8, 8],
+  ['徵', '徵', 15, 15],
+  ['栗', '栗', 10, 10],
+  ['慄', '慄', 14, 13],
   ['发', '發', 12, 12],
   ['發', '發', 12, 12],
   ['髮', '髮', 15, 15],
@@ -61,10 +78,10 @@ test('明确字形的现代繁体画数、康熙取数在字符、姓名与诸�
 });
 
 test('起名明确选入的不同繁体字形保留原字形', () => {
-  const selected = selectNamingCharacters({ preferredCharacters: '鐘複鍾髮', limit: 4 });
+  const selected = selectNamingCharacters({ preferredCharacters: '鐘複鍾髮線繡饑', limit: 7 });
   assert.deepEqual(
     selected.map((item) => item.char),
-    ['鐘', '複', '鍾', '髮'],
+    ['鐘', '複', '鍾', '髮', '線', '繡', '饑'],
   );
   assert.equal(
     generateChineseNames({
@@ -119,10 +136,24 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
     ['複', '複', 15, 14],
     ['钟', '鐘', 20, 20],
     ['鐘', '鐘', 20, 20],
+    ['线', '線', 15, 15],
+    ['绣', '繡', 18, 19],
+    ['饥', '饑', 21, 20],
   ] as const) {
     const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
     assert.match(prompt, new RegExp(`繁体：${traditional}`), char);
     assert.match(prompt, new RegExp(`繁体笔画：${traditionalStrokes}`), char);
+    assert.match(prompt, new RegExp(`姓名学康熙笔画：${kangxiStrokes}`), char);
+  }
+
+  for (const [char, kangxiStrokes] of [
+    ['吁', 6],
+    ['采', 7],
+    ['征', 8],
+    ['栗', 10],
+  ] as const) {
+    const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
+    assert.doesNotMatch(prompt, /繁体：/u, char);
     assert.match(prompt, new RegExp(`姓名学康熙笔画：${kangxiStrokes}`), char);
   }
 
@@ -134,6 +165,13 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
     ['准', '準'],
     ['斗', '鬥'],
     ['余', '餘'],
+    ['线', '綫'],
+    ['绣', '綉'],
+    ['饥', '飢'],
+    ['吁', '籲'],
+    ['采', '埰'],
+    ['征', '徵'],
+    ['栗', '慄'],
   ] as const) {
     const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
     assert.doesNotMatch(prompt, new RegExp(`繁体：${incorrectTraditional}`), char);
@@ -142,11 +180,23 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
   for (const [char, strokes] of [
     ['複', 15],
     ['鐘', 20],
+    ['線', 15],
+    ['繡', 18],
+    ['饑', 21],
   ] as const) {
+    const characterPrompt = buildChineseCharacterPrompt({
+      analysis: analyzeChineseCharacters(char),
+    });
     const namePrompt = buildChineseNameAnalysisPrompt({
       analysis: analyzeChineseName({ fullName: `李${char}` }),
     });
     assert.match(namePrompt, new RegExp(`${char}（康熙${strokes}画、五行未定`));
+    assert.doesNotMatch(characterPrompt, /笔画用法：/u, char);
+    assert.doesNotMatch(namePrompt, /笔画用法：/u, char);
+  }
+  for (const char of ['线', '绣', '饥']) {
+    const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
+    assert.match(prompt, /笔画用法：简体/u, char);
   }
   for (const [char, strokes] of [
     ['於', 8],
@@ -172,6 +222,16 @@ test('原字形的康熙条目与现代读音保持对应', async () => {
   assert.equal(analyzeChineseCharacters('鐘').characters[0].detail?.pinyin, 'zhōng');
   assert.equal(analyzeChineseCharacters('複').characters[0].detail?.wuxing, null);
   assert.equal(analyzeChineseCharacters('鐘').characters[0].detail?.wuxing, null);
+  const paired = await analyzeChineseCharactersWithReferences('线綫線绣綉繡饥飢饑');
+  for (const [index, glyph] of ['線', '綫', '線', '繡', '綉', '繡', '饑', '飢', '饑'].entries()) {
+    assert.match(paired.characters[index].detail?.kangxiText ?? '', new RegExp(`】 ${glyph}`));
+  }
+  assert.match(paired.characters[8].detail?.definition ?? '', /谷物歉收/u);
+  assert.doesNotMatch(paired.characters[8].detail?.definition ?? '', /丝线|刺绣/u);
+  const originals = await analyzeChineseCharactersWithReferences('吁采征栗');
+  for (const [index, glyph] of ['吁', '采', '征', '栗'].entries()) {
+    assert.match(originals.characters[index].detail?.kangxiText ?? '', new RegExp(`】 ${glyph}`));
+  }
 });
 
 test('默认本字与明确繁体的原文字头、部位和义项分别对应', async () => {

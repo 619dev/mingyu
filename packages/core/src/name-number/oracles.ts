@@ -12,6 +12,9 @@ for (const [simplified, traditional, count] of CHARACTER_STROKE_TUPLES) {
 // 简体“复”“钟”已有十五、二十画取数；明确原字形分别为“複”“鐘”。
 characterStrokes.set('複', 15);
 characterStrokes.set('鐘', 20);
+characterStrokes.set('線', 15);
+characterStrokes.set('繡', 18);
+characterStrokes.set('饑', 21);
 // “髮”对应发的毛发义，康熙十五画；“發”仍按现有数据计十二画。
 characterStrokes.set('髮', 15);
 // “为/為”的康熙取数采用十二画。

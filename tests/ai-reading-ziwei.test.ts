@@ -212,6 +212,7 @@ test('紫微补算接入 ReadingResource 时核验主体、错误和取消且不
   let networkRequests = 0;
   let terminated = 0;
   let workerUrl = '';
+  let canonicalChunks: ZiweiReadingChunk[] | undefined;
 
   class LocalWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
@@ -232,10 +233,14 @@ test('紫微补算接入 ReadingResource 时核验主体、错误和取消且不
           return;
         }
         try {
-          const chunks: ZiweiReadingChunk[] = [];
-          await calculateZiweiReading(message.calculationRequest, {
-            onChunk: (chunk) => chunks.push(chunk),
-          });
+          if (canonicalChunks === undefined) {
+            const calculated: ZiweiReadingChunk[] = [];
+            await calculateZiweiReading(message.calculationRequest, {
+              onChunk: (chunk) => calculated.push(chunk),
+            });
+            canonicalChunks = calculated;
+          }
+          const chunks = structuredClone(canonicalChunks);
           for (const chunk of chunks) {
             if (chunk.kind === 'complete' && mode !== 'success') {
               const identity = chunk.calculationIdentity as {

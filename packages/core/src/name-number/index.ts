@@ -608,10 +608,22 @@ const DEFAULT_KANGXI_GLYPHS: Readonly<Record<string, string>> = {
   台: '台',
   复: '複',
   钟: '鐘',
+  线: '線',
+  绣: '繡',
+  饥: '饑',
+  吁: '吁',
+  采: '采',
+  征: '征',
+  栗: '栗',
   于: '于',
   准: '准',
   斗: '斗',
   余: '余',
+};
+const DEFAULT_TRADITIONAL_STROKES: Readonly<Record<string, number>> = {
+  复: 14,
+  绣: 19,
+  饥: 20,
 };
 const DEFAULT_KANGXI_REFERENCE_POSITIONS: Readonly<Record<string, readonly [string, string]>> = {
   复: ['申集下', '衣字部'],
@@ -647,11 +659,9 @@ const allCharacters: CharacterDetail[] = CHARACTER_TUPLES.map(
       : {}),
     definition,
     simplifiedStrokes,
-    traditionalStrokes: DEFAULT_KANGXI_GLYPHS[simplified]
-      ? simplified === '复'
-        ? 14
-        : kangxiStrokes
-      : traditionalStrokes,
+    traditionalStrokes:
+      DEFAULT_TRADITIONAL_STROKES[simplified] ??
+      (DEFAULT_KANGXI_GLYPHS[simplified] ? kangxiStrokes : traditionalStrokes),
     structure,
     kangxiVolume: DEFAULT_KANGXI_REFERENCE_POSITIONS[simplified]?.[0] ?? kangxiVolume,
     kangxiSection: DEFAULT_KANGXI_REFERENCE_POSITIONS[simplified]?.[1] ?? kangxiSection,
@@ -696,6 +706,7 @@ const explicitTraditionalVariants: CharacterDetail[] = [
     wuxing: null,
     definition: '有夹里的衣服；有夹层、重叠，也用于重复、繁复等义。',
     structure: '左右',
+    strokeNote: undefined,
     common: false,
   },
   {
@@ -704,6 +715,41 @@ const explicitTraditionalVariants: CharacterDetail[] = [
     radical: '金',
     wuxing: null,
     definition: '敲击发声的金属乐器；计时器，如时钟、闹钟。',
+    strokeNote: undefined,
+    common: false,
+  },
+  {
+    ...characterData['线'],
+    char: '線',
+    radical: '糸',
+    wuxing: null,
+    structure: '左右',
+    strokeNote: undefined,
+    kangxiVolume: '未集中',
+    kangxiSection: '糸字部',
+    common: false,
+  },
+  {
+    ...characterData['绣'],
+    char: '繡',
+    radical: '糸',
+    wuxing: null,
+    structure: '左右',
+    strokeNote: undefined,
+    kangxiVolume: '未集中',
+    kangxiSection: '糸字部',
+    common: false,
+  },
+  {
+    ...characterData['饥'],
+    char: '饑',
+    radical: '食',
+    wuxing: null,
+    definition: '谷物歉收、饥荒；古籍也与“飢”通用，表示饥饿。',
+    structure: '左右',
+    strokeNote: undefined,
+    kangxiVolume: '戌集下',
+    kangxiSection: '食字部',
     common: false,
   },
   {
