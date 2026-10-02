@@ -196,9 +196,10 @@ function formatPalace(
   const majorStars = palace.major_stars.map((star) => formatStar(star, isOriginScope));
   const minorStars = palace.minor_stars.map((star) => formatStar(star, isOriginScope));
   const otherStars = palace.other_stars.map((star) => formatStar(star, isOriginScope));
-  const scopeStars = (!isOriginScope ? palace.scope_stars : []).map((star) =>
-    formatStar(star, isOriginScope),
-  );
+  const scopeStars = (!isOriginScope ? palace.scope_stars : []).map((star) => {
+    const scopeLabel = star.scope ? SCOPE_LABELS[star.scope as ScopeType] : undefined;
+    return `${formatStar(star, isOriginScope)}${scopeLabel ? `（${scopeLabel}）` : ''}`;
+  });
 
   let majorText: string;
   if (majorStars.length > 0) {
@@ -209,8 +210,9 @@ function formatPalace(
     majorText = '主星：无';
   }
 
-  const allSecondary = [...minorStars, ...otherStars, ...scopeStars];
+  const allSecondary = [...minorStars, ...otherStars];
   const secondaryText = allSecondary.length > 0 ? `辅曜：${formatStringList(allSecondary)}` : '';
+  const scopeText = scopeStars.length ? `运限曜：${formatStringList(scopeStars)}` : '';
 
   const selfMutagens = (palace.self_mutagens ?? []).map((m) => `自化${m}`).join('、');
   const selfText = selfMutagens ? `自化：${selfMutagens}` : '';
@@ -225,15 +227,38 @@ function formatPalace(
     !isOriginScope && palace.decadal_range?.length === 2
       ? `大限${palace.decadal_range[0]}-${palace.decadal_range[1]}岁`
       : '';
-  const tags = isOriginScope
-    ? natalTags(palace.summary_tags)
-    : palace.summary_tags.filter((tag) => !tag.endsWith('落宫') || selectedScopeHits.includes(tag));
+  const displayedTags = new Set([
+    ...(palace.name === '命' || palace.name === '命宫' ? ['命宫'] : []),
+    ...(palace.is_body_palace ? ['身宫'] : []),
+    ...(palace.is_original_palace ? ['来因宫'] : []),
+    ...(!majorStars.length && palace.empty_state ? ['空宫'] : []),
+    ...(palace.self_mutagens ?? []).map((mutagen) => `自化${mutagen}`),
+    ...(!isOriginScope ? selectedScopeHits : []),
+  ]);
+  const displayedStars = [
+    ...palace.major_stars,
+    ...palace.minor_stars,
+    ...palace.other_stars,
+    ...(!isOriginScope ? palace.scope_stars : []),
+  ];
+  if (displayedStars.some((star) => star.birth_mutagen)) displayedTags.add('有生年四化');
+  if (!isOriginScope && displayedStars.some((star) => star.active_scope_mutagen)) {
+    displayedTags.add('有当前运限四化');
+  }
+  const tags = (
+    isOriginScope
+      ? natalTags(palace.summary_tags)
+      : palace.summary_tags.filter(
+          (tag) => !tag.endsWith('落宫') || selectedScopeHits.includes(tag),
+        )
+  ).filter((tag) => !displayedTags.has(tag));
   return [
     `${palace.name}${palace.name.endsWith('宫') ? '' : '宫'}${palace.is_body_palace ? '（身宫）' : ''}${palace.is_original_palace ? '（来因宫）' : ''}`,
     `宫干支${palace.heavenly_stem}${palace.earthly_branch}`,
     ranges,
     majorText,
     secondaryText,
+    scopeText,
     palace.changsheng12 ? `长生：${palace.changsheng12}` : '',
     palace.boshi12 ? `博士：${palace.boshi12}` : '',
     selfText,

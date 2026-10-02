@@ -500,6 +500,21 @@ test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注�
     /【主证】命宫主星为天机|【主证】福德三方四正见化忌|【主证】父母化忌入命宫/,
   );
   assert.doesNotMatch(prompt, /证据资料：|证据附录：/);
+  assert.match(prompt, /田宅宫（来因宫）；[^\n]*主星：贪狼，亮度：庙/);
+  assert.match(prompt, /官禄宫；[^\n]*自化：自化禄/);
+  assert.doesNotMatch(prompt, /标签：[^\n]*(?:身宫|来因宫|自化禄|有生年四化)/);
+  const missingIdentities = structuredClone(payload);
+  missingIdentities.palaces.find((palace) => palace.name === '财帛')!.is_body_palace = false;
+  missingIdentities.palaces.find((palace) => palace.name === '田宅')!.is_original_palace = false;
+  missingIdentities.palaces.find((palace) => palace.name === '官禄')!.self_mutagens = [];
+  delete missingIdentities.palaces.find((palace) => palace.name === '福德')!.major_stars[0]
+    .birth_mutagen;
+  const missingIdentityPrompt = formatZiweiPayloadForPrompt(missingIdentities);
+  assert.match(missingIdentityPrompt, /财帛宫；[^\n]*标签：[^\n]*身宫/);
+  assert.match(missingIdentityPrompt, /田宅宫；[^\n]*标签：[^\n]*来因宫/);
+  assert.match(missingIdentityPrompt, /官禄宫；[^\n]*标签：[^\n]*自化禄/);
+  assert.match(missingIdentityPrompt, /福德宫；[^\n]*标签：[^\n]*有生年四化/);
+  assert.doesNotMatch(prompt, /运限曜：/);
 
   const focusedPrompt = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
   assert.match(focusedPrompt, /【主证】父母化忌入命宫/);
@@ -602,6 +617,40 @@ test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注�
         assert.ok(
           text.includes(`${scopeLabel}干支为${stemBranch}，命宫由运限对象定位到本命${landing}宫。`),
         );
+        assert.doesNotMatch(
+          text,
+          /标签：[^\n]*(?:身宫|来因宫|自化[禄权科忌]|流年落宫|流月落宫|有生年四化|有当前运限四化)/,
+        );
+        assert.match(text, /运限命中：(?:流年|流月)落宫/);
+        if (expected.birthDate === '1990-05-15' && scope === 'yearly') {
+          const propertyLine = text
+            .split('\n')
+            .find((line) => line.trimStart().startsWith('田宅宫（来因宫）'));
+          assert.ok(propertyLine);
+          assert.match(propertyLine, /辅曜：天姚、凤阁、寡宿、年解；/);
+          assert.match(propertyLine, /运限曜：年解（流年）、流陀（流年）；/);
+        }
+      }
+    }
+    for (const scope of ['yearly', 'monthly'] as const) {
+      const scopePayload = scopedRuntime.payloadByScope[scope]!;
+      const taskBook = buildCombinedZiweiPrompt(scopePayload, 'life', '解读本命与运限关系。');
+      for (const [star, mutagen, nativePalace, dynamicPalace] of expected[scope]) {
+        const nativeName = nativePalace.endsWith('宫') ? nativePalace : `${nativePalace}宫`;
+        const palaceLine = taskBook
+          .split('\n')
+          .find((line) => line.startsWith(`宫位：${nativeName}｜`));
+        assert.ok(palaceLine, `${expected.birthDate}${scope}${nativeName}`);
+        assert.match(palaceLine, new RegExp(`${star}\\([^)、]*当前运限化${mutagen}\\)`));
+        assert.doesNotMatch(palaceLine, /当前运限四化：/);
+        const dynamicName = dynamicPalace.endsWith('宫') ? dynamicPalace : `${dynamicPalace}宫`;
+        assert.ok(taskBook.includes(`（动态${dynamicName}）`));
+      }
+      if (expected.birthDate === '1990-05-15' && scope === 'yearly') {
+        const financeLine = taskBook.split('\n').find((line) => line.startsWith('宫位：财帛宫｜'))!;
+        assert.match(financeLine, /天同\(平\/生年化忌\/当前运限化禄\)/);
+        assert.match(taskBook, /飞星走向：/);
+        assert.match(taskBook, /自化情况：自化禄/);
       }
     }
     assert.deepEqual(scopedRuntime.payloadByScope, structuredBefore);
@@ -645,6 +694,10 @@ test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注�
       }
       const changedPrompt = formatZiweiPayloadForPrompt(changed);
       assert.ok(changedPrompt.includes(title), `${condition}须保留证据`);
+      if (condition === '缺星曜' || condition === '缺当前化') {
+        const changedTaskBook = buildCombinedZiweiPrompt(changed, 'life', '解读本命与运限关系。');
+        assert.ok(changedTaskBook.includes('廉贞化忌→仆役宫（动态命宫）'));
+      }
       if (condition === '额外说明' || condition === '额外正文') {
         assert.ok(changedPrompt.includes('独立条件'));
       }
@@ -900,6 +953,17 @@ test('紫微提示词仅省略已在宫内星曜注记中表达的生年四化�
   });
   assert.match(retainedReadableSnapshot, /杂曜：天巫\(生年化忌\)/);
   assert.doesNotMatch(retainedReadableSnapshot, /生年四化：/);
+
+  payload.active_scope.scope = 'yearly';
+  palace.major_stars[0].horoscope_mutagen = '权';
+  palace.major_stars[0].active_scope_mutagen = '忌';
+  const scopedSnapshot = buildZiweiTaskBookSnapshot({
+    payload,
+    reportContext: { ...createReportContext(), scope: 'yearly' },
+  });
+  const scopedLine = scopedSnapshot.split('\n').find((line) => line.startsWith('宫位：命宫｜'))!;
+  assert.match(scopedLine, /紫微\(生年化禄\/流曜化权\/当前运限化忌\)/);
+  assert.doesNotMatch(scopedLine, /生年四化：|流曜四化：|当前运限四化：/);
 });
 
 test('紫微输出提示词应是可复制给在线 AI 的独立任务书，不暴露工程提示词', () => {

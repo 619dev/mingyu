@@ -1,16 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildMetaphysicsPrompt } from '../src/lib/metaphysics-prompt';
 import {
   PROMPT_ANSWER_FRAMEWORK,
   PROMPT_METHOD_ANSWER_FRAMEWORKS,
   PROMPT_GUIDANCE_TEXT,
   buildCustomQuestionTask,
   buildPromptTask,
-  type MetaphysicsPromptMethod,
 } from '../src/lib/prompt-guidance';
-import { assertPromptHasSingleRole } from './prompt-assertions';
 
 test('全部提示词指引不包含系统控制话术', () => {
   Object.entries(PROMPT_GUIDANCE_TEXT).forEach(([method, guidance]) => {
@@ -39,12 +36,12 @@ test('通用与分体系答题骨架保持简短、中性且可重复调用', ()
       `${method} 骨架不应包含限制性控制话术`,
     );
   });
-  assert.equal(
-    buildPromptTask(buildPromptTask('请依据盘面回答【问题】。')),
-    buildPromptTask('请依据盘面回答【问题】。'),
-  );
-  assert.match(buildCustomQuestionTask('盘面资料'), /^请依据盘面资料回答【问题】。/);
-  assert.match(buildCustomQuestionTask('盘面资料'), new RegExp(PROMPT_ANSWER_FRAMEWORK));
+  const task = buildPromptTask('请依据盘面回答【问题】。');
+  assert.equal(buildPromptTask(task), task);
+
+  const customTask = buildCustomQuestionTask('盘面资料');
+  assert.match(customTask, /^请依据盘面资料回答【问题】。/);
+  assert.match(customTask, new RegExp(PROMPT_ANSWER_FRAMEWORK));
 });
 
 test('合参答题骨架不要求未列出的岁运或运限', () => {
@@ -91,21 +88,6 @@ test('核心传统术数指引覆盖排盘与取用主线', () => {
   Object.entries(expectedTerms).forEach(([method, terms]) => {
     const guidance = PROMPT_GUIDANCE_TEXT[method as keyof typeof expectedTerms];
     terms.forEach((term) => assert.match(guidance.tradition, new RegExp(term)));
-  });
-});
-
-test('八宅、住宅风水、太乙与玄空提示词使用任务书结构', () => {
-  const methods: MetaphysicsPromptMethod[] = ['bazhai', 'residential', 'taiyi', 'xuankong'];
-
-  methods.forEach((method) => {
-    const prompt = buildMetaphysicsPrompt('【排盘信息】\n测试盘面', '请解读重点。', {
-      method,
-      currentTime: new Date('2026-07-16T12:00:00+08:00'),
-    });
-
-    assertPromptHasSingleRole(prompt, PROMPT_GUIDANCE_TEXT[method]);
-    assert.match(prompt, /【问题】\n请解读重点。/);
-    assert.match(prompt, /【传统依据】/);
   });
 });
 

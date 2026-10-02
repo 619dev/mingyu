@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { generateXuanKong } from '../packages/core/src/xuan_kong/index.ts';
 import { generateResidentialFengshui } from '../packages/core/src/residential_fengshui/index.ts';
-import { buildMetaphysicsPrompt } from '../packages/core/src/prompt/metaphysics.ts';
+import { buildMetaphysicsPrompt } from '../src/lib/metaphysics-prompt';
+import { assertPromptHasSingleRole } from './prompt-assertions';
 
 test('九运玄空正文明确星数五行与山向运的生克施受', () => {
   const result = generateXuanKong({ year: 2024, sitMountain: '午' });
@@ -69,10 +70,27 @@ test('玄空证据提示词复用完整盘面，不重复来源与格局说明',
 
 test('玄空在线任务书沿用盘面任务与传统依据，不二次追加通用段落', () => {
   const result = generateXuanKong({ year: 2024, sitMountain: '午' });
+  const extractTraditionalBody = (text: string) => {
+    const headingStart = text.search(/^【传统依据】$/m);
+    if (headingStart < 0) return '';
+
+    const headingEnd = text.indexOf('\n', headingStart);
+    if (headingEnd < 0) return '';
+
+    const bodyStart = headingEnd + 1;
+    const nextHeadingStart = text.indexOf('\n【', bodyStart);
+    return text.slice(bodyStart, nextHeadingStart < 0 ? undefined : nextHeadingStart).trim();
+  };
+  const originalTradition = extractTraditionalBody(result.prompt);
+  assert.match(originalTradition, /\S/, '真实玄空盘应带有非空传统依据');
+
   const prompt = buildMetaphysicsPrompt(result.prompt, '这套宅的飞星怎么看？', {
     method: 'xuankong',
     currentTime: new Date('2026-05-19T04:00:00Z'),
   });
+  assertPromptHasSingleRole(prompt);
+  const wrappedTradition = extractTraditionalBody(prompt);
+  assert.equal(wrappedTradition, originalTradition, '在线包装应完整保留真实盘面的传统依据');
   for (const heading of ['【任务】', '【传统依据】', '【当前时间】', '【问题】']) {
     assert.equal(prompt.split(heading).length - 1, 1, `${heading}不应重复`);
   }

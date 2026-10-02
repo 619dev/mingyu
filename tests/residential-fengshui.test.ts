@@ -348,6 +348,12 @@ test('添加居住人资料不改变门向测量及玄空候选山向', () => {
   };
   const alone = generateResidentialFengshui(input);
   const withPerson = generateResidentialFengshui({ ...input, mingGua: '坎' });
+  assert.equal(alone.bazhai, null);
+  assert.ok(alone.xuankong);
+  assert.equal(alone.xuankong.measurement?.sitDegree, 65);
+  assert.equal(alone.xuankong.sitMountain, '寅');
+  assert.equal(alone.xuankong.facingMountain, '申');
+  assert.ok(alone.xuankong.measurement?.candidateMountains?.length === 2);
   assert.equal(alone.xuankong?.measurement?.stability, '山向边界敏感');
   assert.deepEqual(withPerson.xuankong?.measurement, alone.xuankong?.measurement);
   assert.deepEqual(withPerson.xuankong?.plates, alone.xuankong?.plates);
@@ -479,24 +485,6 @@ test('住宅风水仅有门向度数时可出玄空，不依赖出生信息', ()
   assert.equal(result.xuankong?.sitMountain, '子');
   assert.equal(result.xuankong?.facingMountain, '午');
   assert.match(result.prompt, /仅完成玄空宅运层|玄空/);
-});
-
-test('住宅风水无居住人时门向磁北应换算真北并同步玄空盘', () => {
-  const result = generateResidentialFengshui({
-    year: 2024,
-    doorToInteriorDegree: 64,
-    northReference: 'magnetic',
-    magneticDeclinationDegrees: 1,
-    measurementUncertaintyDegrees: 3,
-  });
-
-  assert.equal(result.bazhai, null);
-  assert.ok(result.xuankong);
-  assert.equal(result.xuankong?.measurement?.sitDegree, 65);
-  assert.equal(result.xuankong?.measurement?.stability, '山向边界敏感');
-  assert.equal(result.xuankong?.sitMountain, '寅');
-  assert.equal(result.xuankong?.facingMountain, '申');
-  assert.ok(result.xuankong?.measurement?.candidateMountains?.length === 2);
 });
 
 test('住宅合参未声明北向时将玄空角度盘标为原始读数暂算', () => {

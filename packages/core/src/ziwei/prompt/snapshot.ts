@@ -164,26 +164,24 @@ export function buildPromptContextSnapshot(params: {
   };
 }
 
-function getClassifiedBirthMutagens(palace: PalaceFact) {
-  return new Set(
-    [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars].flatMap((star) =>
-      star.birth_mutagen ? [`${star.name}化${star.birth_mutagen}`] : [],
-    ),
-  );
-}
-
-function filterRepeatedBirthMutagens<T extends { 生年四化?: string[] }>(
-  summary: T,
-  palace: PalaceFact,
-) {
-  const birthMutagens = summary.生年四化;
-  if (!birthMutagens?.length) return summary;
-
-  const classifiedBirthMutagens = getClassifiedBirthMutagens(palace);
-  const remainingBirthMutagens = birthMutagens.filter((item) => !classifiedBirthMutagens.has(item));
-  return remainingBirthMutagens.length === birthMutagens.length
-    ? summary
-    : { ...summary, 生年四化: remainingBirthMutagens };
+function filterRepeatedPalaceMutagens<
+  T extends { 生年四化?: string[]; 流曜四化?: string[]; 当前运限四化?: string[] },
+>(summary: T, palace: PalaceFact) {
+  const classifiedStars = [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars];
+  const remainingMutagens = (
+    items: string[] | undefined,
+    field: 'birth_mutagen' | 'horoscope_mutagen' | 'active_scope_mutagen',
+  ) =>
+    items?.filter(
+      (item) =>
+        !classifiedStars.some((star) => star[field] && item === `${star.name}化${star[field]}`),
+    );
+  return {
+    ...summary,
+    生年四化: remainingMutagens(summary.生年四化, 'birth_mutagen'),
+    流曜四化: remainingMutagens(summary.流曜四化, 'horoscope_mutagen'),
+    当前运限四化: remainingMutagens(summary.当前运限四化, 'active_scope_mutagen'),
+  };
 }
 
 export function buildZiweiReadableSnapshot(params: {
@@ -204,7 +202,7 @@ export function buildZiweiReadableSnapshot(params: {
   );
   const focusBody = formatObjectList(
     snapshot.重点宫位摘要.map((summary, index) =>
-      filterRepeatedBirthMutagens(summary, focusPalaces[index]),
+      filterRepeatedPalaceMutagens(summary, focusPalaces[index]),
     ),
   );
   const focusPalaceNames = new Set(focusPalaces.map((palace) => formatPalaceName(palace.name)));
@@ -250,7 +248,7 @@ export function buildZiweiTaskBookSnapshot(params: {
   const focusBody = `宫位：${focusPalaces.map((item) => formatPalaceName(item.name)).join('、')}`;
   const palaceBody = payload.palaces
     .map((palace) => {
-      const summary = filterRepeatedBirthMutagens(buildPalaceSummary(payload, palace), palace);
+      const summary = filterRepeatedPalaceMutagens(buildPalaceSummary(payload, palace), palace);
       return Object.entries(summary)
         .filter(
           ([key, value]) =>
