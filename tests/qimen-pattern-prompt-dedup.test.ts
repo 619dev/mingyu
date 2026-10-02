@@ -3,7 +3,12 @@ import test from 'node:test';
 
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 import { generateQimen } from '../packages/core/src/divination/algorithms/qimen';
-import { analyzeQimenEvidence } from '../packages/core/src/divination/qimen-evidence';
+import {
+  analyzeQimenEvidence,
+  selectQimenClassicPatternsForPrompt,
+} from '../packages/core/src/divination/qimen-evidence';
+import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
+import { getDivinationSummaryBlocks } from '../packages/core/src/prompt/divination';
 
 test('奇门证据提示词保留命中条件并省略同宫格局的重复前提', () => {
   const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
@@ -77,4 +82,65 @@ test('复合格局引用同盘经典格局时省略占位复述并保留独有�
   assert.match(hostGuestInjury, /同宫星门与宫各见一生一克：坤二宫、艮八宫、离九宫/);
   assert.doesNotMatch(hostGuestInjury, /天英火星生宫利主|休门水宫克门利主/);
   assert.match(hostGuestInjury, /合“一克一生，主客互伤”/);
+});
+
+test('奇门提示词合并相同宫位相同条件的命中记录，保留不同宫位与独立条件', () => {
+  const same = { name: '条件格', palaces: [7], summary: '生门、丙奇、地盘戊同宫' };
+  const duplicate = { ...same, palaces: [7] };
+  const elsewhere = { ...same, palaces: [8] };
+  const additional = { ...same, summary: '生门、丙奇、九天同宫' };
+  assert.deepEqual(selectQimenClassicPatternsForPrompt([same, duplicate, elsewhere, additional]), [
+    same,
+    elsewhere,
+    additional,
+  ]);
+
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const hit = data.classicPatterns!.find((item) => item.name === '天遁')!;
+  data.classicPatterns!.push(structuredClone(hit));
+  const evidence = analyzeQimenEvidence(data);
+  assert.equal(evidence.promptText.match(/^吉格：天遁（/gmu)?.length, 1);
+  assert.equal(evidence.patternFacts.filter((item) => item.name === '天遁').length, 2);
+  assert.equal(data.classicPatterns!.filter((item) => item.name === '天遁').length, 2);
+});
+
+test('奇门详细在线资料复用命中条件，摘要不重复格局且不采样专项复合格局', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const prompt = formatDetailedDivinationInfo('qimen', data);
+  assert.equal(prompt.match(/生门、丙奇、地盘戊同宫/gu)?.length, 1);
+  assert.match(prompt, /凶格：门迫；惊门（金）克巽四宫（木）/u);
+  assert.doesNotMatch(prompt, /^格局：|盘面命中格局：|乃天遁之格|主此宫事务受阻/gmu);
+  assert.match(prompt, /值符宫应期参考：/u);
+  assert.doesNotMatch(getDivinationSummaryBlocks('qimen', data).lines.join('\n'), /复合格局：/u);
+  assert.ok(data.patternCombos!.length > 0);
+
+  delete data.yingQi;
+  const withoutTiming = formatDetailedDivinationInfo('qimen', data);
+  assert.equal(withoutTiming.match(/生门、丙奇、地盘戊同宫/gu)?.length, 1);
+  assert.match(withoutTiming, /凶格：门迫；惊门（金）克巽四宫（木）/u);
+  assert.doesNotMatch(withoutTiming, /盘面命中格局：/u);
+});
+
+test('奇门空命中资料在证据与详细入口省略格局标题', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  data.classicPatterns = [];
+  data.patternDetails = [];
+  data.patternTags = [];
+  data.patternCombos = [];
+  assert.doesNotMatch(analyzeQimenEvidence(data).promptText, /【传统格局】/u);
+  assert.doesNotMatch(formatDetailedDivinationInfo('qimen', data), /格局明细：|^格局：/mu);
+});
+
+test('奇门专项复合格局合并重复说明并省略空名称与空条件', () => {
+  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const bird = data.patternCombos!.find((item) => item.name === '飞鸟跌穴利客')!;
+  assert.ok(bird);
+  data.patternCombos!.push(
+    structuredClone(bird),
+    { ...bird, name: '', summary: '空名称条件' },
+    { ...bird, name: '空摘要条件', summary: '' },
+  );
+  const prompt = formatEnhancedDivinationInfo('qimen', data, '军事战术如何行动');
+  assert.equal(prompt.match(/飞鸟跌穴利客（兑七宫）：/gu)?.length, 1);
+  assert.doesNotMatch(prompt, /空名称条件|空摘要条件/u);
 });

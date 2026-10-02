@@ -25,10 +25,10 @@ import {
   formatZiweiTargetLowerScopeFacts,
   formatZiweiTopicFocus,
   formatZiweiSelectedTimeline,
+  getUnshownZiweiMutagenItems,
 } from './ziwei';
 import { formatPromptCurrentTime } from './current-time';
 import { buildCustomQuestionTask, buildPromptGuidance, buildPromptTask } from './guidance';
-import { getPromptMutagenItems } from '../ziwei/prompt/mutagen';
 import { formatZiweiTrueSolarEvidence } from '../ziwei/prompt/combined';
 import { formatPalaceRelations } from '../ziwei/prompt/builders';
 import {
@@ -383,14 +383,18 @@ function isBatchedFullScope(
   return scope === 'full' && Boolean(result.calculationBatch || result.fortuneTimeline?.batch);
 }
 
-function formatMutagenMap(payload: AnalysisPayloadV1, isOriginScope = false) {
-  const items = getPromptMutagenItems(payload, isOriginScope)
+function formatMutagenMap(
+  payload: AnalysisPayloadV1,
+  isOriginScope = false,
+  displayedPalaces: readonly PalaceFact[] = [],
+) {
+  const items = getUnshownZiweiMutagenItems(payload, isOriginScope, displayedPalaces)
     .map(
       (item) =>
         `${item.star ? `${item.star}化${item.mutagen}` : `化${item.mutagen}`}${item.palace_name ? `入本命${item.palace_name}` : ''}${!isOriginScope && item.dynamic_palace_name ? `（动态${item.dynamic_palace_name}）` : ''}`,
     )
     .filter(Boolean);
-  return items.length ? items.join('；') : isOriginScope ? '未标出生年四化' : '未标出当前四化';
+  return items.join('；');
 }
 
 export function formatPublicZiweiFullScopeText(result: ZiweiRuntimeFacts) {
@@ -549,6 +553,11 @@ export function formatZiweiEvidenceText(
       .map((item) => item.name)
       .filter(Boolean)
       .join('、');
+  const mutagens = formatMutagenMap(
+    payload,
+    payload.active_scope.scope === 'origin',
+    payload.palaces,
+  );
   const baseText = [
     `分析对象：${payload.active_scope.label || scopeLabel(scope)}`,
     `出生日期：${payload.basic_info.solar_date}；农历：${payload.basic_info.lunar_date}；时辰：${payload.basic_info.birth_time_label}`,
@@ -564,8 +573,8 @@ export function formatZiweiEvidenceText(
     payload.active_scope.scope === 'origin' || !activePalace
       ? ''
       : `当前落宫：${activePalace.name}`,
-    getPromptMutagenItems(payload, payload.active_scope.scope === 'origin').length
-      ? `${payload.active_scope.scope === 'origin' ? '生年四化' : '当前四化'}：${formatMutagenMap(payload, payload.active_scope.scope === 'origin')}`
+    mutagens
+      ? `${payload.active_scope.scope === 'origin' ? '生年四化' : '当前四化'}：${mutagens}`
       : '',
     buildKeyPalaces(payload, payload.active_scope.scope === 'origin'),
   ]
@@ -604,6 +613,9 @@ export function buildPublicZiweiPromptForRuntime(params: {
       ? (params.result.payloadByScope.origin ?? Object.values(params.result.payloadByScope)[0])
       : (params.result.payloadByScope[scope as ScopeType] ?? params.result.payloadByScope.origin);
   const natalSnapshot = params.result.natalSnapshot;
+  const mutagens = payload
+    ? formatMutagenMap(payload, payload.active_scope.scope === 'origin', payload.palaces)
+    : '';
   const activePalace = payload?.palaces.find(
     (palace) => palace.index === payload.active_scope.palace_index,
   );
@@ -632,8 +644,8 @@ export function buildPublicZiweiPromptForRuntime(params: {
     !payload || payload.active_scope.scope === 'origin' || !activePalace
       ? ''
       : `当前落宫：${activePalace.name}`,
-    payload && getPromptMutagenItems(payload, payload.active_scope.scope === 'origin').length
-      ? `${payload.active_scope.scope === 'origin' ? '生年四化' : '当前四化'}：${formatMutagenMap(payload, payload.active_scope.scope === 'origin')}`
+    payload && mutagens
+      ? `${payload.active_scope.scope === 'origin' ? '生年四化' : '当前四化'}：${mutagens}`
       : '',
   ]
     .filter(Boolean)

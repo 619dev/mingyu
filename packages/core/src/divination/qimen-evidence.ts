@@ -372,9 +372,33 @@ function getBasicPatternTone(tag: string): QimenPatternEvidenceFact['traditional
   return '中性';
 }
 
+export function formatQimenClassicPatternSummary(name: string, summary: string): string {
+  let text = summary
+    .replaceAll(`，乃${name}之格`, '')
+    .replaceAll(`；乃${name}之格`, '')
+    .replace(/（([乙丙丁戊己庚辛壬癸])在此宫落于相刑之位）/gu, '');
+  if (name === '休诈' && /[乙丙丁]奇、(?:开|休|生)门、六合同宫/u.test(text)) {
+    text = text.replace('，三奇、吉门、六合同宫', '');
+  }
+  const stemPair = text.match(
+    /^天盘([乙丙丁戊己庚辛壬癸])加地盘([乙丙丁戊己庚辛壬癸])于[^，]+，\1加地盘\2为([^，；。]+)/u,
+  );
+  if (stemPair?.[3] === name) {
+    text = text.replace(`，${stemPair[1]}加地盘${stemPair[2]}为${name}`, '');
+  }
+  if (name.endsWith('升殿')) text = text.replace('，升殿得位', '');
+  if (name === '罗网青龙') text = text.replace('，故癸加地盘戊按此格论', '');
+  return unique(
+    text
+      .split(/[；。]/u)
+      .map((clause) => clause.trim())
+      .filter(Boolean),
+  ).join('；');
+}
+
 export function formatQimenPatternBasis(item: QimenPatternEvidenceFact): string {
   if (item.kind === '基础格局' && /^三奇得（/u.test(item.name)) return item.name;
-  const clauses = item.promptText
+  const clauses = formatQimenClassicPatternSummary(item.name, item.promptText)
     .split(/[，；。]/u)
     .map((clause) => clause.trim())
     .filter(Boolean);
@@ -395,18 +419,59 @@ export function formatQimenPatternBasis(item: QimenPatternEvidenceFact): string 
 }
 
 export function selectQimenClassicPatternsForPrompt<
-  T extends Pick<QimenPatternEvidenceFact, 'name' | 'palaces'>,
+  T extends Pick<QimenPatternEvidenceFact, 'name' | 'palaces'> & {
+    promptText?: string;
+    summary?: string;
+  },
 >(classicFacts: T[]): T[] {
-  return classicFacts.filter(
-    (item) =>
-      !/^[日月星]奇得使$/u.test(item.name) ||
-      !item.palaces.length ||
-      !item.palaces.every((gong) =>
+  const seen = new Set<string>();
+  return classicFacts.filter((item) => {
+    if (!item.name.trim()) return false;
+    if (
+      /^[日月星]奇得使$/u.test(item.name) &&
+      item.palaces.length &&
+      item.palaces.every((gong) =>
         classicFacts.some(
           (fact) => fact.name === `${item.name}临吉门` && fact.palaces.includes(gong),
         ),
-      ),
-  );
+      )
+    )
+      return false;
+    const key = JSON.stringify([
+      item.name,
+      [...item.palaces].sort((left, right) => left - right),
+      formatQimenClassicPatternSummary(item.name, item.promptText ?? item.summary ?? ''),
+    ]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function selectQimenPatternFactsForPrompt(
+  patternFacts: QimenPatternEvidenceFact[],
+): QimenPatternEvidenceFact[] {
+  const allClassicFacts = patternFacts.filter((item) => item.kind === '经典格局');
+  const classicFacts = selectQimenClassicPatternsForPrompt(allClassicFacts);
+  const seen = new Set<string>();
+  return patternFacts.filter((item) => {
+    if (item.status !== '已命中' || item.kind === '复合格局' || !item.name.trim()) return false;
+    if (item.kind === '经典格局' && !classicFacts.includes(item)) return false;
+    if (
+      item.kind === '基础格局' &&
+      (item.name.startsWith('马星（') ||
+        isBasicPatternCoveredByClassic(item.name, item.palaces, allClassicFacts))
+    )
+      return false;
+    const key = JSON.stringify([
+      item.name,
+      [...item.palaces].sort((left, right) => left - right),
+      formatQimenPatternBasis(item),
+    ]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function formatQimenClassicPatternBasisForPrompt(
@@ -425,6 +490,31 @@ export function formatQimenClassicPatternBasisForPrompt(
     .filter((parentBasis) => parentBasis !== parentName);
   if (!parentBases.length) return basis;
   return unique([...parentBases, basis.replace(`${parentName}又临吉门`, '同宫临')]).join('；');
+}
+
+export function formatQimenPatternLinesForPrompt(
+  data: QimenData,
+  patternFacts: QimenPatternEvidenceFact[],
+): string[] {
+  const classicFacts = patternFacts.filter((item) => item.kind === '经典格局');
+  return selectQimenPatternFactsForPrompt(patternFacts).map((item) => {
+    const tone =
+      item.traditionalTone === '有利'
+        ? '吉格'
+        : item.traditionalTone === '风险'
+          ? '凶格'
+          : item.traditionalTone === '混合'
+            ? '吉凶并见'
+            : '中性格局';
+    const basis =
+      item.kind === '经典格局'
+        ? formatQimenClassicPatternBasisForPrompt(item, classicFacts)
+        : formatQimenPatternBasis(item);
+    const palaceNames = item.palaces
+      .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
+      .filter((name) => !item.name.includes(name) && !basis.includes(name));
+    return `${tone}：${item.name}${palaceNames.length ? `（${palaceNames.join('、')}）` : ''}${basis !== item.name ? `；${basis}` : ''}`;
+  });
 }
 
 function getPatternPalaces(data: QimenData, tag: string): number[] {
@@ -1546,35 +1636,7 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
   ];
   const evidence: PromptEvidenceBundle = { title: '奇门用神宫与宫间作用结构化证据', items };
   const calculationChain = calculationEvidenceFacts.map((item) => item.promptText);
-  const promptClassicFacts = selectQimenClassicPatternsForPrompt(classicFactsForPrompt);
-  const patternLines = promptPatternFacts
-    .filter(
-      (item) =>
-        !(item.kind === '基础格局' && item.name.startsWith('马星（')) &&
-        (item.kind !== '经典格局' || promptClassicFacts.includes(item)),
-    )
-    .map((item) => {
-      const palaces =
-        item.palaces.length || item.kind !== '基础格局'
-          ? item.palaces
-          : getPatternPalaces(data, item.name);
-      const tone =
-        item.traditionalTone === '有利'
-          ? '吉格'
-          : item.traditionalTone === '风险'
-            ? '凶格'
-            : item.traditionalTone === '混合'
-              ? '吉凶并见'
-              : '中性格局';
-      const basis =
-        item.kind === '经典格局'
-          ? formatQimenClassicPatternBasisForPrompt(item, classicFactsForPrompt)
-          : formatQimenPatternBasis(item).replaceAll(`；乃${item.name}之格`, '');
-      const palaceNames = palaces
-        .map((gong) => data.jiuGongGe.find((palace) => palace.gong === gong)?.name ?? `${gong}宫`)
-        .filter((name) => !item.name.includes(name) && !basis.includes(name));
-      return `${tone}：${item.name}${palaceNames.length ? `（${palaceNames.join('、')}）` : ''}${basis !== item.name ? `；${basis}` : ''}`;
-    });
+  const patternLines = formatQimenPatternLinesForPrompt(data, patternFacts);
   const palaceLines = [...data.jiuGongGe]
     .sort((left, right) => left.gong - right.gong)
     .map((palace) => {

@@ -1115,6 +1115,15 @@ test('奇门终身局基础盘省略同格局复述并保留独有组合与遁�
   assert.match(patterns, /罗网青龙（中性）：[^\n]*癸加地盘甲为罗网青龙；排盘时以甲子戊代甲/u);
   assert.doesNotMatch(patterns, /故癸加地盘戊按此格论/u);
   assert.ok(data.baseChart.classicPatterns?.some((item) => item.summary.includes('乃虎遁之格')));
+  const duplicate = data.baseChart.classicPatterns!.find((item) => item.name === '虎遁')!;
+  data.baseChart.classicPatterns!.push(structuredClone(duplicate));
+  data.stages[0].supportFacts = [`成吉格「虎遁」：${duplicate.summary}`];
+  const duplicatePrompt = buildLifetimePrompt(data, undefined, { includeCurrentTime: false });
+  const duplicatePatterns =
+    duplicatePrompt.split('盘面吉凶格局：')[1]?.split('【个人标记与主题宫】')[0] ?? '';
+  assert.equal(duplicatePatterns.match(/^  虎遁（吉）：/gmu)?.length, 1);
+  assert.equal(data.baseChart.classicPatterns!.filter((item) => item.name === '虎遁').length, 2);
+  assert.match(duplicatePrompt.split('阶段1：')[1].split('阶段2：')[0], /成吉格「虎遁」/u);
 });
 
 test('奇门终身局同宫得使合并基础条件，保留不同宫位的独立事实', () => {

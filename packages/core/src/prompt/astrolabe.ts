@@ -120,6 +120,14 @@ function formatAstrolabePatterns(patterns: string[]) {
 
 export function formatAstrolabeForPrompt(data: AstrolabeData) {
   const gender = data.birth.gender ? `${data.birth.gender}；` : '';
+  const elements = Object.entries(data.summary.elements)
+    .filter(([, members]) => members.length)
+    .map(([key, members]) => `${key}${members.join('、')}`)
+    .join('；');
+  const modalities = Object.entries(data.summary.modalities)
+    .filter(([, members]) => members.length)
+    .map(([key, members]) => `${key}${members.join('、')}`)
+    .join('；');
   return [
     `出生信息：${data.birth.name}；${gender}${data.birth.dateTime}；位置${data.birth.location}；时区UTC${formatFixedTimezoneOffset(data.birth.timezone)}`,
     data.birth.latitude !== undefined && data.birth.longitude !== undefined
@@ -136,17 +144,11 @@ export function formatAstrolabeForPrompt(data: AstrolabeData) {
     data.birth.isTrueSolarTime && data.birth.trueSolarDateTime
       ? `出生时间校正：当地钟表时间${data.birth.standardDateTime || data.birth.dateTime}；真太阳时${data.birth.trueSolarDateTime}（传统时间参考）；星盘依据当地钟表时间对应的出生瞬间计算`
       : '',
-    '元素与模式分布口径：按太阳至冥王星十颗本命星体逐颗归类，每颗星体计作一个成员。',
-    `元素分布（十大星体）：${
-      Object.entries(data.summary.elements)
-        .map(([key, values]) => `${key}${values.join('、')}`)
-        .join('；') || '未记录'
-    }`,
-    `模式分布（十大星体）：${
-      Object.entries(data.summary.modalities)
-        .map(([key, values]) => `${key}${values.join('、')}`)
-        .join('；') || '未记录'
-    }`,
+    elements || modalities
+      ? '元素与模式分布口径：按太阳至冥王星十颗本命星体逐颗归类，每颗星体计作一个成员。'
+      : '',
+    elements ? `元素分布（十大星体）：${elements}` : '',
+    modalities ? `模式分布（十大星体）：${modalities}` : '',
     data.summary.patternBasis === 'ten-main-bodies-selected-aspects' && data.summary.patterns.length
       ? `十大星体格局：${formatAstrolabePatterns(data.summary.patterns).join('、')}`
       : '',

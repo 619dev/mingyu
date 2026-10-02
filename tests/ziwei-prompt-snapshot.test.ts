@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { calculateFullZiweiChart, buildZiweiChartInput } from '../src/lib/full-chart-engine/ziwei';
 import { EARTHLY_BRANCHES } from '../packages/core/src/ganzhi/data';
 import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
+import {
+  buildPublicZiweiPromptForRuntime,
+  formatZiweiEvidenceText,
+} from '../packages/core/src/prompt/public-api';
 import { buildFocusTaskBundle } from '../packages/core/src/ziwei/prompt/focus';
 import {
   isRepeatedZiweiCoLocationCondition,
@@ -511,9 +515,116 @@ test('真实紫微盘将已列在宫位资料中的证据去重并忠实标注�
   }
 });
 
+test('真实紫微本命公共入口与内嵌资料只在宫内展示生年四化', async () => {
+  const runtime = await getRepeatedOriginChart();
+  assert.equal(runtime.natalSnapshot, undefined);
+  const payload = runtime.payloadByScope.origin;
+  const mutagenStars = payload.palaces.flatMap((palace) =>
+    [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars]
+      .filter((star) => star.birth_mutagen)
+      .map((star) => ({ palace: palace.name, star })),
+  );
+  assert.equal(mutagenStars.length, 4);
+  for (const prompt of [
+    buildPublicZiweiPromptForRuntime({
+      result: runtime,
+      scope: 'origin',
+      question: '解读本命结构。',
+    }),
+    formatZiweiEvidenceText(runtime, 'origin'),
+  ]) {
+    assert.doesNotMatch(prompt, /生年四化：|未标出生年四化/u);
+    for (const { palace, star } of mutagenStars) {
+      const line = prompt.split('\n').find((item) => item.trimStart().startsWith(`${palace}（`));
+      assert.ok(line, `${palace}须保留宫位资料`);
+      assert.ok(line.includes(`${star.name}(`));
+      assert.ok(line.includes(`生年化${star.birth_mutagen}`));
+    }
+    assert.match(prompt, /福德(?:宫)?（[^\n]*太阴\(陷，生年化科\)/u);
+  }
+});
+
+test('紫微私有公共资料复用四化去重并保留额外动态落点', async () => {
+  const runtime = await getRepeatedOriginChart();
+  const payload = createPayload();
+  payload.palaces[4].major_stars = [
+    { name: '天同', kind: 'major', birth_mutagen: '禄', active_scope_mutagen: '科' },
+  ];
+  payload.active_scope = {
+    ...payload.active_scope,
+    scope: 'yearly',
+    label: '流年',
+    mutagen_map: [
+      {
+        star: '天同',
+        mutagen: '科',
+        palace_index: 4,
+        palace_name: '财帛',
+        dynamic_palace_name: '流年命宫',
+      },
+      { star: '文昌', mutagen: '忌', palace_index: 11, palace_name: '兄弟' },
+    ],
+  };
+  const selectedRuntime = {
+    ...runtime,
+    payloadByScope: { ...runtime.payloadByScope, yearly: payload },
+  };
+  const texts = () => [
+    buildPublicZiweiPromptForRuntime({
+      result: selectedRuntime,
+      scope: 'yearly',
+      question: '解读流年。',
+    }),
+    formatZiweiEvidenceText(selectedRuntime, 'yearly'),
+  ];
+  for (const prompt of texts()) {
+    assert.match(prompt, /财帛（[^\n]*天同\(生年化禄，当前化科\)/u);
+    assert.match(prompt, /当前四化：天同化科入本命财帛（动态流年命宫）；文昌化忌入本命兄弟/u);
+  }
+  payload.palaces[4].dynamic_scope_name = '流年命宫';
+  for (const prompt of texts()) {
+    assert.match(prompt, /当前四化：文昌化忌入本命兄弟/u);
+    assert.doesNotMatch(prompt, /天同化科入本命财帛/u);
+    assert.match(prompt, /动态宫名：流年命宫/u);
+  }
+});
+
 test('紫微在线提示词无四化事实时不输出资料状态占位', () => {
   const prompt = formatZiweiPayloadForPrompt(createPayload());
   assert.doesNotMatch(prompt, /生年四化：|当前四化：|未记录生年四化|未记录当前四化/);
+});
+
+test('紫微公共提示词只省略已由所展示宫位表达的四化落点', () => {
+  const payload = createPayload();
+  payload.palaces[4].major_stars = [
+    { name: '天同', kind: 'major', birth_mutagen: '禄', active_scope_mutagen: '科' },
+  ];
+  const natal = formatZiweiPayloadForPrompt(payload);
+  assert.match(natal, /财帛宫；[^\n]*天同，生年化禄/);
+  assert.doesNotMatch(natal, /生年四化：/);
+  assert.match(
+    formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] }),
+    /生年四化：天同化禄入财帛宫/,
+  );
+
+  payload.active_scope = {
+    ...payload.active_scope,
+    scope: 'yearly',
+    label: '流年',
+    mutagen_map: [{ star: '天同', mutagen: '科', palace_index: 4, palace_name: '财帛' }],
+  };
+  const yearly = formatZiweiPayloadForPrompt(payload);
+  assert.match(yearly, /财帛宫；[^\n]*天同，生年化禄，当前化科/);
+  assert.doesNotMatch(yearly, /当前四化：/);
+  assert.match(
+    formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] }),
+    /当前四化：天同化科入财帛宫/,
+  );
+
+  payload.active_scope.mutagen_map[0].dynamic_palace_name = '流年命宫';
+  assert.match(formatZiweiPayloadForPrompt(payload), /当前四化：天同化科入财帛宫（动态流年命宫）/);
+  payload.palaces[4].dynamic_scope_name = '流年命宫';
+  assert.doesNotMatch(formatZiweiPayloadForPrompt(payload), /当前四化：/);
 });
 
 test('格局条件未列出具体宫位时保留必要的宫位资料', () => {
@@ -609,7 +720,7 @@ test('紫微重点宫位资料展示三方四正时应排除本宫', () => {
   assert.deepEqual(summary.三方四正, ['迁移宫', '财帛宫', '官禄宫']);
 });
 
-test('紫微提示词仅省略已在主辅曜注记中表达的生年四化项目', () => {
+test('紫微提示词仅省略已在宫内星曜注记中表达的生年四化项目', () => {
   const payload = createPayload();
   const palace = payload.palaces[0];
   palace.major_stars = [{ name: '紫微', kind: 'major', birth_mutagen: '禄' }];
@@ -644,14 +755,13 @@ test('紫微提示词仅省略已在主辅曜注记中表达的生年四化项�
   assert.match(retainedPalaceLine, /主星：紫微\(生年化禄\)/);
   assert.match(retainedPalaceLine, /辅星：文昌\(生年化科\)/);
   assert.match(retainedPalaceLine, /杂曜：天巫\(生年化忌\)/);
-  assert.match(retainedPalaceLine, /生年四化：天巫化忌/);
-  assert.doesNotMatch(retainedPalaceLine, /生年四化：[^｜]*(?:紫微化禄|文昌化科)/);
+  assert.doesNotMatch(retainedPalaceLine, /生年四化：/);
   const retainedReadableSnapshot = buildZiweiReadableSnapshot({
     payload,
     reportContext: createReportContext(),
   });
-  assert.match(retainedReadableSnapshot, /生年四化：天巫化忌/);
-  assert.doesNotMatch(retainedReadableSnapshot, /生年四化：[^\n]*(?:紫微化禄|文昌化科)/);
+  assert.match(retainedReadableSnapshot, /杂曜：天巫\(生年化忌\)/);
+  assert.doesNotMatch(retainedReadableSnapshot, /生年四化：/);
 });
 
 test('紫微输出提示词应是可复制给在线 AI 的独立任务书，不暴露工程提示词', () => {
@@ -772,7 +882,7 @@ test('紫微本命重点宫位资料保留亮度生年四化与原局辅证', ()
   assert.doesNotMatch(snapshot, /流年将前十二神:岁驿|流年岁前十二神:太岁/);
 });
 
-test('紫微提示词快照应单独输出运限落宫与当前四化飞入结构', () => {
+test('紫微提示词快照将运限落宫与当前四化各集中列示一次', () => {
   const payload = createPayload();
   payload.active_scope = {
     ...payload.active_scope,
@@ -817,16 +927,13 @@ test('紫微提示词快照应单独输出运限落宫与当前四化飞入结�
     }),
   });
 
-  assert.match(snapshot, /【运限资料】/);
+  assert.doesNotMatch(snapshot, /【运限资料】/);
   assert.match(snapshot, /【运限重点】/);
-  assert.match(snapshot, /类型：运限落宫/);
-  assert.match(snapshot, /运限：流年/);
-  assert.match(snapshot, /本命落宫：财帛宫/);
-  assert.match(snapshot, /当前动态宫名：流年命宫/);
-  assert.match(snapshot, /类型：当前四化飞入/);
-  assert.match(snapshot, /天同/);
-  assert.match(snapshot, /飞入宫位：财帛宫/);
-  assert.match(snapshot, /动态飞入宫位：命宫/);
+  const scopeFacts = snapshot.match(/【运限重点】\n([\s\S]*?)(?=\n\n【|$)/)?.[1] ?? '';
+  assert.match(scopeFacts, /流年落宫→本命财帛宫，动态宫名：流年命宫，主星：天同\(旺\)/);
+  assert.equal(scopeFacts.match(/本命财帛宫/g)?.length, 1);
+  assert.equal(scopeFacts.match(/天同化禄→财帛宫（动态命宫）/g)?.length, 1);
+  assert.equal(scopeFacts.match(/文昌化科→官禄宫/g)?.length, 1);
   assert.doesNotMatch(snapshot, /【主证】|【辅证】|【应期】|【限制】|证据汇总|解释边界/);
 });
 
@@ -1381,7 +1488,8 @@ test('大限提示词只选当前焦点宫的三方四正化曜，保留各宫�
   const scopeFacts = snapshot.split('【运限重点】\n')[1]?.split('\n\n【关键判断线索】')[0] ?? '';
   assert.match(analysisObject, /分析对象：大限/);
   assert.doesNotMatch(analysisObject, /对象类型：大限|当前落宫：|当前四化：/);
-  assert.match(scopeFacts, /大限当前落宫为本命子女宫/);
+  assert.match(scopeFacts, /大限落宫→本命子女宫/);
+  assert.doesNotMatch(scopeFacts, /大限当前落宫为本命子女宫/);
   assert.match(scopeFacts, /太阴化禄→迁移宫/);
   assert.match(scopeFacts, /天同化权→迁移宫/);
   assert.match(scopeFacts, /天机化科→夫妻宫/);
@@ -1597,8 +1705,7 @@ test('紫微本命提示词不应混入大限流年流月流日运限结构', ()
     }),
   });
 
-  assert.match(snapshot, /【运限资料】\n无/);
-  assert.match(snapshot, /【运限重点】\n无/);
+  assert.doesNotMatch(snapshot, /【运限资料】|【运限重点】/);
   assert.doesNotMatch(snapshot, /类型：当前四化飞入/);
   assert.doesNotMatch(snapshot, /【主证】运限命中宫位/);
   assert.doesNotMatch(snapshot, /当前动态宫名：流年命宫/);
@@ -1611,10 +1718,28 @@ test('紫微提示词快照不应输出无意义占位的当前落宫与当前�
     payload: createPayload(),
     reportContext: createReportContext(),
   });
-  const scopeSection = snapshot.match(/【分析对象】([\s\S]*?)\n\n【运限重点】/)?.[1] || '';
+  const scopeSection = snapshot.match(/【分析对象】([\s\S]*?)(?=\n\n【|$)/)?.[1] || '';
+  assert.match(scopeSection, /分析对象：本命盘/);
 
   assert.doesNotMatch(scopeSection, /当前落宫：未标注/);
   assert.doesNotMatch(scopeSection, /当前四化：无/);
+});
+
+test('紫微运限没有可列落宫或四化时省略空运限段', () => {
+  const payload = createPayload();
+  payload.active_scope = {
+    ...payload.active_scope,
+    scope: 'yearly',
+    label: '流年',
+    palace_index: undefined,
+    mutagen_map: [],
+  };
+  const reportContext = createReportContext({ scope_type: 'yearly', scope_label: '流年' });
+  for (const build of [buildZiweiReadableSnapshot, buildZiweiTaskBookSnapshot]) {
+    const snapshot = build({ payload, reportContext });
+    assert.match(snapshot, /分析对象：流年/);
+    assert.doesNotMatch(snapshot, /【运限资料】|【运限重点】/);
+  }
 });
 
 test('紫微本命证据池不应生成运限落宫证据', () => {

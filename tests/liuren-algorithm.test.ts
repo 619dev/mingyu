@@ -17,6 +17,7 @@ import {
   resolveInitialTransmission,
 } from '../packages/core/src/divination/algorithms/liuren/helpers/lessons.ts';
 import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules.ts';
+import { getLiurenTransmissionClassic } from '../packages/core/src/classics/liuren-rules.ts';
 import {
   buildHeavenlyPlate,
   getDayStemResidence,
@@ -743,6 +744,41 @@ test('丙辰日卯时辰将首尾同课应按别责取亥午午', () => {
   );
   assert.equal(result.initial.rule, '别责法');
   assert.deepEqual(result.branches, ['亥', '午', '午']);
+});
+
+test('大六壬昴星原例区分阳日酉上与阴日酉下，并按干支上神取中末', () => {
+  // 《六壬大全·昴星课》明列：戊申日卯时辰将戌酉午，丁丑日辰时丑将子辰戌。
+  const cases = [
+    { day: '戊申', hour: '乙卯', monthLeader: '辰', expected: ['戌', '酉', '午'] },
+    { day: '丁丑', hour: '甲辰', monthLeader: '丑', expected: ['子', '辰', '戌'] },
+  ];
+  for (const item of cases) {
+    const result = buildReferenceLiurenPlate(item);
+    assert.equal(result.initial.rule, '昴星法', item.day);
+    assert.deepEqual(result.branches, item.expected, item.day);
+  }
+
+  const classic = getLiurenTransmissionClassic('昴星法');
+  assert.match(classic?.summary ?? '', /阴日初传取天盘酉下神，中传干上、末传支上/);
+  assert.match(resolveLiurenClassicalRules('昴星法')[0]?.summary ?? '', /天盘酉下神/);
+});
+
+test('大六壬九宗门资料查询识别知一别名，并优先返回特殊主课', () => {
+  const cases = [
+    ['比用法', '知一/比用'],
+    ['知一法', '知一/比用'],
+    ['伏吟重审法', '伏吟'],
+    ['伏吟元首法', '伏吟'],
+    ['返吟比用法', '返吟'],
+    ['返吟涉害法', '返吟'],
+    ['反吟', '返吟'],
+    ['遥克比用法', '遥克'],
+    ['遥克涉害法', '遥克'],
+  ];
+  for (const [rule, expected] of cases) {
+    assert.equal(getLiurenTransmissionClassic(rule)?.rule, expected, rule);
+  }
+  assert.equal(getLiurenTransmissionClassic('未知取传法'), undefined);
 });
 
 test('大六壬古例中的比用、涉害、遥克、别责和八专应排出原文三传', () => {

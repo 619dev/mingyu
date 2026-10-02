@@ -108,20 +108,6 @@ export function formatDivinationOriginTime(
   return [repeatsCurrentTime ? '' : civilTime, trueSolarTime].filter(Boolean).join('\n');
 }
 
-function formatQimenPatternComboSummary(data: QimenData) {
-  const toneLabels = {
-    'super-good': '支持条件较集中',
-    'super-bad': '限制条件较集中',
-    mixed: '支持与限制并存',
-  } as const;
-  return data.patternCombos?.length
-    ? `复合格局：${data.patternCombos
-        .slice(0, 3)
-        .map((item) => `${item.name}（${toneLabels[item.tone]}）`)
-        .join('、')}`
-    : '';
-}
-
 function formatAlmanacCandidateSummary(data: AlmanacData) {
   const evidence = analyzeAlmanacEvidence(data);
   const candidates = new Map(evidence.candidates.map((item) => [item.date, item]));
@@ -432,7 +418,6 @@ export function getDivinationSummaryBlocks(
           `定局：${isYearOrMonth ? `干支年${item.ganzhi.year}` : item.timeInfo.juTerm || item.timeInfo.solarTerm}${item.timeInfo.epoch}`,
           wrapMainEvidence(formatQimenFocusSummary(item)),
           item.patternTags?.length ? `格局：${[...new Set(item.patternTags)].join('、')}` : '',
-          formatQimenPatternComboSummary(item),
           `空亡：${item.voidBranches?.join('、') || '无'}`,
           formatQimenHorseSummary(item),
           formatQimenSeasonalitySummary(item),

@@ -166,7 +166,7 @@ export function buildPromptContextSnapshot(params: {
 
 function getClassifiedBirthMutagens(palace: PalaceFact) {
   return new Set(
-    [...palace.major_stars, ...palace.minor_stars].flatMap((star) =>
+    [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars].flatMap((star) =>
       star.birth_mutagen ? [`${star.name}化${star.birth_mutagen}`] : [],
     ),
   );
@@ -198,7 +198,6 @@ export function buildZiweiReadableSnapshot(params: {
   const patternSection = snapshot.命盘格局.length
     ? ['', '【命盘格局】', formatObjectList(snapshot.命盘格局)]
     : [];
-  const yunxianBody = formatObjectList(snapshot.运限结构);
   const yunxianFocus = buildScopeHitSummary(params.payload);
   const evidenceBody = formatObjectList(
     buildEvidenceSummary(params.payload, focusPalaces, params.reportContext),
@@ -226,8 +225,7 @@ export function buildZiweiReadableSnapshot(params: {
     '【分析对象】',
     formatKeyValueBlock(buildTaskBookAnalysisObject(params.payload)),
     ...patternSection,
-    ['', '【运限资料】', yunxianBody || '无'],
-    ['', '【运限重点】', yunxianFocus.length ? yunxianFocus.join('\n') : '无'],
+    yunxianFocus.length ? ['', '【运限重点】', yunxianFocus.join('\n')] : [],
     evidenceBody ? ['', '【关键判断线索】', evidenceBody] : '',
     focusBody ? ['', '【重点宫位资料】', focusBody] : '',
     palaceBody ? ['', '【十二宫资料】', palaceBody] : '',
@@ -279,7 +277,7 @@ export function buildZiweiTaskBookSnapshot(params: {
     '',
     '【分析对象】',
     formatKeyValueBlock(buildTaskBookAnalysisObject(payload)),
-    ...(isOrigin ? [] : ['', '【运限重点】', yunxianFocus.length ? yunxianFocus.join('\n') : '无']),
+    ...(!isOrigin && yunxianFocus.length ? ['', '【运限重点】', yunxianFocus.join('\n')] : []),
     ...(patternSummary.length ? ['', '【命盘格局】', formatObjectList(patternSummary)] : []),
     ...(evidenceBody ? ['', '【关键判断线索】', evidenceBody] : []),
     ...['', '【重点宫位资料】', focusBody],

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { extractDivinationPromptFacts } from '../scripts/prompt-audit/divination-facts';
+import { extractZiweiFacts } from '../scripts/prompt-audit/natal-facts';
+import { buildZiweiChartInput, calculateZiweiChart } from '../packages/core/src/ziwei/runtime';
+import { buildPublicZiweiPromptForRuntime } from '../packages/core/src/prompt/public-api';
 import {
   auditPromptFacts,
   assertPromptFactCoverage,
@@ -23,6 +26,199 @@ const facts: PromptFactExpectation[] = [
   { id: '对方年柱', owner: '年柱', values: ['乙丑'], scope: { start: '【对方】' } },
 ];
 const prompt = '【本人】\n年柱：甲子\n月柱：乙丑\n【对方】\n年柱：乙丑';
+
+const ziweiFactOptions = {
+  scope: { start: '【本命资料】', end: '【任务】' },
+  activeFactStyle: 'public',
+  palaceValueStyle: 'public',
+  mutagenValueStyle: 'public',
+} as const;
+let ziweiAuditRuntime: ReturnType<typeof calculateZiweiChart> | undefined;
+function getZiweiAuditRuntime() {
+  return (ziweiAuditRuntime ??= calculateZiweiChart(
+    buildZiweiChartInput({
+      name: '四化审查虚构样本',
+      gender: 'male',
+      dateType: 'solar',
+      year: '1993',
+      month: '4',
+      day: '8',
+      timeIndex: '',
+      isLeapMonth: false,
+      useTrueSolarTime: true,
+      birthHour: '23',
+      birthMinute: '34',
+      birthLongitude: '103.8198',
+    }),
+    { scopes: ['origin', 'yearly'], horoscopeContext: { dateStr: '2026-05-19', hourIndex: 5 } },
+  ));
+}
+
+test('真实紫微流年四化审查逐项绑定宫内注记，删注记和错宫均失败', async () => {
+  const runtime = await getZiweiAuditRuntime();
+  const payload = runtime.payloadByScope.yearly;
+  const text = buildPublicZiweiPromptForRuntime({
+    result: runtime,
+    scope: 'yearly',
+    question: '解读当前事业与财务主题。',
+  });
+  const expectations = extractZiweiFacts(payload, ziweiFactOptions);
+  const mapFacts = expectations.filter((item) => /\.mutagens(?:\.|$)/u.test(item.id));
+  assert.equal(mapFacts.length, payload.active_scope.mutagen_map.length);
+  assert.equal(mapFacts.length, 4);
+  assert.doesNotMatch(text, /^当前四化：/mu);
+  assert.deepEqual(auditPromptFacts(text, expectations).missing, []);
+  for (const [index, mapping] of payload.active_scope.mutagen_map.entries()) {
+    const target = payload.palaces.find((palace) => palace.index === mapping.palace_index);
+    assert.ok(target);
+    const owner = `${target.name}（${target.heavenly_stem}${target.earthly_branch}）：`;
+    const line = text.split('\n').find((item) => item.trimStart().startsWith(owner));
+    assert.ok(line);
+    const starPattern = new RegExp(`${mapping.star}\\([^)]*当前化${mapping.mutagen}[^)]*\\)`, 'u');
+    const annotation = line.match(starPattern)?.[0];
+    assert.ok(annotation);
+    const removed = text.replace(
+      line,
+      line.replace(annotation, annotation.replace(`，当前化${mapping.mutagen}`, '')),
+    );
+    assert.ok(auditPromptFacts(removed, expectations).missing.includes(mapFacts[index].id));
+    const wrongPalace = payload.palaces.find((palace) => palace.index !== target.index);
+    assert.ok(wrongPalace);
+    const swapped = text.replace(
+      line,
+      line.replace(
+        owner,
+        `${wrongPalace.name}（${wrongPalace.heavenly_stem}${wrongPalace.earthly_branch}）：`,
+      ),
+    );
+    assert.ok(auditPromptFacts(swapped, expectations).missing.includes(mapFacts[index].id));
+    const changedLayer = text.replace(
+      line,
+      line.replace(
+        annotation,
+        annotation.replace(`当前化${mapping.mutagen}`, `生年化${mapping.mutagen}`),
+      ),
+    );
+    assert.ok(auditPromptFacts(changedLayer, expectations).missing.includes(mapFacts[index].id));
+  }
+});
+
+test('真实紫微同宫另一星曜四化不能冒充目标星曜注记', async () => {
+  const runtime = await getZiweiAuditRuntime();
+  const payload = runtime.payloadByScope.yearly;
+  const text = buildPublicZiweiPromptForRuntime({
+    result: runtime,
+    scope: 'yearly',
+    question: '解读当前四化。',
+  });
+  const expectations = extractZiweiFacts(payload, ziweiFactOptions);
+  const mapping = payload.active_scope.mutagen_map[0];
+  const target = payload.palaces.find((palace) => palace.index === mapping.palace_index);
+  assert.ok(target);
+  const otherStar = [...target.major_stars, ...target.minor_stars, ...target.other_stars].find(
+    (star) => star.name !== mapping.star && star.active_scope_mutagen !== mapping.mutagen,
+  );
+  assert.ok(otherStar);
+  const owner = `${target.name}（${target.heavenly_stem}${target.earthly_branch}）：`;
+  const line = text.split('\n').find((item) => item.trimStart().startsWith(owner));
+  assert.ok(line);
+  const moved = line
+    .replace(new RegExp(`${mapping.star}\\([^)]*\\)`, 'u'), (annotation) =>
+      annotation.replace(`，当前化${mapping.mutagen}`, ''),
+    )
+    .replace(new RegExp(`${otherStar.name}(?:\\([^)]*\\))?`, 'u'), (annotation) =>
+      annotation.endsWith(')')
+        ? `${annotation.slice(0, -1)}，当前化${mapping.mutagen})`
+        : `${annotation}(当前化${mapping.mutagen})`,
+    );
+  assert.ok(
+    moved.includes(mapping.star) &&
+      moved.includes(otherStar.name) &&
+      moved.includes(`当前化${mapping.mutagen}`),
+  );
+  assert.ok(
+    auditPromptFacts(text.replace(line, moved), expectations).missing.includes(
+      'ziwei.yearly.mutagens',
+    ),
+  );
+});
+
+test('真实紫微额外动态信息在摘要中逐项核验，另一行相同动态名不能补足', async () => {
+  const runtime = await getZiweiAuditRuntime();
+  const payload = structuredClone(runtime.payloadByScope.yearly);
+  const mapping = payload.active_scope.mutagen_map[0];
+  mapping.dynamic_palace_name = '额外流年命宫';
+  const selectedRuntime = {
+    ...runtime,
+    payloadByScope: { ...runtime.payloadByScope, yearly: payload },
+  };
+  const text = buildPublicZiweiPromptForRuntime({
+    result: selectedRuntime,
+    scope: 'yearly',
+    question: '解读当前四化。',
+  });
+  const expectations = extractZiweiFacts(payload, ziweiFactOptions);
+  assert.equal(
+    expectations.filter((item) => /\.mutagens(?:\.|$)/u.test(item.id)).length,
+    payload.active_scope.mutagen_map.length,
+  );
+  assert.deepEqual(auditPromptFacts(text, expectations).missing, []);
+  const summary = `${mapping.star}化${mapping.mutagen}入本命${mapping.palace_name}（动态${mapping.dynamic_palace_name}）`;
+  assert.ok(text.includes(summary));
+  const removed = text.replace(
+    summary,
+    summary.replace(`（动态${mapping.dynamic_palace_name}）`, ''),
+  );
+  assert.ok(auditPromptFacts(removed, expectations).missing.includes('ziwei.yearly.mutagens'));
+  const borrowed = removed.replace(
+    '【任务】',
+    `旁记：动态${mapping.dynamic_palace_name}\n\n【任务】`,
+  );
+  assert.ok(auditPromptFacts(borrowed, expectations).missing.includes('ziwei.yearly.mutagens'));
+  const target = payload.palaces.find((palace) => palace.index === mapping.palace_index);
+  assert.ok(target);
+  mapping.dynamic_palace_name = target.dynamic_scope_name;
+  const annotatedText = buildPublicZiweiPromptForRuntime({
+    result: selectedRuntime,
+    scope: 'yearly',
+    question: '解读当前四化。',
+  });
+  const annotationExpectations = extractZiweiFacts(payload, ziweiFactOptions);
+  assert.deepEqual(auditPromptFacts(annotatedText, annotationExpectations).missing, []);
+  const owner = `${target.name}（${target.heavenly_stem}${target.earthly_branch}）：`;
+  const line = annotatedText.split('\n').find((item) => item.trimStart().startsWith(owner));
+  assert.ok(line && mapping.dynamic_palace_name);
+  const missingDynamic = annotatedText.replace(
+    line,
+    line.replace(`；动态宫名：${mapping.dynamic_palace_name}`, ''),
+  );
+  assert.ok(
+    auditPromptFacts(missingDynamic, annotationExpectations).missing.includes(
+      'ziwei.yearly.mutagens',
+    ),
+  );
+});
+
+test('真实紫微生年四化始终绑定本命宫和化星，不被当前四化替代', async () => {
+  const runtime = await getZiweiAuditRuntime();
+  const payload = runtime.payloadByScope.origin;
+  const text = buildPublicZiweiPromptForRuntime({
+    result: runtime,
+    scope: 'origin',
+    question: '解读生年四化。',
+  });
+  const expectations = extractZiweiFacts(payload, ziweiFactOptions);
+  const birthFacts = expectations.filter((item) => item.id.includes('.birth-mutagen.'));
+  assert.equal(birthFacts.length, 4);
+  assert.deepEqual(auditPromptFacts(text, expectations).missing, []);
+  const first = birthFacts[0];
+  const annotation = first.values[0];
+  const changed = annotation.replace('生年化', '当前化');
+  assert.ok(text.includes(annotation));
+  assert.ok(
+    auditPromptFacts(text.replace(annotation, changed), expectations).missing.includes(first.id),
+  );
+});
 
 test('住宅事实审查从输入摘要读取坐向与宅运年份', () => {
   const residentialFacts = extractDivinationPromptFacts('residential', {

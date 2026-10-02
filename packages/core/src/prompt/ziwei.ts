@@ -265,15 +265,56 @@ export function formatZiweiNatalSnapshotForPrompt(snapshot: ZiweiNatalSnapshot) 
     .join('\n');
 }
 
-function formatMutagenMap(payload: AnalysisPayloadV1, isOriginScope = false) {
-  const values = getPromptMutagenItems(payload, isOriginScope).map((item) => {
-    const palace = item.palace_name
-      ? `入${item.palace_name}${item.palace_name.endsWith('宫') ? '' : '宫'}`
-      : '';
-    const dynamic =
-      !isOriginScope && item.dynamic_palace_name ? `（动态${item.dynamic_palace_name}）` : '';
-    return `${item.star || ''}化${item.mutagen}${palace}${dynamic}`;
-  });
+export function getUnshownZiweiMutagenItems(
+  payload: AnalysisPayloadV1,
+  isOriginScope = false,
+  displayedPalaces: readonly PalaceFact[] = [],
+) {
+  return getPromptMutagenItems(payload, isOriginScope).filter(
+    (item) =>
+      !displayedPalaces.some((palace) => {
+        const samePalace =
+          (item.palace_index !== undefined || Boolean(item.palace_name)) &&
+          (item.palace_index === undefined || item.palace_index === palace.index) &&
+          (!item.palace_name ||
+            item.palace_name.replace(/宫$/u, '') === palace.name.replace(/宫$/u, ''));
+        if (!samePalace) return false;
+        if (
+          !isOriginScope &&
+          item.dynamic_palace_name &&
+          item.dynamic_palace_name !== palace.dynamic_scope_name
+        ) {
+          return false;
+        }
+        return [
+          ...palace.major_stars,
+          ...palace.minor_stars,
+          ...palace.other_stars,
+          ...(!isOriginScope ? palace.scope_stars : []),
+        ].some(
+          (star) =>
+            star.name === item.star &&
+            (isOriginScope ? star.birth_mutagen : star.active_scope_mutagen) === item.mutagen,
+        );
+      }),
+  );
+}
+
+function formatMutagenMap(
+  payload: AnalysisPayloadV1,
+  isOriginScope = false,
+  displayedPalaces: readonly PalaceFact[] = [],
+) {
+  const values = getUnshownZiweiMutagenItems(payload, isOriginScope, displayedPalaces).map(
+    (item) => {
+      const palace = item.palace_name
+        ? `入${item.palace_name}${item.palace_name.endsWith('宫') ? '' : '宫'}`
+        : '';
+      const dynamic =
+        !isOriginScope && item.dynamic_palace_name ? `（动态${item.dynamic_palace_name}）` : '';
+      return `${item.star || ''}化${item.mutagen}${palace}${dynamic}`;
+    },
+  );
   return values.join('；');
 }
 
@@ -405,8 +446,8 @@ export function formatZiweiPayloadForPrompt(
     : '';
   const bodyPalace = payload.palaces.find((p) => p.is_body_palace);
   const bodyPalaceName = payload.basic_info.hidden_palaces?.body_palace_name || bodyPalace?.name;
-  const birthMutagens = formatMutagenMap(payload, true);
-  const currentMutagens = formatMutagenMap(payload, false);
+  const birthMutagens = formatMutagenMap(payload, true, selectedPalaces);
+  const currentMutagens = formatMutagenMap(payload, false, selectedPalaces);
 
   return [
     `分析范围：${active.label || SCOPE_LABELS[active.scope]}`,

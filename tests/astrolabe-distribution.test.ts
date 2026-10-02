@@ -57,4 +57,19 @@ test('占星元素与模式占比以十大星体计数，并在界面和提示�
   );
   assert.match(prompt, /元素分布（十大星体）：/u);
   assert.match(prompt, /模式分布（十大星体）：/u);
+
+  const sparse = {
+    ...chart,
+    summary: {
+      ...chart.summary,
+      elements: { 火: ['太阳'], 土: [], 风: [], 水: [] },
+      modalities: { 开创: [], 固定: ['太阳'], 变动: [] },
+    },
+  };
+  const sparsePrompt = formatAstrolabeForPrompt(sparse);
+  assert.match(sparsePrompt, /^元素分布（十大星体）：火太阳$/mu);
+  assert.match(sparsePrompt, /^模式分布（十大星体）：固定太阳$/mu);
+  sparse.summary.elements.火 = [];
+  sparse.summary.modalities.固定 = [];
+  assert.doesNotMatch(formatAstrolabeForPrompt(sparse), /元素与模式分布口径|元素分布|模式分布/u);
 });

@@ -20,6 +20,8 @@ import {
   formatZiweiEvidenceText,
 } from '../packages/core/src/prompt/public-api.ts';
 import { buildZiweiChartInput, calculateZiweiChart } from '../packages/core/src/ziwei/runtime.ts';
+import { extractZiweiFacts } from '../scripts/prompt-audit/natal-facts.ts';
+import { auditPromptFacts } from '../scripts/prompt-audit/facts.ts';
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -168,18 +170,24 @@ test('紫微公开提示词从本命星曜事实回溯四化并过滤小限标�
     scope: 'origin',
     question: '本命四化如何落宫？',
   });
-  const mutagen = `${star.name}化${star.birth_mutagen}`;
-
-  assert.match(
-    publicPrompt,
-    new RegExp(
-      `${escapeRegExp('生年四化：')}[^\\n]*${escapeRegExp(`${mutagen}入本命${palace.name}`)}`,
-    ),
-  );
-  assert.match(
-    publicPrompt,
-    new RegExp(`${escapeRegExp(star.name)}[^\\n]*${escapeRegExp(`生年化${star.birth_mutagen}`)}`),
-  );
-  assert.match(formatZiweiEvidenceText(testRuntime, 'origin'), new RegExp(escapeRegExp(mutagen)));
+  const annotation = `${star.name}(${[star.brightness, `生年化${star.birth_mutagen}`].filter(Boolean).join('，')})`;
+  const owner = `${palace.name}（${palace.heavenly_stem}${palace.earthly_branch}）：`;
+  const embeddedText = formatZiweiEvidenceText(testRuntime, 'origin');
+  for (const [text, scope] of [
+    [publicPrompt, { start: '【本命资料】', end: '【任务】' }],
+    [embeddedText, { start: '分析对象：' }],
+  ] as const) {
+    const facts = extractZiweiFacts(testPayload, {
+      scope,
+      palaceValueStyle: 'public',
+      mutagenValueStyle: 'public',
+    });
+    assert.equal(facts.filter((item) => item.id.includes('.birth-mutagen.')).length, 4);
+    assert.deepEqual(auditPromptFacts(text, facts).missing, []);
+    const palaceLine = text.split('\n').find((line) => line.trimStart().startsWith(owner));
+    assert.ok(palaceLine?.includes(annotation));
+    assert.equal(text.split(annotation).length - 1, 1);
+    assert.doesNotMatch(text, /^生年四化：/mu);
+  }
   assert.doesNotMatch(publicPrompt, /小限落宫/);
 });

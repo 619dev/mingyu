@@ -88,21 +88,24 @@ const RULES: Array<LiurenClassicalRule & { match: RegExp }> = [
     source: MAIN_SOURCE,
     rule: '昴星',
     category: '昴星法',
-    summary: '四课无克又无遥克时，按阳日虎视、阴日冬蛇掩目的口径取用。',
+    summary:
+      '四课全备且无上下克、无遥克；阳日初传取地盘酉上神，中传支上、末传干上；阴日初传取天盘酉下神，中传干上、末传支上。',
   },
   {
     match: /别责/,
     source: MAIN_SOURCE,
     rule: '别责',
     category: '别责法',
-    summary: '课象不备而仍需取传时，阳日取合干上神，阴日取支前三合发用。',
+    summary:
+      '四课不全而三课备，无上下克、无遥克；阳日取合干寄宫上神，阴日取日支前三合支本身为初传，中末均取干上神。',
   },
   {
     match: /八专/,
     source: MAIN_SOURCE,
     rule: '八专',
     category: '八专法',
-    summary: '干支同位、四课不全时，按八专阳顺阴逆取发用。',
+    summary:
+      '甲寅、庚申、丁未、己未、癸丑日干支同位；有上下克先取克，无克按八专取传：阳日从干上神顺数三位，阴日从第四课上神逆数三位，连本位数，中末均取干上神。',
   },
 ];
 

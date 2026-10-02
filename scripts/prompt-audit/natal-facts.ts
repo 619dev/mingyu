@@ -14,7 +14,11 @@ import type {
   AstrolabeData,
   AstrolabeSynastryData,
 } from '../../packages/core/src/types/divination';
-import type { AnalysisPayloadV1 } from '../../packages/core/src/types/analysis';
+import type {
+  AnalysisPayloadV1,
+  PalaceFact,
+  StarFact,
+} from '../../packages/core/src/types/analysis';
 import type { ZiweiRuntime } from '../../packages/core/src/ziwei/runtime';
 import { mapZiweiScopeLabel } from '../../packages/core/src/ziwei/prompt/labels';
 import type { AstrolabeScopeContext } from '../../packages/core/src/divination/astrolabe-scope';
@@ -391,6 +395,27 @@ function getZiweiPayloads(input: AnalysisPayloadV1 | ZiweiRuntime, scopes?: read
     .filter((payload): payload is AnalysisPayloadV1 => Boolean(payload));
 }
 
+function ziweiPalaceOwner(palace: PalaceFact, publicStyle: boolean) {
+  return publicStyle
+    ? `${palace.name}（${palace.heavenly_stem}${palace.earthly_branch}）：`
+    : `${palace.name}${palace.name.endsWith('宫') ? '' : '宫'}${palace.is_body_palace ? '（身宫）' : ''}${palace.is_original_palace ? '（来因宫）' : ''}；宫干支${palace.heavenly_stem}${palace.earthly_branch}`;
+}
+
+/** 用完整星曜注记把四化绑定到化星；同一宫其他星曜上的注记不能补足此项。 */
+function ziweiMutagenStarValue(star: StarFact, origin: boolean, publicStyle: boolean) {
+  const tags = cleanValues([
+    star.brightness ? `${publicStyle ? '' : '亮度：'}${star.brightness}` : '',
+    star.birth_mutagen ? `生年化${star.birth_mutagen}` : '',
+    !origin && star.horoscope_mutagen
+      ? `${publicStyle ? '流耀' : '运限'}化${star.horoscope_mutagen}`
+      : '',
+    !origin && star.active_scope_mutagen ? `当前化${star.active_scope_mutagen}` : '',
+  ]);
+  return publicStyle
+    ? `${star.name}${tags.length ? `(${tags.join('，')})` : ''}`
+    : [star.name, ...tags].join('，');
+}
+
 /** 从紫微单盘运行结果提取本命宫星、运限层和四化归属。 */
 export function extractZiweiFacts(
   input: AnalysisPayloadV1 | ZiweiRuntime,
@@ -472,25 +497,78 @@ export function extractZiweiFacts(
       if (activeFact) facts.push(activeFact);
     }
     if (options.includeMutagenFacts !== false) {
-      const mutagenValues = active.mutagen_map.map((item) => {
-        const palace = item.palace_name
+      const publicMutagenStyle = options.mutagenValueStyle === 'public';
+      const origin = active.scope === 'origin';
+      const mutagenOwner = options.mutagenOwner ?? (origin ? '生年四化' : '当前四化');
+      // 每个实际映射项都有独立期望，按结构化落宫与星曜注记确定其完整表达。
+      // 摘要路径保留额外落点信息；宫内路径同时核对所在行和完整星曜注记。
+      for (const [index, item] of active.mutagen_map.entries()) {
+        const mappedPalace = payload.palaces.find(
+          (palace) =>
+            (item.palace_index !== undefined || Boolean(item.palace_name)) &&
+            (item.palace_index === undefined || palace.index === item.palace_index) &&
+            (!item.palace_name ||
+              palace.name.replace(/宫$/u, '') === item.palace_name.replace(/宫$/u, '')),
+        );
+        const mappedStar =
+          mappedPalace &&
+          [
+            ...mappedPalace.major_stars,
+            ...mappedPalace.minor_stars,
+            ...mappedPalace.other_stars,
+            ...(!origin ? mappedPalace.scope_stars : []),
+          ].find(
+            (star) =>
+              star.name === item.star &&
+              (origin ? star.birth_mutagen : star.active_scope_mutagen) === item.mutagen,
+          );
+        const annotation =
+          mappedPalace &&
+          mappedStar &&
+          (!item.dynamic_palace_name ||
+            (!origin && item.dynamic_palace_name === mappedPalace.dynamic_scope_name))
+            ? {
+                owner: ziweiPalaceOwner(mappedPalace, publicMutagenStyle),
+                values: [
+                  ziweiMutagenStarValue(mappedStar, origin, publicMutagenStyle),
+                  !origin && item.dynamic_palace_name
+                    ? `动态宫名：${item.dynamic_palace_name}`
+                    : '',
+                ],
+              }
+            : undefined;
+        const palaceText = item.palace_name
           ? options.mutagenValueStyle === 'public'
             ? `入本命${item.palace_name}`
             : `入${item.palace_name}${item.palace_name.endsWith('宫') ? '' : '宫'}`
           : '';
         const dynamic =
-          active.scope !== 'origin' && item.dynamic_palace_name
-            ? `（动态${item.dynamic_palace_name}）`
-            : '';
-        return `${item.star}化${item.mutagen}${palace}${dynamic}`;
-      });
-      const mutagenOwner =
-        options.mutagenOwner ?? (active.scope === 'origin' ? '生年四化' : '当前四化');
-      const mutagenFact = fact(`${idPrefix}.${scopeId}.mutagens`, mutagenOwner, mutagenValues, {
-        scope,
-        unit: 'line',
-      });
-      if (mutagenFact) facts.push(mutagenFact);
+          !origin && item.dynamic_palace_name ? `（动态${item.dynamic_palace_name}）` : '';
+        const mutagenFact = fact(
+          `${idPrefix}.${scopeId}.mutagens${index === 0 ? '' : `.${index}`}`,
+          annotation?.owner ?? mutagenOwner,
+          annotation?.values ?? [`${item.star}化${item.mutagen}${palaceText}${dynamic}`],
+          { scope, unit: 'line' },
+        );
+        if (mutagenFact) facts.push(mutagenFact);
+      }
+      // 生年四化仍是独立层级，运限映射不能替代本命星曜上的生年事实。
+      for (const palace of payload.palaces) {
+        for (const [index, star] of [
+          ...palace.major_stars,
+          ...palace.minor_stars,
+          ...palace.other_stars,
+        ].entries()) {
+          if (!star.birth_mutagen) continue;
+          facts.push({
+            id: `${idPrefix}.${scopeId}.${palace.index}.birth-mutagen.${index}`,
+            owner: ziweiPalaceOwner(palace, publicMutagenStyle),
+            values: [ziweiMutagenStarValue(star, origin, publicMutagenStyle)],
+            ...(scope ? { scope } : {}),
+            unit: 'line',
+          });
+        }
+      }
     }
   }
   return facts;

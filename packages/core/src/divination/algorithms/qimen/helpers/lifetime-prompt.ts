@@ -8,28 +8,17 @@ import type { QimenLifetimeData } from '../../../../types/divination';
 import { TimeManager } from '../../../../calendar/timeManager';
 import { QIMEN_IMAGE_INTERPRETATION_TASK } from '../../../../prompt/qimen-interpretation';
 import { buildPromptTask } from '../../../../prompt/guidance';
-import { selectQimenClassicPatternsForPrompt } from '../../../qimen-evidence';
+import {
+  formatQimenClassicPatternSummary,
+  selectQimenClassicPatternsForPrompt,
+} from '../../../qimen-evidence';
 
 type TriggerDate = NonNullable<
   NonNullable<QimenLifetimeData['eventClusters']>[number]['triggerDates']
 >[number];
 
 export function formatLifetimePatternSummary(name: string, summary: string): string {
-  let text = summary
-    .replaceAll(`，乃${name}之格`, '')
-    .replace(/（([乙丙丁戊己庚辛壬癸])在此宫落于相刑之位）/gu, '');
-  if (name === '休诈' && /[乙丙丁]奇、(?:开|休|生)门、六合同宫/u.test(text)) {
-    text = text.replace('，三奇、吉门、六合同宫', '');
-  }
-  const stemPair = text.match(
-    /^天盘([乙丙丁戊己庚辛壬癸])加地盘([乙丙丁戊己庚辛壬癸])于[^，]+，\1加地盘\2为([^，；。]+)/u,
-  );
-  if (stemPair?.[3] === name) {
-    text = text.replace(`，${stemPair[1]}加地盘${stemPair[2]}为${name}`, '');
-  }
-  if (name.endsWith('升殿')) text = text.replace('，升殿得位', '');
-  if (name === '罗网青龙') text = text.replace('，故癸加地盘戊按此格论', '');
-  return text;
+  return formatQimenClassicPatternSummary(name, summary);
 }
 
 function formatTriggerDate(item: TriggerDate): string {
@@ -297,7 +286,14 @@ export function buildLifetimePrompt(
     if (label) {
       const fullFact = `${label}「${pattern.name}」：${pattern.summary}`;
       basePatternFacts.set(fullFact, `${label}「${pattern.name}」`);
-      if (!visibleClassicPatterns.includes(pattern)) {
+      if (
+        !visibleClassicPatterns.some(
+          (visible) =>
+            visible.name === pattern.name &&
+            formatLifetimePatternSummary(visible.name, visible.summary) ===
+              formatLifetimePatternSummary(pattern.name, pattern.summary),
+        )
+      ) {
         redundantStagePatternFacts.add(fullFact);
       }
     }

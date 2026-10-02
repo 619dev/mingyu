@@ -2534,6 +2534,48 @@ test('公开 API 紫微提示词接口默认只返回提示词', async () => {
   assertPromptIsPortableTaskText(prompt);
 });
 
+test('公开 API 紫微本命入口保留真实四化注记并省略重复全局摘要', async () => {
+  const { response, body } = await callApi('ziwei/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: '虚构样本',
+      gender: 'female',
+      dateType: 'solar',
+      year: '1990',
+      month: '5',
+      day: '15',
+      timeIndex: 4,
+      algorithm: 'default',
+      question: '请解读本命结构和生年四化。',
+      promptTopic: 'life',
+      promptScope: 'origin',
+      responseMode: 'full',
+    }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  const { prompt, result } = body.data;
+  assert.deepEqual(result.scopeNames, ['origin']);
+  assert.equal(result.payloadByScope.origin.palaces.length, 12);
+  const palaces: Array<{
+    name: string;
+    major_stars: Array<{ name: string; brightness?: string; birth_mutagen?: string }>;
+  }> = result.payloadByScope.origin.palaces;
+  const fude = palaces.find((palace) => palace.name.replace(/宫$/u, '') === '福德');
+  assert.ok(fude);
+  const taiyin = fude.major_stars.find((star) => star.name === '太阴');
+  assert.ok(taiyin);
+  assert.equal(taiyin.brightness, '陷');
+  assert.equal(taiyin.birth_mutagen, '科');
+  assert.match(prompt, /福德(?:宫)?（[^\n]*太阴\(陷，生年化科\)/u);
+  assert.equal(prompt.match(/太阴\(陷，生年化科\)/gu)?.length, 1);
+  assert.doesNotMatch(prompt, /生年四化：|太阴化科入本命福德/u);
+  assertPromptHasSingleRole(prompt, PROMPT_ROLE_TEXT.ziwei);
+  assertPromptIsPortableTaskText(prompt);
+  assert.match(prompt, /【任务】/u);
+});
+
 test('公开 API 紫微双盘返回宫位叠盘、四化证据并保留双方称呼', async () => {
   const person1 = {
     name: '甲方',

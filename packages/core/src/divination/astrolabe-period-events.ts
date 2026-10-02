@@ -598,6 +598,7 @@ function bisectZero(fn: (jd: number) => number, left: number, right: number, lef
   for (let index = 0; index < 40 && high - low > MINUTE_IN_DAYS; index += 1) {
     const middle = (low + high) / 2;
     const middleValue = fn(middle);
+    if (middleValue === 0) return middle;
     if (lowValue * middleValue <= 0) {
       high = middle;
     } else {
@@ -617,8 +618,14 @@ function crossingsFromSamples(
   for (let index = 1; index < samples.length; index += 1) {
     const previous = residualAt(samples[index - 1], index - 1);
     const current = residualAt(samples[index], index);
+    // 精确采样点保留原时刻，避免把半开终点求根到窗口内；连续零值并非离散交点。
+    if (previous === 0 && current === 0) continue;
     if (previous === 0) {
       hits.push(samples[index - 1].jd);
+      continue;
+    }
+    if (current === 0) {
+      hits.push(samples[index].jd);
       continue;
     }
     if (previous * current <= 0 && Math.abs(current - previous) < 180) {

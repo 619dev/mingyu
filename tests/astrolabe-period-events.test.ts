@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  AstrolabePeriodCalculationCache,
   buildAstrolabePeriodEventLayers,
   buildAstrolabePeriodBatchResult,
   buildAstrolabePeriodContext,
@@ -33,6 +34,81 @@ const astrolabeData = generateAstrolabe({
 });
 
 let june2028Monthly: ReturnType<typeof buildAstrolabePeriodEvents> | undefined;
+
+const analyticTarget = { year: 2030, month: 1, day: 1 };
+const analyticStartJd = unixToJulianDate(Date.UTC(2030, 0, 1));
+const analyticContext = validateAstrolabePeriodContext({
+  timezone: 0,
+  points: [
+    { name: 'Sun', longitude: 30 },
+    { name: 'Moon', longitude: 75 },
+    { name: 'Ascendant', longitude: 200 },
+  ],
+  houseCusps: Array.from({ length: 12 }, (_, index) => index * 30),
+});
+
+class AnalyticPeriodCache extends AstrolabePeriodCalculationCache {
+  constructor(private readonly mercuryAt: (jd: number) => { longitude: number; speed: number }) {
+    super();
+  }
+
+  override position(name: Parameters<AstrolabePeriodCalculationCache['position']>[0], jd: number) {
+    return name === 'Mercury' ? this.mercuryAt(jd) : { longitude: 201, speed: 0 };
+  }
+
+  override solar() {
+    return [];
+  }
+
+  override lunar() {
+    return [];
+  }
+}
+
+function scanAnalyticMercury(mercuryAt: (jd: number) => { longitude: number; speed: number }) {
+  return buildAstrolabePeriodEventsFromContext(analyticContext, 'monthly', analyticTarget, {
+    batch: { start: analyticTarget, endExclusive: { year: 2030, month: 1, day: 2 } },
+    calculationCache: new AnalyticPeriodCache(mercuryAt),
+  }).events.filter((event) => event.movingPoint === '水星');
+}
+
+test('星盘精确角与宫座边界恰好位于半开终点时归入下一窗口', () => {
+  for (const direction of [1, -1]) {
+    const events = scanAnalyticMercury((jd) => ({
+      longitude: 30 + direction * (jd - analyticStartJd - 1),
+      speed: direction,
+    }));
+    assert.deepEqual(events, []);
+  }
+});
+
+test('星盘停逆恰好位于半开终点时保持终点原时刻并归入下一窗口', () => {
+  const events = scanAnalyticMercury((jd) => ({
+    longitude: 31 + (jd - analyticStartJd - 1) ** 2 / 2,
+    speed: jd - analyticStartJd - 1,
+  }));
+  assert.equal(events.filter((event) => event.kind === '停逆').length, 0);
+});
+
+test('星盘内部精确采样点保留真实交点时刻并只记录一次', () => {
+  const events = scanAnalyticMercury((jd) => ({
+    longitude: 29 + 2 * (jd - analyticStartJd),
+    speed: 2,
+  }));
+  for (const kind of ['行运相位', '换宫', '换座'] as const) {
+    const matches = events.filter((event) => event.kind === kind);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0].julianDate, analyticStartJd + 0.5);
+    assert.equal(matches[0].dateTime, '2030-01-01 12:00');
+  }
+});
+
+test('星盘连续静止于精确角与宫座边界时保持持续状态', () => {
+  assert.deepEqual(
+    scanAnalyticMercury(() => ({ longitude: 30, speed: 0 })),
+    [],
+  );
+});
 function getJune2028Monthly() {
   return (june2028Monthly ??= buildAstrolabePeriodEvents(astrolabeData, 'monthly', {
     year: 2028,

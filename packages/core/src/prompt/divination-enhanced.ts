@@ -926,53 +926,66 @@ function formatQimenInfo(data: QimenData, question = '', supplementaryInfo?: Sup
     ...(doorQuestion ? qimenComboKindsByIntent.door : []),
     ...(stemQuestion ? qimenComboKindsByIntent.stem : []),
   ]);
-  const comboLines = (data.patternCombos ?? [])
-    .filter((item) => selectedComboKinds.has(item.key.split(':')[1] ?? ''))
-    .map((item) => {
-      const palaceName = item.palace
-        ? (data.jiuGongGe.find((palace) => palace.gong === item.palace)?.name ?? `${item.palace}宫`)
-        : '';
-      const name =
-        item.name.includes(palaceName) || !palaceName ? item.name : `${item.name}（${palaceName}）`;
-      const fullSummary = item.summary.replace(
-        /(?:，|；)?不(?:作|替代|重复加算)通用(?:(?:吉凶|吉格|凶格)评分|凶方扣分)。?/gu,
-        '',
-      );
-      const summaryWithoutRepeatedPattern = (data.classicPatterns ?? []).reduce(
-        (summary, pattern) => {
-          if (
-            !palaceName ||
-            item.palace === undefined ||
-            !pattern.palaces.includes(item.palace) ||
-            !item.sources.includes(pattern.name)
-          ) {
-            return summary;
-          }
-          return summary.replaceAll(`${palaceName}${pattern.name}`, '该格局');
-        },
-        fullSummary,
-      );
-      const summary =
-        palaceName && summaryWithoutRepeatedPattern.startsWith(palaceName)
-          ? summaryWithoutRepeatedPattern.slice(palaceName.length)
-          : summaryWithoutRepeatedPattern;
-      const hostGuestInjuryBoundary = item.key.startsWith('combo:starDoorHostGuestInjury:')
-        ? summary.indexOf('宫为主，星门为客；')
-        : -1;
-      const involvedPalaces = [
-        ...new Set(item.sources.map((source) => source.split('：', 1)[0]).filter(Boolean)),
-      ];
-      const compactedHostGuestSummary =
-        hostGuestInjuryBoundary >= 0 && involvedPalaces.length
-          ? `同宫星门与宫各见一生一克：${involvedPalaces.join('、')}。${summary.slice(hostGuestInjuryBoundary)}`
-          : summary;
-      const compactedSummary = compactedHostGuestSummary.replace(
-        /^(?:该格局(?:同宫生门)?|飞鸟跌穴同宫生门)[，；]/u,
-        '',
-      );
-      // 基础格局已逐条解释，复合格局只保留组合结论，避免再次罗列来源条件。
-      return `${name}：${compactedSummary}`;
-    });
+  const comboLines = [
+    ...new Set(
+      (data.patternCombos ?? [])
+        .filter(
+          (item) =>
+            selectedComboKinds.has(item.key.split(':')[1] ?? '') &&
+            item.name.trim() &&
+            item.summary.trim(),
+        )
+        .map((item) => {
+          const palaceName = item.palace
+            ? (data.jiuGongGe.find((palace) => palace.gong === item.palace)?.name ??
+              `${item.palace}宫`)
+            : '';
+          const name =
+            item.name.includes(palaceName) || !palaceName
+              ? item.name
+              : `${item.name}（${palaceName}）`;
+          const fullSummary = item.summary.replace(
+            /(?:，|；)?不(?:作|替代|重复加算)通用(?:(?:吉凶|吉格|凶格)评分|凶方扣分)。?/gu,
+            '',
+          );
+          const summaryWithoutRepeatedPattern = (data.classicPatterns ?? []).reduce(
+            (summary, pattern) => {
+              if (
+                !palaceName ||
+                item.palace === undefined ||
+                !pattern.palaces.includes(item.palace) ||
+                !item.sources.includes(pattern.name)
+              ) {
+                return summary;
+              }
+              return summary.replaceAll(`${palaceName}${pattern.name}`, '该格局');
+            },
+            fullSummary,
+          );
+          const summary =
+            palaceName && summaryWithoutRepeatedPattern.startsWith(palaceName)
+              ? summaryWithoutRepeatedPattern.slice(palaceName.length)
+              : summaryWithoutRepeatedPattern;
+          const hostGuestInjuryBoundary = item.key.startsWith('combo:starDoorHostGuestInjury:')
+            ? summary.indexOf('宫为主，星门为客；')
+            : -1;
+          const involvedPalaces = [
+            ...new Set(item.sources.map((source) => source.split('：', 1)[0]).filter(Boolean)),
+          ];
+          const compactedHostGuestSummary =
+            hostGuestInjuryBoundary >= 0 && involvedPalaces.length
+              ? `同宫星门与宫各见一生一克：${involvedPalaces.join('、')}。${summary.slice(hostGuestInjuryBoundary)}`
+              : summary;
+          const compactedSummary = compactedHostGuestSummary.replace(
+            /^(?:该格局(?:同宫生门)?|飞鸟跌穴同宫生门)[，；]/u,
+            '',
+          );
+          // 基础格局已逐条解释，复合格局只保留组合结论，避免再次罗列来源条件。
+          return name.trim() && compactedSummary.trim() ? `${name}：${compactedSummary}` : '';
+        })
+        .filter(Boolean),
+    ),
+  ];
   const palaceLines = data.jiuGongGe.map((palace) => {
     return `  ${palace.name}（${palace.direction}，${palace.element}）：门${palace.renPan.door || '无'}，星${formatTianPanStars(palace) || '无'}，神${palace.shenPan.god || '无'}，天盘${formatTianPanStems(palace) || '无'}${palace.tianPan.companionStem ? `（${palace.tianPan.companionStem}为寄干）` : ''}，地盘${palace.diPan.stem || '无'}`;
   });

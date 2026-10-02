@@ -174,24 +174,46 @@ test('真实紫微当前四化交换落宫后应保留星曜关键词并检出�
   });
   auditOriginal(prompt, facts);
 
-  const [first, second] = payload.active_scope.mutagen_map;
-  assert.ok(first && second && first.dynamic_palace_name && second.dynamic_palace_name);
-  const palaceName = (value: string | undefined) => value?.replace(/宫$/u, '') ?? '';
-  const firstText = `${first.star}化${first.mutagen}入${palaceName(first.palace_name)}宫（动态${palaceName(first.dynamic_palace_name)}）`;
-  const secondText = `${second.star}化${second.mutagen}入${palaceName(second.palace_name)}宫（动态${palaceName(second.dynamic_palace_name)}）`;
-  assert.ok(prompt.includes(firstText) && prompt.includes(secondText));
-  assert.deepEqual(auditPromptFacts(swapAll(prompt, firstText, secondText), facts).missing, []);
-  const firstTarget = firstText.slice(firstText.indexOf('入'));
-  const secondTarget = secondText.slice(secondText.indexOf('入'));
-  const swapped = prompt
-    .replace(firstText, firstText.replace(firstTarget, secondTarget))
-    .replace(secondText, secondText.replace(secondTarget, firstTarget));
-  assert.ok(swapped.includes(`${first.star}化${first.mutagen}`));
-  assert.ok(swapped.includes(`${second.star}化${second.mutagen}`));
-  assert.ok(swapped.includes(firstTarget) && swapped.includes(secondTarget));
-  const result = auditPromptFacts(swapped, facts);
-  assert.ok(
-    result.missing.includes('ziwei.decadal.mutagens'),
-    '交换当前四化落宫后应检出星曜与落宫的配对错绑',
+  const mappings = payload.active_scope.mutagen_map;
+  const mapFacts = facts.filter((item) => /\.mutagens(?:\.|$)/u.test(item.id));
+  assert.equal(mapFacts.length, mappings.length);
+  assert.equal(mapFacts.length, 4);
+  assert.deepEqual(
+    mapFacts.map((item) => item.id),
+    mappings.map((_, index) => `ziwei.decadal.mutagens${index === 0 ? '' : `.${index}`}`),
   );
+  const first = mappings[0];
+  const secondIndex = mappings.findIndex(
+    (item, index) => index > 0 && item.palace_index !== first.palace_index,
+  );
+  const second = mappings[secondIndex];
+  assert.ok(first && second && first.dynamic_palace_name && second.dynamic_palace_name);
+  assert.notEqual(first.palace_index, second.palace_index);
+  const firstFact = mapFacts[0];
+  const secondFact = mapFacts[secondIndex];
+  const firstText = firstFact.values[0];
+  const secondText = secondFact.values[0];
+  assert.notEqual(firstFact.owner, '当前四化');
+  assert.notEqual(secondFact.owner, '当前四化');
+  assert.ok(firstText.startsWith(first.star) && firstText.includes(`当前化${first.mutagen}`));
+  assert.ok(secondText.startsWith(second.star) && secondText.includes(`当前化${second.mutagen}`));
+  assert.ok(prompt.includes(firstText) && prompt.includes(secondText));
+  const firstLine = prompt.split('\n').find((line) => line.trimStart().startsWith(firstFact.owner));
+  const secondLine = prompt
+    .split('\n')
+    .find((line) => line.trimStart().startsWith(secondFact.owner));
+  assert.ok(firstLine && secondLine);
+  assert.deepEqual(auditPromptFacts(swapAll(prompt, firstLine, secondLine), facts).missing, []);
+  const swapped = swapAll(prompt, firstText, secondText);
+  assert.ok(swapped.includes(firstText) && swapped.includes(secondText));
+  assert.ok(swapped.includes(firstFact.owner) && swapped.includes(secondFact.owner));
+  const result = auditPromptFacts(swapped, facts);
+  assert.ok(result.missing.includes(firstFact.id), '第一条四化交换到其他宫位应失败');
+  assert.ok(result.missing.includes(secondFact.id), '第二条四化交换到其他宫位应失败');
+  for (const [index, mapping] of mappings.entries()) {
+    const annotated = mapFacts[index].values[0];
+    assert.ok(annotated.includes(`当前化${mapping.mutagen}`));
+    const removed = prompt.replace(annotated, annotated.replace(`，当前化${mapping.mutagen}`, ''));
+    assert.ok(auditPromptFacts(removed, facts).missing.includes(mapFacts[index].id));
+  }
 });
