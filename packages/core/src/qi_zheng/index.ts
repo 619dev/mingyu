@@ -79,11 +79,12 @@ const {
   Body: AstronomyBody,
   Ecliptic,
   EclipticGeoMoon,
-  GeoMoonState,
+  GeoMoon,
   GeoVector,
   MakeTime,
   RotateState,
   Rotation_EQJ_ECT,
+  StateVector,
 } = Astronomy;
 
 export {
@@ -681,8 +682,9 @@ export const QIZHENG_POSITION_SOURCES: QizhengPositionSource[] = [
   {
     id: 'astronomy-engine-true-node',
     objects: ['罗睺(火余)', '计都(土余)'],
-    provider: 'astronomy-engine GeoMoonState + ECT',
-    calculation: '罗睺取月球真北交点，计都取真北交点加180°（真南交点）',
+    provider: 'astronomy-engine GeoMoon + EQJ四阶速度 + ECT',
+    calculation:
+      '月球EQJ位置以一小时步长四阶中心差分求惯性速度，位置与速度按同一瞬时旋转至ECT，以轨道角动量求真北交点；计都为其加180°的真南交点',
     coordinate: '目标日期回归黄经；与同日二十八宿距星真黄经边界比较得到宿度',
     precisionClass: '现代天文计算',
     limitations: [
@@ -767,7 +769,29 @@ function moshierMeanApogeeLongitude(jd: number): number {
 
 function trueNodeLongitude(utcMs: number): number {
   const time = MakeTime(new Date(utcMs));
-  const state = RotateState(Rotation_EQJ_ECT(time), GeoMoonState(time));
+  const rotation = Rotation_EQJ_ECT(time);
+  const center = GeoMoon(time);
+  // 极短的两点位置差分会在停逆附近放大舍入误差。
+  // 在惯性系求四阶速度，随后按同一瞬时旋转r、v，保持真交点的r×v定义。
+  const stepDays = 1 / 24;
+  const before = GeoMoon(time.AddDays(-stepDays));
+  const after = GeoMoon(time.AddDays(stepDays));
+  const before2 = GeoMoon(time.AddDays(-2 * stepDays));
+  const after2 = GeoMoon(time.AddDays(2 * stepDays));
+  const velocity = (axis: 'x' | 'y' | 'z') =>
+    (8 * (after[axis] - before[axis]) - (after2[axis] - before2[axis])) / (12 * stepDays);
+  const state = RotateState(
+    rotation,
+    new StateVector(
+      center.x,
+      center.y,
+      center.z,
+      velocity('x'),
+      velocity('y'),
+      velocity('z'),
+      time,
+    ),
+  );
   const hx = state.y * state.vz - state.z * state.vy;
   const hy = state.z * state.vx - state.x * state.vz;
   return normalizeLongitude(Math.atan2(hx, -hy) * (180 / Math.PI));
@@ -1428,7 +1452,7 @@ function buildQizhengEvidence(
       promptText: '七政、罗计与月孛按同一UTC瞬时计算地心黄经，出生坐标不参与星体位置',
       sources: [
         'astronomy-engine GeoVector/Ecliptic',
-        'astronomy-engine GeoMoonState/ECT',
+        'astronomy-engine GeoMoon/EQJ四阶速度/ECT',
         'Swiss Ephemeris Moshier 平均月球根数',
       ],
       limitation: QIZHENG_CALCULATION_STEP_LIMITATION,
