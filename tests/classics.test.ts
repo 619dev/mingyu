@@ -363,7 +363,8 @@ test('大六壬《大六壬大全》《六壬指南》九宗门与十二天将�
   const sheHai = getLiurenTransmissionClassic('涉害法');
   assert.ok(sheHai);
   assert.equal(sheHai.rule, '涉害');
-  assert.ok(sheHai.verse?.includes('涉害深浅历万难'));
+  assert.equal(sheHai.sourceBook, '大六壬大全·九宗门');
+  assert.equal(sheHai.verse, '涉害行来本家止，路逢多克为用取。孟深仲浅季当休，复等柔辰刚日宜。');
 
   const zhanGuan = getLiurenLessonPatternClassic('斩关');
   assert.ok(zhanGuan);
