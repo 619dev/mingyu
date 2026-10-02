@@ -72,15 +72,28 @@ export function formatLiurenOrdinaryTransmissionAdjudication(data: LiurenData): 
   const adjudication = data.ordinaryTransmissionAdjudication;
   if (!adjudication) return '';
 
+  const priorityReasons = Array.from(
+    new Set(
+      adjudication.candidates
+        .filter((candidate) => candidate.status === 'suppressedByPrior')
+        .map((candidate) => candidate.reasons.at(-1))
+        .filter((reason): reason is string => Boolean(reason)),
+    ),
+  );
   const stageReasons = Array.from(
     new Set(
       adjudication.stages
-        .filter((stage) => stage.status !== 'notApplicable')
+        .filter(
+          (stage) =>
+            stage.status !== 'notApplicable' &&
+            (stage.status !== 'suppressedByPrior' || priorityReasons.length === 0),
+        )
         .map((stage) => stage.reason)
         .filter(Boolean),
     ),
   );
   const candidateText = adjudication.candidates
+    .filter((candidate) => candidate.status !== 'suppressedByPrior')
     .map(
       (candidate) =>
         `${candidate.kind}${candidate.upper}（${getLiurenOrdinaryCandidateStatusLabel(candidate)}：${candidate.reasons.at(-1) || '按普通宗门次序核验'}）`,
@@ -89,7 +102,15 @@ export function formatLiurenOrdinaryTransmissionAdjudication(data: LiurenData): 
   const selectionText =
     adjudication.status === 'selected'
       ? `最终按${adjudication.selectedRule}取${adjudication.selectedInitial}发用`
-      : `常用取传规则未定，转入${data.transmissionRule || '特殊课'}取传`;
+      : data.transmissionRule
+        ? `按${data.transmissionRule}${data.threeTransmissions[0]?.branch ? `取${data.threeTransmissions[0].branch}发用` : '取传'}`
+        : '常用取传规则待核';
 
-  return `初传取法：${stageReasons.join('；')}；${selectionText}${candidateText ? `；候选取舍：${candidateText}` : ''}`;
+  return `初传取法：${[
+    ...new Set([...stageReasons, ...priorityReasons]),
+    selectionText,
+    candidateText ? `候选取舍：${candidateText}` : '',
+  ]
+    .filter(Boolean)
+    .join('；')}`;
 }

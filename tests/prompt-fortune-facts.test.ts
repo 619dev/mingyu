@@ -149,11 +149,26 @@ test('紫微完整任务书只保留一份静态出生资料并覆盖各运限�
   assert.ok(prompt.includes(representativePalace.name));
   assert.ok(prompt.includes(representativeStar.name));
 
-  const mutagenPayload = Object.values(runtime.payloadByScope).find(
-    (item) => item && item.active_scope.scope !== 'origin' && item.active_scope.mutagen_map.length,
+  const decadalMutagen = runtime.payloadByScope.decadal.active_scope.mutagen_map.find(
+    (item) =>
+      item.star === '天梁' &&
+      item.mutagen === '禄' &&
+      item.palace_name === '父母' &&
+      item.dynamic_palace_name === '田宅',
   );
-  assert.ok(mutagenPayload);
-  const representativeMutagen = mutagenPayload.active_scope.mutagen_map[0];
-  assert.ok(representativeMutagen);
-  assert.ok(prompt.includes(`${representativeMutagen.star}化${representativeMutagen.mutagen}`));
+  assert.ok(decadalMutagen);
+
+  const decadalStart = prompt.indexOf('大限：分析对象：大限。');
+  const yearlyStart = prompt.indexOf('流年：分析对象：流年。', decadalStart + 1);
+  assert.ok(decadalStart >= 0);
+  assert.ok(yearlyStart > decadalStart);
+  const decadalPrompt = prompt.slice(decadalStart, yearlyStart);
+  const decadalFatherPalace = decadalPrompt
+    .split('\n')
+    .find((line) => line.startsWith('  父母宫；'));
+  assert.ok(decadalFatherPalace);
+  const decadalPrimaryStars = /主星：([^；\n]*)/u.exec(decadalFatherPalace)?.[1];
+  assert.ok(decadalPrimaryStars);
+  assert.match(decadalPrimaryStars, /(?:^|、)天梁，[^、；\n]*当前化禄(?:$|、)/u);
+  assert.match(decadalFatherPalace, /动态宫名：田宅/u);
 });

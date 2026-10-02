@@ -70,6 +70,7 @@ test('金口诀发用位受克应列为盘内反证并标记主线受限', () =>
   assert.equal(evidence.summaryFact.status, '主线受限');
   assert.match(evidence.promptText, /反证：[^\n]*将神受贵神克/u);
   assert.doesNotMatch(evidence.promptText, /未见明确空亡、休囚死或受克限制/u);
+  const structuredBefore = structuredClone(data);
 
   const session = generateDivinationSession({
     method: 'jinkoujue',
@@ -78,10 +79,17 @@ test('金口诀发用位受克应列为盘内反证并标记主线受限', () =>
     currentTime: '2025-01-01T20:00:00+08:00',
     jinkoujue: { method: 'number', number: 1 },
   });
-  assert.match(session.aiPrompt, /将神受贵神克/u);
+  assert.match(session.aiPrompt, /贵神金克将神木/u);
+  assert.equal(session.aiPrompt.split('贵神金克将神木').length - 1, 1);
+  assert.doesNotMatch(session.aiPrompt, /将神受贵神克/u);
+  assert.equal((session.data as typeof data).evidenceAnalysis?.summaryFact.status, '主线受限');
 
   const enhanced = formatEnhancedDivinationInfo('jinkoujue', data);
-  assert.match(enhanced, /四位反证：[^\n]*将神受贵神克/u);
+  assert.match(enhanced, /贵神金克将神木/u);
+  assert.equal(enhanced.split('贵神金克将神木').length - 1, 1);
+  assert.doesNotMatch(enhanced, /四位反证：[^\n]*将神受贵神克/u);
+  assert.match(enhanced, /发用位将神不空/u);
+  assert.deepEqual(data, structuredBefore);
 });
 
 test('金口诀人元克发用将神时计入关系、反证与主线状态', () => {

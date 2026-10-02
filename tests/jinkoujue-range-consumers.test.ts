@@ -77,8 +77,25 @@ function assertJinkoujuePromptFacts(prompt: string, data: JinkoujueData) {
     assert.ok(prompt.includes(movement.name));
     assert.ok(prompt.includes(movement.trigger));
   }
+  const displayedRelations = prompt
+    .split('\n')
+    .filter((line) => /^(?:四位关系|五动三动)：/u.test(line));
+  const positions = Object.values(data.positions);
   for (const fact of data.evidenceAnalysis?.counterEvidenceFacts ?? []) {
-    assert.ok(prompt.includes(fact.promptText));
+    const standardCounter = fact.type === '受克' && fact.promptText === fact.detail;
+    const displayedSameDirection =
+      standardCounter &&
+      positions.some((source) =>
+        positions.some(
+          (target) =>
+            fact.ownerKey === `jinkoujue:position:${target.name}` &&
+            fact.detail === `${target.name}受${source.name}克` &&
+            displayedRelations.some((line) =>
+              line.includes(`${source.name}${source.element}克${target.name}${target.element}`),
+            ),
+        ),
+      );
+    assert.ok(prompt.includes(fact.promptText) || displayedSameDirection, fact.promptText);
   }
 }
 
@@ -223,6 +240,42 @@ test('金口诀普通网页与核心会话保留四位判断资料且核心提�
   assert.equal(core.aiPrompt.match(/^四位：/gm)?.length, 1);
   assert.equal(core.aiPrompt.match(/^五动三动：/gm)?.length, 1);
   assert.doesNotMatch(core.aiPrompt, /金口诀判断依据：/);
+
+  const coreData = core.data as JinkoujueData;
+  const structuredBefore = structuredClone(coreData);
+  for (const relation of ['人元土克将神水', '人元土克贵神水', '将神水克地分火', '贵神水克地分火']) {
+    assert.equal(core.formattedResult.split(relation).length - 1, 1);
+  }
+  assert.throws(() =>
+    assertJinkoujuePromptFacts(
+      core.formattedResult.replaceAll('人元土克将神水', '将神水克人元土'),
+      coreData,
+    ),
+  );
+  assert.throws(() =>
+    assertJinkoujuePromptFacts(
+      core.formattedResult.replaceAll('人元土克将神水', '人元土克贵神水'),
+      coreData,
+    ),
+  );
+  assert.throws(() =>
+    assertJinkoujuePromptFacts(
+      core.formattedResult.replaceAll('人元土克将神水', '人元火克将神水'),
+      coreData,
+    ),
+  );
+  const additionalCondition = structuredClone(coreData);
+  const counter = additionalCondition.evidenceAnalysis?.counterEvidenceFacts.find(
+    (fact) => fact.detail === '将神受人元克',
+  );
+  assert.ok(counter);
+  counter.promptText += '；将神处月令休，力量条件偏弱';
+  assert.throws(() => assertJinkoujuePromptFacts(core.formattedResult, additionalCondition));
+  assertJinkoujuePromptFacts(
+    core.formattedResult + '\n四位反证：' + counter.promptText,
+    additionalCondition,
+  );
+  assert.deepEqual(coreData, structuredBefore);
 });
 
 test('旧金口诀文本来源仍按代表时刻起课', async () => {

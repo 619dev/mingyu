@@ -11,6 +11,7 @@ import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divina
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 import { TimeManager } from '../packages/core/src/calendar/timeManager';
 import { buildTimeInfoText, buildSolarTimeInfoText } from '../packages/core/src/prompt/formatters';
+import { formatJinkoujueJudgmentFacts } from '../packages/core/src/prompt/jinkoujue-facts';
 
 const formatters = [
   formatDivinationInfo,
@@ -119,15 +120,29 @@ test('金口诀提示资料只列实际动爻，不再重复展开未触发的�
   assert.equal(data.positions.renYuan.element, '火');
   assert.equal(data.positions.diFen.element, '火');
   assert.equal(data.positions.jiangShen.element, '金');
-  for (const format of formatters) {
-    const text = format('jinkoujue', data);
+  const structuredBefore = structuredClone(data);
+  for (const text of [
+    ...formatters.map((format) => format('jinkoujue', data)),
+    buildDivinationPrompt({ method: 'jinkoujue', data, question: '问合作进度' }),
+  ]) {
     assert.match(text, /兄弟动（人元火比和地分火）/);
     assert.doesNotMatch(text, /人元火与地分火比和/);
     assert.match(text, /地分火克将神金/);
     assert.match(text, /五动三动：.*兄弟动（人元火比和地分火）/);
     assert.doesNotMatch(text, /五动取法：|三动取法：/);
     assert.doesNotMatch(text, /贵人被生|将神金与地分火比和/);
+    assert.equal(text.split('人元火克将神金').length - 1, 1);
+    assert.equal(text.split('地分火克将神金').length - 1, 1);
+    assert.doesNotMatch(text, /将神受人元克|将神受地分克/);
+    assert.match(text, /四位反证：将神处月令死，力量条件偏弱/);
+    assert.match(text, /发用位将神不空/);
+    assert.match(text, /遁干五行：将神遁干辛属金；贵神遁干癸属水/);
   }
+  for (const options of [{}, { compact: true }]) {
+    const standalone = formatJinkoujueJudgmentFacts(data, options).join('\n');
+    assert.match(standalone, /将神受人元克；将神受地分克/);
+  }
+  assert.deepEqual(data, structuredBefore);
 });
 
 test('金口诀古本算例关系沿用人元干与贵神本属并明确被生的施受方向', () => {
@@ -142,14 +157,17 @@ test('金口诀古本算例关系沿用人元干与贵神本属并明确被生�
   assert.equal(data.positions.guiShen.element, '水');
   assert.equal(data.relations.renToJiang, '被克');
   assert.notEqual(data.positions.guiShen.branch, data.positions.diFen.branch);
+  const structuredBefore = structuredClone(data);
   const summary = getDivinationSummaryBlocks('jinkoujue', data);
   assert.ok(
     summary.tags.includes(
       `贵神：${data.positions.guiShen.god}（本属${data.positions.guiShen.branch}）`,
     ),
   );
-  for (const format of formatters) {
-    const text = format('jinkoujue', data);
+  for (const text of [
+    ...formatters.map((format) => format('jinkoujue', data)),
+    buildDivinationPrompt({ method: 'jinkoujue', data, question: '问合作进度' }),
+  ]) {
     assert.match(text, /贵神水与将神水比和/);
     assert.match(text, /将神水克人元火/);
     assert.match(text, /贵神水克人元火/);
@@ -158,5 +176,18 @@ test('金口诀古本算例关系沿用人元干与贵神本属并明确被生�
     assert.match(text, /地分金生贵神水/);
     assert.match(text, /妻动（人元火克地分金）/);
     assert.match(text, /官动（贵神水克人元火）/);
+    assert.equal(text.split('贵神水克人元火').length - 1, 1);
+    assert.equal(text.split('将神水克人元火').length - 1, 1);
+    assert.equal(text.split('人元火克地分金').length - 1, 1);
+    assert.doesNotMatch(text, /人元受贵神克|人元受将神克|地分受人元克/);
+    assert.match(
+      text,
+      /四位反证：地分处月令囚，力量条件偏弱；将神处月令休，力量条件偏弱；贵神处月令休，力量条件偏弱/,
+    );
+    assert.match(text, /发用位贵神不空/);
+    assert.match(text, /贵神戊子乘玄武（阳水/);
+    assert.match(text, /贵神按贵神本属/);
+    assert.match(text, /遁干五行：将神遁干戊属土；贵神遁干戊属土/);
   }
+  assert.deepEqual(data, structuredBefore);
 });

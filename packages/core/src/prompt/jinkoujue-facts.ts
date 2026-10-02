@@ -47,7 +47,7 @@ export function formatJinkoujueRelations(data: JinkoujueData): string {
 /** 四位取用的起课依据、具体生扶与制约，供单时刻和时间区间共用。 */
 export function formatJinkoujueJudgmentFacts(
   data: JinkoujueData,
-  options: { compact?: boolean } = {},
+  options: { compact?: boolean; displayedRelations?: readonly string[] } = {},
 ): string[] {
   const compact = options.compact ?? false;
   const lines = [
@@ -90,7 +90,20 @@ export function formatJinkoujueJudgmentFacts(
       );
     }
   }
-  const counters = analyzeJinkoujueEvidence(data).counterEvidenceFacts;
+  const counters = analyzeJinkoujueEvidence(data).counterEvidenceFacts.filter(
+    (item) =>
+      item.type !== '受克' ||
+      !positions.some((source) =>
+        positions.some(
+          (target) =>
+            item.detail === `${target.name}受${source.name}克` &&
+            item.promptText === item.detail &&
+            options.displayedRelations?.some((text) =>
+              text.includes(`${source.name}${source.element}克${target.name}${target.element}`),
+            ),
+        ),
+      ),
+  );
   if (counters.length)
     lines.push(`四位反证：${counters.map((item) => item.promptText).join('；')}`);
   if (!compact)

@@ -83,13 +83,20 @@ test('大六壬遥克提示词应说明直接克未命中且不得夹带贼克�
     data.classicalRules?.map((item) => item.rule),
     ['遥克'],
   );
+  const structuredBefore = structuredClone(data);
 
-  for (const format of [formatDivinationInfo, formatEnhancedDivinationInfo]) {
-    const text = format('liuren', data);
+  for (const text of [
+    ...[formatDivinationInfo, formatEnhancedDivinationInfo].map((format) => format('liuren', data)),
+    buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
+  ]) {
     assert.match(text, /四课没有直接上下克，进入遥克/);
     assert.match(text, /最终按遥克法取.+发用/);
     assert.doesNotMatch(text, /贼克法：|四课先察上下相克/);
+    assert.match(text, /蒿矢酉（采用：唯一的神克日干蒿矢候选）/);
+    assert.match(text, /神克日干的蒿矢候选前置成立，弹射候选不再参与取舍/);
+    assert.doesNotMatch(text, /弹射未|被前置宗门压制/);
   }
+  assert.deepEqual(data, structuredBefore);
 });
 
 test('大六壬复合取传规则只列当前有克或无克条件，重复课对按不同上神计数', () => {
@@ -112,10 +119,14 @@ test('大六壬复合取传规则只列当前有克或无克条件，重复课�
     data.fourLessons.map((item) => item.upper),
     ['申', '寅', '申', '寅'],
   );
+  const structuredBefore = structuredClone(data);
   const prompt = buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' });
   assert.match(prompt, /返吟课兼四课下贼上：天盘与地盘相冲；四课见下贼上/);
   assert.match(prompt, /四课下贼上候选只有一个不同上神/);
   assert.doesNotMatch(prompt, /四课只有一处下贼上|无克另按井栏射取传/);
+  assert.match(prompt, /初传取法：按返吟重审法取寅发用/);
+  assert.doesNotMatch(prompt, /初传取法：；|常用取传规则未定|候选取舍：/);
+  assert.deepEqual(data, structuredBefore);
 });
 
 test('大六壬完整提示词写入课体判据、取用定位和应期依据', () => {
@@ -300,6 +311,7 @@ test('大六壬在线提示词用取传依据和期限条件表达候选取舍',
   assert.equal(analysis.timingFacts[3].promptText, '以问题期限、三传先后和现实触发条件核对应期');
   assert.ok(analysis.ordinaryTransmissionAdjudicationFact.candidateFacts.length > 0);
   assert.ok(analysis.counterEvidenceFacts.length > 0);
+  const structuredBefore = structuredClone(data);
 
   for (const prompt of [
     buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
@@ -310,7 +322,12 @@ test('大六壬在线提示词用取传依据和期限条件表达候选取舍',
     assert.match(prompt, /以问题期限、三传先后和现实触发条件核对应期/);
     assert.match(prompt, /课传反证：/);
     assert.doesNotMatch(prompt, /遥克不得抢占|未给出目标期限时|不硬换成唯一日期/);
+    assert.equal(prompt.split('四课直接上下克前置成立，取传采用直接克候选').length - 1, 1);
+    assert.match(prompt, /下贼上巳（排除：涉害深度0低于最大深度2）/);
+    assert.match(prompt, /下贼上酉（采用：涉害深度及所临孟仲季复等，先取支上神）/);
+    assert.doesNotMatch(prompt, /蒿矢丑|被前置宗门压制/);
   }
+  assert.deepEqual(data, structuredBefore);
 });
 
 test('初传不空及空亡古诀只列发端条件，不直接断定现实进展', () => {
