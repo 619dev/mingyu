@@ -2126,7 +2126,7 @@ export function analyzeNumber(input: string, purpose: NumberPurpose = 'general')
           : '数字与字母序号相加，再按 80 循环取数；整除时取 80。',
     energyFormula:
       '数字按原值排列，字母按 A=1 至 Z=26 展开；相邻有效数字组成八星磁场。夹在两端有效数字之间的 0 取隐藏、5 取增强象意；头尾的 0、5 单独保留位置。',
-    tradition: NUMBER_ENERGY_TRADITION,
+    tradition: { ...NUMBER_ENERGY_TRADITION },
     ...energy,
   };
 }

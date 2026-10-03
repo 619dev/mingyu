@@ -411,10 +411,18 @@ test('汉字筛选的笔画范围必须是1至64的安全整数', () => {
 test('号码解读关键词在每次结果与分组间独立保存', () => {
   const result = analyzeNumber('1313');
   const expected = [...result.energyPairs[0].keywords];
+  const expectedTradition = { ...result.tradition };
+  const expectedPrompt = buildNumberEnergyPrompt({ analysis: result });
+  for (const key of Object.keys(result.tradition)) {
+    assert.equal(Reflect.set(result.tradition, key, `本次传统依据备注：${key}`), true);
+  }
+  assert.notDeepEqual(result.tradition, expectedTradition);
   result.energyPairs[0].keywords.push('本次备注');
   assert.deepEqual(result.magneticDistribution[0].keywords, expected);
   result.magneticDistribution[0].keywords.push('分组备注');
   const fresh = analyzeNumber('1313');
   assert.deepEqual(fresh.energyPairs[0].keywords, expected);
   assert.deepEqual(fresh.magneticDistribution[0].keywords, expected);
+  assert.deepEqual(fresh.tradition, expectedTradition);
+  assert.equal(buildNumberEnergyPrompt({ analysis: fresh }), expectedPrompt);
 });
