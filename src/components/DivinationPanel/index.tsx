@@ -177,6 +177,9 @@ export function DivinationPanel({
       }
 
       setDraft(record.draft);
+      if (record.session.method === 'liuyao' && !record.session.liuyaoRange) {
+        getDivinationSessionSummary(record.session);
+      }
       setSession(record.session);
       setRestoredRecordId(recordId);
       setError('');

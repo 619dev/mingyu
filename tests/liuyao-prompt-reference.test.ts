@@ -41,10 +41,10 @@ test('六爻静卦不把未变化的本卦写成变卦', () => {
   assert.equal(staticData.originalName, '乾为天');
   assert.equal(staticData.changedName, '乾为天');
   assert.equal(staticData.changingYaos.length, 0);
-  assert.match(
-    formatEnhancedDivinationInfo('liuyao', staticData),
-    /主卦乾为天（乾宫）；变卦无；互卦/,
-  );
+  const staticText = formatEnhancedDivinationInfo('liuyao', staticData);
+  assert.match(staticText, /主卦乾为天（乾宫）；变卦无；互卦/);
+  assert.match(staticText, /世应：世爻第6爻父母戌土；应爻第3爻父母辰土/);
+  assert.match(staticText, /世应五行：世爻与应爻同五行/);
   assert.ok(getDivinationSummaryBlocks('liuyao', staticData).tags.includes('变卦：无'));
 
   const movingData = generateLiuyao(new Date('2025-01-01T08:00:00+08:00'), {
@@ -72,7 +72,9 @@ test('六爻事业用神与世爻不同五行时保留原忌仇神的作用对�
     liuyaoTemplate: 'shiye',
   });
   assert.match(text, /世爻第6爻子孙酉金/);
-  assert.match(text, /生克参照：本次所选用神第3爻官鬼卯木/);
+  assert.match(text, /用神：官鬼；盘面第3爻官鬼卯木/);
+  assert.match(text, /以所选用神为对象的生克关系：原神水（水生木）/);
+  assert.doesNotMatch(text, /生克参照：本次所选用神第3爻官鬼卯木/);
   assert.match(text, /原神水（水生木）见第5爻妻财亥水/);
   assert.match(text, /忌神金（金克木）见第6爻子孙酉金/);
   assert.match(text, /仇神土（土生金并克水）/);
@@ -93,6 +95,13 @@ test('六爻事业用神与世爻不同五行时保留原忌仇神的作用对�
       liuyaoTemplate: 'shiye',
     }),
   ]) {
+    assert.match(content, /世应：世爻第6爻子孙酉金；应爻第3爻官鬼卯木/);
+    assert.match(content, /世应五行：世爻克应爻/);
+    assert.match(content, /用神：官鬼；盘面第3爻官鬼卯木/);
+    assert.match(content, /以所选用神为对象的生克关系：原神水（水生木）见第5爻妻财亥水/);
+    assert.match(content, /忌神金（金克木）见第6爻子孙酉金/);
+    assert.match(content, /仇神土（土生金并克水）/);
+    assert.doesNotMatch(content, /世应五行：世爻第6爻子孙酉金|生克参照：/);
     assert.match(content, /第2爻父母巳火[^\n]*值月建、日辰巳/u);
     assert.match(content, /第5爻妻财亥水[^\n]*冲月建、日辰巳，月破，日冲成破/u);
     assert.equal(content.split('值月建、日辰巳').length - 1, 1);
@@ -112,7 +121,10 @@ test('六爻通用与感情提示词不把世爻写成事项用神', () => {
       liuyaoTemplate,
     });
     assert.match(text, /用神主线：事项用神待按具体问题取用；盘面线索：/);
-    assert.doesNotMatch(text, /本次所选用神|生克关系：原神|用神：通用主轴|用神：关系我方/);
+    assert.doesNotMatch(
+      text,
+      /本次所选用神|以所选用神为对象|生克关系：原神|用神：通用主轴|用神：关系我方/,
+    );
   }
 });
 
@@ -155,7 +167,8 @@ test('六爻静卦按实际世应和空爻给出月日生克及冲空对象', ()
   const text = formatEnhancedDivinationInfo('liuyao', data, '', undefined, {
     liuyaoTemplate: 'shiye',
   });
-  assert.match(text, /世应五行：应爻第3爻子孙申金克世爻第6爻官鬼寅木/);
+  assert.match(text, /世应：世爻第6爻官鬼寅木；应爻第3爻子孙申金/);
+  assert.match(text, /世应五行：应爻克世爻/);
   assert.match(text, /第5爻妻财子水克月建、日辰巳火/);
   assert.match(text, /第6爻官鬼寅木生月建、日辰巳火/);
   assert.match(text, /第2爻父母午火（本爻空亡；本爻午逢值，子冲午）/);
@@ -171,6 +184,9 @@ test('六爻静卦按实际世应和空爻给出月日生克及冲空对象', ()
       liuyaoTemplate: 'shiye',
     }),
   ]) {
+    assert.match(content, /世应：世爻第6爻官鬼寅木；应爻第3爻子孙申金/);
+    assert.match(content, /世应五行：应爻克世爻/);
+    assert.doesNotMatch(content, /世应五行：应爻第3爻子孙申金/);
     assert.match(content, /第3爻子孙申金[^\n]*合月建、日辰巳，刑月建、日辰巳（无恩之刑）/u);
     assert.match(content, /第6爻官鬼寅木[^\n]*害月建、日辰巳，刑月建、日辰巳（无恩之刑）/u);
     assert.equal(content.split('合月建、日辰巳').length - 1, 1);

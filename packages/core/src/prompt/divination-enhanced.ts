@@ -482,7 +482,7 @@ function formatLiuyaoInfo(
   const godChain = evidenceAnalysis.godChain.filter((item) => item.role !== '用神');
   const godChainText =
     godChain.length && selectedUsefulGod
-      ? `生克参照：本次所选用神${selectedUsefulGod.references.map((ref) => `${ref.source === '伏神' ? '伏神' : ''}第${ref.position}爻${ref.sixRelative}${ref.branch}${ref.wuxing}`).join('、')}。\n生克关系：${godChain
+      ? `以所选用神为对象的生克关系：${godChain
           .map(
             (item) =>
               `${item.role}${item.wuxing || ''}（${item.relation}）${item.status === '盘中有对应' ? `见${item.references.map((ref) => `${ref.source === '伏神' ? '伏神' : ''}第${ref.position}爻${ref.sixRelative}${ref.branch}${ref.wuxing}`).join('、')}` : '未见'}`,
@@ -524,7 +524,7 @@ function formatLiuyaoInfo(
       ? `世应：${worldYao ? `世爻${formatLiuyaoYaoBrief(worldYao)}` : '世爻未列'}；${responseYao ? `应爻${formatLiuyaoYaoBrief(responseYao)}` : '应爻未列'}`
       : '',
     worldYao && responseYao
-      ? `世应五行：${formatLiuyaoElementDirection(`世爻${formatLiuyaoYaoBrief(worldYao)}`, worldYao.wuxing, `应爻${formatLiuyaoYaoBrief(responseYao)}`, responseYao.wuxing)}`
+      ? `世应五行：${formatLiuyaoElementDirection('世爻', worldYao.wuxing, '应爻', responseYao.wuxing)}`
       : '',
     usefulGodMainLine,
     godChainText,

@@ -48,6 +48,7 @@ import {
   isSanxing,
   getSanxingType,
   getSeasonState,
+  getBranchWuxing,
   isLiuchong,
 } from '../../ganzhi';
 
@@ -90,6 +91,26 @@ export function getLiuyaoGuaShenBranch(shiPosition: number, shiYaoIsYang: boolea
 /** 判断爻支是否被日辰相冲；暗动、日破与动爻日冲须在此基础上再按动静旺衰区分。 */
 function isDayClash(branch: string, dayBranch: string): boolean {
   return isLiuchong(branch, dayBranch);
+}
+
+/**
+ * 静爻日冲：月令旺相或旬空冲起可为暗动，静爻月破另存其破。
+ * 《增删卜易》暗动章、用神元神忌神仇神章的丑土、寅木例均为旬空日冲；
+ * 天时章蹇卦戌父例明确静爻月破不能仅因再逢日冲而起用。
+ * 这里只定参与资格，旬空、月破与月令旺衰仍各存原身份。
+ */
+export function isLiuyaoHiddenMove(
+  branch: string,
+  monthBranch: string,
+  dayBranch: string,
+  isChanging: boolean,
+  isVoid: boolean,
+): boolean {
+  if (isChanging || !isLiuchong(branch, dayBranch) || isLiuchong(branch, monthBranch)) {
+    return false;
+  }
+  const season = getSeasonState(getBranchWuxing(branch), monthBranch);
+  return isVoid || season === '旺' || season === '相';
 }
 
 /**
@@ -897,12 +918,16 @@ export function generateLiuyao(customDate?: Date, options?: LiuyaoGenerationOpti
       ? getLiuyaoChangeDirection(info.dizhi, changedInfo.dizhi)
       : null;
 
-    // 月令旺衰：按月建定爻之五行的旺相休囚死。旺相为有力，休囚死为无力。
+    // 月令旺衰只记录月建层，日冲旬空的作用另行判断。
     const seasonState = getSeasonState(info.wuxing, monthBranch);
-    // 《增删卜易·暗动章》：旺相静爻逢日冲为暗动，休囚静爻逢日冲为日破。
     // 动爻逢日冲另属“动散章”，原文强调不能见冲即断散，因此只记录日辰冲动事实。
-    const isHiddenMove =
-      !isChanging && isDayClashFlag && (seasonState === '旺' || seasonState === '相');
+    const isHiddenMove = isLiuyaoHiddenMove(
+      info.dizhi,
+      monthBranch,
+      dayBranch,
+      isChanging,
+      voids.includes(info.dizhi),
+    );
     const isDayBreakFlag = !isChanging && isDayClashFlag && !isHiddenMove;
     // 回头生克冲：动爻变出之爻对动爻本身的关系（仅动爻有变爻时计算）。
     const changeRelation = changedInfo

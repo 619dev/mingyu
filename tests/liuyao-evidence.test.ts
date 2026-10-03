@@ -702,6 +702,38 @@ test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该�
   delete oldResult.sanheWithDay;
   delete oldResult.sanheWithMonth;
   assert.ok(analyzeLiuyaoEvidence(oldResult));
+
+  // 戊申属甲辰旬，寅卯空；午月静寅日冲起用，与第六明动戌补齐寅午戌。
+  const voidClash = generateLiuyao(new Date('2025-06-08T08:00:00+08:00'), {
+    method: 'manual',
+    yaos: [7, 7, 7, 7, 7, 9],
+  });
+  assert.equal(voidClash.ganzhi.month.slice(1), '午');
+  assert.equal(voidClash.ganzhi.day, '戊申');
+  assert.equal(voidClash.yaosDetail[1].najiaDizhi, '寅');
+  assert.equal(voidClash.yaosDetail[1].isVoid, true);
+  assert.equal(voidClash.yaosDetail[1].seasonState, '休');
+  assert.equal(voidClash.yaosDetail[1].isHiddenMove, true);
+  assert.equal(voidClash.yaosDetail[5].najiaDizhi, '戌');
+  assert.equal(voidClash.yaosDetail[5].isChanging, true);
+  assert.deepEqual(voidClash.sanheWithMonth, {
+    group: '火局',
+    members: ['寅', '午', '戌'],
+    description: '月建午与动变爻同见三合火局三支',
+  });
+  assert.ok(
+    analyzeLiuyaoEvidence(voidClash).structureFacts.some((fact) => fact.kind === '月建三合'),
+  );
+  assert.match(
+    formatEnhancedDivinationInfo('liuyao', voidClash),
+    /三合三支：月建午与动变爻同见火局三支（寅、午、戌）/u,
+  );
+  const missingParticipation = structuredClone(voidClash);
+  missingParticipation.sanheWithMonth = null;
+  assert.throws(
+    () => analyzeLiuyaoEvidence(missingParticipation),
+    /三合与原始爻值、纳甲及月日支不一致/u,
+  );
 });
 
 test('六爻三刑须由本卦纳甲支复算后才进入提示词', () => {

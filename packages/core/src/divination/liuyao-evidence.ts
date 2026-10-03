@@ -39,6 +39,7 @@ import {
   getLiuyaoFanFuRelations,
   getLiuyaoHexagramRelations,
   getSpecialPattern,
+  isLiuyaoHiddenMove,
 } from './algorithms/liuyao';
 import { getLiuyaoSanheWithTrigger } from './liuyao-sanhe';
 import { getShiErGong } from './liuyao-life-stage';
@@ -696,8 +697,13 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
         (yao.changeDirection === undefined || yao.changeDirection === null);
     const expectedSeason = getSeasonState(getBranchWuxing(yao.najiaDizhi), monthBranch);
     const dayClash = isLiuchong(yao.najiaDizhi, dayBranch);
-    const hiddenMove =
-      !changing && dayClash && (expectedSeason === '旺' || expectedSeason === '相');
+    const hiddenMove = isLiuyaoHiddenMove(
+      yao.najiaDizhi,
+      monthBranch,
+      dayBranch,
+      changing,
+      expectedVoids.includes(yao.najiaDizhi),
+    );
     const expectedMovingLifeStages = movingPositions
       .filter((position) => position !== yao.position)
       .map((position) => ({
@@ -778,9 +784,13 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
   const activeBranches = data.yaoArray.flatMap((raw, index) => {
     const branch = mainNaJia[index];
     const changing = raw === 6 || raw === 9;
-    const season = getSeasonState(getBranchWuxing(branch), monthBranch);
-    const hiddenMove =
-      !changing && isLiuchong(branch, dayBranch) && (season === '旺' || season === '相');
+    const hiddenMove = isLiuyaoHiddenMove(
+      branch,
+      monthBranch,
+      dayBranch,
+      changing,
+      expectedVoids.includes(branch),
+    );
     if (!changing && !hiddenMove) return [];
     return changing ? [branch, changedNaJia![index]] : [branch];
   });

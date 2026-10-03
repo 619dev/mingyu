@@ -143,7 +143,7 @@ test('星盘格局摘要应按名称去重并保留首次出现顺序', () => {
   );
 });
 
-test('星盘真太阳时应透传统一校正证据并纳入总汇总', () => {
+test('星盘真太阳时应保留校正秒数、透传证据并且不改写盘面', () => {
   const result = generateAstrolabe({ ...validInput, useTrueSolarTime: true });
   const evidence = result.birth.trueSolarEvidence;
 
@@ -158,10 +158,7 @@ test('星盘真太阳时应透传统一校正证据并纳入总汇总', () => {
     /民用出生时间.*进入现代星历.*仅作为传统时间参考/,
   );
   assert.doesNotMatch(result.evidenceAnalysis?.promptText ?? '', /真太阳时.*进入星盘计算/);
-});
 
-test('真太阳时结果保留校正产生的秒数', () => {
-  const result = generateAstrolabe({ ...validInput, useTrueSolarTime: true });
   const reference = resolveTrueSolarBirthTime({
     dateType: 'solar',
     year: 1995,
@@ -176,18 +173,15 @@ test('真太阳时结果保留校正产生的秒数', () => {
 
   assert.notEqual(reference.correctedTime.second, 0);
   assert.equal(result.birth.trueSolarDateTime, reference.correctedDateTime.replace('T', ' '));
-});
 
-test('现代星盘不得用真太阳时改写实际出生瞬间和盘面', () => {
   const standard = cloneFixedAstrolabe();
-  const withTrueSolarEvidence = generateAstrolabe({ ...validInput, useTrueSolarTime: true });
 
-  assert.equal(withTrueSolarEvidence.birth.dateTime, standard.birth.dateTime);
-  assert.notEqual(withTrueSolarEvidence.birth.trueSolarDateTime, standard.birth.dateTime);
-  assert.deepEqual(withTrueSolarEvidence.planets, standard.planets);
-  assert.deepEqual(withTrueSolarEvidence.angles, standard.angles);
-  assert.deepEqual(withTrueSolarEvidence.houses, standard.houses);
-  assert.deepEqual(withTrueSolarEvidence.aspects, standard.aspects);
+  assert.equal(result.birth.dateTime, standard.birth.dateTime);
+  assert.notEqual(result.birth.trueSolarDateTime, standard.birth.dateTime);
+  assert.deepEqual(result.planets, standard.planets);
+  assert.deepEqual(result.angles, standard.angles);
+  assert.deepEqual(result.houses, standard.houses);
+  assert.deepEqual(result.aspects, standard.aspects);
 });
 
 test('本命盘在线提示词只列盘面与时间事实，不带内部来源说明', () => {
