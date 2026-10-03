@@ -113,6 +113,38 @@ test('西占双盘应按黄经最小夹角识别主要相位并保留计算口�
   assert.ok(result.evidence.items.some((item) => item.source));
   assertPromptIsPortableTaskText(result.promptText);
   assert.doesNotMatch(result.promptText, /强度\d+%|匹配率\d+%/);
+
+  // 1/3、2/3 为既有分级界；等级依据几何比例，展示四位舍入不改变归属。
+  for (const [deviation, allowedOrb, expected] of [
+    [2.6667, 8, '中等'],
+    [5.3333, 8, '中等'],
+    [0.9999, 3, '紧密'],
+    [1, 3, '紧密'],
+    [1.0001, 3, '中等'],
+    [1.9999, 3, '中等'],
+    [2, 3, '中等'],
+    [2.0001, 3, '宽松'],
+  ] as const) {
+    const first = chart('甲', 0, 120);
+    const second = chart('乙', deviation, 210);
+    const boundary = analyzeAstrolabeSynastry(first, second, {
+      pointNames: ['Sun'],
+      includeHouseOverlays: false,
+      aspectOrbs: { 合相: allowedOrb },
+    });
+    assert.equal(boundary.aspects.length, 1);
+    assert.equal(boundary.aspects[0].closeness, expected, `${deviation}/${allowedOrb}`);
+    assert.equal(boundary.aspects[0].orbRatio, Number((deviation / allowedOrb).toFixed(4)));
+    const prompt = buildAstrolabeSynastryPrompt({
+      chart1: first,
+      chart2: second,
+      synastry: boundary,
+    });
+    assert.match(
+      prompt,
+      new RegExp(`第一人甲的太阳与第二人乙的太阳：合相，目标角0°[^\\n]*${expected}`),
+    );
+  }
 });
 
 test('西占双盘应计算双方星体落入对方宫位', () => {

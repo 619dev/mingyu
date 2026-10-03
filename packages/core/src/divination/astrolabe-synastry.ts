@@ -127,7 +127,8 @@ function calculateAspects(
         const allowedOrb = options.aspectOrbs?.[definition.type] ?? definition.defaultOrb;
         const orb = Math.abs(actualAngle - definition.angle);
         if (orb > allowedOrb) continue;
-        const orbRatio = Number((orb / allowedOrb).toFixed(4));
+        const rawOrbRatio = orb / allowedOrb;
+        const orbRatio = Number(rawOrbRatio.toFixed(4));
         results.push({
           key: `astrolabe:synastry:aspect:${point1.name}:${point2.name}:${definition.type}`,
           status: '已命中',
@@ -143,7 +144,7 @@ function calculateAspects(
           actualAngle: Number(actualAngle.toFixed(4)),
           orb: Number(orb.toFixed(4)),
           allowedOrb,
-          closeness: classifyAspectClosenessByRatio(orbRatio),
+          closeness: classifyAspectClosenessByRatio(rawOrbRatio),
           orbRatio,
           source: '双方本命盘黄经最小夹角与当前相位允许容许度',
           sourcePointKey: `astrolabe:synastry:point:person1:${point1.name}`,

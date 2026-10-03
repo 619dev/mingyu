@@ -288,6 +288,73 @@ test('星盘结构化位置与相位应对应实际盘面', () => {
   assert.match(evidence.promptText, /出生地点太阳光照背景/);
   assert.doesNotMatch(evidence.promptText, /成功率|吉凶总分|能量分数[：=]\d/);
   assert.doesNotMatch(evidence.promptText, /命语|当前结果|工程|接口|API|MCP/);
+
+  // 缺少等级与归一化比例的合法旧记录，按保留的偏差/容许度分级。
+  for (const [deviation, allowedOrb, expected] of [
+    [2.6667, 8, '中等'],
+    [5.3333, 8, '中等'],
+    [0.9999, 3, '紧密'],
+    [1, 3, '紧密'],
+    [1.0001, 3, '中等'],
+    [1.9999, 3, '中等'],
+    [2, 3, '中等'],
+    [2.0001, 3, '宽松'],
+  ] as const) {
+    const legacy = cloneFixedAstrolabe();
+    delete legacy.evidenceAnalysis;
+    legacy.aspects = [
+      {
+        body1: '太阳',
+        body2: '月亮',
+        type: '合相',
+        symbol: '☌',
+        applying: null,
+        exactAngle: 0,
+        actualAngle: deviation,
+        orb: deviation,
+        allowedOrb,
+      },
+    ];
+    const before = structuredClone(legacy);
+    const restored = analyzeAstrolabeEvidence(legacy);
+    assert.equal(restored.aspectFacts[0].closeness, expected, `${deviation}/${allowedOrb}`);
+    assert.equal(
+      restored.aspectFacts[0].normalizedOrbRatio,
+      Number((deviation / allowedOrb).toFixed(4)),
+    );
+    assert.match(restored.aspectFacts[0].promptText, new RegExp(`${expected}等级`));
+    assert.deepEqual(legacy, before);
+
+    // 新本命保存的偏差只有两位、比例四位；缺等级时优先保留四位角的几何信息。
+    legacy.aspects[0].orb = Number(deviation.toFixed(2));
+    legacy.aspects[0].normalizedOrbRatio = Number((deviation / allowedOrb).toFixed(4));
+    const rounded = analyzeAstrolabeEvidence(legacy);
+    assert.equal(
+      rounded.aspectFacts[0].closeness,
+      expected,
+      `保存舍入值${deviation}/${allowedOrb}`,
+    );
+    assert.equal(rounded.aspectFacts[0].normalizedOrbRatio, legacy.aspects[0].normalizedOrbRatio);
+  }
+
+  const explicit = cloneFixedAstrolabe();
+  explicit.aspects = [
+    {
+      body1: '太阳',
+      body2: '月亮',
+      type: '合相',
+      symbol: '☌',
+      applying: null,
+      orb: 0.99,
+      allowedOrb: 3,
+      normalizedOrbRatio: 0.34,
+    },
+  ];
+  assert.equal(analyzeAstrolabeEvidence(explicit).aspectFacts[0].closeness, '中等');
+  explicit.aspects[0].closeness = '宽松';
+  explicit.aspects[0].actualAngle = 1;
+  explicit.aspects[0].exactAngle = 0;
+  assert.equal(analyzeAstrolabeEvidence(explicit).aspectFacts[0].closeness, '宽松');
 });
 
 test('旧星盘缺少相位几何量时不得反推伪精确字段', () => {

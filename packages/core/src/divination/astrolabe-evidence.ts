@@ -4,6 +4,7 @@ import type { PromptEvidenceBundle, PromptEvidenceItem } from '../prompt-evidenc
 import type { AstrolabeData } from '../types/divination';
 import type { HistoricalTimezoneEvidence } from '../calendar/historical-timezone';
 import type { TrueSolarTimeEvidenceFields } from '../calendar/true-solar-time';
+import { classifyAspectClosenessByRatio } from './astrolabe-aspect-evidence';
 
 export interface AstrolabePositionFact {
   key: string;
@@ -258,12 +259,6 @@ const ASPECT_BODY_ALIASES: Record<string, string> = {
   'Mean South Node': '南交点',
 };
 
-function classifyCloseness(ratio: number): AstrolabeAspectFact['closeness'] {
-  if (ratio <= 1 / 3) return '紧密';
-  if (ratio <= 2 / 3) return '中等';
-  return '宽松';
-}
-
 function buildPositionFact(
   item: AstrolabeData['planets'][number],
   kind: AstrolabePositionFact['kind'],
@@ -296,10 +291,16 @@ function buildAspectFact(
   item: AstrolabeData['aspects'][number],
   positionFacts: AstrolabePositionFact[],
 ): AstrolabeAspectFact {
-  const normalizedOrbRatio =
-    item.normalizedOrbRatio ??
-    (item.allowedOrb && item.allowedOrb > 0 ? Number((item.orb / item.allowedOrb).toFixed(4)) : 1);
-  const closeness = item.closeness ?? classifyCloseness(normalizedOrbRatio);
+  const rawOrbRatio =
+    item.actualAngle !== undefined &&
+    item.exactAngle !== undefined &&
+    item.allowedOrb !== undefined &&
+    item.allowedOrb > 0
+      ? Math.abs(item.actualAngle - item.exactAngle) / item.allowedOrb
+      : (item.normalizedOrbRatio ??
+        (item.allowedOrb && item.allowedOrb > 0 ? item.orb / item.allowedOrb : 1));
+  const normalizedOrbRatio = item.normalizedOrbRatio ?? Number(rawOrbRatio.toFixed(4));
+  const closeness = item.closeness ?? classifyAspectClosenessByRatio(rawOrbRatio);
   const phase = item.applying === true ? '入相' : item.applying === false ? '出相' : '未判定';
   const body1Lookup = ASPECT_BODY_ALIASES[item.body1] ?? item.body1;
   const body2Lookup = ASPECT_BODY_ALIASES[item.body2] ?? item.body2;

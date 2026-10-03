@@ -281,7 +281,8 @@ function mapAspect(aspect: {
   isApplying: boolean | null;
   isOutOfSign: boolean;
 }): AstrolabeAspect {
-  const normalizedOrbRatio = Number((aspect.deviation / aspect.orb).toFixed(4));
+  const rawOrbRatio = aspect.deviation / aspect.orb;
+  const normalizedOrbRatio = Number(rawOrbRatio.toFixed(4));
   return {
     body1: PLANET_LABELS[aspect.body1] ?? aspect.body1,
     body2: PLANET_LABELS[aspect.body2] ?? aspect.body2,
@@ -292,7 +293,7 @@ function mapAspect(aspect: {
     orb: Number(aspect.deviation.toFixed(2)),
     strength: aspect.strength,
     allowedOrb: Number(aspect.orb.toFixed(4)),
-    closeness: classifyAspectClosenessByRatio(normalizedOrbRatio),
+    closeness: classifyAspectClosenessByRatio(rawOrbRatio),
     normalizedOrbRatio,
     isOutOfSign: aspect.isOutOfSign,
     source: 'Caelus 星体位置与明御相位计算；紧密等级按偏差占本次允许容许度的比例换算',
