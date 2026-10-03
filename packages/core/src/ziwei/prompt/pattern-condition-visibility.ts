@@ -206,6 +206,46 @@ function isRepeatedSamePalacePresenceCondition(
   );
 }
 
+function isRepeatedPalaceStarPresenceCondition(
+  pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
+  condition: string,
+  displayedPalaces: readonly PalaceFact[],
+) {
+  const match = /^(.+宫)见(.+)$/u.exec(condition);
+  if (!match) return false;
+  const conditionStars = getConditionStars(match[2], pattern.star_names);
+  const palace = getPatternPalace(pattern, match[1], displayedPalaces);
+  if (!conditionStars || !palace) return false;
+  const stars = [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars];
+  return conditionStars.every((name) => stars.some((star) => star.name === name));
+}
+
+function isRepeatedNatalMutagenCoLocationCondition(
+  pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
+  condition: string,
+  displayedPalaces: readonly PalaceFact[],
+) {
+  const match = /^(.+?)(?:同守|同坐)(.+宫)$/u.exec(condition);
+  if (!match) return false;
+  const members = match[1].split(/[、，,与和及\s]+/u);
+  if (members.length < 2 || !members.some((member) => /^生年化[禄权科忌]$/u.test(member))) {
+    return false;
+  }
+  const palace = getPatternPalace(pattern, match[2], displayedPalaces);
+  if (!palace) return false;
+  const stars = [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars];
+  return members.every((member) => {
+    const natalMutagen = /^生年化([禄权科忌])$/u.exec(member)?.[1];
+    return natalMutagen
+      ? stars.some(
+          (star) =>
+            star.birth_mutagen === natalMutagen &&
+            pattern.star_names.includes(`${star.name}化${natalMutagen}`),
+        )
+      : pattern.star_names.includes(member) && stars.some((star) => star.name === member);
+  });
+}
+
 /** 判断格局条件是否已由当前展示宫位中的星曜位置和明确属性完整表达。 */
 export function isZiweiConditionRestatedByPalaces(
   pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
@@ -217,6 +257,8 @@ export function isZiweiConditionRestatedByPalaces(
     isRepeatedSinglePalacePositionCondition(pattern, condition, displayedPalaces) ||
     isRepeatedNamedStarBrightnessCondition(pattern, condition, displayedPalaces) ||
     isRepeatedSingleMajorStarCondition(pattern, condition, displayedPalaces) ||
-    isRepeatedSamePalacePresenceCondition(pattern, condition, displayedPalaces)
+    isRepeatedSamePalacePresenceCondition(pattern, condition, displayedPalaces) ||
+    isRepeatedPalaceStarPresenceCondition(pattern, condition, displayedPalaces) ||
+    isRepeatedNatalMutagenCoLocationCondition(pattern, condition, displayedPalaces)
   );
 }

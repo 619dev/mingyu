@@ -437,7 +437,7 @@ test('紫微身宫格局只借用同一实际宫位已展示的星曜事实', ()
   assert.match(focusedPrompt, /格局：兼文武[\s\S]*?命中条件：文曲、武曲同坐身宫/u);
 });
 
-test('真实马落空亡盘在完整宫位已列天马与旬空时不重复同宫条件', async () => {
+test('真实空曜与生年化曜盘在完整宫位已列事实时不重复格局条件', async () => {
   const runtime = await calculateFullZiweiChart(
     buildZiweiChartInput({
       name: '格局条件核验',
@@ -468,6 +468,122 @@ test('真实马落空亡盘在完整宫位已列天马与旬空时不重复同�
 
   const focused = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
   assert.match(focused, /格局：马落空亡[\s\S]*?命中条件：天马与旬空同宫/u);
+
+  const natalRuntime = await calculateZiweiChart(
+    {
+      name: '格局条件实际消费',
+      gender: '女',
+      dateType: 'lunar',
+      birthDate: '1994-10-26',
+      birthTimeIndex: 9,
+      algorithm: 'default',
+    },
+    { scopes: ['origin'], horoscopeContext: { dateStr: '2026-09-18', hourIndex: 6 } },
+  );
+  const natalPayload = natalRuntime.payloadByScope.origin;
+  const natalPattern = natalPayload.patterns.find((item) => item.name === '两重华盖');
+  const lifePalace = natalPayload.palaces.find((item) => item.name === '命宫');
+  assert.ok(natalPattern);
+  assert.ok(lifePalace);
+  assert.equal(lifePalace.index, 0);
+  assert.equal(lifePalace.earthly_branch, '寅');
+  assert.deepEqual(natalPattern.star_names, ['禄存', '廉贞化禄', '地空']);
+  assert.deepEqual(natalPattern.matched_conditions, ['禄存与生年化禄同坐命宫', '命宫见地空']);
+  assert.equal(lifePalace.major_stars.find((star) => star.name === '廉贞')?.birth_mutagen, '禄');
+  const natalBefore = structuredClone(natalPayload);
+  for (const [text, identity] of [
+    [
+      formatZiweiPayloadForPrompt(natalPayload),
+      /命宫；[^\n]*廉贞，亮度：庙，生年化禄；辅曜：禄存、地空/u,
+    ],
+    [
+      buildZiweiReadableSnapshot({ payload: natalPayload, reportContext: createReportContext() }),
+      /宫位：命宫\n宫干支：丙寅\n[^\n]*\n主星：廉贞\(庙\/生年化禄\)\n辅星：禄存、地空/u,
+    ],
+    [
+      buildZiweiTaskBookSnapshot({ payload: natalPayload, reportContext: createReportContext() }),
+      /宫位：命宫｜宫干支：丙寅｜[^\n]*主星：廉贞\(庙\/生年化禄\)｜辅星：禄存、地空/u,
+    ],
+    [
+      buildZiweiPrompt({
+        runtime: natalRuntime,
+        scope: 'origin',
+        currentTime: new Date('2026-10-03T00:00:00Z'),
+      }),
+      /命宫；[^\n]*廉贞，亮度：庙，生年化禄；辅曜：禄存、地空/u,
+    ],
+  ] as const) {
+    assert.match(text, identity);
+    assert.match(text, /格局：两重华盖/u);
+    assert.match(text, /两重华盖，谓禄存化禄坐命遇空劫是也。/u);
+    assert.doesNotMatch(text, /禄存与生年化禄同坐命宫|命宫见地空/u);
+  }
+  const natalFocused = formatZiweiPayloadForPrompt(natalPayload, {
+    focusPalaceNames: ['夫妻宫'],
+  });
+  assert.match(natalFocused, /命中条件：禄存与生年化禄同坐命宫；命宫见地空/u);
+  for (const condition of natalPattern.matched_conditions) {
+    assert.equal(isZiweiConditionRestatedByPalaces(natalPattern, condition, [lifePalace]), true);
+    for (const displayed of [
+      [],
+      [{ ...lifePalace, index: 1 }],
+      [{ ...lifePalace, name: '夫妻宫' }],
+      [
+        {
+          ...lifePalace,
+          major_stars: [],
+          minor_stars: [],
+          other_stars: [],
+          scope_stars: [
+            ...lifePalace.major_stars,
+            ...lifePalace.minor_stars,
+            ...lifePalace.other_stars,
+          ],
+        },
+      ],
+    ]) {
+      assert.equal(isZiweiConditionRestatedByPalaces(natalPattern, condition, displayed), false);
+    }
+    assert.equal(
+      isZiweiConditionRestatedByPalaces(natalPattern, `${condition}，且不见化忌`, [lifePalace]),
+      false,
+    );
+  }
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(natalPattern, '命宫见地空', [
+      {
+        ...lifePalace,
+        minor_stars: lifePalace.minor_stars.filter((star) => star.name !== '地空'),
+        other_stars: lifePalace.other_stars.filter((star) => star.name !== '地空'),
+      },
+    ]),
+    false,
+  );
+  for (const birthMutagen of [undefined, '权'] as const) {
+    assert.equal(
+      isZiweiConditionRestatedByPalaces(natalPattern, '禄存与生年化禄同坐命宫', [
+        {
+          ...lifePalace,
+          major_stars: lifePalace.major_stars.map((star) => ({
+            ...star,
+            birth_mutagen: birthMutagen,
+            active_scope_mutagen: '禄' as const,
+            horoscope_mutagen: '禄' as const,
+          })),
+        },
+      ]),
+      false,
+    );
+  }
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(
+      { ...natalPattern, star_names: ['禄存', '太阴化禄', '地空'] },
+      '禄存与生年化禄同坐命宫',
+      [lifePalace],
+    ),
+    false,
+  );
+  assert.deepEqual(natalPayload, natalBefore);
 });
 
 test('紫微单宫定位条件仅在宫位中已有同一星曜事实时省略', () => {
@@ -656,6 +772,34 @@ test('紫微单宫定位条件仅在宫位中已有同一星曜事实时省略',
       '廉贞守命并同见旬空、天空',
       [{ ...voidPalace, other_stars: [voidPalace.other_stars[0]] }],
     ),
+    false,
+  );
+
+  const mutagenPalace = createPalace(0, '命宫', ['贪狼', '武曲']);
+  mutagenPalace.major_stars[0].birth_mutagen = '权';
+  mutagenPalace.major_stars[1].birth_mutagen = '禄';
+  const mutagenPattern = {
+    palace_indexes: [0],
+    palace_names: ['命宫'],
+    star_names: ['贪狼化权', '武曲化禄'],
+  };
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(mutagenPattern, '生年化权、生年化禄同守命宫', [
+      mutagenPalace,
+    ]),
+    true,
+  );
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(mutagenPattern, '两颗化曜亮度均为庙或旺', [mutagenPalace]),
+    false,
+  );
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(mutagenPattern, '生年化权、生年化禄同守命宫', [
+      {
+        ...mutagenPalace,
+        major_stars: [mutagenPalace.major_stars[0]],
+      },
+    ]),
     false,
   );
 });

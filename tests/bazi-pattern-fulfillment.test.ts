@@ -23,6 +23,20 @@ function pillars(values: [string, string, string, string]): Pillars {
   ) as unknown as Pillars;
 }
 
+// 两个只读消费者使用相同四柱和取格参数，共享一次评估结果。
+let exposedSealFulfillment: ReturnType<typeof evaluatePatternFulfillment> | undefined;
+function getExposedSealFulfillment() {
+  if (!exposedSealFulfillment) {
+    exposedSealFulfillment = evaluatePatternFulfillment(
+      pillars(['壬申', '癸丑', '甲午', '癸酉']),
+      '甲',
+      '正印格',
+      getTenGod,
+    );
+  }
+  return exposedSealFulfillment;
+}
+
 test('月干正官若非月支所藏，不能仅凭其透干认作正官月令', () => {
   const result = evaluatePatternFulfillment(
     pillars(['戊申', '辛亥', '甲子', '乙亥']),
@@ -38,12 +52,7 @@ test('月干正官若非月支所藏，不能仅凭其透干认作正官月令',
 });
 
 test('同一印星两透时，月干受财本气克不抹去时干已闭合的格神', () => {
-  const result = evaluatePatternFulfillment(
-    pillars(['壬申', '癸丑', '甲午', '癸酉']),
-    '甲',
-    '正印格',
-    getTenGod,
-  );
+  const result = getExposedSealFulfillment();
 
   assert.equal(
     result.conditionFacts?.find((item) => item.key === 'pattern.month-gate')?.status,
@@ -62,8 +71,7 @@ test('同一印星两透时，月干受财本气克不抹去时干已闭合的�
 });
 
 test('同一印星两透时，仅将实际可作用的时干列为已参与成格', () => {
-  const chart = pillars(['壬申', '癸丑', '甲午', '癸酉']);
-  const fulfillment = evaluatePatternFulfillment(chart, '甲', '正印格', getTenGod);
+  const fulfillment = getExposedSealFulfillment();
   const monthSeal = fulfillment.rootEvidence?.find(
     (item) => item.pillar === 'month' && item.placement === '透干',
   );
