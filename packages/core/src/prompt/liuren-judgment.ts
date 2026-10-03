@@ -2,6 +2,7 @@ import type { LiurenData } from '../types/divination';
 import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
 import {
   formatLiurenLesson,
+  formatLiurenRoleRelation,
   formatLiurenOrdinaryTransmissionAdjudication,
   formatLiurenTransmission,
 } from './liuren-facts';
@@ -56,13 +57,39 @@ export function formatLiurenJudgmentFacts(
       if (!options.chartFactsIncluded) return true;
       if (item.scope === '四课' && item.basis === '上下神关系') {
         const lesson = analysis.lessons.find((entry) => entry.key === item.ownerKey);
-        return !lesson || !formatLiurenLesson(lesson).includes(item.detail);
+        if (!lesson) return true;
+        const displayed = formatLiurenLesson(lesson);
+        if (displayed.includes(item.detail)) return false;
+        const relation = formatLiurenRoleRelation(lesson.upper, lesson.lower, '上神', '下位');
+        return (
+          !relation ||
+          item.detail !== relation.summary ||
+          !displayed.includes(`；${relation.detail}`)
+        );
       }
       if (item.scope === '三传') {
         const index = analysis.transmissions.findIndex((entry) => entry.key === item.ownerKey);
         if (index < 0) return true;
         if (item.basis === '相邻传关系') {
-          return !formatLiurenTransmission(data, index).includes(item.detail);
+          const displayed = formatLiurenTransmission(data, index);
+          if (displayed.includes(item.detail)) return false;
+          const transmission = data.threeTransmissions[index];
+          const previous =
+            index === 0 ? data.fourLessons[0]?.lower : data.threeTransmissions[index - 1]?.branch;
+          const previousName = index === 0 ? '一课下位' : data.threeTransmissions[index - 1].stage;
+          const relation = previous
+            ? formatLiurenRoleRelation(
+                transmission.branch,
+                previous,
+                transmission.stage,
+                previousName,
+              )
+            : undefined;
+          return (
+            !relation ||
+            item.detail !== relation.summary ||
+            !displayed.includes(`；${relation.detail}`)
+          );
         }
         if (item.basis === '月令旺衰') {
           return !analysis.traditionalFacts.some(

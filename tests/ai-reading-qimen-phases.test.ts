@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { generateQimenLifetimePrompt } from 'mingyu-core/divination/qimen';
+import { buildLifetimePrompt, calculateQimenLifetime } from 'mingyu-core/divination/qimen';
 import type { QimenLifetimeData } from 'mingyu-core/types';
 import {
   runReadingWorkflow,
@@ -12,30 +12,33 @@ import {
 import type { ReadingSubjectSnapshot } from '../src/lib/ai/reading-subject';
 import type { ChatMessage } from '../src/lib/ai/stream-client';
 
+const qimenLifetimeInput: Parameters<typeof calculateQimenLifetime>[0] = {
+  birthDateTime: '1990-05-15T10:30:00',
+  timeZoneId: 'Asia/Shanghai',
+  calendarType: 'solar',
+  isLeapMonth: false,
+  timeStandard: 'civil',
+  applyChinaDst: false,
+  method: 'zhuanpan',
+  juMethod: 'chaibu',
+  stagePolicy: {
+    model: 'pillarFourLimits',
+    anchorRule: 'birthInstant',
+    ageSystem: 'fullYears',
+    yearsPerStage: 15,
+  },
+  periodRange: { startDate: '2026-01-01', endDate: '2056-12-31' },
+  topics: ['career', 'wealth'],
+  name: '甲',
+  gender: 'male',
+};
+const qimenLifetimeQuestion = '结合全部人生阶段与目标时间范围分析事业变化。';
+const qimenLifetimeSeed = calculateQimenLifetime(qimenLifetimeInput);
+
 function buildQimenResource() {
-  const { data, prompt } = generateQimenLifetimePrompt(
-    {
-      birthDateTime: '1990-05-15T10:30:00',
-      timeZoneId: 'Asia/Shanghai',
-      calendarType: 'solar',
-      isLeapMonth: false,
-      timeStandard: 'civil',
-      applyChinaDst: false,
-      method: 'zhuanpan',
-      juMethod: 'chaibu',
-      stagePolicy: {
-        model: 'pillarFourLimits',
-        anchorRule: 'birthInstant',
-        ageSystem: 'fullYears',
-        yearsPerStage: 15,
-      },
-      periodRange: { startDate: '2026-01-01', endDate: '2056-12-31' },
-      topics: ['career', 'wealth'],
-      name: '甲',
-      gender: 'male',
-    },
-    '结合全部人生阶段与目标时间范围分析事业变化。',
-  );
+  const data = structuredClone(qimenLifetimeSeed);
+  const prompt = buildLifetimePrompt(data, qimenLifetimeQuestion);
+  data.prompt = prompt;
   return {
     key: 'qimen-lifetime-full-31-years',
     title: '甲奇门终身局完整资料',

@@ -1791,6 +1791,27 @@ export function analyzeLiuyaoEvidence(
   const monthBranch = branchOf(data.ganzhi.month);
   const dayBranch = branchOf(data.ganzhi.day);
   validateLiuyaoChartFacts(data, monthBranch, dayBranch);
+  data = {
+    ...data,
+    yaosDetail: data.yaosDetail.map((yao) => {
+      const dayClash = isLiuchong(yao.najiaDizhi, dayBranch);
+      const hiddenMove = isLiuyaoHiddenMove(
+        yao.najiaDizhi,
+        monthBranch,
+        dayBranch,
+        yao.isChanging,
+        yao.isVoid,
+      );
+      return {
+        ...yao,
+        isMonthBreak: isLiuchong(yao.najiaDizhi, monthBranch),
+        seasonState: getSeasonState(getBranchWuxing(yao.najiaDizhi), monthBranch),
+        isDayClash: dayClash,
+        isHiddenMove: hiddenMove,
+        isDayBreak: !yao.isChanging && dayClash && !hiddenMove,
+      };
+    }),
+  };
   const references = allReferences(data, monthBranch, dayBranch);
   const lineFacts = buildLineFacts(data, monthBranch, dayBranch);
   const hiddenSpiritFacts = buildHiddenSpiritFacts(data);

@@ -39,23 +39,33 @@ export function omitRepeatedLiurenRidingMonthState(
   return promptText.replace(`，月令${transmission.seasonState}`, '');
 }
 
-function formatRelation(source: string, target: string, sourceName: string, targetName: string) {
+export function formatLiurenRoleRelation(
+  source: string,
+  target: string,
+  sourceName: string,
+  targetName: string,
+) {
   const sourceElement = STEM_WUXING[source] || BRANCH_WUXING[source];
   const targetElement = STEM_WUXING[target] || BRANCH_WUXING[target];
-  if (!sourceElement || !targetElement) return '';
+  if (!sourceElement || !targetElement) return undefined;
   const from = `${sourceName}${source}${sourceElement}`;
   const to = `${targetName}${target}${targetElement}`;
-  if (sourceElement === targetElement) return `${from}与${to}比和`;
-  if (isSheng(sourceElement, targetElement)) return `${from}生${to}`;
-  if (isSheng(targetElement, sourceElement)) return `${to}生${from}`;
-  if (isKe(sourceElement, targetElement)) return `${from}克${to}`;
-  if (isKe(targetElement, sourceElement)) return `${to}克${from}`;
-  return '';
+  if (sourceElement === targetElement) return { summary: '比和', detail: `${from}与${to}比和` };
+  if (isSheng(sourceElement, targetElement))
+    return { summary: `${sourceElement}生${targetElement}`, detail: `${from}生${to}` };
+  if (isSheng(targetElement, sourceElement))
+    return { summary: `${targetElement}生${sourceElement}`, detail: `${to}生${from}` };
+  if (isKe(sourceElement, targetElement))
+    return { summary: `${sourceElement}克${targetElement}`, detail: `${from}克${to}` };
+  if (isKe(targetElement, sourceElement))
+    return { summary: `${targetElement}克${sourceElement}`, detail: `${to}克${from}` };
+  return undefined;
 }
 
 export function formatLiurenLesson(item: LiurenLesson): string {
-  const relation = formatRelation(item.upper, item.lower, '上神', '下位');
-  return `${item.name}${item.upper}临${item.lower}乘${item.god}，${item.relation}${relation ? `；${relation}` : ''}`;
+  const relation = formatLiurenRoleRelation(item.upper, item.lower, '上神', '下位');
+  const extraRelation = item.relation === relation?.summary ? '' : `，${item.relation}`;
+  return `${item.name}${item.upper}临${item.lower}乘${item.god}${extraRelation}${relation ? `；${relation.detail}` : ''}`;
 }
 
 export function formatLiurenTransmission(data: LiurenData, index: number): string {
@@ -64,8 +74,11 @@ export function formatLiurenTransmission(data: LiurenData, index: number): strin
   const previous =
     index === 0 ? data.fourLessons[0]?.lower : data.threeTransmissions[index - 1]?.branch;
   const previousName = index === 0 ? '一课下位' : data.threeTransmissions[index - 1].stage;
-  const relation = previous ? formatRelation(item.branch, previous, item.stage, previousName) : '';
-  return `${item.stage}${item.branch}乘${item.god}，${item.relation}${isVoid ? '（空）' : ''}${relation ? `；${relation}` : ''}`;
+  const relation = previous
+    ? formatLiurenRoleRelation(item.branch, previous, item.stage, previousName)
+    : undefined;
+  const extraRelation = item.relation === relation?.summary ? '' : `，${item.relation}`;
+  return `${item.stage}${item.branch}乘${item.god}${extraRelation}${isVoid ? '（空）' : ''}${relation ? `；${relation.detail}` : ''}`;
 }
 
 export function formatLiurenOrdinaryTransmissionAdjudication(data: LiurenData): string {

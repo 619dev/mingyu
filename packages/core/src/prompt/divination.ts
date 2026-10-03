@@ -138,13 +138,16 @@ function wrapMainEvidence(text: string) {
   return text ? `主轴：${text}` : '';
 }
 
-function formatLiuyaoFocusSummary(data: LiuyaoData) {
+function formatLiuyaoFocusSummary(
+  data: LiuyaoData,
+  lineFacts: ReturnType<typeof analyzeLiuyaoEvidence>['lineFacts'],
+) {
   const worldYao = data.yaosDetail?.find((item) => item.isWorld);
   const responseYao = data.yaosDetail?.find((item) => item.isResponse);
   const changing = data.yaosDetail?.filter((item) => item.isChanging) ?? [];
-  const monthBreakYaos = data.yaosDetail?.filter((item) => item.isMonthBreak) ?? [];
-  const hiddenMoveYaos = data.yaosDetail?.filter((item) => item.isHiddenMove) ?? [];
-  const dayBreakYaos = data.yaosDetail?.filter((item) => item.isDayBreak) ?? [];
+  const monthBreakYaos = lineFacts.filter((item) => item.monthState.relations.includes('月破'));
+  const hiddenMoveYaos = lineFacts.filter((item) => item.activity === '暗动');
+  const dayBreakYaos = lineFacts.filter((item) => item.constraints.includes('日破'));
 
   const parts = [
     worldYao ? `世爻第${worldYao.position}爻` : '',
@@ -159,17 +162,17 @@ function formatLiuyaoFocusSummary(data: LiuyaoData) {
   const specialYaos: string[] = [];
   if (monthBreakYaos.length) {
     specialYaos.push(
-      `月破：${monthBreakYaos.map((y) => `第${y.position}爻${y.najiaDizhi}`).join('、')}`,
+      `月破：${monthBreakYaos.map((y) => `第${y.position}爻${y.najia.branch}`).join('、')}`,
     );
   }
   if (hiddenMoveYaos.length) {
     specialYaos.push(
-      `暗动：${hiddenMoveYaos.map((y) => `第${y.position}爻${y.najiaDizhi}`).join('、')}`,
+      `暗动：${hiddenMoveYaos.map((y) => `第${y.position}爻${y.najia.branch}`).join('、')}`,
     );
   }
   if (dayBreakYaos.length) {
     specialYaos.push(
-      `日破：${dayBreakYaos.map((y) => `第${y.position}爻${y.najiaDizhi}`).join('、')}`,
+      `日破：${dayBreakYaos.map((y) => `第${y.position}爻${y.najia.branch}`).join('、')}`,
     );
   }
 
@@ -301,7 +304,7 @@ export function getDivinationSummaryBlocks(
   switch (method) {
     case 'liuyao': {
       const item = data as LiuyaoData;
-      analyzeLiuyaoEvidence(item);
+      const evidence = analyzeLiuyaoEvidence(item);
       const hexagramRelationText = formatLiuyaoHexagramRelationSummary(item);
       const fanfuRelationText = formatLiuyaoFanFuRelationSummary(item);
       return {
@@ -321,7 +324,7 @@ export function getDivinationSummaryBlocks(
           }`,
         ],
         lines: [
-          wrapMainEvidence(formatLiuyaoFocusSummary(item)),
+          wrapMainEvidence(formatLiuyaoFocusSummary(item, evidence.lineFacts)),
           `卦宫：${item.palace.name}${item.palaceStage ? `；${item.palaceStage}` : ''}`,
           `空亡：${item.voidBranches.join('、') || '无'}`,
           `特殊卦式：${item.specialPattern || '常规卦'}`,

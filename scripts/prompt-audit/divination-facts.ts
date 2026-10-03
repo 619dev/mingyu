@@ -9,7 +9,7 @@ import type { PromptFactExpectation } from './facts';
 import { resolveSsgwStoryContent } from '../../packages/core/src/divination/ssgw-content';
 import { conditionLenormandTraditionalText } from '../../packages/core/src/divination/lenormand-evidence';
 import { formatLifetimePatternSummary } from '../../packages/core/src/divination/algorithms/qimen/helpers/lifetime-prompt';
-import { isKe, isSheng } from '../../packages/core/src/ganzhi';
+import { BRANCH_WUXING, STEM_WUXING, isKe, isSheng } from '../../packages/core/src/ganzhi';
 import type {
   LenormandCombinationRelation,
   SsgwData,
@@ -850,6 +850,30 @@ function extractQimenLifetimeFacts(data: unknown): DivinationPromptFact[] {
   return facts;
 }
 
+function liurenRoleRelation(
+  source: string,
+  target: string,
+  sourceRole: string,
+  targetRole: string,
+) {
+  const sourceElement = STEM_WUXING[source] || BRANCH_WUXING[source];
+  const targetElement = STEM_WUXING[target] || BRANCH_WUXING[target];
+  if (!sourceElement || !targetElement) return undefined;
+  const from = sourceRole + source + sourceElement;
+  const to = targetRole + target + targetElement;
+  if (sourceElement === targetElement)
+    return { summary: '比和', detail: from + '与' + to + '比和' };
+  if (isSheng(sourceElement, targetElement))
+    return { summary: sourceElement + '生' + targetElement, detail: from + '生' + to };
+  if (isSheng(targetElement, sourceElement))
+    return { summary: targetElement + '生' + sourceElement, detail: to + '生' + from };
+  if (isKe(sourceElement, targetElement))
+    return { summary: sourceElement + '克' + targetElement, detail: from + '克' + to };
+  if (isKe(targetElement, sourceElement))
+    return { summary: targetElement + '克' + sourceElement, detail: to + '克' + from };
+  return undefined;
+}
+
 function extractLiurenFacts(data: unknown): DivinationPromptFact[] {
   const d = record(data);
   if (!d) return [];
@@ -869,10 +893,11 @@ function extractLiurenFacts(data: unknown): DivinationPromptFact[] {
       const lower = text(item.lower);
       const god = text(item.god);
       if (!name || !upper || !lower || !god) return null;
+      const relation = liurenRoleRelation(upper, lower, '上神', '下位');
       return fact(
         `liuren.four-lesson.${index}`,
-        `${name}${upper}临${lower}乘${god}，`,
-        [item.relation],
+        `${name}${upper}临${lower}乘${god}`,
+        [relation?.detail, item.relation === relation?.summary ? undefined : item.relation],
         { unit: 'line', scope: { start: '四课：', end: '三传：' } },
       );
     }),
@@ -881,10 +906,17 @@ function extractLiurenFacts(data: unknown): DivinationPromptFact[] {
       const branch = text(item.branch);
       const god = text(item.god);
       if (!stage || !branch || !god) return null;
+      const previous =
+        index === 0 ? text(lessons[0]?.lower) : text(transmissions[index - 1]?.branch);
+      const previousRole = index === 0 ? '一课下位' : text(transmissions[index - 1]?.stage);
+      const relation =
+        previous && previousRole
+          ? liurenRoleRelation(branch, previous, stage, previousRole)
+          : undefined;
       return fact(
         `liuren.three-transmission.${index}`,
-        `${stage}${branch}乘${god}，`,
-        [item.relation],
+        `${stage}${branch}乘${god}`,
+        [relation?.detail, item.relation === relation?.summary ? undefined : item.relation],
         { unit: 'line', scope: { start: '三传：' } },
       );
     }),
@@ -905,6 +937,18 @@ function extractXiaoliurenFacts(data: unknown): DivinationPromptFact[] {
     monthIndex === null ? null : (monthIndex + (text(d.rule) === 'duoneng' ? 1 : 0)) % 6;
   const firstDayPalace = records(d.palaceOrder).find((palace) => palace.index === firstDayIndex);
   const leapLabel = d.isLeapMonth === true ? '闰' : '';
+  const locationFact =
+    day && firstDayPalace
+      ? fact(
+          'xiaoliuren.location',
+          '定日宫：',
+          [
+            `从月宫${text(month?.name) || ''}${text(d.rule) === 'duoneng' ? '下一宫' : ''}起初一（${text(firstDayPalace.name) || ''}）`,
+            `定时宫：从日宫${text(day.name) || ''}起子时`,
+          ],
+          { scope: { start: '起课过程：', end: '时点范围：' } },
+        )
+      : null;
   return collect([
     fact('xiaoliuren.start', '起课：', [
       `农历${leapLabel}${text(d.lunarMonth) || ''}月${text(d.lunarDay) || ''}日`,
@@ -918,7 +962,7 @@ function extractXiaoliurenFacts(data: unknown): DivinationPromptFact[] {
           ? `${leapLabel}${text(d.lunarMonth) || ''}月从大安顺数，落${text(month.name) || ''}`
           : undefined,
       ],
-      { scope: { start: '起课过程：', end: '定位用途' } },
+      { scope: { start: '起课过程：', end: '时点范围：' } },
     ),
     fact(
       'xiaoliuren.first-day',
@@ -928,22 +972,15 @@ function extractXiaoliurenFacts(data: unknown): DivinationPromptFact[] {
           ? `从月宫${text(month?.name) || ''}${text(d.rule) === 'duoneng' ? '下一宫' : ''}起初一（${text(firstDayPalace.name) || ''}），顺数至${text(d.lunarDay) || ''}日，落${text(day.name) || ''}`
           : undefined,
       ],
-      { scope: { start: '起课过程：', end: '定位用途' } },
+      { scope: { start: '起课过程：', end: '时点范围：' } },
     ),
     fact(
       'xiaoliuren.hour',
       '定时宫：',
       [hour ? `从日宫${text(day?.name) || ''}起子时，顺数至${text(d.hourLabel) || ''}` : undefined],
-      { scope: { start: '起课过程：', end: '定位用途' } },
+      { scope: { start: '起课过程：', end: '时点范围：' } },
     ),
-    fact('xiaoliuren.location', '定位用途：', [
-      month
-        ? text(d.rule) === 'duoneng'
-          ? `月宫是月份起数位置；初一从${text(firstDayPalace?.name) || ''}起数`
-          : '月宫是初一的起数位置'
-        : undefined,
-      day ? '日宫是子时的起数位置' : undefined,
-    ]),
+    locationFact ? { ...locationFact, includeNextLine: true } : null,
     fact('xiaoliuren.rule', '起课口径：', [
       text(d.rule) === 'duoneng' ? '《多能鄙事》' : '通行俗传小六壬掌诀',
     ]),

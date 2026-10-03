@@ -68,6 +68,7 @@ import {
 } from '../divination/algorithms/qimen/helpers/palace-utils';
 import type { DivinationMethodId } from 'mingyu-core/divination/config';
 import { analyzeLiuyaoEvidence } from '../divination/algorithms/liuyao';
+import type { LiuyaoLineFact } from '../divination/liuyao-evidence';
 import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
 import { analyzeLenormandEvidence } from '../divination/lenormand-evidence';
 import type { HuangjiJingshiResult } from '../huangji-jingshi';
@@ -228,7 +229,11 @@ function formatLiuyaoElementChange(item: LiuyaoData['yaosDetail'][number]) {
   return `动变五行：${relation}`;
 }
 
-function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: LiuyaoData) {
+function formatLiuyaoLineFacts(
+  item: LiuyaoData['yaosDetail'][number],
+  data: LiuyaoData,
+  fact: LiuyaoLineFact,
+) {
   const monthBranch = getGanzhiBranch(data.ganzhi.month);
   const dayBranch = getGanzhiBranch(data.ganzhi.day);
   const triggerRelations =
@@ -243,10 +248,10 @@ function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: Liu
     item.isResponse ? '应' : '',
     item.isChanging ? '动' : '',
     item.isVoid ? '旬空' : '',
-    item.isMonthBreak ? '月破' : '',
-    item.isHiddenMove ? '日冲暗动' : '',
-    item.isDayBreak ? '日冲成破' : '',
-    item.isChanging && item.isDayClash ? '日辰冲动' : '',
+    fact.monthState.relations.includes('月破') ? '月破' : '',
+    fact.activity === '暗动' ? '日冲暗动' : '',
+    fact.dayState.relations.includes('日冲成破') ? '日冲成破' : '',
+    fact.dayState.relations.includes('日辰冲动') ? '日辰冲动' : '',
   ].filter(Boolean);
   const lifeStages = formatLiuyaoLifeStages(item);
   const changeConditions = [
@@ -261,7 +266,7 @@ function formatLiuyaoLineFacts(item: LiuyaoData['yaosDetail'][number], data: Liu
     : '';
   return [
     `原爻${item.yaoType}（${formatLiuyaoRawYao(item)}）`,
-    item.seasonState ? `月令${item.seasonState}` : '',
+    fact.monthState.seasonState ? `月令${fact.monthState.seasonState}` : '',
     ...lifeStages,
     ...triggerRelations,
     ...activity,
@@ -289,7 +294,7 @@ function formatHiddenSpirit(item: NonNullable<LiuyaoData['hiddenSpirits']>[numbe
   return `${item.sixRelative}伏第${item.position}爻${item.najiaDizhi}${item.wuxing}${item.isVoid ? '（空）' : ''}，伏于${item.underYao.sixRelative}${item.underYao.najiaDizhi}${item.underYao.wuxing}下${effectText}`;
 }
 
-function createLiuyaoTimingEvidence(data: LiuyaoData): string {
+function createLiuyaoTimingEvidence(data: LiuyaoData, lineFacts: LiuyaoLineFact[]): string {
   if (!data.yaosDetail || !data.yaosDetail.length) return '';
   const clues: string[] = [];
 
@@ -309,25 +314,33 @@ function createLiuyaoTimingEvidence(data: LiuyaoData): string {
     if (yao.isVoid) conditions.push(`本爻旬空，逢${yao.najiaDizhi}出空或逢${chongBranch}冲空可核`);
     if (yao.changedYao?.isVoid)
       conditions.push(`变爻${yao.changedYao.dizhi}旬空，逢其出空或冲空可核`);
-    if (yao.isMonthBreak) conditions.push(`本爻月破，出月或逢${heBranch}合破可核`);
+    if (
+      lineFacts.some(
+        (item) => item.position === yao.position && item.monthState.relations.includes('月破'),
+      )
+    )
+      conditions.push(`本爻月破，出月或逢${heBranch}合破可核`);
     if (!conditions.length) conditions.push(`逢${yao.najiaDizhi}当值或逢${heBranch}合动可核`);
     clues.push(`${yaoName}发动：${conditions.join('；')}`);
   }
 
   if (!changingYaos.length) {
-    const hiddenMoves = data.yaosDetail.filter((item) => item.isHiddenMove);
+    const hiddenMoves = lineFacts.filter((item) => item.activity === '暗动');
     if (hiddenMoves.length) {
       for (const yao of hiddenMoves)
-        clues.push(`静卦见第${yao.position}爻${yao.najiaDizhi}暗动，逢冲动或当值可核`);
+        clues.push(`静卦见第${yao.position}爻${yao.najia.branch}暗动，逢冲动或当值可核`);
     } else {
       const worldYao = data.yaosDetail.find((item) => item.isWorld);
       if (worldYao) {
+        const monthBreak = lineFacts.some(
+          (item) =>
+            item.position === worldYao.position && item.monthState.relations.includes('月破'),
+        );
         if (worldYao.isVoid) {
           clues.push(`世爻${worldYao.najiaDizhi}旬空，逢其出空或冲空可核`);
         }
-        if (worldYao.isMonthBreak)
-          clues.push(`世爻${worldYao.najiaDizhi}月破，出月、逢合或逢生可核`);
-        if (!worldYao.isVoid && !worldYao.isMonthBreak)
+        if (monthBreak) clues.push(`世爻${worldYao.najiaDizhi}月破，出月、逢合或逢生可核`);
+        if (!worldYao.isVoid && !monthBreak)
           clues.push(`静卦世爻${worldYao.najiaDizhi}逢值或生旺可作观察条件`);
       }
     }
@@ -490,6 +503,7 @@ function formatLiuyaoInfo(
           .join('；')}`
       : '';
   const monthDayEvidence = createLiuyaoMonthDayEvidence(data);
+  const timingEvidence = createLiuyaoTimingEvidence(data, evidenceAnalysis.lineFacts);
   const sanheParts = [
     data.sanheWithDay
       ? `日辰${getGanzhiBranch(data.ganzhi.day)}与动变爻同见${data.sanheWithDay.group}三支（${data.sanheWithDay.members.join('、')}）`
@@ -534,9 +548,9 @@ function formatLiuyaoInfo(
     data.yaosDetail?.length
       ? [
           lineCoverage.status === '完整' ? '六爻全表：' : '六爻逐爻资料（覆盖不完整）：',
-          ...data.yaosDetail.map((item) => {
+          ...data.yaosDetail.map((item, index) => {
             const god = data.sixGods?.[item.position - 1] || '';
-            const lineFacts = formatLiuyaoLineFacts(item, data);
+            const lineFacts = formatLiuyaoLineFacts(item, data, evidenceAnalysis.lineFacts[index]);
             return `  ${formatLiuyaoYaoBrief(item)}${god ? `，六神${god}` : ''}${lineFacts ? `，${lineFacts}` : ''}`;
           }),
         ].join('\n')
@@ -548,7 +562,7 @@ function formatLiuyaoInfo(
     monthDayEvidence.elementText ? `月日五行：${monthDayEvidence.elementText}` : '',
     sanheDetail ? sanheDetail : '',
     sanxingDetail ? sanxingDetail : '',
-    createLiuyaoTimingEvidence(data) ? `应期观察条件：${createLiuyaoTimingEvidence(data)}` : '',
+    timingEvidence ? `应期观察条件：${timingEvidence}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -750,9 +764,6 @@ function formatXiaoliurenInfo(data: XiaoliurenData, omitRepeatedCivilTime = fals
     `  定月宫：${data.isLeapMonth ? '闰' : ''}${data.lunarMonth}月从大安顺数，落${data.sequence.month.name}`,
     `  定日宫：从月宫${data.sequence.month.name}${rule.dayStartOffset ? '下一宫' : ''}起初一（${firstDayPalace.name}），顺数至${data.lunarDay}日，落${data.sequence.day.name}`,
     `  定时宫：从日宫${data.sequence.day.name}起子时，顺数至${data.hourLabel}`,
-    rule.dayStartOffset
-      ? `定位用途：月宫是月份起数位置；初一从${firstDayPalace.name}起数；日宫是子时的起数位置`
-      : '定位用途：月宫是初一的起数位置；日宫是子时的起数位置',
     calendarBasis ? `历法口径：${calendarBasis}` : '',
     '时点范围：本课说明当前起课时点的占得宫；其他日期或时辰的宫位采用对应农历月日与时辰重新顺数',
     `起课口径：${rule.source}`,

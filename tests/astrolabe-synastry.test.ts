@@ -464,17 +464,34 @@ test('跨盘相位在同名人物与反向星体组合中保持各自位置和�
     ),
   );
   assert.match(synastry.receptionSummary ?? '', /第一人同名的水星.*第二人同名的水星/);
+  const firstNatal = prompt.slice(
+    prompt.indexOf('【第一人本命盘】'),
+    prompt.indexOf('【第二人本命盘】'),
+  );
+  const secondNatal = prompt.slice(
+    prompt.indexOf('【第二人本命盘】'),
+    prompt.indexOf('【跨盘资料】'),
+  );
+  assert.match(firstNatal, /水星351°，第3宫/);
+  assert.match(firstNatal, /凯龙星137°，第8宫/);
+  assert.match(secondNatal, /水星77°，第10宫/);
+  assert.match(secondNatal, /凯龙星171°，第1宫/);
+
   const cross = prompt.slice(prompt.indexOf('【跨盘资料】'));
-  assert.match(
-    cross,
-    /第一人同名的水星（351°，自身本命第3宫）与第二人同名的凯龙星（171°，自身本命第1宫）：冲相，目标角180°，实际夹角180\.00°/,
-  );
-  assert.match(
-    cross,
-    /第一人同名的凯龙星（137°，自身本命第8宫）与第二人同名的水星（77°，自身本命第10宫）：六合，目标角60°，实际夹角60\.00°/,
-  );
-  assert.match(cross, /第二人同名的水星（77°，自身本命第10宫）落入第一人同名的本命盘第3宫/);
-  assert.match(cross, /第一人同名的水星（351°，自身本命第3宫）落入第二人同名的本命盘第12宫/);
+  assert.match(cross, /第一人同名的水星与第二人同名的凯龙星：冲相，目标角180°，实际夹角180\.00°/);
+  assert.match(cross, /第一人同名的凯龙星与第二人同名的水星：六合，目标角60°，实际夹角60\.00°/);
+  assert.match(cross, /第二人同名的水星落入第一人同名的本命盘第3宫/);
+  assert.match(cross, /第一人同名的水星落入第二人同名的本命盘第12宫/);
+  assert.doesNotMatch(cross, /水星（351°|水星（77°|凯龙星（137°|凯龙星（171°/);
+  assert.match(cross, /第一人同名的上升（自身本命第1宫）落入第二人同名的本命盘第1宫/);
+  const withoutLabel = structuredClone(first);
+  withoutLabel.planets[0].label = '原水星';
+  const fallbackPrompt = buildAstrolabeSynastryPrompt({
+    chart1: withoutLabel,
+    chart2: second,
+    synastry,
+  });
+  assert.match(fallbackPrompt, /第一人同名的水星（351°，自身本命第3宫）与第二人同名的凯龙星：冲相/);
 });
 
 test('姓名未填或仅空白时，双盘相位、落宫与完整任务书保留两方身份', () => {
@@ -502,9 +519,16 @@ test('姓名未填或仅空白时，双盘相位、落宫与完整任务书保�
   );
   assert.match(prompt, /【第一人本命盘】[\s\S]*?出生信息：第一人；/);
   assert.match(prompt, /【第二人本命盘】[\s\S]*?出生信息：第二人；/);
-  assert.match(
-    prompt,
-    /第一人的太阳（359°，自身本命第1宫）与第二人的太阳（1°，自身本命第1宫）：合相/,
+  assert.match(prompt, /第一人的太阳与第二人的太阳：合相/);
+  const firstNatal = prompt.slice(
+    prompt.indexOf('【第一人本命盘】'),
+    prompt.indexOf('【第二人本命盘】'),
   );
+  const secondNatal = prompt.slice(
+    prompt.indexOf('【第二人本命盘】'),
+    prompt.indexOf('【跨盘资料】'),
+  );
+  assert.match(firstNatal, /太阳359°，第1宫/);
+  assert.match(secondNatal, /太阳1°，第1宫/);
   assert.doesNotMatch(prompt, /第一人第一人|第二人第二人|出生信息：；/);
 });

@@ -14,6 +14,21 @@ import {
 import { getDivinationTime } from '../packages/core/src/calendar/timeManager';
 import { resolveCivilTime } from '../packages/core/src/calendar/civil-time';
 
+const qimenCurrentYearInput: Parameters<typeof calculateQimenLifetime>[0] = {
+  birthDateTime: '1990-05-15T14:30:00',
+  timeZoneId: 'Asia/Shanghai',
+  periodRange: { startDate: '2026-01-01', endDate: '2026-12-31' },
+};
+const qimenCurrentYearQuestion = '未来一年的事业如何？';
+const qimenCurrentYearSeed = calculateQimenLifetime(qimenCurrentYearInput);
+
+function buildQimenCurrentYearFixture() {
+  const data = structuredClone(qimenCurrentYearSeed);
+  const prompt = buildLifetimePrompt(data, qimenCurrentYearQuestion);
+  data.prompt = prompt;
+  return { data, prompt };
+}
+
 function verifiedChartSolar(chart: ReturnType<typeof generateQimen>, offset: number) {
   const expected = getDivinationTime(new Date(chart.timestamp), offset);
   assert.deepEqual(chart.ganzhi, expected.ganzhi);
@@ -1041,14 +1056,7 @@ test('奇门终身局提示词将年支空亡填实保留为事实并折叠日�
 });
 
 test('奇门终身局阶段只引用本命格局名称，完整条件保留在基础盘', () => {
-  const { data, prompt } = generateQimenLifetimePrompt(
-    {
-      birthDateTime: '1990-05-15T14:30:00',
-      timeZoneId: 'Asia/Shanghai',
-      periodRange: { startDate: '2026-01-01', endDate: '2026-12-31' },
-    },
-    '未来一年的事业如何？',
-  );
+  const { data, prompt } = buildQimenCurrentYearFixture();
   const pattern = data.baseChart.classicPatterns?.find((item) =>
     data.stages.some((stage) =>
       [...stage.supportFacts, ...stage.constraintFacts].some((fact) =>
@@ -1093,14 +1101,7 @@ test('奇门终身局阶段只引用本命格局名称，完整条件保留在�
 });
 
 test('奇门终身局基础盘省略同格局复述并保留独有组合与遁干依据', () => {
-  const { data, prompt } = generateQimenLifetimePrompt(
-    {
-      birthDateTime: '1990-05-15T14:30:00',
-      timeZoneId: 'Asia/Shanghai',
-      periodRange: { startDate: '2026-01-01', endDate: '2026-12-31' },
-    },
-    '未来一年的事业如何？',
-  );
+  const { data, prompt } = buildQimenCurrentYearFixture();
   const patterns = prompt.split('盘面吉凶格局：')[1]?.split('【个人标记与主题宫】')[0] ?? '';
 
   assert.match(patterns, /虎遁（吉）：生门、乙奇落艮八宫，主威严稳固、资源回归/u);

@@ -285,16 +285,17 @@ test('真实西占双盘落宫逐项绑定方向与宫位，跨盘相位和无�
   const original = auditOriginal(text, facts);
   assert.deepEqual(original.repeated, []);
   const aspectSection = text.split('【跨盘相位】')[1].split('【跨盘落宫】')[0];
+  const aspectLines = aspectSection.split('\n');
   const borrowedIndex = relation.houseOverlays.findIndex((item) =>
-    aspectSection
-      .split('\n')
-      .some((line) =>
-        [item.point, item.visitor, item.owner, `第${item.house}宫`].every((value) =>
-          line.includes(value),
-        ),
-      ),
+    aspectLines.some(
+      (line) =>
+        line.includes(
+          `${item.visitorPerson === 'person1' ? '第一人' : '第二人'}${item.visitor}的${item.point}`,
+        ) &&
+        line.includes(`${item.ownerPerson === 'person1' ? '第一人' : '第二人'}${item.owner}的`),
+    ),
   );
-  assert.ok(borrowedIndex >= 0, '真实跨盘相位包含旧宽松预期的全部关键词');
+  assert.ok(borrowedIndex >= 0, '实际跨盘相位须含对应落宫点位与双方身份');
   const overlay = relation.houseOverlays[borrowedIndex];
   const expected = overlayFacts[borrowedIndex];
   const visitor = `${overlay.visitorPerson === 'person1' ? '第一人' : '第二人'}${overlay.visitor}`;
@@ -311,6 +312,24 @@ test('真实西占双盘落宫逐项绑定方向与宫位，跨盘相位和无�
   const removed = text.replace(line, '');
   assert.equal(removed.split('【跨盘相位】')[1].split('【跨盘落宫】')[0], aspectSection);
   assert.ok(auditPromptFacts(removed, facts).missing.includes(expected.id));
+  const aspectRow = aspectLines.find(
+    (item) => item.includes(`${visitor}的${overlay.point}`) && item.includes(`${owner}的`),
+  );
+  assert.ok(aspectRow);
+  const interferenceRow = `${aspectRow}；另记第${overlay.house}宫`;
+  const interference = removed.replace(aspectRow, interferenceRow);
+  const interferenceSection = interference.split('【跨盘相位】')[1].split('【跨盘落宫】')[0];
+  assert.ok(
+    interferenceSection
+      .split('\n')
+      .some((item) =>
+        [overlay.point, overlay.visitor, overlay.owner, `第${overlay.house}宫`].every((value) =>
+          item.includes(value),
+        ),
+      ),
+    '无关宫号使实际相位行满足旧宽松关键词同现，但不能充当落宫事实',
+  );
+  assert.ok(auditPromptFacts(interference, facts).missing.includes(expected.id));
   const copiedToAspect = removed.replace('【跨盘落宫】', `${line}\n\n【跨盘落宫】`);
   assert.ok(auditPromptFacts(copiedToAspect, facts).missing.includes(expected.id));
 

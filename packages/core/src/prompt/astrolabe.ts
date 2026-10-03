@@ -208,19 +208,28 @@ function formatSynastryFacts(
     const role = person === 'person1' ? '第一人' : '第二人';
     return name && name !== role ? `${role}${name}` : role;
   };
-  const position = (chart: AstrolabeData, name: string) => {
-    const point = [...chart.planets, ...chart.angles].find((item) => item.name === name);
+  const position = (chart: AstrolabeData, name: string, label: string) => {
+    const points = [...chart.planets, ...chart.angles];
+    const point = points.find((item) => item.name === name);
+    if (
+      point?.formatted &&
+      point.label === label &&
+      points.filter((item) => item.label === label).length === 1
+    ) {
+      if (chart.planets.includes(point) || !(point.house > 0)) return '';
+      return `（自身本命第${point.house}宫）`;
+    }
     return point
       ? `（${point.formatted}${point.house > 0 ? `，自身本命第${point.house}宫` : ''}）`
       : '';
   };
   const aspects = data.aspects.map(
     (item) =>
-      `  ${personLabel('person1', item.person1)}的${item.point1}${position(chart1, item.point1Name)}与${personLabel('person2', item.person2)}的${item.point2}${position(chart2, item.point2Name)}：${item.type}，目标角${item.exactAngle}°，实际夹角${item.actualAngle.toFixed(2)}°，偏差${item.orb.toFixed(2)}°，容许偏差上限${item.allowedOrb}°，${item.closeness}。`,
+      `  ${personLabel('person1', item.person1)}的${item.point1}${position(chart1, item.point1Name, item.point1)}与${personLabel('person2', item.person2)}的${item.point2}${position(chart2, item.point2Name, item.point2)}：${item.type}，目标角${item.exactAngle}°，实际夹角${item.actualAngle.toFixed(2)}°，偏差${item.orb.toFixed(2)}°，容许偏差上限${item.allowedOrb}°，${item.closeness}。`,
   );
   const overlays = data.houseOverlays.map(
     (item) =>
-      `  ${personLabel(item.visitorPerson, item.visitor)}的${item.point}${position(item.visitorPerson === 'person1' ? chart1 : chart2, item.pointName)}落入${personLabel(item.ownerPerson, item.owner)}的本命盘第${item.house}宫。`,
+      `  ${personLabel(item.visitorPerson, item.visitor)}的${item.point}${position(item.visitorPerson === 'person1' ? chart1 : chart2, item.pointName, item.point)}落入${personLabel(item.ownerPerson, item.owner)}的本命盘第${item.house}宫。`,
   );
   const overlayCoverage = data.counterEvidenceFacts.find((item) => item.type === '跨盘落宫覆盖');
   return [

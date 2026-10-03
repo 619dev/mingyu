@@ -13,11 +13,15 @@ import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divina
 import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced';
 import { buildDivinationPrompt as buildAppDivinationPrompt } from '../src/lib/divination/engine';
 import {
+  formatLiurenLesson,
+  formatLiurenTransmission,
   formatLiurenOrdinaryTransmissionAdjudication,
   omitRepeatedLiurenFocusMonthState,
   omitRepeatedLiurenRidingMonthState,
 } from '../packages/core/src/prompt/liuren-facts';
 import { formatLiurenJudgmentFacts } from '../packages/core/src/prompt/liuren-judgment';
+import { extractDivinationPromptFacts } from '../scripts/prompt-audit/divination-facts';
+import { auditPromptFacts } from '../scripts/prompt-audit/facts';
 import { resolveLiurenClassicalRules } from '../packages/core/src/divination/algorithms/liuren/helpers/classical-rules';
 
 const fixedDate = '2026-05-19T10:30:00+08:00';
@@ -60,6 +64,23 @@ test('大六壬四课和三传分别绑定实际上下位与前传，十二宫�
   }
   assert.match(enhanced, /地盘卯上临天盘未乘朱雀/);
   assert.match(enhanced, /地盘未上临天盘亥乘天空/);
+  assert.match(enhanced, /一课巳临癸乘贵人；下位癸水克上神巳火/u);
+  assert.match(enhanced, /初传酉乘勾陈；初传酉金生一课下位癸水/u);
+  assert.doesNotMatch(enhanced, /一课巳临癸乘贵人，水克火；|初传酉乘勾陈，金生水；/u);
+  assert.match(
+    formatLiurenLesson({ ...data.fourLessons[0], relation: '水克火，另有独立条件' }),
+    /，水克火，另有独立条件；下位癸水克上神巳火/u,
+  );
+  assert.match(
+    formatLiurenLesson({ ...data.fourLessons[0], upper: '', relation: '上下关系待核' }),
+    /，上下关系待核$/u,
+  );
+  const extra = structuredClone(data);
+  extra.threeTransmissions[0].relation = '金生水，另有独立条件';
+  assert.match(
+    formatLiurenTransmission(extra, 0),
+    /，金生水，另有独立条件；初传酉金生一课下位癸水/u,
+  );
 });
 
 test('大六壬概览只列一组四课与三传，贵人临地仍保留', () => {
@@ -95,6 +116,12 @@ test('大六壬遥克提示词应说明直接克未命中且不得夹带贼克�
     assert.match(text, /蒿矢酉（采用：唯一的神克日干蒿矢候选）/);
     assert.match(text, /神克日干的蒿矢候选前置成立，弹射候选不再参与取舍/);
     assert.doesNotMatch(text, /弹射未|被前置宗门压制/);
+    assert.match(text, /初传酉乘玄武（空）；初传酉金克一课下位乙木/);
+    if (text.includes('课传反证：')) {
+      assert.doesNotMatch(text, /课传反证：[^\n]*初传酉与前位关系金克木/);
+      assert.match(text, /课传反证：[^\n]*三课上神酉落日柱旬空/);
+      assert.match(text, /课传反证：[^\n]*中传未与日支关系土克水/);
+    }
   }
   assert.deepEqual(data, structuredBefore);
 });
@@ -218,10 +245,7 @@ test('大六壬真实旬空状态在三传与应期提示词中一致', () => {
       formatDetailedDivinationInfo('liuren', data),
       enhanced,
     ]) {
-      assert.equal(
-        prompt.includes(`初传${initial.branch}乘${initial.god}，${initial.relation}（空）`),
-        expectedVoid,
-      );
+      assert.equal(prompt.includes(`初传${initial.branch}乘${initial.god}（空）；`), expectedVoid);
     }
     for (const prompt of [
       enhanced,
@@ -243,6 +267,24 @@ test('大六壬完整提示词只补充尚未在盘面显示的判断事实', ()
     buildDivinationPrompt({ method: 'liuren', data, question: '问合作进度' }),
     buildAppDivinationPrompt('liuren', '问合作进度', data),
   ]) {
+    const expectations = extractDivinationPromptFacts('liuren', data);
+    assert.equal(expectations.length, 8);
+    assert.deepEqual(auditPromptFacts(prompt, expectations).missing, []);
+    for (const [role, detail, id] of [
+      ['一课巳临癸乘贵人', '下位癸水克上神巳火', 'liuren.four-lesson.0'],
+      ['初传酉乘勾陈', '初传酉金生一课下位癸水', 'liuren.three-transmission.0'],
+    ] as const) {
+      const line = prompt.split('\n').find((item) => item.includes(role) && item.includes(detail));
+      assert.ok(line);
+      const wrong = prompt.replace(
+        line,
+        line.replace(
+          detail,
+          detail === '下位癸水克上神巳火' ? '上神巳火克下位癸水' : '一课下位癸水生初传酉金',
+        ),
+      );
+      assert.ok(auditPromptFacts(wrong, expectations).missing.includes(id));
+    }
     assert.match(prompt, /课传主线：传态递传/);
     assert.doesNotMatch(prompt, /课传主线：取传涉害法/);
     assert.match(prompt, /初传取法：/);
@@ -253,6 +295,7 @@ test('大六壬完整提示词只补充尚未在盘面显示的判断事实', ()
     assert.match(prompt, /课传反证：/);
     assert.match(prompt, /初传酉与日支关系火克金/);
     assert.doesNotMatch(prompt, /课传反证：[^\n]*一课巳临癸，上下神关系水克火/);
+    assert.doesNotMatch(prompt, /课传反证：[^\n]*(?:二课酉临巳|三课酉临巳)，上下神关系火克金/);
     assert.doesNotMatch(prompt, /课传反证：[^\n]*初传酉月令状态死/);
     assert.doesNotMatch(prompt, /取传说明：|课体条件：|重点依据：|时令依据：/);
     assert.equal(prompt.split(adjudication).length - 1, 1);
@@ -264,6 +307,7 @@ test('大六壬完整提示词只补充尚未在盘面显示的判断事实', ()
       for (const limitation of focus.limitations) assert.ok(prompt.includes(limitation));
     }
   }
+  assert.match(formatLiurenJudgmentFacts(data).join('\n'), /一课巳临癸，上下神关系水克火/);
 });
 
 test('大六壬月令旺衰集中在应期段，取用与乘神仍保留各自依据', () => {

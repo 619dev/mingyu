@@ -5,8 +5,10 @@ import { formatDetailedDivinationInfo } from '@core/prompt/divination-detail';
 import { buildDivinationPrompt as buildCoreDivinationPrompt } from '@core/prompt/divination';
 import { generateDivinationSession } from '@core/divination/session';
 import { buildDivinationPrompt } from '../src/lib/divination/engine';
+import { extractDivinationPromptFacts } from '../scripts/prompt-audit/divination-facts';
+import { auditPromptFacts } from '../scripts/prompt-audit/facts';
 
-test('小六壬双口径在原生提示词中分别绑定定位用途与时宫歌诀', () => {
+test('小六壬双口径在原生提示词中绑定起点位置与时宫歌诀', () => {
   for (const rule of ['common', 'duoneng'] as const) {
     const data = generateXiaoliuren({ rule, customDate: new Date('2026-05-19T10:30:00+08:00') });
     const prompt = buildDivinationPrompt('xiaoliuren', '请做整体解读。', data);
@@ -16,20 +18,29 @@ test('小六壬双口径在原生提示词中分别绑定定位用途与时宫�
     assert.match(prompt, /公历：2026年5月19日 10时30分/);
     assert.doesNotMatch(prompt, /公历占时（北京时间）：2026-05-19 10:30/);
     assert.ok(prompt.includes('起课过程：月、日、时各段起点计为第一位'));
-    assert.ok(
-      prompt.includes(
-        `定日宫：从月宫赤口${rule === 'duoneng' ? '下一宫' : ''}起初一（${firstDay}），顺数至3日，落${day}`,
-      ),
-    );
-    assert.ok(
-      prompt.includes(
-        rule === 'duoneng'
-          ? `定位用途：月宫是月份起数位置；初一从${firstDay}起数；日宫是子时的起数位置`
-          : '定位用途：月宫是初一的起数位置；日宫是子时的起数位置',
-      ),
-    );
-    assert.ok(!prompt.includes('定位用途：月宫赤口'));
-    assert.ok(!prompt.includes(`定位用途：日宫${day}`));
+    const dayLine = `  定日宫：从月宫赤口${rule === 'duoneng' ? '下一宫' : ''}起初一（${firstDay}），顺数至3日，落${day}`;
+    const hourLine = `  定时宫：从日宫${day}起子时，顺数至巳时`;
+    assert.equal(prompt.split(dayLine).length - 1, 1);
+    assert.equal(prompt.split(hourLine).length - 1, 1);
+    assert.doesNotMatch(prompt, /定位用途：/u);
+    const facts = extractDivinationPromptFacts('xiaoliuren', data);
+    assert.ok(facts.some((fact) => fact.id === 'xiaoliuren.location'));
+    assert.deepEqual(auditPromptFacts(prompt, facts).missing, []);
+    const wrongFirstDay = prompt.replace(dayLine, dayLine.replace(`（${firstDay}）`, '（留连）'));
+    assert.deepEqual(auditPromptFacts(wrongFirstDay, facts).missing, [
+      'xiaoliuren.first-day',
+      'xiaoliuren.location',
+    ]);
+    const wrongHourStart = prompt.replace(hourLine, hourLine.replace(`日宫${day}`, '日宫留连'));
+    assert.deepEqual(auditPromptFacts(wrongHourStart, facts).missing, [
+      'xiaoliuren.hour',
+      'xiaoliuren.location',
+    ]);
+    const missingHourStart = prompt.replace(hourLine + '\n', '');
+    assert.deepEqual(auditPromptFacts(missingHourStart, facts).missing, [
+      'xiaoliuren.hour',
+      'xiaoliuren.location',
+    ]);
     assert.ok(prompt.includes(`占得宫：${primary}`));
     assert.ok(prompt.includes(`歌诀原文：${data.primary.verse}`));
     assert.match(prompt, /总体判断、分项解释与总结保持同一取证范围/);

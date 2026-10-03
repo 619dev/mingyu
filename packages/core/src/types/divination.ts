@@ -241,11 +241,12 @@ export interface LiuyaoYaoDetail extends BaseYaoDetail {
   isWorld: boolean;
   isResponse: boolean;
   isVoid: boolean;
-  /** 是否与日辰相冲；须结合动静和月令旺衰区分暗动、日破或动爻受冲。 */
+  /** 是否与日辰相冲；结合动静、月破、月令旺相和旬空冲起区分暗动、日破或动爻受冲。 */
   isDayClash?: boolean;
-  /** 静爻休囚而受日冲；旺相静爻应读取 isHiddenMove，动爻受冲应读取 isDayClash。 */
+  /** 静爻受日冲而未具暗动资格；暗动另核月破、月令旺相或旬空冲起，动爻受冲读取 isDayClash。 */
   isDayBreak?: boolean;
   isMonthBreak?: boolean;
+  /** 非月破静爻受日冲，且月令旺相或旬空冲起；旬空身份仍保留。 */
   isHiddenMove?: boolean;
   seasonState?: '旺' | '相' | '休' | '囚' | '死' | '平';
   changeDirection?: '化进神' | '化退神' | null;

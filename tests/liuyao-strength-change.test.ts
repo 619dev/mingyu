@@ -13,7 +13,11 @@ import {
   getLiuyaoHexagramRelations,
   getLiuyaoPalaceStage,
 } from 'mingyu-core/divination/liuyao';
-import { buildTimeInfoText, formatEnhancedDivinationInfo } from 'mingyu-core/prompt';
+import {
+  buildTimeInfoText,
+  formatEnhancedDivinationInfo,
+  getDivinationSummaryBlocks,
+} from 'mingyu-core/prompt';
 import type { LiuyaoYaoDetail } from 'mingyu-core/types';
 
 // 子月：水旺木相金休土囚火死。
@@ -169,6 +173,47 @@ test('六爻：单个辰土爻发动不因自身辰支判作入动墓', () => {
 });
 
 test('六爻：日冲应按旺相静爻、休囚静爻与动爻分别处理', () => {
+  const assertRestoredDayState = (source: ReturnType<typeof generateLiuyao>) => {
+    const legacy = structuredClone(source);
+    for (const yao of legacy.yaosDetail) {
+      delete yao.isHiddenMove;
+      delete yao.isDayBreak;
+      delete yao.isDayClash;
+      delete yao.isMonthBreak;
+      delete yao.seasonState;
+    }
+    const before = structuredClone(legacy);
+    assert.deepEqual(analyzeLiuyaoEvidence(legacy), analyzeLiuyaoEvidence(source));
+    assert.equal(
+      formatEnhancedDivinationInfo('liuyao', legacy),
+      formatEnhancedDivinationInfo('liuyao', source),
+    );
+    assert.deepEqual(
+      getDivinationSummaryBlocks('liuyao', legacy),
+      getDivinationSummaryBlocks('liuyao', source),
+    );
+    assert.deepEqual(legacy, before);
+    const wrongSeason = structuredClone(legacy);
+    wrongSeason.yaosDetail[0].seasonState = source.yaosDetail[0].seasonState === '旺' ? '死' : '旺';
+    assert.throws(() => analyzeLiuyaoEvidence(wrongSeason), /月日空破与盘面不一致/u);
+    assert.throws(
+      () => formatEnhancedDivinationInfo('liuyao', wrongSeason),
+      /月日空破与盘面不一致/u,
+    );
+    assert.throws(() => getDivinationSummaryBlocks('liuyao', wrongSeason), /月日空破与盘面不一致/u);
+    const dayClash = source.yaosDetail.find((yao) => yao.isDayClash);
+    assert.ok(dayClash);
+    for (const flag of ['isHiddenMove', 'isDayBreak', 'isDayClash', 'isMonthBreak'] as const) {
+      const conflict = structuredClone(legacy);
+      conflict.yaosDetail[dayClash.position - 1][flag] = !dayClash[flag];
+      assert.throws(() => analyzeLiuyaoEvidence(conflict), /月日空破与盘面不一致/u);
+      assert.throws(
+        () => formatEnhancedDivinationInfo('liuyao', conflict),
+        /月日空破与盘面不一致/u,
+      );
+      assert.throws(() => getDivinationSummaryBlocks('liuyao', conflict), /月日空破与盘面不一致/u);
+    }
+  };
   const hiddenMoveData = generateLiuyao(new Date('2025-01-01T00:00:00+08:00'), {
     yaos: KAN_WEI_SHUI_YAOS,
   });
@@ -201,6 +246,7 @@ test('六爻：日冲应按旺相静爻、休囚静爻与动爻分别处理', ()
   assert.ok(movingFact?.dayState.relations.includes('日辰冲动'));
   assert.ok(!movingFact?.dayState.relations.includes('日冲成破'));
   assert.match(formatEnhancedDivinationInfo('liuyao', movingData), /日辰冲动/);
+  for (const source of [hiddenMoveData, dayBreakData, movingData]) assertRestoredDayState(source);
 
   // 《增删卜易》固定原例；现代日期只定位相同月支、日柱及手录爻值。
   // 暗动章：寅月己未日坤之师，第四丑土旬空而被未日冲动。
@@ -265,6 +311,7 @@ test('六爻：日冲应按旺相静爻、休囚静爻与动爻分别处理', ()
     assert.match(displayedLine ?? '', /旬空/u);
     assert.match(displayedLine ?? '', /日冲暗动/u);
     assert.doesNotMatch(displayedLine ?? '', /日冲成破/u);
+    assertRestoredDayState(data);
 
     const stale = structuredClone(data);
     stale.yaosDetail[input.position - 1].isHiddenMove = false;
@@ -289,6 +336,8 @@ test('六爻：日冲应按旺相静爻、休囚静爻与动爻分别处理', ()
   assert.equal(brokenYao.isHiddenMove, false);
   assert.equal(monthBroken.evidenceAnalysis?.lineFacts[4].activity, '静爻');
   assert.ok(monthBroken.evidenceAnalysis?.lineFacts[4].constraints.includes('月破'));
+  assert.ok(monthBroken.evidenceAnalysis?.lineFacts[4].constraints.includes('日破'));
+  assertRestoredDayState(monthBroken);
 });
 
 test('六爻：动爻变爻应完整输出回头、化泄、化耗等五行关系', () => {
