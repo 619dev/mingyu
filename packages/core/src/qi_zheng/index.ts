@@ -1540,7 +1540,7 @@ function buildQizhengEvidence(
   };
   const positionSourceFacts: QizhengPositionSourceFact[] = QIZHENG_POSITION_SOURCES.map(
     (source) => {
-      const promptLimitations = source.limitations;
+      const promptLimitations = [...source.limitations];
       return {
         key: `qizheng:position-source:${source.id}`,
         sourceId: source.id,
@@ -2502,12 +2502,19 @@ function generateQizhengInternal(
     mingZhu,
     twelvePalaces,
     shensha,
-    ziqiModel: ZIQI_MODEL_INFO,
+    ziqiModel: {
+      ...ZIQI_MODEL_INFO,
+      sources: ZIQI_MODEL_INFO.sources.map((source) => ({ ...source })),
+    },
     ziqi,
     calculationContext,
-    positionSources: QIZHENG_POSITION_SOURCES,
+    positionSources: QIZHENG_POSITION_SOURCES.map((source) => ({
+      ...source,
+      objects: [...source.objects],
+      limitations: [...source.limitations],
+    })),
     mansionBoundaries,
-    mansionModel: QIZHENG_MANSION_MODEL,
+    mansionModel: { ...QIZHENG_MANSION_MODEL },
     evidenceAnalysis,
     enNan,
     ...(timeLords ? { timeLords } : {}),

@@ -819,7 +819,7 @@ export function identifyClassicPatternCandidates(
       : evaluation.pendingConditions.length
         ? '待核验'
         : '结构命中';
-    return [{ pattern, matchedConditions, status, ...evaluation }];
+    return [{ pattern: structuredClone(pattern), matchedConditions, status, ...evaluation }];
   });
 }
 

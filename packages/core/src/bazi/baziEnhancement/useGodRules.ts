@@ -138,9 +138,9 @@ export function detectTongguanNeed(
         return {
           need: true,
           status: '候选',
-          conflict: rule.conflictWuxings,
+          conflict: [...rule.conflictWuxings],
           tongguan: rule.tongguanWuxing,
-          rule,
+          rule: structuredClone(rule),
           conditions: `核对${w1}与${w2}的月令、根气及位置是否形成实际相克，再核${rule.tongguanWuxing}能否承接两端及是否符合全局取用`,
         };
       }
@@ -198,7 +198,7 @@ export function detectDiseaseMedicine(
     status: '候选',
     disease: `${dayMasterWuxing}日主${strengthStatus}`,
     medicine,
-    rule,
+    rule: structuredClone(rule),
     conditions: strong
       ? `核对${medicine}食伤是否有根承泄、是否影响官杀及格局制化，再与财官取用比较`
       : `核对${medicine}印星的根气和受财克制情况，并与${dayMasterWuxing}比劫配合扶身`,

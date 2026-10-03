@@ -60,6 +60,48 @@ test('旧经典格局入口仍返回目录顺序首项，全量入口保留并�
     ['lu-ren-lu', 'jing-lan-cha'],
   );
   assert.ok(all.every((candidate) => candidate.matchedConditions.length > 0));
+
+  const originalFirst = structuredClone(first!);
+  const originalAll = structuredClone(all);
+  const chart = {
+    pillars,
+    hiddenStems: hidden,
+    analysis: { mingGe: { pattern: '普通格局', isSpecial: false } },
+  } as any;
+  const normalSection = generateEnhancedAnalysisSection(chart);
+  assert.match(normalSection, /建禄格/);
+  assert.match(normalSection, /井栏叉格/);
+  try {
+    first!.name = '变造格局';
+    first!.description = '变造经典依据';
+    first!.conditions.dayStems!.splice(0);
+    first!.conditions.exactMonthBranchMap!.庚 = '寅';
+    first!.favorableWuxing[0] = '变造喜用';
+    first!.unfavorableWuxing[0] = '变造所忌';
+    assert.deepEqual(
+      identifyClassicPattern('庚', '申', pillars, hidden, '普通格局'),
+      originalFirst,
+    );
+    assert.deepEqual(
+      identifyClassicPatternCandidates('庚', '申', pillars, hidden, '普通格局'),
+      originalAll,
+    );
+    assert.equal(generateEnhancedAnalysisSection(chart), normalSection);
+  } finally {
+    Object.assign(first!, originalFirst);
+  }
+  try {
+    all[0].pattern.conditions.monthBranch!.splice(0);
+    all[1].pattern.description = '变造井栏依据';
+    all[1].pattern.conditions.otherConditions!.splice(0);
+    assert.deepEqual(
+      identifyClassicPatternCandidates('庚', '申', pillars, hidden, '普通格局'),
+      originalAll,
+    );
+    assert.equal(generateEnhancedAnalysisSection(chart), normalSection);
+  } finally {
+    all.forEach((candidate, index) => Object.assign(candidate.pattern, originalAll[index].pattern));
+  }
 });
 
 test('化气候选记录根气、冲破与甲己见乙妒合反证', () => {

@@ -10,7 +10,10 @@ import {
   getQizhengMingZhu,
   getQizhengSignBranch,
   longitudeToQizhengMansion,
+  QIZHENG_MANSION_MODEL,
+  QIZHENG_POSITION_SOURCES,
   QIZHENG_SIGN_BRANCHES,
+  ZIQI_MODEL_INFO,
 } from '@core/qi_zheng';
 import { QizhengBoard } from '../src/pages/ResultPage/components/QizhengBoard';
 
@@ -219,6 +222,47 @@ test('七政四余完整盘采用二十八宿真实距星边界并保持位置�
   );
   assert.doesNotMatch(result.prompt, /宿界模型/);
   assert.doesNotMatch(result.prompt, /366\.5|等比例换算/);
+
+  const original = structuredClone(result);
+  try {
+    Reflect.set(result.mansionModel, 'id', '变造模型身份');
+    Reflect.set(result.mansionModel, 'mappingSource', '变造星宿对应资料');
+    Reflect.set(result.mansionModel, 'transformSource', '变造坐标变换资料');
+    result.ziqiModel.name = '变造紫炁模型';
+    result.ziqiModel.sources[0].title = '变造紫炁原文';
+    result.positionSources[0].objects[0] = '变造星曜';
+    result.positionSources[0].calculation = '变造位置计算';
+    result.positionSources[0].limitations[0] = '变造模型限制';
+    result.evidenceAnalysis.positionSourceFacts[0].promptLimitations[1] = '变造证据限制';
+
+    assert.equal(QIZHENG_MANSION_MODEL.id, 'qizheng-mansion-stars-simbad-astronomy-engine');
+    assert.equal(ZIQI_MODEL_INFO.name, '《七政算内篇》紫炁古法均速');
+    assert.equal(ZIQI_MODEL_INFO.sources[0].title, '《七政算内篇》四余星第七·紫气');
+    assert.equal(QIZHENG_POSITION_SOURCES[0].objects[0], '太阳');
+    assert.deepEqual(QIZHENG_MANSION_MODEL, original.mansionModel);
+    assert.deepEqual(ZIQI_MODEL_INFO, original.ziqiModel);
+    assert.deepEqual(QIZHENG_POSITION_SOURCES, original.positionSources);
+    const fresh = generateQizheng({
+      year: 1990,
+      month: 6,
+      day: 15,
+      hour: 10,
+      minute: 30,
+      latitude: 39.9042,
+      longitude: 116.4074,
+      timezone: 8,
+    });
+    assert.deepEqual(fresh, original);
+  } finally {
+    Object.assign(QIZHENG_MANSION_MODEL, original.mansionModel);
+    Object.assign(ZIQI_MODEL_INFO, structuredClone(original.ziqiModel));
+    QIZHENG_POSITION_SOURCES.splice(
+      0,
+      QIZHENG_POSITION_SOURCES.length,
+      ...structuredClone(original.positionSources),
+    );
+    Object.assign(result, original);
+  }
 });
 
 test('罗计真交点与月孛平均远地点与 Swiss Moshier 独立金标一致', () => {
