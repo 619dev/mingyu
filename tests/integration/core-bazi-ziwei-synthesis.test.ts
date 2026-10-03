@@ -7,6 +7,7 @@ import {
   formatBaziZiweiSynthesisForPrompt,
 } from 'mingyu-core/synthesis';
 import { createMingyuClient } from 'mingyu-core/client';
+import { configure } from 'mingyu-core/calendar';
 import type { BirthProfile } from 'mingyu-core/profile';
 import { baziCalculator } from '../../packages/core/src/bazi/baziCalculator';
 import { calculateZiweiChart } from '../../packages/core/src/ziwei/runtime';
@@ -144,15 +145,39 @@ test('只有时辰精度且立春落在时辰内时不选定唯一八字流年',
     false,
   );
 
-  const preciseReading = await calculateBaziZiweiCombinedReading(
-    { ...profile, year: 2000, month: 5, day: 12 },
-    { ziwei: { now: new Date('2024-02-04T16:28:00+08:00') } },
-  );
-  assert.ok(!preciseReading.range);
-  if (preciseReading.range) return;
-  assert.equal(preciseReading.synthesis.timingReference.beijingDateTime, '2024-02-04 16:28:00');
-  assert.deepEqual(preciseReading.synthesis.timingBoundaryFacts, []);
-  assert.match(preciseReading.promptText, /2024-02-04 16:28:00（北京时间/);
+  try {
+    for (const timezoneOffset of [-720, 0, 840]) {
+      configure({ timezoneOffset });
+      const replay = buildBaziZiweiSynthesis({
+        bazi: reading.bundle.bazi,
+        ziwei: reading.bundle.ziwei,
+        referenceInstant: new Date('2024-02-04T08:28:00Z'),
+      });
+      assert.deepEqual(replay, exact);
+    }
+    configure({ timezoneOffset: -720 });
+    const requestedNow = new Date('2024-02-04T08:28:00Z');
+    const pending = calculateBaziZiweiCombinedReading(
+      { ...profile, year: 2000, month: 5, day: 12 },
+      { ziwei: { now: requestedNow } },
+    );
+    requestedNow.setUTCFullYear(2025);
+    const preciseReading = await pending;
+    assert.ok(!preciseReading.range);
+    if (preciseReading.range) return;
+    assert.deepEqual(preciseReading.bundle.ziwei?.horoscopeContext, {
+      dateStr: '2024-02-04',
+      hourIndex: 8,
+    });
+    assert.equal(preciseReading.synthesis.timingReference.beijingDateTime, '2024-02-04 16:28:00');
+    assert.deepEqual(preciseReading.synthesis.timingBoundaryFacts, []);
+    assert.match(
+      preciseReading.promptText,
+      /【运限基准】\n2024-02-04 16:28:00（北京时间；紫微按2024-02-04 申时排运限）/,
+    );
+  } finally {
+    configure({ timezoneOffset: 480 });
+  }
 });
 
 test('合参提示词应支持不同解读层级并保持完整任务结构', async () => {

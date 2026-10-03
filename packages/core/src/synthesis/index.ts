@@ -9,11 +9,10 @@ import {
   type BirthChartRangeBundle,
   type BirthChartBundleOptions,
 } from '../birth';
-import { getShichenByIndex } from '../calendar/dateUtils';
+import { getShichenByIndex, getTimeIndexFromClock } from '../calendar/dateUtils';
 import type { BirthProfile } from '../profile';
 import type { EvidenceFact, PalaceFact, ScopeType } from '../types/analysis';
 import type { ZiweiRuntime, ZiweiRuntimeOptions } from '../ziwei/runtime';
-import { getDefaultHoroscopeContext } from '../ziwei/iztro/runtime-helpers';
 import { buildPromptTask } from '../prompt/guidance';
 import {
   evaluateBaziZiweiCorroboration,
@@ -191,6 +190,17 @@ function normalizePalaceName(value: string) {
   return value.trim().replace(/宫$/, '');
 }
 
+function getBeijingHoroscopeContext(instant: Date) {
+  if (!(instant instanceof Date) || Number.isNaN(instant.getTime())) {
+    throw new Error('精确运限时刻不是有效日期。');
+  }
+  const civil = toChinaCivilDate(instant);
+  return {
+    dateStr: civil.toISOString().slice(0, 10),
+    hourIndex: getTimeIndexFromClock(civil.getUTCHours(), civil.getUTCMinutes()),
+  };
+}
+
 function resolveTimingReference(
   runtime: ZiweiRuntime,
   referenceInstant?: Date,
@@ -224,7 +234,7 @@ function resolveTimingReference(
     shichen: shichen.name,
   };
   if (referenceInstant !== undefined) {
-    const actualContext = getDefaultHoroscopeContext(referenceInstant);
+    const actualContext = getBeijingHoroscopeContext(referenceInstant);
     if (
       actualContext.dateStr !== context.dateStr ||
       actualContext.hourIndex !== context.hourIndex
@@ -809,15 +819,19 @@ export async function calculateBaziZiweiCombinedReading(
   options: BaziZiweiCombinedReadingOptions = {},
 ): Promise<BaziZiweiCombinedReading> {
   assertExplicitZiweiTiming(options);
+  const ziwei = options.ziwei ? structuredClone(options.ziwei) : undefined;
   const promptOptions = {
     prompt: options.prompt ? { ...options.prompt } : undefined,
-    ziwei: options.ziwei,
+    ziwei,
   };
   const bundle = await calculateBirthChartBundle(profile, {
     systems: ['bazi', 'ziwei'],
     baziRules: options.baziRules,
     ziweiRules: options.ziweiRules,
-    ziwei: options.ziwei,
+    ziwei:
+      ziwei?.now && !ziwei.horoscopeContext
+        ? { ...ziwei, horoscopeContext: getBeijingHoroscopeContext(ziwei.now) }
+        : ziwei,
     rangeBatch: options.rangeBatch,
     signal: options.signal,
   });

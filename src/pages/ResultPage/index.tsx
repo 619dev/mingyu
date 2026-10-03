@@ -729,11 +729,15 @@ export function ResultPage({ assistantOnly = false }: ResultPageProps) {
         month: Number(inputState.month),
         day: Number(inputState.day),
         gender: inputState.gender,
-        ...(inputState.birthHour !== ''
+        ...(inputState.birthHour.trim() !== ''
           ? {
               hour: Number(inputState.birthHour),
-              minute: inputState.birthMinute === '' ? 0 : Number(inputState.birthMinute),
-              ...(inputState.birthSecond === '' ? {} : { second: Number(inputState.birthSecond) }),
+              ...(inputState.birthMinute.trim() === ''
+                ? {}
+                : { minute: Number(inputState.birthMinute) }),
+              ...(inputState.birthSecond.trim() === ''
+                ? {}
+                : { second: Number(inputState.birthSecond) }),
               ...getFrontendBirthTimeZone(inputState.birthReverseSource),
             }
           : {}),

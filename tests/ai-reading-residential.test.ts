@@ -142,6 +142,52 @@ test('住宅农历出生日期转换为同一公历主体后再补算', async ()
     assert.equal(result.bazhai.calculationInput.birthMonth, 2);
     assert.equal(result.bazhai.calculationInput.birthDay, 10);
   });
+
+  const lichunInput = { ...input, year: '2024', month: '2', day: '4' };
+  const omittedSubject = buildReadingSubject(lichunInput, prompt);
+  assert.deepEqual(
+    buildReadingSubject(
+      { ...lichunInput, birthHour: ' ', birthMinute: '\t', birthSecond: '\n' },
+      prompt,
+    ),
+    omittedSubject,
+  );
+  const hourOnlySubject = buildReadingSubject({ ...lichunInput, birthHour: '16' }, prompt);
+  assert.equal(hourOnlySubject.lockedInputs.fengshui.birthHour, 16);
+  assert.equal(Object.hasOwn(hourOnlySubject.lockedInputs.fengshui, 'birthMinute'), false);
+  assert.equal(Object.hasOwn(hourOnlySubject.lockedInputs.fengshui, 'birthSecond'), false);
+  const zeroMinuteSubject = buildReadingSubject(
+    { ...lichunInput, birthHour: '16', birthMinute: '0' },
+    prompt,
+  );
+  assert.equal(zeroMinuteSubject.lockedInputs.fengshui.birthMinute, 0);
+  const zeroSecondSubject = buildReadingSubject(
+    { ...lichunInput, birthHour: '0', birthMinute: '0', birthSecond: '0' },
+    prompt,
+  );
+  assert.equal(zeroSecondSubject.lockedInputs.fengshui.birthHour, 0);
+  assert.equal(zeroSecondSubject.lockedInputs.fengshui.birthSecond, 0);
+  await withRealApi(async () => {
+    for (const [lockedSubject, status, birthFact] of [
+      [omittedSubject, '待复核', '出生时刻未提供，年界比较按中国标准时间正午'],
+      [hourOnlySubject, '待复核', '民用时刻16时（分钟、秒数未提供）'],
+      [zeroMinuteSubject, '已核定', '民用时刻16时0分（秒数未提供）'],
+    ] as const) {
+      const resource = await executeReadingAction(action, undefined, lockedSubject);
+      const result = resource.structured as {
+        bazhai: { birthYearBoundaryStatus: string; calculationInput: Record<string, unknown> };
+      };
+      assert.equal(result.bazhai.birthYearBoundaryStatus, status);
+      assert.equal(result.bazhai.calculationInput.birthYear, 2024);
+      assert.equal(result.bazhai.calculationInput.birthMonth, 2);
+      assert.equal(result.bazhai.calculationInput.birthDay, 4);
+      assert.equal(result.bazhai.calculationInput.gender, 'male');
+      assert.ok(resource.text.includes(birthFact));
+      if (status === '待复核') {
+        assert.match(resource.text, /2023年巽命、2024年震命/u);
+      }
+    }
+  });
 });
 
 test('住宅补算拒绝缺失主体与不完整九宫流运资料', async () => {

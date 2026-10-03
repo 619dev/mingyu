@@ -137,6 +137,69 @@ test('终身奇门主体快照锁定出生口径且只允许目标区间补算',
     gender: 'male',
     location: { longitude: 116.4, latitude: 39.9, locationName: '北京' },
   });
+
+  const preciseClock = {
+    ...input,
+    year: '2024',
+    month: '6',
+    day: '1',
+    timeIndex: 6,
+    birthHour: '0',
+    birthMinute: '5',
+    birthSecond: '',
+    useTrueSolarTime: false,
+  };
+  const preciseLifetime = buildQimenLifetimeInputs(preciseClock);
+  assert.equal(preciseLifetime.birthDateTime, '2024-06-01T00:05:00');
+  assert.equal(preciseLifetime.timeStandard, 'civil');
+  assert.equal(preciseLifetime.timeZoneId, 'Asia/Shanghai');
+  assert.equal(preciseLifetime.gender, 'male');
+  assert.deepEqual(
+    buildReadingSubject(preciseClock, prompt).lockedInputs['qimen-lifetime'],
+    preciseLifetime,
+  );
+  for (const birthSecond of [' \t', '0']) {
+    assert.deepEqual(buildQimenLifetimeInputs({ ...preciseClock, birthSecond }), preciseLifetime);
+  }
+  assert.equal(
+    buildQimenLifetimeInputs({ ...preciseClock, birthMinute: '0' }).birthDateTime,
+    '2024-06-01T00:00:00',
+  );
+  const omittedClock = { ...preciseClock, birthHour: '', birthMinute: '', birthSecond: '' };
+  const omittedLifetime = buildQimenLifetimeInputs(omittedClock);
+  assert.equal(omittedLifetime.birthDateTime, '2024-06-01T12:00:00');
+  assert.deepEqual(
+    buildQimenLifetimeInputs({
+      ...omittedClock,
+      birthHour: ' ',
+      birthMinute: '\t',
+      birthSecond: '\n',
+    }),
+    omittedLifetime,
+  );
+  assert.deepEqual(buildQimenLifetimeInputs({ ...omittedClock, timeIndex: -1 }), omittedLifetime);
+  const lunarLifetime = buildQimenLifetimeInputs({
+    ...preciseClock,
+    dateType: 'lunar',
+    isLeapMonth: true,
+    useTrueSolarTime: true,
+  });
+  assert.equal(lunarLifetime.calendarType, 'lunar');
+  assert.equal(lunarLifetime.isLeapMonth, true);
+  assert.equal(lunarLifetime.timeStandard, 'trueSolar');
+  assert.equal(lunarLifetime.birthDateTime, '2024-06-01T00:05:00');
+  assert.deepEqual(lunarLifetime.location, {
+    longitude: 116.4,
+    latitude: 39.9,
+    locationName: '北京',
+  });
+
+  const preciseResult = calculateQimenLifetime({ ...preciseLifetime, periodRange });
+  assert.equal(preciseResult.input.birthDateTime, '2024-06-01T00:05:00');
+  assert.match(
+    buildLifetimePrompt(preciseResult, '解读事业阶段。'),
+    /出生时刻：2024-06-01T00:05:00/u,
+  );
 });
 
 test('终身奇门初始盘与 AI 补算共享历史时区和阶段口径', async () => {
