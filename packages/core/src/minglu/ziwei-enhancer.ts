@@ -45,7 +45,7 @@ export function buildEnhancedZiweiSection(runtime: ZiweiRuntime): MingluZiweiSec
       isBodyPalace: Boolean(p.is_body_palace),
       isOriginSoulPalace: p.name === '命宫',
       isLaiYinPalace: Boolean(p.is_original_palace),
-      decadalRange: p.decadal_range,
+      decadalRange: [...p.decadal_range],
       majorStars: p.major_stars.map((s) => mapStar(s, 'major')),
       minorStars: p.minor_stars
         .filter((s) => !MALEFIC_STAR_NAMES.has(s.name))
@@ -62,7 +62,7 @@ export function buildEnhancedZiweiSection(runtime: ZiweiRuntime): MingluZiweiSec
       jiangqian12: p.base_jiangqian12 || '—',
       oppositePalaceName: opposite?.name || '—',
       surroundedPalaceNames: surrounded,
-      selfMutagens: p.self_mutagens || [],
+      selfMutagens: [...(p.self_mutagens || [])],
       anchorId: `ziwei-palace-${p.index}`,
     };
   });

@@ -74,18 +74,20 @@ test('命录紫微按实际星曜分类保留十二宫全部星曜及辅星生�
   assert.ok(section.palaces.some((p) => p.selfMutagens.length > 0));
   assert.match(text, /宫干自化：化/);
 
-  const article = buildMingluArticle({
-    person: { name: '星曜核验', gender: 'male' },
-    baziResult: baziCalculator.calculateBazi({
-      year: 1991,
-      month: 5,
-      day: 15,
-      timeIndex: 1,
-      gender: 'male',
-      isLunar: false,
-    }),
-    ziweiRuntime: runtime,
+  const baziResult = baziCalculator.calculateBazi({
+    year: 1991,
+    month: 5,
+    day: 15,
+    timeIndex: 1,
+    gender: 'male',
+    isLunar: false,
   });
+  const articleOptions = {
+    person: { name: '星曜核验', gender: 'male' },
+    baziResult,
+    ziweiRuntime: runtime,
+  } as const;
+  const article = buildMingluArticle(articleOptions);
   assert.equal(
     article.statistics.totalZiweiStarsCount,
     source.palaces.reduce(
@@ -140,4 +142,19 @@ test('命录紫微按实际星曜分类保留十二宫全部星曜及辅星生�
       ?.ziweiEvidence,
     ['官禄宫坐无主星', '财帛宫坐无主星'],
   );
+
+  const originalSource = structuredClone(source);
+  const originalSection = structuredClone(section);
+  const originalArticle = structuredClone(article);
+  const selfMutagenPalace = section.palaces.find((palace) => palace.selfMutagens.length > 0)!;
+  const articlePalace = article.ziweiSection!.palaces.find(
+    (palace) => palace.index === selfMutagenPalace.index,
+  )!;
+  selfMutagenPalace.decadalRange[0] = 999;
+  selfMutagenPalace.selfMutagens.push('忌');
+  articlePalace.decadalRange[1] = 888;
+  articlePalace.selfMutagens.push('禄');
+  assert.deepEqual(source, originalSource, '命录返回年龄区间和自化变造不能回写紫微原盘');
+  assert.deepEqual(buildEnhancedZiweiSection(runtime), originalSection);
+  assert.deepEqual(buildMingluArticle(articleOptions), originalArticle);
 });

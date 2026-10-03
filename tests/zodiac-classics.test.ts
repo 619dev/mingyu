@@ -16,6 +16,11 @@ const branches = [...'子丑寅卯辰巳午未申酉戌亥'];
 const animals = [...'鼠牛虎兔龙蛇马羊猴鸡狗猪'];
 const hasPair = (pairs: string[], a: string, b: string) =>
   pairs.includes(a + b) || pairs.includes(b + a);
+const matrixFixtures = new Map<string, ReturnType<typeof getZodiacYearFortune>>();
+
+function getMatrixFixture(branch: string, yearGanZhi: string) {
+  return matrixFixtures.get(`${branch}/${yearGanZhi}`) ?? getZodiacYearFortune(branch, yearGanZhi);
+}
 
 test('生肖六十流年七百二十组合保留全部刑冲害破与合会关系', () => {
   const chong = ['子午', '丑未', '寅申', '卯酉', '辰戌', '巳亥'];
@@ -43,6 +48,9 @@ test('生肖六十流年七百二十组合保留全部刑冲害破与合会关�
     for (let i = 0; i < 12; i++) {
       const branch = branches[i];
       const result = getZodiacYearFortune(branch, yearGanZhi);
+      if (branch === '子' && (yearGanZhi === '丙午' || yearGanZhi === '丙寅')) {
+        matrixFixtures.set(`${branch}/${yearGanZhi}`, result);
+      }
       const expected = [
         branch === yearBranch ? '值太岁' : '',
         hasPair(chong, branch, yearBranch) ? '冲太岁' : '',
@@ -117,9 +125,13 @@ test('生肖公历流年按甲子锚点循环且名称与地支入口一致', ()
     assert.equal(calculateZodiacYearFortune({ zodiac: '鼠', year }).yearGanZhi, expected);
   }
   for (let i = 0; i < 12; i++) {
+    const expected =
+      branches[i] === '子'
+        ? getMatrixFixture(branches[i], '丙午')
+        : getZodiacYearFortune(branches[i], '丙午');
     assert.deepEqual(
       calculateZodiacYearFortune({ zodiac: animals[i], yearGanZhi: '丙午' }),
-      getZodiacYearFortune(branches[i], '丙午'),
+      expected,
     );
   }
 });
@@ -131,12 +143,12 @@ test('丁卯值年太岁星君应使用常见名沉兴', () => {
 });
 
 test('生肖提示词只列实际命中的太岁关系', () => {
-  const noConflict = getZodiacYearFortune('子', '丙寅');
+  const noConflict = getMatrixFixture('子', '丙寅');
   assert.deepEqual(noConflict.conflicts, []);
   assert.doesNotMatch(noConflict.prompt, /太岁关系：|未命中值、冲、刑、害、破|信息范围：/);
   assert.doesNotMatch(noConflict.prompt, /参与关系的资料：/);
 
-  const conflict = getZodiacYearFortune('子', '丙午');
+  const conflict = getMatrixFixture('子', '丙午');
   assert.deepEqual(
     conflict.conflicts.map((item) => item.type),
     ['冲太岁'],
@@ -145,7 +157,7 @@ test('生肖提示词只列实际命中的太岁关系', () => {
 });
 
 test('生肖流年描述只列传统关系类别，提示词要求结合资料核对条件', () => {
-  const result = getZodiacYearFortune('子', '丙午');
+  const result = getMatrixFixture('子', '丙午');
   assert.equal(result.conflicts.length, 1);
   assert.match(result.conflicts[0].desc, /生肖年支子与流年年支午命中六冲，传统分类为冲太岁/);
   assert.doesNotMatch(result.conflicts[0].desc, /象征|主题|容易增加|容易出现|值得留意/);
