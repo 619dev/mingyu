@@ -126,8 +126,9 @@ export function getBaziZipingPatternAdvice(pattern: string): BaziZipingPatternEn
   if (!pattern) return undefined;
   // 括注只说明同一格局的具体条件；“杂气”等前缀代表另一取格口径。
   const patternName = pattern.trim().replace(/（[^（）]*）$/, '');
-  const exact = BAZI_ZIPING_PATTERNS[patternName];
-  if (exact) return exact;
+  if (Object.hasOwn(BAZI_ZIPING_PATTERNS, patternName)) {
+    return structuredClone(BAZI_ZIPING_PATTERNS[patternName]);
+  }
   // 主格局名与典籍表键的显式映射：建禄格／劫财格同属“建禄月劫格”，月刃格对应“阳刃格”；
   // 建禄与月劫、阳刃之间的差异以条目原文为准，不做子串猜测
   const aliasMap: Record<string, string> = {
@@ -135,9 +136,9 @@ export function getBaziZipingPatternAdvice(pattern: string): BaziZipingPatternEn
     劫财格: '建禄月劫格',
     月刃格: '阳刃格',
   };
-  const aliasKey = aliasMap[patternName];
-  if (aliasKey && BAZI_ZIPING_PATTERNS[aliasKey]) {
-    return BAZI_ZIPING_PATTERNS[aliasKey];
+  const aliasKey = Object.hasOwn(aliasMap, patternName) ? aliasMap[patternName] : undefined;
+  if (aliasKey && Object.hasOwn(BAZI_ZIPING_PATTERNS, aliasKey)) {
+    return structuredClone(BAZI_ZIPING_PATTERNS[aliasKey]);
   }
   return undefined;
 }

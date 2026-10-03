@@ -242,7 +242,7 @@ export const LIUREN_GENERAL_CLASSICS: Record<string, LiurenGeneralClassic> = {
 export function getLiurenGeneralClassic(general: string): LiurenGeneralClassic | undefined {
   if (!general) return undefined;
   for (const [key, val] of Object.entries(LIUREN_GENERAL_CLASSICS)) {
-    if (general.includes(key)) return val;
+    if (general.includes(key)) return structuredClone(val);
   }
   return undefined;
 }
@@ -262,14 +262,14 @@ export function getLiurenTransmissionClassic(rule: string): LiurenTransmissionCl
     [/元首/, '元首'],
   ];
   const key = patterns.find(([pattern]) => pattern.test(rule))?.[1];
-  return key ? LIUREN_TRANSMISSION_CLASSICS[key] : undefined;
+  return key ? structuredClone(LIUREN_TRANSMISSION_CLASSICS[key]) : undefined;
 }
 
 export function getLiurenLessonPatternClassic(
   pattern: string,
 ): LiurenLessonPatternClassic | undefined {
   for (const [key, value] of Object.entries(LIUREN_LESSON_PATTERN_CLASSICS)) {
-    if (pattern.includes(key)) return value;
+    if (pattern.includes(key)) return structuredClone(value);
   }
   return undefined;
 }
@@ -317,9 +317,11 @@ export const LIUREN_BIFA_CLASSICS: Array<{
 
 export function getLiurenBifaClassic(keyword: string) {
   if (!keyword) return undefined;
-  return LIUREN_BIFA_CLASSICS.find((b) => b.title.includes(keyword) || b.verse.includes(keyword));
+  return structuredClone(
+    LIUREN_BIFA_CLASSICS.find((b) => b.title.includes(keyword) || b.verse.includes(keyword)),
+  );
 }
 
 export function getAllLiurenBifaClassics() {
-  return LIUREN_BIFA_CLASSICS;
+  return structuredClone(LIUREN_BIFA_CLASSICS);
 }

@@ -82,7 +82,7 @@ export const TAIYI_GENERAL_CLASSICS: Record<string, TaiyiGeneralClassic> = {
 export function getTaiyiGeneralClassic(general: string): TaiyiGeneralClassic | undefined {
   if (!general) return undefined;
   for (const [key, val] of Object.entries(TAIYI_GENERAL_CLASSICS)) {
-    if (general.includes(key)) return val;
+    if (general.includes(key)) return structuredClone(val);
   }
   return undefined;
 }

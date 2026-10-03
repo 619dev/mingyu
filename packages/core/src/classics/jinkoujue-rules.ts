@@ -81,5 +81,5 @@ export const JINKOUJUE_MOVEMENT_CLASSICS: Record<
 
 export function getJinkoujueMovementClassic(key: string): JinkoujueMovementClassic | undefined {
   if (!Object.prototype.hasOwnProperty.call(JINKOUJUE_MOVEMENT_CLASSICS, key)) return undefined;
-  return JINKOUJUE_MOVEMENT_CLASSICS[key as JinkoujueMovement['name']];
+  return structuredClone(JINKOUJUE_MOVEMENT_CLASSICS[key as JinkoujueMovement['name']]);
 }

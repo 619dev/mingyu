@@ -227,6 +227,15 @@ export function createBirthPlaceIndex(tree: readonly BirthPlaceProvinceOption[])
 
   const register = (path: BirthPlaceCascadePath) => {
     const node = pathNode(path);
+    if (!Number.isFinite(node.longitude) || Math.abs(node.longitude) > 180) {
+      throw new RangeError(`出生地点“${node.id}”的经度必须是-180至180度之间的有限数值。`);
+    }
+    if (
+      node.latitude !== undefined &&
+      (!Number.isFinite(node.latitude) || Math.abs(node.latitude) > 90)
+    ) {
+      throw new RangeError(`出生地点“${node.id}”的纬度必须是-90至90度之间的有限数值。`);
+    }
     const displayName = pathDisplayName(path);
     const idKey = normalizeKey(node.id);
     regionPathById.set(idKey, path);

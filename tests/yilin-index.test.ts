@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   YILIN_HEXAGRAM_ORDER,
+  normalizeYilinHexagramName,
   getYilinEntry,
   getYilinIndexStats,
   queryYilinEntry,
@@ -87,6 +88,12 @@ test('易林查询拒绝无效底本和不完整卦名', () => {
     /baseHexagram 不是固定卦序中的有效卦名/,
   );
   assert.equal(getYilinEntry(null as never, '乾'), undefined);
+  for (const key of ['toString', 'constructor', '__proto__']) {
+    assert.equal(normalizeYilinHexagramName(key), undefined);
+    assert.equal(getYilinEntry(key, '乾'), undefined);
+    assert.throws(() => queryYilinEntry(key, '乾'), /baseHexagram 不是固定卦序中的有效卦名/);
+    assert.throws(() => queryYilinEntry('乾', key), /targetHexagram 不是固定卦序中的有效卦名/);
+  }
 });
 
 test('易林六十四卦简体名称均可作为本卦和变卦查询', () => {

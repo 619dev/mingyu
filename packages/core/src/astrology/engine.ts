@@ -774,12 +774,16 @@ export function calculateChart(
     : [];
   const lilith = options.includeLilith
     ? [
-        createPoint(
-          'True Lilith',
-          chart.bodies.true_lilith!.lon,
-          chart.cusps,
-          chart.bodies.true_lilith!.speed,
-        ),
+        {
+          ...createPoint(
+            'True Lilith',
+            chart.bodies.true_lilith!.lon,
+            chart.cusps,
+            chart.bodies.true_lilith!.speed,
+          ),
+          latitude: chart.bodies.true_lilith!.lat,
+          distance: chart.bodies.true_lilith!.dist ?? 0,
+        },
       ]
     : [];
   const dayChart = isDayChart(astrologyEngine, jd, latitude, longitude);

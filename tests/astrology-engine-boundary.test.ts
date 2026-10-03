@@ -273,7 +273,14 @@ test('行运禁用越星座相位时仍保留精确五分相', (context) => {
 });
 
 test('交点与真莉莉丝保留星历速度和逆行状态，南北交点运动一致', () => {
-  for (const year of [1990, 2008, 2026]) {
+  // Swiss Ephemeris 2.10.03，OSCU_APOG + MOSEPH + SPEED，公历各年1月1日12:00 UT。
+  // 独立模式交叉只保护黄纬与月球远地点距离量级，不将模型差异当作适配层误差。
+  const apogeeReferences = [
+    { year: 1990, latitude: -5.185640671821244, distance: 0.002644845712966344 },
+    { year: 2008, latitude: -4.9886539866469946, distance: 0.0027100640231280146 },
+    { year: 2026, latitude: -4.983067794418891, distance: 0.002740212752146899 },
+  ];
+  for (const { year, latitude, distance } of apogeeReferences) {
     const input = {
       year,
       month: 1,
@@ -296,6 +303,10 @@ test('交点与真莉莉丝保留星历速度和逆行状态，南北交点运�
       assert.equal(point.longitudeSpeed, reference.speed);
       assert.equal(point.isRetrograde, reference.speed < 0);
     }
+    const lilith = chart.lilith[0];
+    assert.equal(lilith.latitude, getApparentPosition('true_lilith', jd).latitude);
+    assert.ok(Math.abs(lilith.latitude - latitude) < 0.01, '真远地点黄纬应符合独立同类模式');
+    assert.ok(Math.abs(lilith.distance - distance) < 0.000005, '真远地点距离应符合月球轨道量级');
   }
 });
 
@@ -448,6 +459,10 @@ test('仅位置入口保留南北交点且与完整星盘的交点和莉莉丝�
     assert.equal(actual.longitude, expected.longitude, expected.name);
     assert.equal(actual.longitudeSpeed, expected.longitudeSpeed, expected.name);
     assert.equal(actual.house, 0);
+    if (expected.name === 'True Lilith') {
+      assert.equal(actual.latitude, expected.latitude);
+      assert.equal(actual.distance, expected.distance);
+    }
   }
 });
 

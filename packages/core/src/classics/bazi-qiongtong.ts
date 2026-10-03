@@ -1270,5 +1270,8 @@ export function getBaziQiongtongAdvice(
   dayMaster: string,
   monthBranch: string,
 ): BaziQiongtongEntry | undefined {
-  return BAZI_QIONGTONG_TABLE[`${dayMaster}+${monthBranch}`];
+  const key = `${dayMaster}+${monthBranch}`;
+  return Object.hasOwn(BAZI_QIONGTONG_TABLE, key)
+    ? structuredClone(BAZI_QIONGTONG_TABLE[key])
+    : undefined;
 }

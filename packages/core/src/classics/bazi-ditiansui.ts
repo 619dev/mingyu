@@ -91,5 +91,7 @@ export const BAZI_DITIANSUI_TABLE: Record<string, BaziDitiansuiEntry> = {
  * 查询八字日主《滴天髓》十干体象
  */
 export function getBaziDitiansuiAdvice(dayMaster: string): BaziDitiansuiEntry | undefined {
-  return BAZI_DITIANSUI_TABLE[dayMaster];
+  return Object.hasOwn(BAZI_DITIANSUI_TABLE, dayMaster)
+    ? structuredClone(BAZI_DITIANSUI_TABLE[dayMaster])
+    : undefined;
 }

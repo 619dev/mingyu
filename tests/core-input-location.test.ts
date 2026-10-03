@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildBaziPersonInput, calculateBaziChartFromInput } from 'mingyu-core/bazi';
-import { createBirthPlaceIndex } from 'mingyu-core/location';
+import { createBirthPlaceIndex, type BirthPlaceProvinceOption } from 'mingyu-core/location';
 import { clampNumericField, validateBirthInput, type BirthInputFields } from 'mingyu-core/profile';
 
 test('npm 八字输入适配器应接受普通 JSON 和表单文本', () => {
@@ -115,7 +115,7 @@ test('npm 八字拒绝部分标准钟表与无效时分秒', () => {
 });
 
 test('npm 地点索引应支持级联查询、路径反查和经度读取', () => {
-  const index = createBirthPlaceIndex([
+  const tree: BirthPlaceProvinceOption[] = [
     {
       id: 'bj',
       label: '北京市',
@@ -137,7 +137,8 @@ test('npm 地点索引应支持级联查询、路径反查和经度读取', () =
         },
       ],
     },
-  ]);
+  ];
+  const index = createBirthPlaceIndex(tree);
 
   assert.equal(index.getProvinceOptions().length, 1);
   assert.equal(index.getCityOptions('BJ').length, 1);
@@ -149,6 +150,45 @@ test('npm 地点索引应支持级联查询、路径反查和经度读取', () =
   const district = index.resolve('dc');
   assert.equal(district?.latitude, undefined);
   assert.equal(district?.coordinateAccuracy, undefined);
+
+  for (const level of ['province', 'city', 'district'] as const) {
+    for (const [field, value] of [
+      ['longitude', NaN],
+      ['longitude', Infinity],
+      ['longitude', -181],
+      ['longitude', 181],
+      ['latitude', NaN],
+      ['latitude', Infinity],
+      ['latitude', -91],
+      ['latitude', 91],
+    ] as const) {
+      const invalid = structuredClone(tree);
+      const province = invalid[0];
+      const city = province.cities[0];
+      const node = level === 'province' ? province : level === 'city' ? city : city.districts[0];
+      node[field] = value;
+      assert.throws(
+        () => createBirthPlaceIndex(invalid),
+        new RegExp(`出生地点“${node.id}”的${field === 'longitude' ? '经度' : '纬度'}必须`),
+      );
+    }
+  }
+  for (const [longitude, latitude] of [
+    [0, 0],
+    [-180, -90],
+    [180, 90],
+  ] as const) {
+    const valid = structuredClone(tree);
+    Object.assign(valid[0].cities[0].districts[0], { longitude, latitude });
+    const coordinates = createBirthPlaceIndex(valid);
+    const resolved = coordinates.resolve('dc');
+    assert.equal(resolved?.longitude, longitude);
+    assert.equal(resolved?.latitude, latitude);
+    assert.equal(resolved?.coordinateAccuracy, 'administrative-center');
+    assert.equal(resolved?.path.district, valid[0].cities[0].districts[0]);
+    assert.deepEqual(coordinates.search('东城区'), [resolved]);
+    assert.equal(coordinates.resolveLongitude('dc'), longitude);
+  }
 });
 
 test('自定义地点索引应拒绝把重名简称静默解析为其中一项', () => {

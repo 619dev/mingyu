@@ -57,12 +57,14 @@ test('七政与太乙答题骨架只要求本次盘面的时间层资料', () =>
 
 test('全部体系都提供传统判断规则与传统依据', () => {
   Object.entries(PROMPT_GUIDANCE_TEXT).forEach(([method, guidance]) => {
-    assert.ok('tradition' in guidance, `${method} 应提供传统判断规则`);
-    assert.ok('sources' in guidance, `${method} 应提供传统依据`);
-    assert.match(String(guidance.tradition), /[\s\S]/);
+    assert.equal(typeof guidance.tradition, 'string', `${method} 应提供传统判断规则`);
+    assert.ok(guidance.tradition.trim().length > 0, `${method} 传统判断规则不应为空`);
+    assert.equal(typeof guidance.sources, 'string', `${method} 应提供传统依据`);
+    assert.ok(guidance.sources.trim().length > 0, `${method} 传统依据不应为空`);
     assert.match(
-      String(guidance.sources),
-      /《.+》|Rider-Waite|现代西方占星|潮汕|公开资料|通行|星历资料|工程/,
+      guidance.sources.trim(),
+      /《[^》]+》|Rider-Waite|Petit Lenormand|现代西方占星|潮汕三山国王|诸葛神数|孔明神卦|京房八宫纳甲|玄空飞星通行|通行(?:资料|读法|俗传|本|口径|排法)|天文星历/,
+      `${method} 应引用可识别的传统典籍或资料来源`,
     );
   });
 });

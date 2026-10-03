@@ -326,7 +326,7 @@ export function normalizeYilinHexagramName(value: string): YilinHexagramName | u
   if ((YILIN_HEXAGRAM_ORDER as readonly string[]).includes(normalized)) {
     return normalized as YilinHexagramName;
   }
-  return HEXAGRAM_ALIASES[normalized];
+  return Object.hasOwn(HEXAGRAM_ALIASES, normalized) ? HEXAGRAM_ALIASES[normalized] : undefined;
 }
 
 function normalizeSourceText(

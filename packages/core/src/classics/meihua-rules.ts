@@ -138,5 +138,14 @@ export const MEIHUA_TRIGRAM_CLASSICS: Record<string, MeihuaTrigramClassic> = {
 export function getMeihuaTrigramClassic(trigram: string): MeihuaTrigramClassic | undefined {
   if (!trigram) return undefined;
   const key = trigram.slice(0, 1);
-  return MEIHUA_TRIGRAM_CLASSICS[key] || MEIHUA_TRIGRAM_CLASSICS[trigram];
+  const matched = [key, trigram].find((value) => Object.hasOwn(MEIHUA_TRIGRAM_CLASSICS, value));
+  return matched === undefined ? undefined : structuredClone(MEIHUA_TRIGRAM_CLASSICS[matched]);
+}
+
+export function getMeihuaBodyUseJudgement(
+  relationType: string,
+): MeihuaBodyUseJudgement | undefined {
+  return Object.hasOwn(MEIHUA_RELATION_JUDGEMENTS, relationType)
+    ? structuredClone(MEIHUA_RELATION_JUDGEMENTS[relationType])
+    : undefined;
 }
