@@ -173,14 +173,14 @@ function buildBazhai(
 ): BaZhaiResult | BaZhaiDoorDegreeResult | null {
   if (!hasPersonInput(input)) return null;
   const base: BaZhaiInput = {
-    ...(input.birthYear != null ? { birthYear: input.birthYear } : {}),
-    ...(input.birthMonth != null ? { birthMonth: input.birthMonth } : {}),
-    ...(input.birthDay != null ? { birthDay: input.birthDay } : {}),
-    ...(input.birthHour != null ? { birthHour: input.birthHour } : {}),
-    ...(input.birthMinute != null ? { birthMinute: input.birthMinute } : {}),
-    ...(input.birthSecond != null ? { birthSecond: input.birthSecond } : {}),
-    ...(input.birthTimezone != null ? { birthTimezone: input.birthTimezone } : {}),
-    ...(input.birthTimeZoneId ? { birthTimeZoneId: input.birthTimeZoneId } : {}),
+    ...(input.birthYear !== undefined ? { birthYear: input.birthYear } : {}),
+    ...(input.birthMonth !== undefined ? { birthMonth: input.birthMonth } : {}),
+    ...(input.birthDay !== undefined ? { birthDay: input.birthDay } : {}),
+    ...(input.birthHour !== undefined ? { birthHour: input.birthHour } : {}),
+    ...(input.birthMinute !== undefined ? { birthMinute: input.birthMinute } : {}),
+    ...(input.birthSecond !== undefined ? { birthSecond: input.birthSecond } : {}),
+    ...(input.birthTimezone !== undefined ? { birthTimezone: input.birthTimezone } : {}),
+    ...(input.birthTimeZoneId !== undefined ? { birthTimeZoneId: input.birthTimeZoneId } : {}),
     ...(input.gender ? { gender: input.gender } : {}),
     ...(input.mingGua !== undefined ? { mingGua: input.mingGua } : {}),
   };

@@ -251,6 +251,33 @@ test('八宅立春年界按上海历史时区复核出生时分', () => {
   assert.equal(historicalAfter.effectiveBirthYear, 1942);
   assert.equal(fixedEight.effectiveBirthYear, 1942);
   assert.match(historicalBefore.prompt, /Asia\/Shanghai，UTC\+09:00/);
+
+  for (const birthTimeZoneId of ['', false, 0, null, ' \t']) {
+    assert.throws(
+      () =>
+        analyzeBaZhai({
+          ...birth,
+          birthHour: 19,
+          birthMinute: 0,
+          birthTimeZoneId: birthTimeZoneId as unknown as string,
+        }),
+      /IANA 时区名不能为空|timeZoneId 必须是 IANA 时区名称/u,
+    );
+  }
+  const zeroClock = analyzeBaZhai({
+    ...birth,
+    birthTimeZoneId: undefined,
+    birthTimezone: 0,
+    birthHour: 0,
+    birthMinute: 0,
+    birthSecond: 0,
+  });
+  assert.equal(zeroClock.effectiveBirthYear, 1941);
+  assert.equal(zeroClock.calculationInput.birthTimezone, 0);
+  assert.equal(zeroClock.calculationInput.birthHour, 0);
+  assert.equal(zeroClock.calculationInput.birthMinute, 0);
+  assert.equal(zeroClock.calculationInput.birthSecond, 0);
+  assert.match(zeroClock.prompt, /民用时刻0时0分0秒，取时按UTC\+00:00/u);
 });
 
 test('八宅大游年应符合八宅逐宫传统真值', () => {

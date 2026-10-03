@@ -79,6 +79,64 @@ test('住宅统一入口把已知出生时分传给八宅立春年界', () => {
   assert.equal(result.bazhai?.mingGua, '震');
   assert.match(result.prompt, /已按出生时分（UTC\+08:00）与立春瞬时核定/);
   assert.doesNotMatch(result.prompt, /未提供出生时刻/);
+
+  for (const [field, error] of [
+    ['birthMonth', /出生月份需在 1-12/u],
+    ['birthDay', /出生日期需在 1-29/u],
+    ['birthHour', /出生小时需在 0-23/u],
+    ['birthMinute', /出生分钟需在 0-59/u],
+    ['birthSecond', /出生秒数需在 0-59/u],
+    ['birthTimezone', /出生时区需在 UTC-12 至 UTC\+14/u],
+  ] as const) {
+    assert.throws(
+      () => generateResidentialFengshui({ ...input, birthSecond: 0, [field]: null }),
+      error,
+    );
+  }
+  for (const birthTimeZoneId of ['', false, 0, null]) {
+    assert.throws(
+      () =>
+        generateResidentialFengshui({
+          ...input,
+          birthTimeZoneId: birthTimeZoneId as unknown as string,
+        }),
+      /IANA 时区名不能为空|timeZoneId 必须是 IANA 时区名称/u,
+    );
+  }
+  for (const patch of [
+    { birthMonth: null, birthDay: null },
+    { birthHour: null, birthMinute: undefined },
+    { birthMinute: null },
+  ]) {
+    assert.throws(
+      () => generateResidentialFengshui({ ...input, ...patch } as never),
+      /出生月份需在|出生小时需在|出生分钟需在/u,
+    );
+  }
+
+  const zeroClock = generateResidentialFengshui({
+    ...input,
+    birthHour: 0,
+    birthMinute: 0,
+    birthSecond: 0,
+    birthTimezone: 0,
+  });
+  assert.equal(zeroClock.bazhai?.effectiveBirthYear, 2023);
+  assert.equal(zeroClock.bazhai?.mingGua, '巽');
+  assert.equal(zeroClock.bazhai?.calculationInput.birthTimezone, 0);
+  assert.equal(zeroClock.bazhai?.calculationInput.birthHour, 0);
+  assert.equal(zeroClock.bazhai?.calculationInput.birthMinute, 0);
+  assert.equal(zeroClock.bazhai?.calculationInput.birthSecond, 0);
+  assert.match(zeroClock.prompt, /民用时刻0时0分0秒，取时按UTC\+00:00/u);
+  assert.equal(
+    generateResidentialFengshui({
+      ...input,
+      mingGua: '坎',
+      birthHour: null,
+      birthTimeZoneId: '',
+    } as never).bazhai?.mingGua,
+    '坎',
+  );
 });
 
 test('住宅合参与在线任务书把原出生钟表和年界候选作为同一居住人事实', () => {

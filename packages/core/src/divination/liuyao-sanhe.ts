@@ -13,7 +13,7 @@ export function getLiuyaoSanheWithTrigger(
     if (requiredYaoBranches.every((member) => activeBranchSet.has(member))) {
       return {
         group,
-        members,
+        members: [...members],
         description: `${triggerLabel}${triggerBranch}与动变爻同见三合${group}三支`,
       };
     }

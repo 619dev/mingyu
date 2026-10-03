@@ -114,6 +114,7 @@ function normalizeTextField(value: unknown, label: string, fallback = ''): strin
 export function normalizeChartInput(input: ChartInput): ChartInput {
   return {
     ...input,
+    ...(input.birthTime ? { birthTime: { ...input.birthTime } } : {}),
     name: normalizeTextField(input.name, '姓名'),
     birthDate: normalizeTextField(input.birthDate, '出生日期'),
     fixLeap: input.fixLeap ?? true,

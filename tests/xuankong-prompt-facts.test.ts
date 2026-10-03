@@ -5,8 +5,17 @@ import { generateResidentialFengshui } from '../packages/core/src/residential_fe
 import { buildMetaphysicsPrompt } from '../src/lib/metaphysics-prompt';
 import { assertPromptHasSingleRole } from './prompt-assertions';
 
+const nineYunWuChart = generateXuanKong({ year: 2024, sitMountain: '午' });
+const nineYunWuMonthlyChart = generateXuanKong({
+  year: 2024,
+  sitMountain: '午',
+  flowYear: 2026,
+  flowMonth: 5,
+  flowDay: 19,
+});
+
 test('九运玄空正文明确星数五行与山向运的生克施受', () => {
-  const result = generateXuanKong({ year: 2024, sitMountain: '午' });
+  const result = structuredClone(nineYunWuChart);
   assert.match(
     result.prompt,
     /运5（土，暂按9运煞气） 山9（火，暂按9运当运） 向9（火，暂按9运当运）/,
@@ -36,13 +45,7 @@ test('玄空年盘月盘仅随实际计算结果加入正文与各宫', () => {
   assert.match(yearly.prompt, /流年飞星：/);
   assert.doesNotMatch(yearly.prompt, /流月/);
   assert.doesNotMatch(JSON.stringify(yearly.evidenceAnalysis.limitationFacts), /流月/);
-  const monthly = generateXuanKong({
-    year: 2024,
-    sitMountain: '午',
-    flowYear: 2026,
-    flowMonth: 5,
-    flowDay: 19,
-  });
+  const monthly = structuredClone(nineYunWuMonthlyChart);
   assert.match(monthly.prompt, /流年飞星：[\s\S]*流月飞星：/);
   assert.equal(monthly.flowStars?.yearPlate.centerStar, 1);
   assert.deepEqual([...monthly.plates.year!].sort(), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -52,13 +55,7 @@ test('玄空年盘月盘仅随实际计算结果加入正文与各宫', () => {
 });
 
 test('玄空证据提示词复用完整盘面，不重复来源与格局说明', () => {
-  const result = generateXuanKong({
-    year: 2024,
-    sitMountain: '午',
-    flowYear: 2026,
-    flowMonth: 5,
-    flowDay: 19,
-  });
+  const result = structuredClone(nineYunWuMonthlyChart);
   assert.equal(result.evidenceAnalysis.promptText, result.prompt);
   assert.doesNotMatch(result.prompt, /来源：|@soul-atelier|mingyu-core|tyme4ts|项目|已登记组合/);
   assert.doesNotMatch(result.prompt, /主突发灾祸|破败|影响财富、事业、名声/);
@@ -69,7 +66,7 @@ test('玄空证据提示词复用完整盘面，不重复来源与格局说明',
 });
 
 test('玄空在线任务书沿用盘面任务与传统依据，不二次追加通用段落', () => {
-  const result = generateXuanKong({ year: 2024, sitMountain: '午' });
+  const result = structuredClone(nineYunWuChart);
   const extractTraditionalBody = (text: string) => {
     const headingStart = text.search(/^【传统依据】$/m);
     if (headingStart < 0) return '';
@@ -99,7 +96,7 @@ test('玄空在线任务书沿用盘面任务与传统依据，不二次追加�
 });
 
 test('玄空命中组合集中列出实际宫位', () => {
-  const result = generateXuanKong({ year: 2024, sitMountain: '午' });
+  const result = structuredClone(nineYunWuChart);
   assert.ok(result.combinations.length > 0);
   const line = result.prompt.split('\n').find((item) => item.startsWith('组合：'))!;
   for (const combo of result.combinations) {

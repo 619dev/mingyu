@@ -17,11 +17,12 @@ test('紫微春节前出生的流年选项按实际虚岁分界，不漏同公�
     birthTimeIndex: 4,
   });
   const astrolabe = await buildAstrolabeFromInput(input);
-  const options = await buildZiweiFortuneOptions(
-    input,
-    { startAge: 1, endAge: 3 },
-    { hourIndex: 4 },
-  );
+  const selected = { startAge: 1, endAge: 3 };
+  const buildOptions = { hourIndex: 4 };
+  const pending = buildZiweiFortuneOptions(input, selected, buildOptions);
+  selected.endAge = 4;
+  buildOptions.hourIndex = 0;
+  const options = await pending;
 
   assert.deepEqual(
     options.yearOptions.map(({ age, year, dateStr, ganZhi }) => ({ age, year, dateStr, ganZhi })),
@@ -45,6 +46,8 @@ test('紫微春节前出生的流年选项按实际虚岁分界，不漏同公�
     options.dayOptions.map((day) => day.dateStr),
     ['1992-02-03'],
   );
+  assert.equal(selected.endAge, 4);
+  assert.equal(buildOptions.hourIndex, 0);
 });
 
 test('紫微流年选项拒绝与当前命盘不一致的出生公历日期', async () => {

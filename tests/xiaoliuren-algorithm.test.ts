@@ -13,6 +13,10 @@ import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divina
 import { assertPromptIsPortableTaskText } from './prompt-assertions';
 
 const PALACE_NAMES = ['大安', '留连', '速喜', '赤口', '小吉', '空亡'] as const;
+// 同一固定时刻的只读回归共用基准盘；各测试克隆，避免跨注册共享可变对象。
+const JUNE_FIFTH_CHEN_CHART = generateXiaoliuren({
+  customDate: new Date('2025-06-29T08:00:00+08:00'),
+});
 
 test('小六壬证据与提示词拒绝时宫、占得宫及顺数索引错位', () => {
   const source = generateXiaoliuren({ customDate: new Date('2026-05-19T10:30:00+08:00') });
@@ -198,7 +202,7 @@ test('小六壬：修改已返回宫位不会污染后续起课及同盘其他�
 });
 
 test('小六壬：六宫顺序和通行歌诀应完整且稳定', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(JUNE_FIFTH_CHEN_CHART);
 
   assert.deepEqual(
     data.palaceOrder.map((palace) => palace.name),
@@ -214,7 +218,7 @@ test('小六壬：六宫顺序和通行歌诀应完整且稳定', () => {
 });
 
 test('小六壬：农历六月初五辰时通行样例应为月空亡、日赤口、时留连', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(JUNE_FIFTH_CHEN_CHART);
 
   assert.equal(data.lunarMonth, 6);
   assert.equal(data.lunarDay, 5);
@@ -313,7 +317,7 @@ test('小六壬：全局时区变化不改变东八区农历日、时辰和闰�
 });
 
 test('小六壬：只有时宫是主证，月宫和日宫必须标为计算轨迹', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(JUNE_FIFTH_CHEN_CHART);
   const evidence = data.evidenceAnalysis;
 
   assert.ok(evidence);
@@ -332,7 +336,7 @@ test('小六壬：只有时宫是主证，月宫和日宫必须标为计算轨�
 });
 
 test('小六壬：证据步骤依赖与限制归属应全部闭合', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(JUNE_FIFTH_CHEN_CHART);
   const evidence = data.evidenceAnalysis;
   assert.ok(evidence);
 
@@ -359,7 +363,7 @@ test('小六壬：证据步骤依赖与限制归属应全部闭合', () => {
 });
 
 test('小六壬：来源限制必须明确，提示词不得恢复无来源扩展', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(JUNE_FIFTH_CHEN_CHART);
   const evidenceText = data.evidenceAnalysis?.promptText ?? '';
   const limitationText = data.evidenceAnalysis?.limitations.join('\n') ?? '';
 
@@ -395,7 +399,7 @@ test('小六壬：非时间起课必须明确拒绝', () => {
 });
 
 test('小六壬：缺少计算参数时证据不得伪装成可复核', () => {
-  const data = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const data = structuredClone(JUNE_FIFTH_CHEN_CHART);
   const incomplete = { ...data, calculation: undefined } as unknown as Parameters<
     typeof analyzeXiaoliurenEvidence
   >[0];
@@ -414,7 +418,7 @@ test('小六壬：缺少计算参数时证据不得伪装成可复核', () => {
 });
 
 test('小六壬旧盘的历法说明与起课方式必须和当前采用口径一致', () => {
-  const source = generateXiaoliuren({ customDate: new Date('2025-06-29T08:00:00+08:00') });
+  const source = structuredClone(JUNE_FIFTH_CHEN_CHART);
   const wrongBoundary = structuredClone(source);
   wrongBoundary.calculation.dayBoundary = '子初换日' as typeof source.calculation.dayBoundary;
   assert.throws(() => analyzeXiaoliurenEvidence(wrongBoundary), /顺数或占得宫与盘面不一致/u);

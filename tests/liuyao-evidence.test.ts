@@ -901,6 +901,25 @@ test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该�
     () => analyzeLiuyaoEvidence(missingParticipation),
     /三合与原始爻值、纳甲及月日支不一致/u,
   );
+
+  const completeSnapshot = structuredClone(source);
+  const prompt = formatEnhancedDivinationInfo('liuyao', source);
+  source.sanheWithDay!.members[0] = '子';
+  assert.deepEqual(source.sanheWithDay!.members, ['子', '午', '戌']);
+  assert.deepEqual(voidClash.sanheWithMonth!.members, ['寅', '午', '戌']);
+  assert.throws(() => analyzeLiuyaoEvidence(source), /三合与原始爻值、纳甲及月日支不一致/u);
+  voidClash.sanheWithMonth!.members[2] = '辰';
+  assert.deepEqual(voidClash.sanheWithMonth!.members, ['寅', '午', '辰']);
+  assert.throws(() => analyzeLiuyaoEvidence(voidClash), /三合与原始爻值、纳甲及月日支不一致/u);
+  const fresh = generateLiuyao(new Date('2025-01-01T00:00:00+08:00'), {
+    method: 'manual',
+    yaos: [7, 6, 7, 7, 7, 6],
+  });
+  assert.deepEqual(fresh.sanheWithDay?.members, ['寅', '午', '戌']);
+  assert.equal(fresh.originalName, '泽火革');
+  assert.equal(fresh.changedName, '乾为天');
+  assert.deepEqual(fresh, completeSnapshot);
+  assert.equal(formatEnhancedDivinationInfo('liuyao', fresh), prompt);
 });
 
 test('六爻三刑须由本卦纳甲支复算后才进入提示词', () => {

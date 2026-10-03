@@ -264,8 +264,9 @@ test('恢复缺牌网格按原牌位保留坐标和宫位，乱序完整盘保�
 
   const reordered = structuredClone(nine);
   [reordered.cards[0], reordered.cards[4]] = [reordered.cards[4], reordered.cards[0]];
-  assert.equal(analyzeLenormandEvidence(reordered).spreadCoverageFact.status, '牌位异常');
-  assert.deepEqual(analyzeLenormandEvidence(reordered).structuredLayoutFacts, []);
+  const reorderedEvidence = analyzeLenormandEvidence(reordered);
+  assert.equal(reorderedEvidence.spreadCoverageFact.status, '牌位异常');
+  assert.deepEqual(reorderedEvidence.structuredLayoutFacts, []);
 
   const duplicated = structuredClone(nine);
   duplicated.cards[0].position = '核心';

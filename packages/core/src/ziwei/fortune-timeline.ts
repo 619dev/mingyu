@@ -7,6 +7,7 @@ import {
   getDefaultHoroscopeContext,
   getZiweiFortuneBirthSolarDate,
   shiftLunarYear,
+  normalizeChartInput,
 } from './iztro/runtime-helpers';
 import {
   buildVerifiedDecadalTimelineOptions,
@@ -815,6 +816,8 @@ export async function buildZiweiFortuneTimelineFromAstrolabe(
     verifiedBatch?: VerifiedDecadalTimelineBatch;
   },
 ): Promise<ZiweiFortuneTimeline> {
+  input = normalizeChartInput(input);
+  decadalTimeline = decadalTimeline.map((period) => ({ ...period }));
   const defaultContext = getDefaultHoroscopeContext();
   const context = {
     dateStr: options.dateStr ?? defaultContext.dateStr,
@@ -864,6 +867,9 @@ export async function buildNormalZiweiFortuneBatchTimelineFromAstrolabe(
     verifiedTargetAge: number;
   },
 ): Promise<ZiweiFortuneTimeline> {
+  input = normalizeChartInput(input);
+  decadalTimeline = decadalTimeline.map((period) => ({ ...period }));
+  options = { ...options, batch: { ...options.batch } };
   return buildTimelineFromAstrolabe(astrolabe, input, decadalTimeline, options, {
     ...calculationContext,
   });
@@ -874,6 +880,14 @@ export async function buildZiweiFortuneTimeline(
   input: ChartInput,
   options: ZiweiFortuneRangeOptions,
 ): Promise<ZiweiFortuneTimeline> {
+  input = normalizeChartInput(input);
+  const defaultContext = getDefaultHoroscopeContext();
+  options = {
+    ...options,
+    dateStr: options.dateStr ?? defaultContext.dateStr,
+    hourIndex: options.hourIndex ?? defaultContext.hourIndex,
+    ...(options.batch ? { batch: { ...options.batch } } : {}),
+  };
   const astrolabe = await buildAstrolabeFromInput(input);
   const resolveHoroscope = createZiweiHoroscopeResolver(astrolabe, input);
   const decadalTimeline = await buildVerifiedDecadalTimelineOptions(

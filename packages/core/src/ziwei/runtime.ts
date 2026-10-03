@@ -118,6 +118,33 @@ function resolveHoroscopeContext(options: ZiweiRuntimeOptions): ZiweiHoroscopeCo
   return getDefaultHoroscopeContext(options.now);
 }
 
+/** 异步计算期间固定本次范围与时点，避免调用方后续编辑切换盘面身份。 */
+function copyRuntimeInput(input: ChartInput): ChartInput {
+  return {
+    ...normalizeChartInput(input),
+    ...(input.trueSolarEvidence
+      ? { trueSolarEvidence: structuredClone(input.trueSolarEvidence) }
+      : {}),
+  };
+}
+
+function copyRuntimeOptions(options: ZiweiRuntimeOptions): ZiweiRuntimeOptions {
+  return {
+    ...options,
+    ...(options.scopes ? { scopes: [...options.scopes] } : {}),
+    ...(options.horoscopeContext ? { horoscopeContext: { ...options.horoscopeContext } } : {}),
+    ...(options.now ? { now: new Date(options.now.getTime()) } : {}),
+    ...(options.fortuneRange
+      ? {
+          fortuneRange: {
+            ...options.fortuneRange,
+            ...(options.fortuneRange.batch ? { batch: { ...options.fortuneRange.batch } } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
 /** 将一个星盘和运限对象转换为指定范围的结构化资料。 */
 export function buildZiweiPayloadByScope(params: {
   astrolabe: IztroAstrolabe;
@@ -169,6 +196,9 @@ export async function calculateZiweiChart(
   input: ChartInput,
   options: ZiweiRuntimeOptions = {},
 ): Promise<ZiweiRuntime> {
+  input = copyRuntimeInput(input);
+  options = copyRuntimeOptions(options);
+  const horoscopeContext = resolveHoroscopeContext(options);
   if (options.independentBatch === 'scope') {
     if (options.fortuneRange) {
       throw new RangeError('紫微 scope 独立批次不能同时计算年龄年运限。');
@@ -193,7 +223,6 @@ export async function calculateZiweiChart(
   }
   const astrolabe = await buildAstrolabeFromInput(input);
   const resolveHoroscope = createZiweiHoroscopeResolver(astrolabe, input);
-  const horoscopeContext = resolveHoroscopeContext(options);
   const horoscope = await resolveHoroscope(horoscopeContext.dateStr, horoscopeContext.hourIndex);
   const fortuneContext = options.fortuneRange
     ? {
@@ -307,6 +336,9 @@ export async function calculateZiweiFactsForScopes(
   skipAnalysis?: boolean,
   options: Omit<ZiweiRuntimeOptions, 'scopes' | 'skipAnalysis'> = {},
 ): Promise<ZiweiRuntimeFacts> {
+  input = copyRuntimeInput(input);
+  options = copyRuntimeOptions(options);
+  const horoscopeContext = resolveHoroscopeContext(options);
   const fortuneRange = options.fortuneRange;
   if (
     options.independentBatch !== 'fortune' ||
@@ -327,7 +359,6 @@ export async function calculateZiweiFactsForScopes(
 
   const astrolabe = await buildAstrolabeFromInput(input);
   const resolveHoroscope = createZiweiHoroscopeResolver(astrolabe, input);
-  const horoscopeContext = resolveHoroscopeContext(options);
   assertValidHoroscopeInput(horoscopeContext.dateStr, horoscopeContext.hourIndex);
   const fortuneContext = {
     dateStr: fortuneRange.dateStr ?? horoscopeContext.dateStr,
@@ -431,6 +462,7 @@ export async function calculateZiweiDisplayPayload(params: {
   hourIndex: number;
   scope: ScopeType;
 }): Promise<AnalysisPayloadV1> {
+  params = { ...params, input: normalizeChartInput(params.input) };
   const astrolabe = await buildAstrolabeFromInput(params.input);
   const horoscope = await buildHoroscopeFromInput(
     astrolabe,

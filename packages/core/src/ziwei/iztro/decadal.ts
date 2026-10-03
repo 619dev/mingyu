@@ -7,6 +7,7 @@ import {
   buildHoroscopeFromInput,
   getZiweiFortuneBirthSolarDate,
   shiftLunarYear,
+  normalizeChartInput,
 } from './runtime-helpers';
 
 export type DecadalTimelineOption = {
@@ -58,6 +59,7 @@ export function createZiweiHoroscopeResolver(
   astrolabe: IztroAstrolabe,
   input: ChartInput,
 ): ZiweiHoroscopeResolver {
+  input = normalizeChartInput(input);
   const cache = new Map<string, Promise<IztroHoroscope>>();
   return (dateStr, hourIndex) => {
     const key = `${dateStr}#${hourIndex}`;
@@ -269,6 +271,7 @@ export async function buildVerifiedDecadalTimelineOptions(
   input: ChartInput,
   resolveHoroscope: ZiweiHoroscopeResolver = createZiweiHoroscopeResolver(astrolabe, input),
 ): Promise<DecadalTimelineOption[]> {
+  input = normalizeChartInput(input);
   const ranges = collectIztroDecadalRanges(astrolabe);
   const firstRange = ranges[0];
   if (!firstRange) {
@@ -359,6 +362,8 @@ export async function buildVerifiedDecadalTimelineBatchOptions(
   },
   resolveHoroscope: ZiweiHoroscopeResolver = createZiweiHoroscopeResolver(astrolabe, input),
 ): Promise<VerifiedDecadalTimelineBatch> {
+  input = normalizeChartInput(input);
+  options = { ...options, batch: { ...options.batch } };
   const ranges = collectIztroDecadalRanges(astrolabe);
   const firstRange = ranges[0];
   if (!firstRange) throw new Error('iztro 未返回可用的大限范围。');

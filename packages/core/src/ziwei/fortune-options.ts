@@ -5,6 +5,7 @@ import {
   buildAstrolabeFromInput,
   getDefaultHoroscopeContext,
   getZiweiFortuneBirthSolarDate,
+  normalizeChartInput,
 } from './iztro/runtime-helpers';
 import { createZiweiHoroscopeResolver } from './iztro/decadal';
 import { buildYearDate, buildZiweiFlowMonths, collectYearBoundaryDates } from './fortune-timeline';
@@ -89,6 +90,10 @@ export async function buildZiweiFortuneOptions(
   selectedDecadal: Pick<DecadalTimelineOption, 'startAge' | 'endAge'>,
   options: ZiweiFortuneOptionsBuildOptions = {},
 ): Promise<ZiweiFortuneOptions> {
+  input = normalizeChartInput(input);
+  selectedDecadal = { ...selectedDecadal };
+  options = { ...options };
+  const hourIndex = options.hourIndex ?? getDefaultHoroscopeContext().hourIndex;
   assertDecadal(selectedDecadal);
   const astrolabe = await buildAstrolabeFromInput(input);
   const birthSolarDate = formatSolarDay(
@@ -98,7 +103,6 @@ export async function buildZiweiFortuneOptions(
     throw new Error('紫微运限出生公历日期与当前命盘不一致。');
   }
   const fortuneBirthSolarDate = getZiweiFortuneBirthSolarDate(astrolabe, input);
-  const hourIndex = options.hourIndex ?? getDefaultHoroscopeContext().hourIndex;
   if (!Number.isInteger(hourIndex) || hourIndex < 0 || hourIndex > 12) {
     throw new Error('紫微运限时辰索引需在 0-12 之间。');
   }

@@ -345,7 +345,7 @@ function resolveEffectiveBirthYear(input: BaZhaiInput): {
         minute,
         second,
         ...(input.birthTimezone !== undefined ? { timezone: input.birthTimezone } : {}),
-        ...(input.birthTimeZoneId ? { timeZoneId: input.birthTimeZoneId } : {}),
+        ...(input.birthTimeZoneId !== undefined ? { timeZoneId: input.birthTimeZoneId } : {}),
       },
       { defaultTimezone: 8 },
     );

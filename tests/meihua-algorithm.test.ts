@@ -17,6 +17,7 @@ import {
 } from '../packages/core/src/divination/algorithms/meihua/helpers/methods.ts';
 import { MeihuaHelpers } from '../packages/core/src/divination/divination-helpers.ts';
 import { getDivinationTime } from '../packages/core/src/calendar/timeManager.ts';
+import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divination-enhanced.ts';
 
 const SAMPLE_DATE = new Date('2025-01-01T08:00:00+08:00');
 
@@ -111,6 +112,25 @@ test('梅花：主互变卦与六爻体用应按传统爻位计算', () => {
       { position: 6, yaoType: '阳', isChanging: false, tiYong: '体' },
     ],
   );
+
+  const snapshot = structuredClone(data);
+  const prompt = formatEnhancedDivinationInfo('meihua', data);
+  const main = findHexagramByTrigrams(3, 5);
+  const mainSnapshot = structuredClone(main);
+  main.name = '变造卦名';
+  main.yaoCi![1] = '变造查询爻辞';
+  data.mainHexagram.yaoCi![1] = '变造主卦爻辞';
+  data.interHexagram!.yaoCi![0] = '变造互卦爻辞';
+  data.changedHexagram!.yaoCi![0] = '变造变卦爻辞';
+  assert.equal(main.name, '变造卦名');
+  assert.equal(data.mainHexagram.yaoCi![1], '变造主卦爻辞');
+  assert.deepEqual(findHexagramByTrigrams(3, 5), mainSnapshot);
+  const fresh = generateMeihua(SAMPLE_DATE, { method: 'number', number: 123 });
+  assert.equal(fresh.originalName, '火风鼎');
+  assert.equal(fresh.changedName, '火山旅');
+  assert.equal(fresh.interName, '泽天夬');
+  assert.deepEqual(fresh, snapshot);
+  assert.equal(formatEnhancedDivinationInfo('meihua', fresh), prompt);
 });
 
 test('梅花：纯乾、纯坤主卦应按原文改取变卦互', () => {
