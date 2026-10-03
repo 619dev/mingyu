@@ -41,6 +41,32 @@ test('时辰索引工具应拒绝非法小时或分钟', () => {
   assert.equal(getShichenFromClock(3, 0)?.branch, '寅');
   assert.equal(getShichenByIndex(0)?.name, '早子时');
   assert.equal(getShichenByIndex(13), null);
+
+  const earlyZi = {
+    index: 0,
+    branch: '子',
+    name: '早子时',
+    range: '00:00-01:00',
+    hour: 0,
+    minute: 30,
+  };
+  const indexed = getShichenByIndex(0)!;
+  Object.assign(indexed, { index: 12, branch: '午', name: '本次备注', hour: 12, minute: 0 });
+  assert.deepEqual(getShichenByIndex(0), earlyZi);
+  assert.deepEqual(getShichenFromClock(0, 0), earlyZi);
+  assert.deepEqual(SHICHEN_PERIODS[0], earlyZi);
+
+  const lateZi = getShichenFromClock(23, 0)!;
+  lateZi.name = '另一次备注';
+  assert.deepEqual(getShichenByIndex(12), {
+    index: 12,
+    branch: '子',
+    name: '晚子时',
+    range: '23:00-24:00',
+    hour: 23,
+    minute: 30,
+  });
+  assert.equal(getShichenFromClock(24, 0)?.name, '晚子时');
 });
 
 test('月份天数工具应拒绝无效年月', () => {

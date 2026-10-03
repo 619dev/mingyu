@@ -578,6 +578,7 @@ test('择日不应把候选日干支五行简单命中喜忌作为限制或支�
   });
   const candidate = result.evidenceAnalysis?.candidates[0];
 
+  assert.equal(result.participants.length, 1);
   assert.ok(candidate);
   assert.deepEqual(candidate.participantConflicts, []);
   assert.ok(

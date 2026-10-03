@@ -114,29 +114,6 @@ test('黄历择日：候选先按状态、再按明确宜项数量和日期稳�
   }
 });
 
-test('黄历择日：参与人适配证据字段应完整生成', () => {
-  const result = generateAlmanacSelection({
-    topic: 'marriage',
-    startDate: '2025-06-01',
-    endDate: '2025-06-03',
-    participants: [
-      {
-        id: 'p1',
-        name: '测试甲',
-        gender: '男',
-        year: '1990',
-        month: '5',
-        day: '12',
-        timeIndex: '5',
-        dateType: 'solar',
-      },
-    ],
-  });
-
-  assert.equal(result.participants.length, 1);
-  assert.ok(result.days.every((day) => Array.isArray(day.participantRelationFacts)));
-});
-
 test('安葬和修造的原始忌项同时约束候选日与具体时辰', () => {
   for (const { topic, date, keyword, forbiddenHours } of [
     {

@@ -39,7 +39,7 @@ export function getShichenByIndex(index: number): ShichenPeriod | null {
   if (!Number.isInteger(index) || index < 0 || index >= SHICHEN_PERIODS.length) {
     return null;
   }
-  return SHICHEN_PERIODS[index];
+  return { ...SHICHEN_PERIODS[index] };
 }
 
 export function getTimeIndexFromClock(hour: number, minute = 0): number {

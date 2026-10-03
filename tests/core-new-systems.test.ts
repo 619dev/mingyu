@@ -252,14 +252,17 @@ test('bazhai: 完整出生日期应按立春边界调整命卦年份', () => {
 });
 
 test('tarot: 全部牌面资料齐全，大小阿卡纳正逆位保留实际牌面事实', () => {
+  const evidenceByName = new Map(
+    tarotCards.map((card) => [card.name, getCardEvidence(card.name)] as const),
+  );
   for (const card of tarotCards) {
-    const evidence = getCardEvidence(card.name);
+    const evidence = evidenceByName.get(card.name)!;
     assert.ok(evidence.keywords.length > 0, `${card.name}缺少关键词`);
     assert.ok(evidence.element, `${card.name}缺少元素`);
     assert.ok(evidence.archetype, `${card.name}缺少牌阶`);
   }
-  assert.deepEqual(getCardEvidence('魔术师').keywords, ['意志力', '创造', '技能']);
-  const knightEvidence = getCardEvidence('权杖骑士');
+  assert.deepEqual(evidenceByName.get('魔术师')!.keywords, ['意志力', '创造', '技能']);
+  const knightEvidence = evidenceByName.get('权杖骑士')!;
   assert.match(knightEvidence.element, /火/);
   assert.match(knightEvidence.archetype, /行动节奏/);
 

@@ -5,6 +5,7 @@ import {
   calculateTrueSolarTime,
   checkChinaDst,
   convertTrueSolarTime,
+  getShichenByIndex,
   parseLocalDateTime,
   resolveTrueSolarBirthTime,
 } from 'mingyu-core/calendar';
@@ -105,6 +106,23 @@ test('真太阳时公共入口应按瞬时星历计算并保持新旧入口一�
     );
     assert.match(step?.promptText ?? '', /太阳地心视赤经与格林尼治视恒星时/);
   }
+
+  const original = structuredClone(result);
+  Object.assign(getShichenByIndex(5)!, {
+    name: '本次备注',
+    branch: '子',
+    index: 0,
+    hour: 0,
+    minute: 30,
+  });
+  const repeated = convertTrueSolarTime({
+    localDateTime: '1990-05-15T10:30:20',
+    longitude: 116.4074,
+  });
+  assert.equal(repeated.shichen.name, '巳时');
+  assert.equal(repeated.shichen.index, 5);
+  assert.equal(repeated.shichen.branch, '巳');
+  assert.deepEqual(repeated, original);
 });
 
 test('真太阳时便捷入口应可选自动还原中国历史夏令时', () => {

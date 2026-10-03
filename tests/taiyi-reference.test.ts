@@ -93,6 +93,16 @@ test('太乙在线任务书合并实际条件，并按盘面重算而忽略旧�
   assert.doesNotMatch(text, /taiyi:|usedFor|complete:|step\.key|三门三门/);
   const legacy = formatTaiyiInfo({ ...result, tacticGuidance: '' });
   assert.doesNotMatch(legacy, /利主不利客|利客不利主/);
+  const expectedResult = structuredClone(result);
+  Reflect.set(result.model, 'name', '本次模型备注');
+  Reflect.set(result.model, 'precision', '本次精度备注');
+  result.model.supportedScopes.pop();
+  Reflect.set(result.model.sources[0], 'evidence', '本次依据备注');
+  assert.notDeepEqual(result.model, expectedResult.model);
+  const fresh = generateTaiyi({ year: 2004, scope: 'year' });
+  assert.deepEqual(fresh, expectedResult);
+  assert.equal(formatTaiyiInfo(fresh), text);
+
   const expectedLaunched = result.conditions.fiveGenerals.launched;
   result.conditions.fiveGenerals.launched = !expectedLaunched;
   result.judgments.push('旧盘缓存：此占必胜。');

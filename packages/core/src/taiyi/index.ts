@@ -858,7 +858,7 @@ export function generateTaiyi(input: TaiyiInput): TaiyiResult {
     sixteenGods,
     conditions,
     judgments,
-    model: TAIYI_MODEL_INFO,
+    model: structuredClone(TAIYI_MODEL_INFO),
     evidenceAnalysis,
     prompt,
   };
