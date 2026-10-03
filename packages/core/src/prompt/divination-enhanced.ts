@@ -1770,6 +1770,9 @@ export function formatHuangjiInfo(data: HuangjiJingshiResult) {
       : sixDay
         ? `起盘时间：${sixDay.civilTime.dateTime}（UTC${formatFixedTimezoneOffset(sixDay.civilTime.timezone)}）`
         : '',
+    dateTime?.civilTime.termReferenceDateTime
+      ? `节气与皇极年参照实际占时：${dateTime.civilTime.termReferenceDateTime}（${dateTime.civilTime.timezone}）`
+      : '',
     sixDay
       ? sixDay.model === '书绪言六日逐爻·显式历元'
         ? `六日逐爻历元：以经校定的${sixDay.anchor.dateTime}当地子半为起点，至目标当地日期已过${sixDay.calendar.actualElapsedDays}个完整公历日。`

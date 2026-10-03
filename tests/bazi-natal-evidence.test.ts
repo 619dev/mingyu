@@ -6,14 +6,37 @@ import { formatBaziForPrompt } from '../packages/core/src/bazi/baziAnalysisForma
 import { analyzeBaziNatalEvidence } from '../packages/core/src/bazi/natalEvidence.ts';
 import { buildBaziWarningEvidence } from '../packages/core/src/bazi/paipanWarnings.ts';
 
+const MAY_CHART_INPUT = {
+  year: 1990,
+  month: 5,
+  day: 15,
+  timeIndex: 1,
+  gender: 'male' as const,
+};
+const SEPTEMBER_CHART_INPUT = {
+  year: 1990,
+  month: 9,
+  day: 5,
+  timeIndex: 6,
+  gender: 'male' as const,
+  isLunar: false,
+};
+
+let mayChartBase: ReturnType<typeof baziCalculator.calculateBazi> | undefined;
+let septemberChartBase: ReturnType<typeof baziCalculator.calculateBazi> | undefined;
+
+function createMayChartFixture() {
+  mayChartBase ??= baziCalculator.calculateBazi(MAY_CHART_INPUT);
+  return structuredClone(mayChartBase);
+}
+
+function createSeptemberChartFixture() {
+  septemberChartBase ??= baziCalculator.calculateBazi(SEPTEMBER_CHART_INPUT);
+  return structuredClone(septemberChartBase);
+}
+
 test('八字本命证据应保留四柱事实及可追溯关联', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    gender: 'male',
-  });
+  const result = createMayChartFixture();
   const analysis = result.evidenceAnalysis;
 
   assert.ok(analysis);
@@ -52,13 +75,7 @@ test('八字本命证据应保留四柱事实及可追溯关联', () => {
 });
 
 test('节气边界资料不完整时本命证据不能标为完整', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    gender: 'male',
-  });
+  const result = createMayChartFixture();
   const warningEvidence = buildBaziWarningEvidence([
     '节气边界检查未完成：相邻三年节气资料全部查询失败，本次无法判断是否贴近交节边界，不能视为无预警。',
   ]);
@@ -75,14 +92,7 @@ test('节气边界资料不完整时本命证据不能标为完整', () => {
 });
 
 test('真实命盘增补五行喜忌待判时本命证据应保留资料缺口', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 9,
-    day: 5,
-    timeIndex: 6,
-    gender: 'male',
-    isLunar: false,
-  });
+  const result = createSeptemberChartFixture();
   assert.equal(result.analysis.usefulGod.incrementStatus, '待判');
 
   const analysis = analyzeBaziNatalEvidence(result);
@@ -99,14 +109,7 @@ test('真实命盘增补五行喜忌待判时本命证据应保留资料缺口',
 });
 
 test('增补五行喜忌仅部分判定时本命证据与提示词应保留资料缺口', () => {
-  const chart = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 9,
-    day: 5,
-    timeIndex: 6,
-    gender: 'male',
-    isLunar: false,
-  });
+  const chart = createSeptemberChartFixture();
   chart.analysis.usefulGod.incrementStatus = '部分判定';
   chart.analysis.usefulGod.favorableWuxing = ['木'];
   chart.analysis.usefulGod.primaryFavorableWuxing = '木';
@@ -150,13 +153,7 @@ test('八字本命提示词应保留用户选择的传统时辰且不混入工�
 });
 
 test('八字本命证据应拒绝与地支不对应的藏干资料', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    gender: 'male',
-  });
+  const result = createMayChartFixture();
   result.hiddenStems.year = ['癸'];
   result.hiddenTenGods.year = ['偏印'];
 
@@ -173,13 +170,7 @@ test('八字本命证据应拒绝与地支不对应的藏干资料', () => {
 });
 
 test('藏干十神与日主依据不一致时结构化事实不回传可疑值', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    gender: 'male',
-  });
+  const result = createMayChartFixture();
   result.hiddenTenGods.year[0] = '伪十神';
 
   const fact = analyzeBaziNatalEvidence(result).pillarFacts.find((item) => item.pillar === '年柱');
@@ -191,13 +182,7 @@ test('藏干十神与日主依据不一致时结构化事实不回传可疑值',
 });
 
 test('日主天干与日柱不一致时不把藏干十神视为已核实', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    gender: 'male',
-  });
+  const result = createMayChartFixture();
   result.dayMaster.gan = result.dayMaster.gan === '甲' ? '乙' : '甲';
 
   const fact = analyzeBaziNatalEvidence(result).pillarFacts.find((item) => item.pillar === '年柱');
@@ -208,13 +193,7 @@ test('日主天干与日柱不一致时不把藏干十神视为已核实', () =>
 });
 
 test('八字本命证据应标出缺失或错位的派生资料，且不把可疑值写入提示词', () => {
-  const result = baziCalculator.calculateBazi({
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    gender: 'male',
-  });
+  const result = createMayChartFixture();
   result.tenGods.year = '伪十神';
   result.nayin.year = '';
   result.pillarLifeStages.year = '伪十二运';

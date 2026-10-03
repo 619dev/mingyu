@@ -124,7 +124,8 @@ test('浏览器八字补算使用本地 Worker 并保留主体核验、取消和
 
 test('八字补算按原始钟表核主体，并按校正日期核盘面与时辰', async () => {
   const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
-  let altered: 'none' | 'birth-clock' | 'chart-date' | 'chart-time' = 'none';
+  let altered: 'none' | 'birth-clock' | 'chart-date' | 'chart-time' | 'identity-clock' = 'none';
+  let beforeReply: (() => void) | undefined;
   const canonicalResults = new Map<string, ReturnType<typeof calculateBaziReading>>();
   class LocalWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
@@ -144,6 +145,8 @@ test('八字补算按原始钟表核主体，并按校正日期核盘面与时�
           if (altered === 'birth-clock') result.result.birthClockTime!.day = 2;
           if (altered === 'chart-date') result.result.solarDate.day = 30;
           if (altered === 'chart-time') result.result.timeInfo.index = 0;
+          if (altered === 'identity-clock') result.result.calculationIdentity.birth.birthMinute = 6;
+          beforeReply?.();
           this.onmessage?.({ data: { id: message.id, type: 'result', result } } as MessageEvent);
         } catch (error) {
           this.onerror?.({ message: String(error) } as ErrorEvent);
@@ -294,6 +297,52 @@ test('八字补算按原始钟表核主体，并按校正日期核盘面与时�
         }),
       ),
       /bazi\.result\.timeInfo\.index/,
+    );
+
+    altered = 'none';
+    const minuteSubject = subjectFor('分钟钟表保留实际零时', {
+      gender: 'female',
+      year: 2024,
+      month: 6,
+      day: 1,
+      dateType: 'solar',
+      useTrueSolarTime: false,
+      birthHour: 0,
+      birthMinute: 5,
+      timeIndex: 6,
+      timezone: 8,
+    });
+    const minuteResource = await executeReadingAction(action, undefined, minuteSubject);
+    const minuteResult = minuteResource.structured as ReturnType<
+      typeof calculateBaziReading
+    >['result'];
+    assert.equal(minuteResource.usable, true);
+    assert.deepEqual(minuteResult.birthClockTime, {
+      year: 2024,
+      month: 6,
+      day: 1,
+      hour: 0,
+      minute: 5,
+      second: 0,
+    });
+    assert.equal(minuteResult.timeInfo.index, 0);
+    assert.equal(minuteResult.calculationIdentity.birth.birthMinute, 5);
+
+    altered = 'identity-clock';
+    await assert.rejects(
+      executeReadingAction(action, undefined, minuteSubject),
+      /bazi\.birthMinute/,
+    );
+    altered = 'none';
+    beforeReply = () => {
+      minuteSubject.lockedInputs.bazi.year = 2025;
+    };
+    const stableResource = await executeReadingAction(action, undefined, minuteSubject);
+    assert.equal(stableResource.usable, true);
+    assert.equal(minuteSubject.lockedInputs.bazi.year, 2025);
+    assert.equal(
+      (stableResource.structured?.calculationIdentity as { birth: { year: number } }).birth.year,
+      2024,
     );
   } finally {
     if (originalWorker) Object.defineProperty(globalThis, 'Worker', originalWorker);

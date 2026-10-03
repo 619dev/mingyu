@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateHuangjiJingshi } from '@core/huangji-jingshi';
 import { TimeManager } from '../packages/core/src/calendar/timeManager';
+import { formatHuangjiInfo } from '../packages/core/src/prompt/divination-enhanced';
+import { buildDivinationPrompt as buildCorePrompt } from '../packages/core/src/prompt/divination';
+import { buildDivinationPrompt as buildAppPrompt } from '../src/lib/divination/engine';
 
 test('皇极公共整秒节气边界应按实际毫秒切换并计算满24小时日序', () => {
   const fixtures = [
@@ -92,6 +95,22 @@ test('皇极真太阳时跨冬至按实际瞬时定节气和年，仍按校正�
   );
   assert.equal(result.input.year, 2025);
   assert.match(result.prompt, /节气与皇极年参照实际占时：2025-12-21 23:03:04/);
+  for (const prompt of [
+    formatHuangjiInfo(result),
+    buildCorePrompt({
+      method: 'huangji',
+      data: result,
+      question: '解读当前时点的时势。',
+      currentTime: new Date('2026-10-03T12:00:00+08:00'),
+    }),
+    buildAppPrompt('huangji', '解读当前时点的时势。', result, undefined, {
+      omitCurrentTime: true,
+    }),
+  ]) {
+    assert.ok(prompt.includes('起盘时间：2025-12-22 00:03:06（北京时间（UTC+8））'));
+    assert.equal(prompt.split('节气与皇极年参照实际占时：2025-12-21 23:03:04').length - 1, 1);
+    assert.ok(prompt.includes('目标年份：公元2025年'));
+  }
   assert.notEqual(calculateHuangjiJingshi({ date: corrected }).input.year, result.input.year);
 });
 

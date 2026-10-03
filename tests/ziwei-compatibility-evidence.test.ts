@@ -138,7 +138,7 @@ function assertEvidenceReferences(result: ReturnType<typeof analyzeZiweiCompatib
   );
 }
 
-test('紫微双盘应按地支映射双方关键宫位', () => {
+test('紫微双盘应按地支映射关键宫位并定位生年四化', () => {
   const result = analyzeZiweiCompatibility(createPayload(0, '禄'), createPayload(2, '忌'));
   const overlay = result.palaceOverlays.find(
     (item) => item.sourcePerson === 'person1' && item.sourcePalace === '命宫',
@@ -150,6 +150,16 @@ test('紫微双盘应按地支映射双方关键宫位', () => {
   assert.equal(overlay.targetPalace, '福德（身宫同宫）');
   assert.match(overlay.promptText, /同处子支轴位/);
   assertEvidenceReferences(result);
+  const placement = result.crossMutagenPlacements.find(
+    (item) => item.sourcePerson === 'person1' && item.star === '紫微',
+  );
+
+  assert.ok(placement);
+  assert.ok(placement.sourcePalaceKey && placement.targetPalaceKey);
+  assert.equal(placement.mutagen, '禄');
+  assert.equal(placement.sourcePalace, '命宫');
+  assert.equal(placement.targetPalace, '命宫');
+  assert.match(placement.promptText, /生年化禄/);
 });
 
 test('紫微双盘地支或宫位索引重复时不生成叠盘事实', () => {
@@ -173,20 +183,6 @@ test('双方输入流年盘时静态交叉证据不误称运限资料未提供',
   const timing = result.counterEvidenceFacts.find((item) => item.type === '静态应期边界');
   assert.match(timing?.promptText ?? '', /运限未作同层级交叉核对/);
   assert.doesNotMatch(timing?.promptText ?? '', /未提供双方同层级/);
-});
-
-test('紫微双盘应生成生年四化来源到对方落宫链路', () => {
-  const result = analyzeZiweiCompatibility(createPayload(0, '禄'), createPayload(2, '忌'));
-  const placement = result.crossMutagenPlacements.find(
-    (item) => item.sourcePerson === 'person1' && item.star === '紫微',
-  );
-
-  assert.ok(placement);
-  assert.ok(placement.sourcePalaceKey && placement.targetPalaceKey);
-  assert.equal(placement.mutagen, '禄');
-  assert.equal(placement.sourcePalace, '命宫');
-  assert.equal(placement.targetPalace, '命宫');
-  assert.match(placement.promptText, /生年化禄/);
 });
 
 test('紫微双盘真实星盘应以 iztro 原生星曜对象定位跨盘四化', async () => {

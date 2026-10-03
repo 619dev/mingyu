@@ -657,7 +657,7 @@ function assertIdentityBirth(
     for (const field of ['birthHour', 'birthMinute', 'birthSecond', 'birthLongitude']) {
       assertStructuredField(`${method}.${field}`, locked[field], birth[field]);
     }
-  } else if (locked.birthSecond !== undefined) {
+  } else if (locked.birthHour !== undefined && locked.birthMinute !== undefined) {
     for (const field of ['birthHour', 'birthMinute', 'birthSecond']) {
       assertStructuredField(`${method}.${field}`, locked[field], birth[field]);
     }
@@ -2135,6 +2135,8 @@ export async function executeReadingAction(
   subject?: ReadingSubjectSnapshot,
 ): Promise<ReadingResource> {
   if (action.kind === 'classic') return lookupReadingClassics(action.method, action.query);
+  action = structuredClone(action);
+  if (subject) subject = structuredClone(subject);
   const path = Object.hasOwn(ROUTES, action.method) ? ROUTES[action.method] : undefined;
   if (!path) throw new Error('此方法暂不支持自动补算。');
   let locked: Record<string, unknown> | undefined;
