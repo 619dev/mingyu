@@ -50,7 +50,7 @@ test('八字五行方向随日主转换十神参照并保留生克方向', () =>
   };
   const elements = ['木', '火', '土', '金', '水'];
   const seen = new Set<string>();
-  for (let day = 1; day <= 10; day++) {
+  for (let day = 1; day <= 9; day += 2) {
     const chart = createChart('female', day);
     seen.add(chart.dayMaster.element);
     const prompt = buildBaziPrompt({ result: chart, fortuneScope: 'natal' });

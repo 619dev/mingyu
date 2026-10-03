@@ -1711,7 +1711,7 @@ function formatNamingCandidate(
       ? `辈分字${evidence.generationCharacter}位于${evidence.generationPosition === 'second' ? '名字末字' : '名字首字'}`
       : '',
     evidence.favorableElementCharacters.length
-      ? `出生取用相应字${evidence.favorableElementCharacters.join('、')}`
+      ? `选字五行相应字${evidence.favorableElementCharacters.join('、')}`
       : '',
     evidence.conditionalFavorableElementCharacters.length
       ? `条件取用相应字${evidence.conditionalFavorableElementCharacters.join('、')}，需按出生时段比较`
@@ -1720,7 +1720,6 @@ function formatNamingCandidate(
   return [
     `${index + 1}. ${candidate.fullName}`,
     `名字用字：${givenCharacters.map((item) => formatNamingCharacterBrief(item)).join('；')}`,
-    `五格取数：${result.gridDerivations.map((item) => `${item.name}${item.value}`).join('、')}`,
     `五格算式：${result.gridDerivations.map((item) => `${item.name}${item.expression}`).join('；')}`,
     `三才：${result.sancai.combo}；${result.sancaiEvidence.relations.map((item) => item.explanation).join('；')}`,
     ...(conditions.length ? [`用字条件：${conditions.join('；')}`] : []),
@@ -1807,8 +1806,12 @@ export function buildChineseNamingPrompt(input: {
         : []),
       `取向：${input.gender ?? '通用'}`,
       `偏好字：${preferred.join('、') || '自然、易读、易写'}`,
-      `回避用字：${forbiddenVariants.join('、') || '无'}`,
-      `辈分字：${namingCharacters(input.generationCharacter).join('') || '无'}${input.generationCharacter ? `（${input.generationPosition === 'second' ? '名字末字' : '名字首字'}）` : ''}`,
+      ...(forbiddenVariants.length ? [`回避用字：${forbiddenVariants.join('、')}`] : []),
+      ...(input.generationCharacter?.trim()
+        ? [
+            `辈分字：${namingCharacters(input.generationCharacter).join('')}（${input.generationPosition === 'second' ? '名字末字' : '名字首字'}）`,
+          ]
+        : []),
       `适配字池：${namingCharacterDetails.map(formatNamingCharacter).join('；') || '结合出生资料与用字条件补充'}`,
       `候选姓名：\n${input.candidates.map(formatNamingCandidate).join('\n\n')}`,
     ].join('\n'),

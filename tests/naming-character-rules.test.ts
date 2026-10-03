@@ -22,6 +22,12 @@ test('姓名提示词只要求本次资料支持的分析与方案', () => {
   assert.doesNotMatch(namingPrompt, /【出生资料】|出生适配|不少于八个|首选名及两个备选名/);
   assert.match(namingPrompt, /已列出的三才五格依据/);
   assert.match(namingPrompt, /至多两个备选名/);
+  assert.doesNotMatch(namingPrompt, /^回避用字：|^辈分字：/m);
+  assert.doesNotMatch(namingPrompt, /五格取数：/);
+  assert.match(
+    namingPrompt,
+    /五格算式：天格7 \+ 1 = 8；人格7 \+ 6 = 13；地格6 \+ 14 = 20；外格1 \+ 14 = 15；总格7 \+ 6 \+ 14 = 27/,
+  );
 });
 
 test('偏好字保留原字形且忌用字按繁简对应优先处理', () => {
@@ -73,7 +79,7 @@ test('给AI的用字条件与繁简回避规则一致', () => {
   assert.doesNotMatch(poolLine, /乐（/);
 });
 
-test('候选姓名明确返回实际命中的偏好字、辈分字与出生取用字', () => {
+test('候选姓名明确返回实际命中的偏好字、辈分字与选字五行字', () => {
   const candidates = generateChineseNames({
     surname: '李',
     preferredCharacters: '清宁',
@@ -103,6 +109,10 @@ test('候选姓名明确返回实际命中的偏好字、辈分字与出生取�
   });
   assert.match(prompt, /用字条件：.*辈分字宁位于名字末字/);
   assert.match(prompt, /使用偏好字/);
+  assert.ok(candidates.every((candidate) => candidate.analysis.birthContext === null));
+  assert.match(prompt, /用字条件：使用偏好字清、宁；辈分字宁位于名字末字；选字五行相应字清/);
+  assert.match(prompt, /辈分字：宁（名字末字）/);
+  assert.doesNotMatch(prompt, /出生取用相应字|【出生资料】|^回避用字：/m);
 });
 
 test('起名提示词保留可复算依据并避免用数理等级替代选字判断', () => {
@@ -126,7 +136,11 @@ test('起名提示词保留可复算依据并避免用数理等级替代选字�
       limit: 24,
     }),
   });
-  assert.match(prompt, /五格取数：天格\d+、人格\d+、地格\d+、外格\d+、总格\d+/);
+  assert.doesNotMatch(prompt, /五格取数：/);
+  assert.match(
+    prompt,
+    /五格算式：天格7 \+ 1 = 8；人格7 \+ 12 = 19；地格12 \+ 14 = 26；外格1 \+ 14 = 15；总格7 \+ 12 \+ 14 = 33/,
+  );
   assert.match(prompt, /五格算式：天格\d+ \+ \d+ = \d+/);
   assert.match(prompt, /三才：[金木水火土]{3}；/);
   assert.doesNotMatch(prompt, /大吉|半吉|大凶|吉带凶|凶带吉/);
