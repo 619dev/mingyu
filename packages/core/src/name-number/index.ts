@@ -79,7 +79,7 @@ export type NamingBirthInput = BaziChartInputDraft & {
 function hasNamingClockPart(
   value: BaziChartInputDraft['birthHour'] | BaziChartInputDraft['birthMinute'],
 ) {
-  return value !== undefined && value !== '';
+  return value !== undefined && String(value).trim() !== '';
 }
 
 function hasNamingClock(input: NamingBirthInput) {
@@ -87,12 +87,11 @@ function hasNamingClock(input: NamingBirthInput) {
 }
 
 function formatNamingClock(input: NamingBirthInput, includeSeconds: boolean) {
-  if (input.birthHour === undefined || input.birthMinute === undefined) return null;
+  if (!hasNamingClock(input)) return null;
   const hour = String(Number(input.birthHour)).padStart(2, '0');
   const minute = String(Number(input.birthMinute)).padStart(2, '0');
   if (!includeSeconds) return `${hour}:${minute}`;
-  const second =
-    input.birthSecond === undefined || input.birthSecond === '' ? 0 : Number(input.birthSecond);
+  const second = hasNamingClockPart(input.birthSecond) ? Number(input.birthSecond) : 0;
   return `${hour}:${minute}:${String(second).padStart(2, '0')}`;
 }
 
@@ -113,7 +112,7 @@ function correctedChinaDstClock(
     applyChinaDst: input.applyChinaDst,
   });
   if (!resolved.usedChinaDstCorrection) return null;
-  const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
+  const hasInputSecond = hasNamingClockPart(input.birthSecond);
   const corrected = resolved.effectiveTime;
   return `${String(corrected.hour).padStart(2, '0')}:${String(corrected.minute).padStart(2, '0')}${hasInputSecond ? `:${String(corrected.second).padStart(2, '0')}` : ''}`;
 }
@@ -143,7 +142,7 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
       ? resolvedPlace
       : null;
   const hasStandardClock = input.useTrueSolarTime !== true && hasNamingClock(input);
-  const hasInputSecond = input.birthSecond !== undefined && input.birthSecond !== '';
+  const hasInputSecond = hasNamingClockPart(input.birthSecond);
   const inputClock = formatNamingClock(input, hasInputSecond);
   const standardCalendarClock = hasStandardClock
     ? resolveBirthCalendarClockTime({
@@ -178,7 +177,7 @@ function calculateNamingPointBirthContext(input: NamingBirthInput) {
       ? `标准北京时间（精确到${hasInputSecond ? '秒' : '分'}）`
       : `当地钟表时间（精确到${hasInputSecond ? '秒' : '分'}）`;
   const calculatedClock = chart.timing
-    ? `${String(chart.timing.correctedTime.hour).padStart(2, '0')}:${String(chart.timing.correctedTime.minute).padStart(2, '0')}${input.birthSecond !== undefined && input.birthSecond !== '' ? `:${String(chart.timing.correctedTime.second).padStart(2, '0')}` : ''}`
+    ? `${String(chart.timing.correctedTime.hour).padStart(2, '0')}:${String(chart.timing.correctedTime.minute).padStart(2, '0')}${hasInputSecond ? `:${String(chart.timing.correctedTime.second).padStart(2, '0')}` : ''}`
     : null;
   const strength = chart.analysis.dayMasterStrength;
   const favorableElements = (chart.analysis.usefulGod.favorableWuxing ?? []).filter(

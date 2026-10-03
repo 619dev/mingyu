@@ -1883,7 +1883,14 @@ export function resolveLiuyaoEvidence(
       support,
       constraints,
       promptText: matched.length
-        ? `${spec.label}由${candidateSourceStatus}提出：${spec.reason}；匹配${matched.map(formatYao).join('、')}；支持${support.join('、') || '未见额外增强'}；限制${constraints.join('、') || '未见明显空破墓退'}`
+        ? [
+            `${spec.label}由${candidateSourceStatus}提出：${spec.reason}`,
+            `匹配${matched.map(formatYao).join('、')}`,
+            support.length ? `支持${support.join('、')}` : '',
+            constraints.length ? `限制${constraints.join('、')}` : '',
+          ]
+            .filter(Boolean)
+            .join('；')
         : `${spec.label}由${candidateSourceStatus}提出：${spec.reason}；${constraints.join('、')}`,
       sources: ['当前问题取用范围', '本卦与伏神六亲、爻位及五行逐项匹配'],
       limitation: CANDIDATE_FACT_LIMITATION,

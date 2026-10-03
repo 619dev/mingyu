@@ -169,12 +169,6 @@ test('姓名分析与取名候选区分非汉字和字典未收录汉字', () =>
   assert.throws(() => generateChineseNames({ surname: '𠀀' }), /姓氏用字暂未收录在字典中：𠀀/);
 });
 
-test('取名候选数拒绝非安全整数并给出准确错误', () => {
-  for (const limit of [1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1]) {
-    assert.throws(() => generateChineseNames({ surname: '李', limit }), /候选数量必须为安全整数/);
-  }
-});
-
 test('汉字选字同时支持康熙笔画与五行过滤', () => {
   const result = selectChineseCharacters({ strokes: 8, wuxing: '木', limit: 20 });
   assert.ok(result.length > 0);
@@ -384,10 +378,14 @@ test('诸葛神数384签循环边界可由实际康熙笔画复算', () => {
 
 test('起名与选字数量必须为安全整数，避免NaN绕过候选上限', () => {
   for (const limit of [NaN, Infinity, -Infinity, 1.5]) {
-    assert.throws(() => generateChineseNames({ surname: '李', limit }), /安全整数/);
+    assert.throws(() => generateChineseNames({ surname: '李', limit }), /候选数量必须为安全整数/);
     assert.throws(() => selectNamingCharacters({ limit }), /安全整数/);
     assert.throws(() => selectChineseCharacters({ limit }), /安全整数/);
   }
+  assert.throws(
+    () => generateChineseNames({ surname: '李', limit: Number.MAX_SAFE_INTEGER + 1 }),
+    /候选数量必须为安全整数/,
+  );
   assert.throws(() => selectNamingCharacters({ gender: '未知' as never }), /性别取值无效/);
   assert.throws(
     () => generateChineseNames({ surname: '李', givenNameLength: 3 as never }),

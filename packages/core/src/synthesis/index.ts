@@ -822,14 +822,31 @@ export async function calculateBaziZiweiCombinedReading(
     signal: options.signal,
   });
   if (bundle.range) {
+    const formatBirthClock = (timestamp: number) =>
+      toChinaCivilDate(new Date(timestamp)).toISOString().slice(0, 19).replace('T', ' ');
+    const source = bundle.range.source;
+    const rangeIdentity = [
+      '【出生范围】',
+      `公历标准北京时间：[${formatBirthClock(source.startTimestamp)}, ${formatBirthClock(source.endTimestamp)})`,
+      `性别：${bundle.profile.gender === 'male' ? '男' : '女'}`,
+    ].join('\n');
     return {
       bundle,
       range: {
-        samples: bundle.range.samples.map(({ index, timestamp, bundle: point }) => ({
-          index,
-          timestamp,
-          ...synthesizePoint(point, promptOptions),
-        })),
+        samples: bundle.range.samples.map(({ index, timestamp, bundle: point }) => {
+          const reading = synthesizePoint(point, promptOptions);
+          return {
+            index,
+            timestamp,
+            synthesis: reading.synthesis,
+            promptText: [
+              rangeIdentity,
+              `本份盘面对应候选出生时刻：${formatBirthClock(timestamp)}`,
+              '',
+              reading.promptText,
+            ].join('\n'),
+          };
+        }),
       },
     };
   }

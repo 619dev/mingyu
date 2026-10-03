@@ -423,7 +423,9 @@ export function buildBaziCompatibilityPromptDocument(
   const evidence = [
     `日主关系：${relation.dayMasterRelation.promptText}`,
     `四柱关系：${relation.crossPillarRelations.map((item) => item.promptText).join('；') || '未见已列关系'}`,
-    `跨盘组合：${relation.crossBranchCombinations.map((item) => item.promptText).join('；') || '未见已列组合'}`,
+    relation.crossBranchCombinations.length
+      ? `跨盘组合：${relation.crossBranchCombinations.map((item) => item.promptText).join('；')}`
+      : '',
     `双向十神：${relation.tenGodMappings.map((item) => item.promptText).join('；') || '未记录'}`,
     `喜忌覆盖：${
       relation.usefulGodCoverage
@@ -431,7 +433,9 @@ export function buildBaziCompatibilityPromptDocument(
         .join('；') || '资料不足'
     }`,
     relation.summaryFact.promptText,
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
   const selectedSchools = normalizeBaziPromptSchools(options.schools);
   const schoolText = formatPromptSchoolGuidance('bazi', selectedSchools);
   const patternConditions1 = formatBaziPatternConditions(options.result1);

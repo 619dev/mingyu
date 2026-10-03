@@ -18,6 +18,13 @@ const fixedShenChart = generateJinkoujue({
   customDate: SAMPLE_DATE,
 });
 
+const fixedDefaultChart = generateJinkoujue({ customDate: SAMPLE_DATE });
+const fixedNumberOneChart = generateJinkoujue({
+  method: 'number',
+  number: 1,
+  customDate: SAMPLE_DATE,
+});
+
 function createShenChart() {
   return structuredClone(fixedShenChart);
 }
@@ -463,10 +470,7 @@ test('金口诀：指定地分应直接采用所选地支并保留起课时间�
 
 test('金口诀：闲置起课字段不改变实际采用输入的结果身份', () => {
   const cases = [
-    [
-      generateJinkoujue({ customDate: SAMPLE_DATE }),
-      generateJinkoujue({ branch: '子', number: 1, customDate: SAMPLE_DATE }),
-    ],
+    [fixedDefaultChart, generateJinkoujue({ branch: '子', number: 1, customDate: SAMPLE_DATE })],
     [
       createShenChart(),
       generateJinkoujue({
@@ -561,7 +565,7 @@ test('金口诀：丙寅日亥地旬空只记地分，不把遁出的人元干�
 });
 
 test('金口诀：数字起课 1-12 映射子至亥，大于 12 按 12 归一', () => {
-  const zi = generateJinkoujue({ method: 'number', number: 1, customDate: SAMPLE_DATE });
+  const zi = fixedNumberOneChart;
   const hai = generateJinkoujue({ method: 'number', number: 12, customDate: SAMPLE_DATE });
   const wrap = generateJinkoujue({ method: 'number', number: 13, customDate: SAMPLE_DATE });
 
@@ -583,7 +587,7 @@ test('金口诀：数字起课拒绝超出安全整数的直接输入', () => {
 });
 
 test('金口诀：五子元遁应按日干起遁干', () => {
-  const data = generateJinkoujue({ method: 'number', number: 1, customDate: SAMPLE_DATE });
+  const data = fixedNumberOneChart;
   const dayStem = data.ganzhi.day.charAt(0);
   const startMap: Record<string, string> = {
     甲: '甲',
@@ -786,7 +790,7 @@ test('金口诀四木实盘应按四位计数，不折作三木或扩成严重�
 });
 
 test('金口诀双组比合保留各自位置，无同气组合时省略比合摘要', () => {
-  const data = generateJinkoujue({ customDate: SAMPLE_DATE });
+  const data = fixedDefaultChart;
   const p = data.positions;
   assert.equal(
     evaluateJinkoujueBihePoems({

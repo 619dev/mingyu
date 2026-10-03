@@ -513,7 +513,16 @@ function formatLiuyaoInfo(
     (item) => item.key === evidenceAnalysis.selectionFact.selectedCandidateKey,
   );
   const usefulGodMainLine = selectedUsefulGod
-    ? `用神：${selectedUsefulGod.relative || selectedUsefulGod.label}；盘面${selectedUsefulGod.references.map((item) => `${item.source === '伏神' ? '伏神' : ''}第${item.position}爻${item.sixRelative}${item.branch}${item.wuxing}`).join('、') || '未见'}；支持${selectedUsefulGod.support.join('、') || '未见明确支持'}；限制${selectedUsefulGod.constraints.join('、') || '未见明显空破墓退'}`
+    ? [
+        `用神：${selectedUsefulGod.relative || selectedUsefulGod.label}`,
+        `盘面${selectedUsefulGod.references.map((item) => `${item.source === '伏神' ? '伏神' : ''}第${item.position}爻${item.sixRelative}${item.branch}${item.wuxing}`).join('、') || '未见'}`,
+        selectedUsefulGod.support.length ? `支持${selectedUsefulGod.support.join('、')}` : '',
+        selectedUsefulGod.constraints.length
+          ? `限制${selectedUsefulGod.constraints.join('、')}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('；')
     : `用神主线：${evidenceAnalysis.selectionFact.promptText}`;
   const godChain = evidenceAnalysis.godChain.filter((item) => item.role !== '用神');
   const godChainText =

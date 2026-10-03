@@ -29,6 +29,7 @@ test('姓名出生事实区分地点代表坐标并列出实际校正经度和�
       birthPlace: district.displayName,
       birthLongitude: district.longitude,
       timezone: 8,
+      birthSecond: ' \t',
     },
   });
   const districtPrompt = buildChineseNameAnalysisPrompt({ analysis: districtAnalysis });
@@ -38,6 +39,8 @@ test('姓名出生事实区分地点代表坐标并列出实际校正经度和�
     'administrative-center',
   );
   assert.equal(districtAnalysis.birthContext?.timeBasis.timezone, 8);
+  assert.equal(districtAnalysis.birthContext?.timeBasis.inputTime, '09:00');
+  assert.match(districtAnalysis.birthContext!.timeBasis.calculatedTime, /^\d{2}:\d{2}$/);
   assert.match(
     districtPrompt,
     /地点记录：北京市 东城区；真太阳时校正经度：116\.416334°（区县行政中心代表点）；时区：UTC\+08:00/,
@@ -108,6 +111,7 @@ test('姓名出生钟表与中国历史夏令时别名的排盘时间一致', ()
   for (const options of [
     { timezone: 8, applyChinaDst: true },
     { timeZoneId: 'PRC', birthSecond: undefined },
+    { timeZoneId: 'PRC', birthSecond: ' \t' },
     { timeZoneId: 'Asia/Tokyo' },
     { timezone: 8 },
   ]) {
@@ -130,6 +134,87 @@ test('姓名出生钟表与中国历史夏令时别名的排盘时间一致', ()
           : '当地钟表时间（精确到秒）',
     );
   }
+});
+
+test('姓名出生空白时分与省略一致，空白秒不冒领显式零秒精度', () => {
+  const birth = {
+    gender: 'male' as const,
+    year: 1990,
+    month: 6,
+    day: 15,
+    timeIndex: 6,
+    dateType: 'solar' as const,
+  };
+  const omitted = analyzeChineseName({ fullName: '李明', birth });
+  const blank = analyzeChineseName({
+    fullName: '李明',
+    birth: { ...birth, birthHour: ' \t', birthMinute: '\n', birthSecond: ' ' },
+  });
+  assert.deepEqual(blank.birthContext, omitted.birthContext);
+  assert.equal(blank.birthContext?.timeBasis.inputTime, '午时（11:00-13:00）');
+  assert.equal(blank.birthContext?.timeBasis.calculatedTime, '午时（11:00-13:00）');
+  assert.equal(blank.birthContext?.timeBasis.mode, '时辰');
+  const analysisPrompt = buildChineseNameAnalysisPrompt({ analysis: blank });
+  assert.match(analysisPrompt, /出生记录：公历1990年6月15日 午时（11:00-13:00）/);
+  assert.doesNotMatch(analysisPrompt, /00:00|精确到分|精确到秒/);
+
+  const clock = { ...birth, birthHour: 12, birthMinute: 30 };
+  const minute = analyzeChineseName({ fullName: '李明', birth: clock });
+  const blankSecond = analyzeChineseName({
+    fullName: '李明',
+    birth: { ...clock, birthSecond: ' \t' },
+  });
+  assert.deepEqual(blankSecond.birthContext, minute.birthContext);
+  assert.equal(blankSecond.birthContext?.timeBasis.inputTime, '12:30');
+  assert.equal(blankSecond.birthContext?.timeBasis.calculatedTime, '12:30');
+  assert.equal(blankSecond.birthContext?.timeBasis.mode, '标准北京时间（精确到分）');
+  const zeroSecond = analyzeChineseName({
+    fullName: '李明',
+    birth: { ...clock, birthSecond: 0 },
+  });
+  assert.equal(zeroSecond.birthContext?.timeBasis.inputTime, '12:30:00');
+  assert.equal(zeroSecond.birthContext?.timeBasis.calculatedTime, '12:30:00');
+  assert.equal(zeroSecond.birthContext?.timeBasis.mode, '标准北京时间（精确到秒）');
+  assert.deepEqual(zeroSecond.birthContext?.pillars, minute.birthContext?.pillars);
+  const midnight = analyzeChineseName({
+    fullName: '李明',
+    birth: { ...birth, birthHour: 0, birthMinute: '0', birthSecond: '0' },
+  });
+  assert.equal(midnight.birthContext?.timeBasis.inputTime, '00:00:00');
+  assert.equal(midnight.birthContext?.timeBasis.calculatedTime, '00:00:00');
+  assert.equal(midnight.birthContext?.timeBasis.mode, '标准北京时间（精确到秒）');
+
+  const unknown = analyzeChineseName({
+    fullName: '李明',
+    birth: {
+      ...birth,
+      isThreePillars: true,
+      timeIndex: '',
+      birthHour: ' ',
+      birthMinute: '\t',
+      birthSecond: ' ',
+    },
+  });
+  assert.equal(unknown.birthContext?.timeBasis.inputTime, '时辰未知（待补时）');
+  assert.equal(unknown.birthContext?.timeBasis.calculatedTime, '时辰未知（待补时）');
+  assert.equal(unknown.birthContext?.timeBasis.mode, '待补时');
+  assert.match(
+    buildChineseNameAnalysisPrompt({ analysis: unknown }),
+    /出生记录：公历1990年6月15日 时辰未知（待补时）/,
+  );
+
+  const candidates = generateChineseNames({
+    surname: '李',
+    givenNameLength: 1,
+    generationCharacter: '明',
+    limit: 1,
+    birth: { ...birth, birthHour: ' ', birthMinute: '\t' },
+  });
+  assert.deepEqual(candidates[0].analysis.birthContext, omitted.birthContext);
+  assert.match(
+    buildChineseNamingPrompt({ surname: '李', candidates }),
+    /排盘公历：1990-06-15 午时（11:00-13:00）/,
+  );
 });
 
 test('姓名生成任务书保留夏令时别名跨日的原记录与标准排盘日期', () => {

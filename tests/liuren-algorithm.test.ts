@@ -55,8 +55,11 @@ const FUYIN_PLATE = DIZHI.map((under) => ({
   god: '贵人',
 })) satisfies LiurenPlateItem[];
 
+const liuren20260410At0826 = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
+const liuren20260101At1200 = generateLiuren(new Date('2026-01-01T12:00:00+08:00'));
+
 test('大六壬应输出分层取用与应期证据', () => {
-  const result = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
+  const result = liuren20260410At0826;
 
   assert.deepEqual(
     result.focusEvidence?.map((item) => item.level),
@@ -717,7 +720,7 @@ test('大六壬十干寄宫与四课上下递取应符合传统口径', () => {
 });
 
 test('大六壬传统样例会按月将加占时生成天盘、四课与三传', () => {
-  const result = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
+  const result = liuren20260410At0826;
 
   assert.equal(result.ganzhi.day, '甲寅');
   assert.equal(result.monthLeader, '戌');
@@ -995,7 +998,7 @@ test('大六壬公元 1 年大寒前沿用上一冬至的丑将', () => {
 });
 
 test('大六壬逐月神煞应按月建起，且与日支支马分层保存', () => {
-  const result = generateLiuren(new Date('2026-01-01T12:00:00+08:00'));
+  const result = liuren20260101At1200;
   const facts = new Map(result.shenShaFacts?.map((item) => [item.name, item]));
 
   assert.equal(result.ganzhi.month.charAt(1), '子');
@@ -1029,7 +1032,7 @@ test('大六壬逐月神煞应按月建起，且与日支支马分层保存', ()
 });
 
 test('大六壬罗网应按日支前一辰与对冲定位，不误用流年冒充本命', () => {
-  const haiDay = generateLiuren(new Date('2026-01-01T12:00:00+08:00'));
+  const haiDay = liuren20260101At1200;
   const ziDay = generateLiuren(new Date('2026-01-02T12:00:00+08:00'));
 
   assert.equal(haiDay.ganzhi.day, '乙亥');
@@ -1043,7 +1046,7 @@ test('大六壬罗网应按日支前一辰与对冲定位，不误用流年冒�
 });
 
 test('大六壬课注传注只描述盘面关系，不提前生成现实结论或建议', () => {
-  const result = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
+  const result = liuren20260410At0826;
   const notes = [
     ...result.fourLessons.map((item) => item.note),
     ...result.threeTransmissions.map((item) => item.note),
@@ -1055,7 +1058,7 @@ test('大六壬课注传注只描述盘面关系，不提前生成现实结论�
 });
 
 test('大六壬天将应按贵人所临地盘定顺逆，不是简单昼顺夜逆', () => {
-  const result = generateLiuren(new Date('2026-04-10T08:26:00+08:00'));
+  const result = liuren20260410At0826;
 
   assert.equal(result.noblemanBranch, '丑');
   assert.equal(getGodByUpper(result.heavenlyPlate, '丑'), '贵人');

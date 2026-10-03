@@ -92,7 +92,20 @@ test('合参范围必须固定紫微上下文，并逐秒使用真实 synthesis'
     if (point.range) throw new Error('单点合参档案不应返回范围结果。');
 
     assert.deepEqual(sample.synthesis, point.synthesis);
-    assert.equal(sample.promptText, point.promptText);
+    const candidateClock = sample.index === 0 ? '1990-06-14 10:59:59' : '1990-06-14 11:00:00';
+    assert.equal(
+      sample.promptText,
+      [
+        '【出生范围】',
+        '公历标准北京时间：[1990-06-14 10:59:59, 1990-06-14 11:00:01)',
+        '性别：男',
+        `本份盘面对应候选出生时刻：${candidateClock}`,
+        '',
+        point.promptText,
+      ].join('\n'),
+    );
+    assert.match(sample.promptText, sample.index === 0 ? /时柱辛巳/u : /时柱壬午/u);
+    assert.doesNotMatch(point.promptText, /【出生范围】|本份盘面对应候选出生时刻/u);
   }
 });
 
