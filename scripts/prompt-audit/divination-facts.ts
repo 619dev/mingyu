@@ -1097,7 +1097,11 @@ function extractTarotFacts(data: unknown): DivinationPromptFact[] {
         `${position}：${name}`,
         [
           `${position}：${name}`,
-          card.reversed === true ? '（逆位）' : '（正位）',
+          typeof card.reversed === 'boolean'
+            ? card.reversed
+              ? '（逆位）'
+              : '（正位）'
+            : '（未记录）',
           join(card.keywords) ? `关键词：${join(card.keywords)}` : undefined,
           text(card.element) ? `牌组属性：${text(card.element)}` : undefined,
           text(card.archetype) ? `基础牌义：${text(card.archetype)}` : undefined,

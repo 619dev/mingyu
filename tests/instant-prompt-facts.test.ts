@@ -19,6 +19,23 @@ import {
 import { formatZiweiPayloadForPrompt } from '../packages/core/src/prompt/ziwei';
 import { formatZiweiEvidenceText } from '../packages/core/src/prompt/public-api';
 
+const SHARED_INSTANT_BAZI_INPUT = {
+  gender: 'male',
+  year: 2026,
+  month: 5,
+  day: 19,
+  timeIndex: 5,
+  isLunar: false,
+  isLeapMonth: false,
+  useTrueSolarTime: false,
+} as const;
+let sharedInstantBaziChart: ReturnType<typeof baziCalculator.calculateBazi> | undefined;
+
+function createSharedInstantBaziChart() {
+  sharedInstantBaziChart ??= baziCalculator.calculateBazi(SHARED_INSTANT_BAZI_INPUT);
+  return structuredClone(sharedInstantBaziChart);
+}
+
 test('即时八字按日旬核对落空，并区分藏干与明透柱位', () => {
   const stems = [...'甲乙丙丁戊己庚辛壬癸'];
   const branches = [...'子丑寅卯辰巳午未申酉戌亥'];
@@ -30,7 +47,7 @@ test('即时八字按日旬核对落空，并区分藏干与明透柱位', () =>
   const seenDecades = new Set<number>();
   for (let offset = 0; offset < 60; offset++) {
     const date = new Date(Date.UTC(2026, 4, 1 + offset));
-    const chart = baziCalculator.calculateBazi({
+    const chartInput = {
       gender: 'male',
       year: date.getUTCFullYear(),
       month: date.getUTCMonth() + 1,
@@ -39,7 +56,14 @@ test('即时八字按日旬核对落空，并区分藏干与明透柱位', () =>
       isLunar: false,
       isLeapMonth: false,
       useTrueSolarTime: false,
-    });
+    } as const;
+    const chart =
+      chartInput.year === SHARED_INSTANT_BAZI_INPUT.year &&
+      chartInput.month === SHARED_INSTANT_BAZI_INPUT.month &&
+      chartInput.day === SHARED_INSTANT_BAZI_INPUT.day &&
+      chartInput.timeIndex === SHARED_INSTANT_BAZI_INPUT.timeIndex
+        ? createSharedInstantBaziChart()
+        : baziCalculator.calculateBazi(chartInput);
     const prompt = buildInstantBaziPrompt(chart, '判断当前事件。', '当地民用时间');
     assert.match(prompt, /【解读对象】\n八字即时盘。盘面年月日时均为本次事件的起盘时间/);
     assert.ok(prompt.includes(`日元${chart.analysis.dayMasterStrength.status}`));
@@ -116,16 +140,7 @@ test('紫微即时盘与合参区分命主身主和命身宫内主星', async ()
     }),
   );
   const payload = runtime.payloadByScope.origin;
-  const bazi = baziCalculator.calculateBazi({
-    gender: 'male',
-    year: 2026,
-    month: 5,
-    day: 19,
-    timeIndex: 5,
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
+  const bazi = createSharedInstantBaziChart();
   assert.equal(bazi.pillars.month.ganZhi, bazi.pillars.day.ganZhi);
   const baziPrompts = [
     buildInstantBaziPrompt(bazi, '请解读当前事件。', '2026年5月19日10:30'),
@@ -190,10 +205,10 @@ test('紫微即时盘与合参区分命主身主和命身宫内主星', async ()
   const related = focus.focusSummary.split('三方四正（')[1].split('）')[0];
   assert.match(related, /夫妻宫/);
   assert.doesNotMatch(related, /迁移/);
-  for (const prompt of [formatZiweiPayloadForPrompt(payload), formatZiweiEvidenceText(runtime)]) {
+  const evidencePrompt = formatZiweiPayloadForPrompt(payload);
+  for (const prompt of [evidencePrompt, formatZiweiEvidenceText(runtime)]) {
     assert.ok(prompt.includes(summary.宫位关系));
   }
-  const evidencePrompt = formatZiweiPayloadForPrompt(payload);
   assert.ok(payload.evidence_pool.length > 0);
   for (const item of payload.evidence_pool.filter((fact) => fact.type === 'palace_major_stars')) {
     const palace = payload.palaces.find((candidate) => candidate.index === item.palace_indexes[0]);

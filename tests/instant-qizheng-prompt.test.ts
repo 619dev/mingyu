@@ -19,7 +19,6 @@ test('结果页七政即时提示词沿用起盘用语且不重复说明盘面�
   assert.match(prompt, /起盘地点：纬度39\.9°，经度116\.4°/);
   assert.match(prompt, /按起盘时刻与当地太阳高度阈值/);
   assert.doesNotMatch(prompt, /正常交点|全天高于阈值|全天低于阈值/);
-  assert.match(prompt, /命宫主宰星/);
   assert.match(prompt, /命宫主宰星：月（水）；恩星：太白\(金\)/u);
   assert.equal(prompt.match(/太阴与太白\(金\)：合相/gu)?.length, 1);
   assert.doesNotMatch(prompt, /出生|昼生|夜生|命主|命宫主星|本盘记录起盘时刻的星曜位置/);

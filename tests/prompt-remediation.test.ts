@@ -27,6 +27,14 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const QIMEN_PROMPT_SAMPLE_TIME = '2026-05-19T10:30:00+08:00';
+let qimenPromptSample: ReturnType<typeof generateQimen> | undefined;
+
+function createQimenPromptSample() {
+  qimenPromptSample ??= generateQimen(new Date(QIMEN_PROMPT_SAMPLE_TIME));
+  return structuredClone(qimenPromptSample);
+}
+
 test('本命八字提示词的任务范围不越过已列岁运资料', () => {
   const result = baziCalculator.calculateBazi({
     gender: 'male',
@@ -69,7 +77,7 @@ test('梅花与皇极任务模板按实际输入资料收窄', () => {
 });
 
 test('奇门提示资料保留完整格局索引，空亡事实不重复列出', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = createQimenPromptSample();
   const anchor = data.jiuGongGe[0];
   const expanded = {
     ...data,
@@ -102,7 +110,7 @@ test('奇门提示资料保留完整格局索引，空亡事实不重复列出',
 });
 
 test('奇门常规提示词只列经典格局命中及各自落宫', () => {
-  const data = generateQimen(new Date('2026-05-19T10:30:00+08:00'));
+  const data = createQimenPromptSample();
   const text = formatEnhancedDivinationInfo('qimen', data);
   const patternBlock = text.split('盘面命中格局：\n')[1]?.split('\n值符宫应期参考：')[0] ?? '';
 

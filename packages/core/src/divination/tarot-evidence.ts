@@ -326,7 +326,10 @@ function buildSpreadCoverageFact(
   data: TarotData,
   cards: TarotCardEvidence[],
 ): TarotSpreadCoverageFact {
-  const spread = tarotSpreads[data.spreadType as keyof typeof tarotSpreads];
+  const spread =
+    typeof data.spreadType === 'string' && Object.hasOwn(tarotSpreads, data.spreadType)
+      ? tarotSpreads[data.spreadType as keyof typeof tarotSpreads]
+      : undefined;
   const expectedPositions = spread ? [...spread.positions] : [];
   const identityMismatches =
     spread && data.spreadName !== spread.name
@@ -539,9 +542,30 @@ function buildDrawFact(data: TarotData, drawOrderFacts: TarotDrawOrderFact[]): T
   };
 }
 
-function buildSequenceFacts(cards: TarotCardEvidence[]): TarotSequenceFact[] {
-  return cards.slice(1).map((card, index) => {
+function getAdjacentCardPairs(
+  cards: TarotCardEvidence[],
+  expectedPositions: readonly string[],
+): Array<[TarotCardEvidence, TarotCardEvidence]> {
+  const hasUniqueSlot = (card: TarotCardEvidence) =>
+    expectedPositions.includes(card.position) &&
+    cards.filter((item) => item.position === card.position).length === 1 &&
+    cards.filter((item) => item.cardId === card.cardId).length === 1 &&
+    tarotCards.some((item) => item.number === card.cardId);
+
+  return cards.slice(1).flatMap((card, index) => {
     const previous = cards[index];
+    return hasUniqueSlot(previous) &&
+      hasUniqueSlot(card) &&
+      expectedPositions.indexOf(card.position) === expectedPositions.indexOf(previous.position) + 1
+      ? [[previous, card] as [TarotCardEvidence, TarotCardEvidence]]
+      : [];
+  });
+}
+
+function buildSequenceFacts(
+  pairs: Array<[TarotCardEvidence, TarotCardEvidence]>,
+): TarotSequenceFact[] {
+  return pairs.map(([previous, card]) => {
     return {
       key: `tarot:sequence:${previous.index}-${card.index}`,
       status: '已连接',
@@ -581,16 +605,20 @@ function resolveElementInteraction(
   return { status: '已计算', relation: '中性并置' };
 }
 
-function buildElementInteractionFacts(cards: TarotCardEvidence[]): TarotElementInteractionFact[] {
-  return cards.slice(1).map((card, index) => {
-    const previous = cards[index];
+function buildElementInteractionFacts(
+  pairs: Array<[TarotCardEvidence, TarotCardEvidence]>,
+): TarotElementInteractionFact[] {
+  return pairs.map(([previous, card]) => {
     const fromElement = normalizeElement(previous.element);
     const toElement = normalizeElement(card.element);
     const interaction = resolveElementInteraction(fromElement, toElement);
     const reversedCards = [previous, card].filter((item) => item.orientation === '逆位');
+    const unrecordedCards = [previous, card].filter((item) => item.orientation === '未记录');
     const orientationConstraint = reversedCards.length
-      ? `${reversedCards.map((item) => `${item.position}${item.name}`).join('、')}为逆位，须把相关主题理解为可能受阻、过度、内化或方向偏离；逆位不改变元素关系分类`
-      : '两牌均为正位，只表示相关主题可能较直接呈现，不代表关系必然顺畅或有利';
+      ? `${reversedCards.map((item) => `${item.position}${item.name}`).join('、')}为逆位，须把相关主题理解为可能受阻、过度、内化或方向偏离；逆位不改变元素关系分类${unrecordedCards.length ? `；${unrecordedCards.map((item) => `${item.position}${item.name}`).join('、')}正逆位未记录，相关表达方向待补齐` : ''}`
+      : unrecordedCards.length
+        ? `${unrecordedCards.map((item) => `${item.position}${item.name}`).join('、')}正逆位未记录，相关表达方向待补齐`
+        : '两牌均为正位，只表示相关主题可能较直接呈现，不代表关系必然顺畅或有利';
     const relationText =
       interaction.relation === '核心课题介入'
         ? '大阿卡纳不强行归入四元素，记录为核心课题介入相邻牌位'
@@ -1013,9 +1041,10 @@ export function analyzeTarotEvidence(data: TarotData): TarotEvidenceAnalysis {
       archetype: card.archetype || '牌阶主题未列',
       activeMeaning,
       promptMeaning,
-      constraints: card.reversed
-        ? ['逆位只表示该牌主题可能受阻、过度、内化或方向偏离，须结合牌位与整组牌序']
-        : [],
+      constraints:
+        orientation === '逆位'
+          ? ['逆位只表示该牌主题可能受阻、过度、内化或方向偏离，须结合牌位与整组牌序']
+          : [],
       traditionalFactKey,
       promptText: `${card.position}为${card.name}${orientation}；关键词${card.keywords.join('、') || '未列'}；元素主题${card.element || '元素未列'}；牌阶主题${card.archetype || '牌阶主题未列'}${mismatches.length ? `；牌号核对存在缺口（${mismatches.join('、')}），牌义字段已按牌号对应牌表重建` : ''}`,
       sources: ['已声明牌阵牌位', '依据牌号映射牌名与正逆位', '韦特系逐牌关键词、元素与牌阶资料'],
@@ -1048,9 +1077,10 @@ export function analyzeTarotEvidence(data: TarotData): TarotEvidenceAnalysis {
         ),
       ]
     : [drawFact.promptText];
-  const sequenceFacts = buildSequenceFacts(cards);
+  const adjacentPairs = getAdjacentCardPairs(cards, spreadCoverageFact.expectedPositions);
+  const sequenceFacts = buildSequenceFacts(adjacentPairs);
   const sequence = sequenceFacts.map((fact) => fact.promptText);
-  const elementInteractionFacts = buildElementInteractionFacts(cards);
+  const elementInteractionFacts = buildElementInteractionFacts(adjacentPairs);
   const elementInteractions = elementInteractionFacts.map((fact) => fact.promptText);
   const themeFacts = buildThemeFacts(cards);
   const recurringThemeFacts = themeFacts.filter((fact) => fact.status === '重复主题');

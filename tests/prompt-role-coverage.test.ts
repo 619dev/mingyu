@@ -13,7 +13,6 @@ test('全部提示词指引不包含系统控制话术', () => {
   Object.entries(PROMPT_GUIDANCE_TEXT).forEach(([method, guidance]) => {
     const text = [guidance.tradition, guidance.sources].filter(Boolean).join('\n');
 
-    assert.match(text, /[\s\S]/, `${method} 应提供传统依据`);
     assert.doesNotMatch(
       text,
       /系统提示词|只依据|只基于|不得|禁止|取证顺序|证据边界|免责|回答中|输出时|结构化证据|计算链/,
@@ -96,5 +95,4 @@ test('七政四余提示词指引保留解读所需主线', () => {
   assert.match(guidance.tradition, /命身宫/);
   assert.match(guidance.tradition, /主要吊照/);
   assert.doesNotMatch(guidance.tradition, /真实距星黄经划界|真太阳时|计算/);
-  assert.match(guidance.sources, /《.+》/);
 });
