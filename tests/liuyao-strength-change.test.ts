@@ -135,6 +135,58 @@ test('六爻：生旺墓绝应分别核验日辰、明动爻与自身变爻', ()
   assert.equal(huaMuYao.changedLifeStage, '墓');
   assert.equal(huaMuYao.isHuaMu, true);
   assert.match(huaMuData.evidenceAnalysis?.promptText ?? '', /动而化墓|化墓/);
+
+  for (const source of [data, huaMuData]) {
+    const oldResult = structuredClone(source);
+    for (const yao of oldResult.yaosDetail) {
+      for (const field of [
+        'dayLifeStage',
+        'movingLifeStages',
+        'changedLifeStage',
+        'isDongMu',
+        'isHuaMu',
+        'isRiMu',
+        'isRuMu',
+        'shiErGong',
+        'isYueMu',
+        'isSanxing',
+        'sanxingType',
+        'isLiuhe',
+        'liuhePartner',
+        'isLiuhai',
+        'changeRelation',
+        'changeRelations',
+        'changeDirection',
+      ] as const)
+        delete yao[field];
+    }
+    const snapshot = structuredClone(oldResult);
+    const restored = analyzeLiuyaoEvidence(oldResult);
+    assert.deepEqual(restored, analyzeLiuyaoEvidence(source));
+    assert.equal(
+      formatEnhancedDivinationInfo('liuyao', oldResult),
+      formatEnhancedDivinationInfo('liuyao', source),
+    );
+    assert.deepEqual(
+      getDivinationSummaryBlocks('liuyao', oldResult),
+      getDivinationSummaryBlocks('liuyao', source),
+    );
+    assert.deepEqual(oldResult, snapshot);
+    if (source === data) {
+      const restoredWood = restored.lineFacts.find((yao) => yao.najia.wuxing === '木')!;
+      assert.equal(restoredWood.traditionalRelations.dayLifeStage, '死');
+      assert.ok(
+        restoredWood.traditionalRelations.movingLifeStages?.some(
+          (item) => item.position === 6 && item.branch === '未' && item.stage === '墓',
+        ),
+      );
+      assert.ok(restoredWood.constraints.includes('入动墓'));
+    } else {
+      const restoredHuaMu = restored.lineFacts[2];
+      assert.equal(restoredHuaMu.traditionalRelations.changedLifeStage, '墓');
+      assert.ok(restoredHuaMu.constraints.includes('动而化墓'));
+    }
+  }
 });
 
 test('六爻：变爻地支的十二长生阶段以本爻五行为参照', () => {
@@ -470,6 +522,21 @@ test('六爻：进退神按增删卜易明表判定，不按地支循环外推',
     assert.equal(data.yaosDetail[2].changeDirection, direction);
     assert.equal(data.evidenceAnalysis?.lineFacts[2]?.changedYao?.direction, direction);
     assert.match(formatEnhancedDivinationInfo('liuyao', data), new RegExp(direction, 'u'));
+    const oldResult = structuredClone(data);
+    for (const yao of oldResult.yaosDetail) {
+      delete yao.changeRelation;
+      delete yao.changeRelations;
+      delete yao.changeDirection;
+    }
+    const snapshot = structuredClone(oldResult);
+    assert.equal(analyzeLiuyaoEvidence(oldResult).lineFacts[2].changedYao?.direction, direction);
+    assert.match(formatEnhancedDivinationInfo('liuyao', oldResult), new RegExp(direction, 'u'));
+    assert.ok(
+      getDivinationSummaryBlocks('liuyao', oldResult).lines.some((line) =>
+        line.includes(direction),
+      ),
+    );
+    assert.deepEqual(oldResult, snapshot);
   }
 });
 

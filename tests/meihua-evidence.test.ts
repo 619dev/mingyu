@@ -153,6 +153,20 @@ test('梅花时间起卦应核对时间戳元数据和盘面完整四柱', () =>
 
 test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () => {
   const data = cloneFixedNumberChart();
+  const originalEvidence = analyzeMeihuaEvidence(data);
+  for (const fields of [
+    ['monthBranch'],
+    ['monthElement'],
+    ['monthBranch', 'monthElement'],
+  ] as const) {
+    const legacy = structuredClone(data);
+    for (const field of fields) delete legacy.analysis[field];
+    const snapshot = structuredClone(legacy);
+    const recovered = analyzeMeihuaEvidence(legacy);
+    assert.equal(recovered.monthBranch, '子');
+    assert.deepEqual(recovered, originalEvidence);
+    assert.deepEqual(legacy, snapshot);
+  }
   const mutations = [
     {
       label: '互卦',
@@ -174,6 +188,20 @@ test('梅花旧盘证据应从六爻复核互变、体用与月令记录', () =>
         item.interTiGua!.element = '火';
       },
       diagnostic: /体互记录与动爻及卦象不一致/u,
+    },
+    {
+      label: '月支',
+      change: (item: typeof data) => {
+        item.analysis.monthBranch = '午';
+      },
+      diagnostic: /体用月令旺衰记录与月建及主卦不一致/u,
+    },
+    {
+      label: '月令五行',
+      change: (item: typeof data) => {
+        item.analysis.monthElement = '火';
+      },
+      diagnostic: /体用月令旺衰记录与月建及主卦不一致/u,
     },
     {
       label: '旺衰',

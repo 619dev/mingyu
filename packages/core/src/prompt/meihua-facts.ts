@@ -147,7 +147,10 @@ export function formatMeihuaFacts(data: MeihuaData): string[] {
       );
     }
   }
-  const branch = data.analysis.monthBranch;
+  const branch =
+    data.analysis.monthBranch === undefined
+      ? data.ganzhi.month.slice(-1)
+      : data.analysis.monthBranch;
   if (branch) {
     const month = getBranchWuxing(branch);
     for (const [role, gua] of [

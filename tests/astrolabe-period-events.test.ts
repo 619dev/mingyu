@@ -253,54 +253,6 @@ test('阿皮亚跳过下一名义日时现存流日与批次延伸至首个真�
   );
 });
 
-test('流年应列出周期内动态点的精准相位、停逆、换座、朔望或交食', () => {
-  const collection = buildAstrolabePeriodEvents(astrolabeData, 'yearly', {
-    year: 2028,
-    month: 7,
-    day: 1,
-  });
-
-  assert.equal(collection.startDateTime, '2028-01-01 00:00');
-  assert.equal(collection.endDateTime, '2029-01-01 00:00');
-  assert.ok(collection.events.length >= 20);
-  assert.deepEqual(
-    collection.events.map((item) => item.julianDate),
-    [...collection.events]
-      .sort((first, second) => first.julianDate - second.julianDate)
-      .map((item) => item.julianDate),
-  );
-
-  const kinds = new Set(collection.events.map((item) => item.kind));
-  assert.ok(kinds.has('行运相位'));
-  assert.ok(kinds.has('停逆') || kinds.has('换座') || kinds.has('换宫'));
-  assert.ok(kinds.has('朔望') || kinds.has('交食'));
-  assert.ok(
-    collection.events.some(
-      (item) => item.movingPoint === '北交点' || item.targetPoint?.includes('交点'),
-    ),
-  );
-  assert.match(
-    collection.promptText,
-    /周期关键星象（2028-01-01 00:00至2029-01-01 00:00，共\d+项）。/,
-  );
-  assert.match(collection.promptText, /完整明细：/);
-  assert.doesNotMatch(
-    collection.promptText,
-    /不得|时间边界|证据|不代表|周期主轴：|具体星象见|具体时刻见/,
-  );
-  assert.ok(collection.axis.length > 0);
-  for (const event of collection.events) {
-    assert.equal(
-      collection.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1,
-      1,
-    );
-  }
-
-  const firstTransit = collection.events.find((item) => item.kind === '行运相位');
-  assert.ok(firstTransit);
-  assert.match(firstTransit.dateTime, /^2028-\d{2}-\d{2} \d{2}:\d{2}$/);
-});
-
 test('流月应补齐内行星天象，流日应补齐月亮动态点', () => {
   const monthly = getJune2028Monthly();
   const daily = buildAstrolabePeriodEvents(astrolabeData, 'daily', {
@@ -646,6 +598,47 @@ test('合并周期星象应按时刻去重排序', () => {
 test('星盘流年分析对象应写入周期关键星象资料', () => {
   const context = buildAstrolabeScopeContext(astrolabeData, 'yearly', '2028');
   assert.ok((context.periodEvents?.events.length ?? 0) > 0);
+  const collection = context.periodEvents!;
+
+  assert.equal(collection.startDateTime, '2028-01-01 00:00');
+  assert.equal(collection.endDateTime, '2029-01-01 00:00');
+  assert.ok(collection.events.length >= 20);
+  assert.deepEqual(
+    collection.events.map((item) => item.julianDate),
+    [...collection.events]
+      .sort((first, second) => first.julianDate - second.julianDate)
+      .map((item) => item.julianDate),
+  );
+
+  const kinds = new Set(collection.events.map((item) => item.kind));
+  assert.ok(kinds.has('行运相位'));
+  assert.ok(kinds.has('停逆') || kinds.has('换座') || kinds.has('换宫'));
+  assert.ok(kinds.has('朔望') || kinds.has('交食'));
+  assert.ok(
+    collection.events.some(
+      (item) => item.movingPoint === '北交点' || item.targetPoint?.includes('交点'),
+    ),
+  );
+  assert.match(
+    collection.promptText,
+    /周期关键星象（2028-01-01 00:00至2029-01-01 00:00，共\d+项）。/,
+  );
+  assert.match(collection.promptText, /完整明细：/);
+  assert.doesNotMatch(
+    collection.promptText,
+    /不得|时间边界|证据|不代表|周期主轴：|具体星象见|具体时刻见/,
+  );
+  assert.ok(collection.axis.length > 0);
+  for (const event of collection.events) {
+    assert.equal(
+      collection.promptText.split(`${event.dateTime} ${event.promptText}`).length - 1,
+      1,
+    );
+  }
+
+  const firstTransit = collection.events.find((item) => item.kind === '行运相位');
+  assert.ok(firstTransit);
+  assert.match(firstTransit.dateTime, /^2028-\d{2}-\d{2} \d{2}:\d{2}$/);
   assert.match(context.promptText, /周期关键星象/);
   assert.doesNotMatch(context.promptText, /不得|时间边界|证据/);
   for (const event of context.periodEvents!.events) {

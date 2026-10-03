@@ -102,20 +102,21 @@ test('真实星盘相位将跨星座合相的位置与角距偏差分别给出',
   assert.ok(Math.abs(angle - aspect.orb) < 0.01);
   const line = formatAstrolabeAspectLine(aspect, points);
   const compactLine = formatAstrolabeAspectLine(aspect, points, false);
+  const natalPrompt = formatAstrolabeForPrompt(chart);
   assert.ok(line.includes(sun.formatted));
   assert.ok(line.includes(mercury.formatted));
   assert.doesNotMatch(compactLine, new RegExp(`${sun.formatted}|${mercury.formatted}`));
   assert.match(line, /跨星座/);
   assert.match(line, /目标角0°，实际角距[\d.]+°，偏差[\d.]+°，容许偏差上限/);
-  assert.ok(formatAstrolabeForPrompt(chart).includes(compactLine));
-  assert.ok(formatAstrolabeForPrompt(chart).includes(`  ${sun.label}${sun.formatted}`));
-  assert.ok(formatAstrolabeForPrompt(chart).includes(`  ${mercury.label}${mercury.formatted}`));
+  assert.ok(natalPrompt.includes(compactLine));
+  assert.ok(natalPrompt.includes(`  ${sun.label}${sun.formatted}`));
+  assert.ok(natalPrompt.includes(`  ${mercury.label}${mercury.formatted}`));
   for (const point of chart.angles) {
-    assert.ok(formatAstrolabeForPrompt(chart).includes(`${point.label}：${point.formatted}`));
+    assert.ok(natalPrompt.includes(`${point.label}：${point.formatted}`));
   }
   assert.ok(formatAstrolabeAspectSections(chart.aspects, points).join('\n').includes(compactLine));
   const prompts = [
-    [formatAstrolabeForPrompt(chart), 1],
+    [natalPrompt, 1],
     [
       buildAstrolabeSynastryPrompt({
         chart1: chart,

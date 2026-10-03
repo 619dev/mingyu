@@ -209,7 +209,10 @@ test('六爻逐爻表同时呈现化空、回头关系与进神', () => {
   assert.doesNotMatch(voidText, /月建、日辰|月日触发：/u);
   const legacyVoidData = structuredClone(voidData);
   delete legacyVoidData.yaosDetail[5].changeRelations;
-  assert.match(formatSourceLiuyaoPrompt('liuyao', legacyVoidData), /化兄弟戌土（化空）/);
+  const legacyVoidLine = formatSourceLiuyaoPrompt('liuyao', legacyVoidData)
+    .split('\n')
+    .find((line) => line.startsWith('  第6爻'));
+  assert.equal(legacyVoidLine, voidLine);
 
   const advanceData = generateLiuyao(date, { method: 'manual', yaos: [7, 6, 8, 8, 8, 8] });
   const advanceText = formatSourceLiuyaoPrompt('liuyao', advanceData);

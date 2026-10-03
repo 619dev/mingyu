@@ -513,7 +513,11 @@ function getExpectedChangeFacts(
   };
 }
 
-function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBranch: string) {
+function validateLiuyaoChartFacts(
+  data: LiuyaoData,
+  monthBranch: string,
+  dayBranch: string,
+): LiuyaoData {
   if (
     !Array.isArray(data.yaoArray) ||
     data.yaoArray.length !== 6 ||
@@ -566,9 +570,9 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
   const palaceIndex = palaceHexagrams[palaceName as keyof typeof palaceHexagrams]?.indexOf(
     data.originalName,
   );
-  const expectedPalaceStage = ['首卦', '一世', '二世', '三世', '四世', '五世', '游魂', '归魂'][
-    palaceIndex ?? -1
-  ];
+  const expectedPalaceStage = (
+    ['首卦', '一世', '二世', '三世', '四世', '五世', '游魂', '归魂'] as const
+  )[palaceIndex ?? -1];
   const worldPosition = [6, 1, 2, 3, 4, 5, 4, 3][palaceIndex ?? -1];
   const responsePosition = worldPosition ? ((worldPosition + 2) % 6) + 1 : undefined;
   if (
@@ -664,9 +668,9 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
     throw new Error('六爻原始爻值与动爻位置、阴阳或动静记录不一致，无法生成证据。');
   }
 
-  for (const yao of data.yaosDetail) {
+  const yaosDetail = data.yaosDetail.map((yao) => {
     const index = yao.position - 1;
-    if (!Number.isInteger(index) || index < 0 || index >= 6) continue;
+    if (!Number.isInteger(index) || index < 0 || index >= 6) return yao;
     const raw = data.yaoArray[index];
     const changing = raw === 6 || raw === 9;
     const expectedLiuqin =
@@ -779,7 +783,32 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
     ) {
       throw new Error(`六爻第${yao.position}爻纳甲、世应、动变或月日空破与盘面不一致。`);
     }
-  }
+    return {
+      ...yao,
+      seasonState: expectedSeason,
+      isMonthBreak: isLiuchong(yao.najiaDizhi, monthBranch),
+      isDayClash: dayClash,
+      isHiddenMove: hiddenMove,
+      isDayBreak: !changing && dayClash && !hiddenMove,
+      changeRelation: expectedChangeFacts?.legacyRelation ?? null,
+      changeRelations: expectedChangeFacts?.relations ?? [],
+      changeDirection: expectedChangeFacts?.direction ?? null,
+      isSanxing: expectedSanxing,
+      sanxingType: getSanxingType(mainNaJia[index]) || undefined,
+      isLiuhe: expectedLiuhe,
+      liuhePartner: expectedLiuhePartner,
+      isLiuhai: isLiuhai(mainNaJia[index], dayBranch) || isLiuhai(mainNaJia[index], monthBranch),
+      shiErGong: getShiErGong(getBranchWuxing(mainNaJia[index]), mainNaJia[index]),
+      dayLifeStage: expectedDayLifeStage,
+      movingLifeStages: expectedMovingLifeStages,
+      changedLifeStage: expectedChangedLifeStage,
+      isDongMu: expectedDongMu,
+      isHuaMu: expectedHuaMu,
+      isRiMu: expectedRiMu,
+      isYueMu: false,
+      isRuMu: expectedRiMu || expectedDongMu || expectedHuaMu,
+    };
+  });
 
   const activeBranches = data.yaoArray.flatMap((raw, index) => {
     const branch = mainNaJia[index];
@@ -856,6 +885,31 @@ function validateLiuyaoChartFacts(data: LiuyaoData, monthBranch: string, dayBran
   ) {
     throw new Error('六爻特殊卦式与原始爻值、动爻数量不一致。');
   }
+  return {
+    ...data,
+    changedName: expectedChanged.name,
+    interName: expectedInter.name,
+    sixGods: expectedSixGods,
+    palaceStage: expectedPalaceStage,
+    hexagramRelations: expectedHexagramRelations,
+    fanfuRelations: expectedFanFuRelations,
+    ...expectedSpecialPattern,
+    sanheWithDay: expectedDaySanhe,
+    sanheWithMonth: expectedMonthSanhe,
+    sanxingInYaos: collectSanxingInBranches(mainNaJia),
+    yaosDetail,
+    hiddenSpirits: data.hiddenSpirits?.map((spirit) => ({
+      ...spirit,
+      interactionEffect: evaluateLiuyaoHiddenSpiritInteraction({
+        hiddenWuxing: spirit.wuxing,
+        hiddenVoid: spirit.isVoid,
+        flyingWuxing: spirit.underYao.wuxing,
+        flyingDizhi: spirit.underYao.najiaDizhi,
+        flyingVoid: expectedVoids.includes(spirit.underYao.najiaDizhi),
+        monthBranch,
+      }),
+    })),
+  };
 }
 
 function getChangeRelations(yao: LiuyaoYaoDetail): LiuyaoChangeRelation[] {
@@ -1760,6 +1814,14 @@ export function analyzeLiuyaoEvidence(
   data: LiuyaoData,
   options: LiuyaoEvidenceOptions = {},
 ): LiuyaoEvidenceAnalysis {
+  return resolveLiuyaoEvidence(data, options).analysis;
+}
+
+/** 正文与摘要取得同一已核验盘面视图和证据；原结果保持原样。 */
+export function resolveLiuyaoEvidence(
+  data: LiuyaoData,
+  options: LiuyaoEvidenceOptions = {},
+): { data: LiuyaoData; analysis: LiuyaoEvidenceAnalysis } {
   if (!data?.yaosDetail?.length) throw new Error('六爻证据分析缺少完整爻位资料。');
   if (data.meta && Date.parse(data.meta.calculatedAt) !== data.timestamp) {
     throw new Error('六爻起卦时间戳与结果元数据不一致，无法生成证据。');
@@ -1790,28 +1852,7 @@ export function analyzeLiuyaoEvidence(
   const topic = options.topic ?? 'general';
   const monthBranch = branchOf(data.ganzhi.month);
   const dayBranch = branchOf(data.ganzhi.day);
-  validateLiuyaoChartFacts(data, monthBranch, dayBranch);
-  data = {
-    ...data,
-    yaosDetail: data.yaosDetail.map((yao) => {
-      const dayClash = isLiuchong(yao.najiaDizhi, dayBranch);
-      const hiddenMove = isLiuyaoHiddenMove(
-        yao.najiaDizhi,
-        monthBranch,
-        dayBranch,
-        yao.isChanging,
-        yao.isVoid,
-      );
-      return {
-        ...yao,
-        isMonthBreak: isLiuchong(yao.najiaDizhi, monthBranch),
-        seasonState: getSeasonState(getBranchWuxing(yao.najiaDizhi), monthBranch),
-        isDayClash: dayClash,
-        isHiddenMove: hiddenMove,
-        isDayBreak: !yao.isChanging && dayClash && !hiddenMove,
-      };
-    }),
-  };
+  data = validateLiuyaoChartFacts(data, monthBranch, dayBranch);
   const references = allReferences(data, monthBranch, dayBranch);
   const lineFacts = buildLineFacts(data, monthBranch, dayBranch);
   const hiddenSpiritFacts = buildHiddenSpiritFacts(data);
@@ -2313,7 +2354,7 @@ export function analyzeLiuyaoEvidence(
     `触发条件：${timingConditions.join('；')}`,
     `解释限制：${limitations.join('；')}。`,
   ].join('\n');
-  return {
+  const analysis: LiuyaoEvidenceAnalysis = {
     key: 'liuyao:evidence',
     status: '已计算',
     topic,
@@ -2354,4 +2395,5 @@ export function analyzeLiuyaoEvidence(
       '只输出支持、反证、限制和触发条件，不生成吉凶总分或成功率。',
     ],
   };
+  return { data, analysis };
 }

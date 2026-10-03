@@ -36,6 +36,22 @@ test('六爻证据与提示词拒绝和结果元数据不一致的起卦时间�
 
 test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
   const source = cloneFixedManualChart();
+  const oldResult = structuredClone(source);
+  delete oldResult.changedName;
+  delete oldResult.interName;
+
+  const snapshot = structuredClone(oldResult);
+  assert.deepEqual(analyzeLiuyaoEvidence(oldResult), analyzeLiuyaoEvidence(source));
+  assert.equal(
+    formatEnhancedDivinationInfo('liuyao', oldResult),
+    formatEnhancedDivinationInfo('liuyao', source),
+  );
+  assert.deepEqual(
+    getDivinationSummaryBlocks('liuyao', oldResult),
+    getDivinationSummaryBlocks('liuyao', source),
+  );
+  assert.deepEqual(oldResult, snapshot);
+
   for (const field of ['originalName', 'interName', 'changedName'] as const) {
     const changed = structuredClone(source);
     changed[field] = changed[field] === '乾为天' ? '坤为地' : '乾为天';
@@ -48,14 +64,35 @@ test('六爻提示词先按原始爻值核对主卦、互卦与变卦', () => {
       () => formatEnhancedDivinationInfo('liuyao', changed),
       /主卦、互卦或变卦与原始爻值不一致/u,
     );
+    assert.throws(
+      () => getDivinationSummaryBlocks('liuyao', changed),
+      /主卦、互卦或变卦与原始爻值不一致/u,
+    );
   }
 });
 
 test('六爻提示词核对日干起六神与逐爻六神', () => {
   const source = cloneFixedManualChart();
+  const oldResult = structuredClone(source);
+  Reflect.deleteProperty(oldResult, 'sixGods');
+
+  const snapshot = structuredClone(oldResult);
+  assert.deepEqual(analyzeLiuyaoEvidence(oldResult), analyzeLiuyaoEvidence(source));
+  assert.equal(
+    formatEnhancedDivinationInfo('liuyao', oldResult),
+    formatEnhancedDivinationInfo('liuyao', source),
+  );
+  assert.deepEqual(
+    getDivinationSummaryBlocks('liuyao', oldResult),
+    getDivinationSummaryBlocks('liuyao', source),
+  );
+  assert.deepEqual(oldResult, snapshot);
+
   const changedList = structuredClone(source);
   changedList.sixGods[0] = source.sixGods[0] === '玄武' ? '青龙' : '玄武';
   assert.throws(() => analyzeLiuyaoEvidence(changedList), /六神顺序与日干不一致/u);
+  assert.throws(() => formatEnhancedDivinationInfo('liuyao', changedList), /六神顺序与日干不一致/u);
+  assert.throws(() => getDivinationSummaryBlocks('liuyao', changedList), /六神顺序与日干不一致/u);
 
   const changedLine = structuredClone(source);
   changedLine.yaosDetail[0].sixGod = source.yaosDetail[0].sixGod === '玄武' ? '青龙' : '玄武';
@@ -100,6 +137,21 @@ test('六爻旧盘伏神须与本宫首卦纳甲、六亲差集、旬空及飞�
     yaos: [7, 8, 8, 8, 7, 8],
   });
   assert.equal(source.hiddenSpirits?.length, 1);
+  const oldResult = structuredClone(source);
+  delete oldResult.hiddenSpirits![0].interactionEffect;
+
+  const snapshot = structuredClone(oldResult);
+  assert.deepEqual(analyzeLiuyaoEvidence(oldResult), analyzeLiuyaoEvidence(source));
+  assert.equal(
+    formatEnhancedDivinationInfo('liuyao', oldResult),
+    formatEnhancedDivinationInfo('liuyao', source),
+  );
+  assert.deepEqual(
+    getDivinationSummaryBlocks('liuyao', oldResult),
+    getDivinationSummaryBlocks('liuyao', source),
+  );
+  assert.deepEqual(oldResult, snapshot);
+
   const mutations: Array<(data: typeof source) => void> = [
     (data) => {
       data.hiddenSpirits![0].najiaDizhi = '子';
@@ -122,6 +174,7 @@ test('六爻旧盘伏神须与本宫首卦纳甲、六亲差集、旬空及飞�
     const changed = structuredClone(source);
     mutate(changed);
     assert.throws(() => analyzeLiuyaoEvidence(changed), /伏神与本宫首卦纳甲不一致/u);
+    assert.throws(() => getDivinationSummaryBlocks('liuyao', changed), /伏神与本宫首卦纳甲不一致/u);
     assert.throws(
       () => formatEnhancedDivinationInfo('liuyao', changed),
       /伏神与本宫首卦纳甲不一致/u,
@@ -554,6 +607,56 @@ test('六爻全动只形成一条特殊卦象结构事实', () => {
 
 test('六爻证据拒绝被改写的三刑合害和生旺墓绝字段', () => {
   const source = cloneFixedManualChart();
+  const oldResult = structuredClone(source);
+  for (const yao of oldResult.yaosDetail) {
+    for (const field of [
+      'dayLifeStage',
+      'movingLifeStages',
+      'changedLifeStage',
+      'isDongMu',
+      'isHuaMu',
+      'isRiMu',
+      'isRuMu',
+      'shiErGong',
+      'isYueMu',
+      'isSanxing',
+      'sanxingType',
+      'isLiuhe',
+      'liuhePartner',
+      'isLiuhai',
+      'changeRelation',
+      'changeRelations',
+      'changeDirection',
+    ] as const)
+      delete yao[field];
+  }
+  const snapshot = structuredClone(oldResult);
+  const completeEvidence = analyzeLiuyaoEvidence(source);
+  assert.deepEqual(analyzeLiuyaoEvidence(oldResult), completeEvidence);
+  assert.equal(
+    formatEnhancedDivinationInfo('liuyao', oldResult),
+    formatEnhancedDivinationInfo('liuyao', source),
+  );
+  assert.deepEqual(
+    getDivinationSummaryBlocks('liuyao', oldResult),
+    getDivinationSummaryBlocks('liuyao', source),
+  );
+  assert.deepEqual(oldResult, snapshot);
+
+  // 明动爻位置来自完整原始爻值；缺少另一明动爻的明细仍保留其入墓作用。
+  const omittedMovingLine = source.yaosDetail.find((yao) => yao.isChanging)!;
+  const partial = structuredClone(oldResult);
+  partial.yaosDetail = partial.yaosDetail.filter(
+    (yao) => yao.position !== omittedMovingLine.position,
+  );
+  const partialEvidence = analyzeLiuyaoEvidence(partial);
+  for (const fact of partialEvidence.lineFacts) {
+    assert.deepEqual(
+      fact.traditionalRelations.movingLifeStages,
+      completeEvidence.lineFacts.find((original) => original.position === fact.position)!
+        .traditionalRelations.movingLifeStages,
+    );
+  }
   const mutations: Array<(data: typeof source) => void> = [
     (data) => {
       data.yaosDetail[0].isSanxing = !data.yaosDetail[0].isSanxing;
@@ -575,6 +678,14 @@ test('六爻证据拒绝被改写的三刑合害和生旺墓绝字段', () => {
     const changed = structuredClone(source);
     mutate(changed);
     assert.throws(() => analyzeLiuyaoEvidence(changed), /纳甲、世应、动变或月日空破与盘面不一致/u);
+    assert.throws(
+      () => formatEnhancedDivinationInfo('liuyao', changed),
+      /纳甲、世应、动变或月日空破与盘面不一致/u,
+    );
+    assert.throws(
+      () => getDivinationSummaryBlocks('liuyao', changed),
+      /纳甲、世应、动变或月日空破与盘面不一致/u,
+    );
   }
 });
 
@@ -633,12 +744,37 @@ test('六爻整卦、反伏与特殊卦式须复算后才进入摘要和详细�
     assert.throws(() => formatDetailedDivinationInfo('liuyao', changed), error);
   }
 
-  const oldResult = structuredClone(fanyin);
-  delete oldResult.hexagramRelations;
-  delete oldResult.fanfuRelations;
-  delete oldResult.specialPattern;
-  delete oldResult.specialAdvice;
-  assert.ok(analyzeLiuyaoEvidence(oldResult));
+  for (const source of [fanyin, staticChart]) {
+    const oldResult = structuredClone(source);
+    for (const field of [
+      'changedName',
+      'interName',
+      'palaceStage',
+      'sixGods',
+      'hexagramRelations',
+      'fanfuRelations',
+      'specialPattern',
+      'specialAdvice',
+      'isChaotic',
+      'chaoticReason',
+      'sanheWithDay',
+      'sanheWithMonth',
+      'sanxingInYaos',
+    ] as const)
+      Reflect.deleteProperty(oldResult, field);
+
+    const snapshot = structuredClone(oldResult);
+    assert.deepEqual(analyzeLiuyaoEvidence(oldResult), analyzeLiuyaoEvidence(source));
+    assert.equal(
+      formatEnhancedDivinationInfo('liuyao', oldResult),
+      formatEnhancedDivinationInfo('liuyao', source),
+    );
+    assert.deepEqual(
+      getDivinationSummaryBlocks('liuyao', oldResult),
+      getDivinationSummaryBlocks('liuyao', source),
+    );
+    assert.deepEqual(oldResult, snapshot);
+  }
 });
 
 test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该字段仍可分析', () => {
@@ -701,7 +837,22 @@ test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该�
   const oldResult = structuredClone(source);
   delete oldResult.sanheWithDay;
   delete oldResult.sanheWithMonth;
-  assert.ok(analyzeLiuyaoEvidence(oldResult));
+
+  const snapshot = structuredClone(oldResult);
+  assert.deepEqual(analyzeLiuyaoEvidence(oldResult), analyzeLiuyaoEvidence(source));
+  assert.equal(
+    formatEnhancedDivinationInfo('liuyao', oldResult),
+    formatEnhancedDivinationInfo('liuyao', source),
+  );
+  assert.deepEqual(
+    getDivinationSummaryBlocks('liuyao', oldResult),
+    getDivinationSummaryBlocks('liuyao', source),
+  );
+  assert.deepEqual(oldResult, snapshot);
+  assert.match(
+    formatEnhancedDivinationInfo('liuyao', oldResult),
+    /日辰午与动变爻同见火局三支（寅、午、戌）/u,
+  );
 
   // 戊申属甲辰旬，寅卯空；午月静寅日冲起用，与第六明动戌补齐寅午戌。
   const voidClash = generateLiuyao(new Date('2025-06-08T08:00:00+08:00'), {

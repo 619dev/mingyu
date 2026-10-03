@@ -67,7 +67,7 @@ import {
   hasTianPanStem,
 } from '../divination/algorithms/qimen/helpers/palace-utils';
 import type { DivinationMethodId } from 'mingyu-core/divination/config';
-import { analyzeLiuyaoEvidence } from '../divination/algorithms/liuyao';
+import { resolveLiuyaoEvidence } from '../divination/liuyao-evidence';
 import type { LiuyaoLineFact } from '../divination/liuyao-evidence';
 import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
 import { analyzeLenormandEvidence } from '../divination/lenormand-evidence';
@@ -181,6 +181,7 @@ function formatLiuyaoTriggerRelations(
   item: LiuyaoData['yaosDetail'][number],
   triggerLabel: string,
   triggerBranch: string,
+  sanxingType: string | undefined,
 ) {
   if (!triggerBranch) return [];
   return [
@@ -189,25 +190,29 @@ function formatLiuyaoTriggerRelations(
     LIUCHONG_MAP[item.najiaDizhi] === triggerBranch ? `冲${triggerLabel}${triggerBranch}` : '',
     isLiuhai(item.najiaDizhi, triggerBranch) ? `害${triggerLabel}${triggerBranch}` : '',
     isSanxing(item.najiaDizhi, triggerBranch)
-      ? `刑${triggerLabel}${triggerBranch}${item.sanxingType ? `（${item.sanxingType}）` : ''}`
+      ? `刑${triggerLabel}${triggerBranch}${sanxingType ? `（${sanxingType}）` : ''}`
       : '',
   ].filter(Boolean);
 }
 
-function formatLiuyaoLifeStages(item: LiuyaoData['yaosDetail'][number]) {
+function formatLiuyaoLifeStages(fact: LiuyaoLineFact) {
+  const stages = fact.traditionalRelations;
+  const isRiMu = fact.dayState.relations.includes('入日墓');
+  const isDongMu = fact.constraints.includes('入动墓');
+  const isHuaMu = fact.constraints.includes('动而化墓');
   return [
-    item.dayLifeStage ? `本爻${item.wuxing}在日辰支十二长生${item.dayLifeStage}` : '',
-    item.shiErGong ? `本爻十二长生${item.shiErGong}` : '',
-    item.movingLifeStages?.length
-      ? `本爻${item.wuxing}在明动爻支十二长生${item.movingLifeStages.map((stage) => `第${stage.position}爻${stage.branch}${stage.stage}`).join('、')}`
+    stages.dayLifeStage ? `本爻${fact.najia.wuxing}在日辰支十二长生${stages.dayLifeStage}` : '',
+    stages.twelveStage ? `本爻十二长生${stages.twelveStage}` : '',
+    stages.movingLifeStages?.length
+      ? `本爻${fact.najia.wuxing}在明动爻支十二长生${stages.movingLifeStages.map((stage) => `第${stage.position}爻${stage.branch}${stage.stage}`).join('、')}`
       : '',
-    item.changedLifeStage && item.changedYao
-      ? `本爻${item.wuxing}在变爻${item.changedYao.dizhi}支十二长生${item.changedLifeStage}`
+    stages.changedLifeStage && fact.changedYao
+      ? `本爻${fact.najia.wuxing}在变爻${fact.changedYao.branch}支十二长生${stages.changedLifeStage}`
       : '',
-    item.isRiMu ? '入日墓' : '',
-    item.isDongMu ? '入动墓' : '',
-    item.isHuaMu ? '动而化墓' : '',
-    item.isRuMu && !item.isRiMu && !item.isDongMu && !item.isHuaMu ? '入墓' : '',
+    isRiMu ? '入日墓' : '',
+    isDongMu ? '入动墓' : '',
+    isHuaMu ? '动而化墓' : '',
+    stages.isRuMu && !isRiMu && !isDongMu && !isHuaMu ? '入墓' : '',
   ].filter(Boolean);
 }
 
@@ -238,10 +243,25 @@ function formatLiuyaoLineFacts(
   const dayBranch = getGanzhiBranch(data.ganzhi.day);
   const triggerRelations =
     monthBranch && monthBranch === dayBranch
-      ? formatLiuyaoTriggerRelations(item, '月建、日辰', monthBranch)
+      ? formatLiuyaoTriggerRelations(
+          item,
+          '月建、日辰',
+          monthBranch,
+          fact.traditionalRelations.sanxingType,
+        )
       : [
-          ...formatLiuyaoTriggerRelations(item, '月建', monthBranch),
-          ...formatLiuyaoTriggerRelations(item, '日辰', dayBranch),
+          ...formatLiuyaoTriggerRelations(
+            item,
+            '月建',
+            monthBranch,
+            fact.traditionalRelations.sanxingType,
+          ),
+          ...formatLiuyaoTriggerRelations(
+            item,
+            '日辰',
+            dayBranch,
+            fact.traditionalRelations.sanxingType,
+          ),
         ];
   const activity = [
     item.isWorld ? '世' : '',
@@ -253,12 +273,12 @@ function formatLiuyaoLineFacts(
     fact.dayState.relations.includes('日冲成破') ? '日冲成破' : '',
     fact.dayState.relations.includes('日辰冲动') ? '日辰冲动' : '',
   ].filter(Boolean);
-  const lifeStages = formatLiuyaoLifeStages(item);
+  const lifeStages = formatLiuyaoLifeStages(fact);
   const changeConditions = [
     ...new Set([
-      ...(item.changeRelations ?? []),
+      ...(fact.changedYao?.relations ?? []),
       ...(item.changedYao?.isVoid ? ['化空'] : []),
-      ...(item.changeDirection ? [item.changeDirection] : []),
+      ...(fact.changedYao?.direction ? [fact.changedYao.direction] : []),
     ]),
   ];
   const changed = item.changedYao
@@ -304,12 +324,13 @@ function createLiuyaoTimingEvidence(data: LiuyaoData, lineFacts: LiuyaoLineFact[
     const chongBranch = LIUCHONG_MAP[yao.najiaDizhi] || '';
     const heBranch = LIUHE_MAP[yao.najiaDizhi] || '';
     const conditions: string[] = [];
-    if (yao.changeDirection === '化进神' && yao.changedYao) {
+    const changed = lineFacts.find((item) => item.position === yao.position)?.changedYao;
+    if (changed?.direction === '化进神' && yao.changedYao) {
       conditions.push(`化进神，逢变爻${yao.changedYao.dizhi}当值可核进神作用`);
-    } else if (yao.changeDirection === '化退神' && yao.changedYao) {
+    } else if (changed?.direction === '化退神' && yao.changedYao) {
       conditions.push(`化退神，逢变爻${yao.changedYao.dizhi}当值可核退神作用`);
     }
-    if (yao.changeRelations?.includes('回头克') && yao.changedYao)
+    if (changed?.relations.includes('回头克') && yao.changedYao)
       conditions.push(`回头克，逢变爻${yao.changedYao.dizhi}当值可核克制条件`);
     if (yao.isVoid) conditions.push(`本爻旬空，逢${yao.najiaDizhi}出空或逢${chongBranch}冲空可核`);
     if (yao.changedYao?.isVoid)
@@ -441,6 +462,9 @@ function formatLiuyaoInfo(
   data: LiuyaoData,
   topic: 'general' | 'ganqing' | 'shiye' | 'caifu' | 'guaishen' = 'general',
 ) {
+  const resolved = resolveLiuyaoEvidence(data, { topic });
+  data = resolved.data;
+  const evidenceAnalysis = resolved.analysis;
   const worldYao = data.yaosDetail.find((item) => item.isWorld);
   const responseYao = data.yaosDetail.find((item) => item.isResponse);
   const voidYaoText = data.yaosDetail
@@ -462,7 +486,6 @@ function formatLiuyaoInfo(
   const hexagramRelationText = formatLiuyaoHexagramRelation(data);
 
   const fanfuRelationText = formatLiuyaoFanFuRelation(data);
-  const evidenceAnalysis = analyzeLiuyaoEvidence(data, { topic });
   const lineCoverage = evidenceAnalysis.lineCoverageFact;
   const coverageNotes = [
     lineCoverage.status !== '完整'

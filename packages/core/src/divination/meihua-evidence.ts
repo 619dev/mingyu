@@ -2290,6 +2290,21 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
   if (data.meta && Date.parse(data.meta.calculatedAt) !== data.timestamp) {
     throw new Error('梅花起卦时间戳与结果元数据不一致，无法生成证据。');
   }
+  const monthBranch = data.ganzhi.month.slice(-1);
+  if (dizhi.includes(monthBranch)) {
+    data = {
+      ...data,
+      analysis: {
+        ...data.analysis,
+        monthBranch:
+          data.analysis.monthBranch === undefined ? monthBranch : data.analysis.monthBranch,
+        monthElement:
+          data.analysis.monthElement === undefined
+            ? getBranchWuxing(monthBranch)
+            : data.analysis.monthElement,
+      },
+    };
+  }
   const calculationValidation = validateMeihuaCalculation(data);
   const timePillarMismatches = calculationValidation.mismatches.filter((item) =>
     /^盘面(?:年|月|日|时)柱与时间戳重算结果不一致$/u.test(item),
@@ -2297,7 +2312,6 @@ export function analyzeMeihuaEvidence(data: MeihuaData): MeihuaEvidenceAnalysis 
   if (timePillarMismatches.length) {
     throw new Error(`梅花盘面干支与起卦时间不一致：${timePillarMismatches.join('；')}。`);
   }
-  const monthBranch = data.ganzhi.month.slice(-1);
   const calculationFact = buildMeihuaCalculationFact(data, calculationValidation);
   const calculationFacts = buildCalculationFacts(data);
   const hexagramStructureFacts = buildHexagramStructureFacts(data);

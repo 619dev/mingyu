@@ -20,8 +20,9 @@ import {
   formatXiaoliurenCalendarBoundary,
 } from '../divination/xiaoliuren-evidence';
 import { analyzeJinkoujueEvidence } from '../divination/jinkoujue-evidence';
-import { analyzeLiuyaoEvidence } from '../divination/liuyao-evidence';
+import { analyzeLiuyaoEvidence, resolveLiuyaoEvidence } from '../divination/liuyao-evidence';
 import { analyzeMeihuaEvidence } from '../divination/meihua-evidence';
+import { getBranchWuxing } from '../ganzhi';
 import { getQimenActiveSpecialConditionText } from '../divination/qimen-evidence';
 import { analyzeLiurenEvidence } from '../divination/liuren-evidence';
 import { analyzeTarotEvidence } from '../divination/tarot-evidence';
@@ -155,7 +156,9 @@ function formatLiuyaoFocusSummary(
   ].filter(Boolean);
 
   const changingDesc = changing.map((item) => {
-    const dir = item.changeDirection ? `（${item.changeDirection}）` : '';
+    const direction = lineFacts.find((fact) => fact.position === item.position)?.changedYao
+      ?.direction;
+    const dir = direction ? `（${direction}）` : '';
     return `第${item.position}爻${dir}`;
   });
 
@@ -273,8 +276,12 @@ function formatMeihuaSeasonSummary(
   evidence: ReturnType<typeof analyzeMeihuaEvidence>,
 ) {
   const origin = evidence.stages.find((stage) => stage.stage === 'origin');
-  if (!origin || !evidence.monthBranch || !data.analysis.monthElement) return '';
-  return `月令：${evidence.monthBranch}月（${data.analysis.monthElement}令），体卦${origin.ti.seasonState}，用卦${origin.yong.seasonState}`;
+  if (!origin || !evidence.monthBranch) return '';
+  const monthElement =
+    data.analysis.monthElement === undefined
+      ? getBranchWuxing(evidence.monthBranch)
+      : data.analysis.monthElement;
+  return `月令：${evidence.monthBranch}月（${monthElement}令），体卦${origin.ti.seasonState}，用卦${origin.yong.seasonState}`;
 }
 
 function formatLiurenFocusSummary(data: LiurenData) {
@@ -303,8 +310,9 @@ export function getDivinationSummaryBlocks(
 ): DivinationSummaryBlocks {
   switch (method) {
     case 'liuyao': {
-      const item = data as LiuyaoData;
-      const evidence = analyzeLiuyaoEvidence(item);
+      const resolved = resolveLiuyaoEvidence(data as LiuyaoData);
+      const item = resolved.data;
+      const evidence = resolved.analysis;
       const hexagramRelationText = formatLiuyaoHexagramRelationSummary(item);
       const fanfuRelationText = formatLiuyaoFanFuRelationSummary(item);
       return {

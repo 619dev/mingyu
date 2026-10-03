@@ -162,6 +162,32 @@ test('梅花旧盘派生月令和走势文字不直接进入两种提示词', ()
   });
   delete data.calculation;
   const verifiedSeasonEvaluation = data.analysis.tiYongSeasonEvaluation;
+  const completeInfo = formatDivinationInfo('meihua', data);
+  const completeSummary = getDivinationSummaryBlocks('meihua', data);
+  for (const fields of [
+    ['monthBranch'],
+    ['monthElement'],
+    ['monthBranch', 'monthElement'],
+  ] as const) {
+    const legacy = structuredClone(data);
+    for (const field of fields) delete legacy.analysis[field];
+    const snapshot = structuredClone(legacy);
+    assert.equal(formatDivinationInfo('meihua', legacy), completeInfo);
+    assert.deepEqual(getDivinationSummaryBlocks('meihua', legacy), completeSummary);
+    assert.match(formatDivinationInfo('meihua', legacy), /午月令火/u);
+    assert.ok(
+      getDivinationSummaryBlocks('meihua', legacy).lines.includes(
+        '月令：午月（火令），体卦死，用卦囚',
+      ),
+    );
+    assert.deepEqual(legacy, snapshot);
+  }
+  for (const field of ['monthBranch', 'monthElement'] as const) {
+    const wrong = structuredClone(data);
+    wrong.analysis[field] = field === 'monthBranch' ? '子' : '水';
+    assert.throws(() => formatDivinationInfo('meihua', wrong), /梅花盘面与起卦资料不一致/u);
+    assert.throws(() => getDivinationSummaryBlocks('meihua', wrong), /梅花盘面与起卦资料不一致/u);
+  }
   data.analysis.tiYongSeasonEvaluation = '伪造的月令断语';
   data.analysis.timelineTrend = { trend: '始终受制', summary: '伪造的走势' };
   const prompt = buildCoreDivinationPrompt({
