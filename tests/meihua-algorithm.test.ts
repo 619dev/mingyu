@@ -11,6 +11,7 @@ import {
   resolveTiYongByMovingYao,
 } from '../packages/core/src/divination/algorithms/meihua/helpers/hexagram.ts';
 import {
+  hasCompleteCharacterCalculation,
   resolveNumberMethod,
   resolveTimeMethod,
 } from '../packages/core/src/divination/algorithms/meihua/helpers/methods.ts';
@@ -493,6 +494,31 @@ test('梅花：字数起卦应按分段规则支持笔画、传统四声与纯�
     ['地风升', '地天泰', 1],
   );
   assert.equal(toneData.evidenceAnalysis?.calculationFact.status, '完整');
+  const missingStroke = [...shortSettings.characterStrokeCounts];
+  delete missingStroke[0];
+  const missingTone = [...toneSettings.characterTones];
+  delete missingTone[1];
+  for (const [settings, diagnostic] of [
+    [{ ...shortSettings, characterStrokeCounts: missingStroke }, /第1字笔画数/u],
+    [{ ...toneSettings, characterTones: missingTone }, /第2字传统平上去入声数/u],
+  ] as const) {
+    const before = structuredClone(settings);
+    assert.throws(() => generateMeihua(SAMPLE_DATE, settings), diagnostic);
+    assert.deepEqual(settings, before);
+  }
+  const incompleteCalculation = {
+    method: '字数起卦法',
+    methodKey: 'character' as const,
+    characterCount: 4,
+    characterTones: [1, 2, 3, 4],
+    characterUpperNumber: 1,
+    characterLowerNumber: 7,
+    upperTrigramIndex: 1,
+    lowerTrigramIndex: 7,
+    movingYaoIndex: 2,
+  };
+  delete incompleteCalculation.characterTones[1];
+  assert.equal(hasCompleteCharacterCalculation(incompleteCalculation), false);
   const longData = generateMeihua(SAMPLE_DATE, {
     method: 'character',
     characterCount: 12,

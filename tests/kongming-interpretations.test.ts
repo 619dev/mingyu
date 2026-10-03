@@ -121,6 +121,14 @@ test('旧孔明结果可由既有卦象恢复释义且随机重放一致', () =>
   const replay = castKongmingHexagram(undefined, { replay: first.random!.samples });
   assert.deepEqual(replay.interpretation, first.interpretation);
   assert.deepEqual(replay.draws, first.draws);
+  assert.deepEqual(replay.random!.samples, first.random!.samples);
+  assert.throws(() => castKongmingHexagram(undefined, { replay: [...first.random!.samples, 0] }), {
+    code: 'RANDOM_REPLAY_UNUSED',
+  });
+  assert.throws(
+    () => castKongmingHexagram(undefined, { replay: first.random!.samples.slice(0, -1) }),
+    { code: 'RANDOM_REPLAY_EXHAUSTED' },
+  );
   const oldResult = { ...first };
   Reflect.deleteProperty(oldResult, 'interpretation');
   const prompt = formatEnhancedDivinationInfo('kongming', oldResult);

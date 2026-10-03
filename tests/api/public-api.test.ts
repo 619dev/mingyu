@@ -7830,6 +7830,20 @@ test('公开 API 区分诸葛神数与孔明神卦并支持孔明随机重放', 
   assert.deepEqual(replay.body.data.interpretation, random.body.data.interpretation);
   assert.deepEqual(replay.body.data.draws, random.body.data.draws);
 
+  for (const path of ['divination/kongming', 'divination/kongming/prompt']) {
+    const unusedReplay = await callApi(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        replay: [...random.body.data.random.samples, 0],
+        question: '这件事接下来如何推进？',
+      }),
+    });
+    assert.equal(unusedReplay.response.status, 400, path);
+    assert.equal(unusedReplay.body.error.code, 'BAD_REQUEST', path);
+    assert.match(unusedReplay.body.error.message, /随机重放样本有剩余/u);
+  }
+
   const kongmingPrompt = await callApi('divination/kongming/prompt', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

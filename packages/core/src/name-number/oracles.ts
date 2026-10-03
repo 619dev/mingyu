@@ -1,4 +1,9 @@
-import { createRandomContext, randomInt, type RandomOptions } from '../shared/random';
+import {
+  assertReplaySamplesConsumed,
+  createRandomContext,
+  randomInt,
+  type RandomOptions,
+} from '../shared/random';
 import { CHARACTER_STROKE_TUPLES } from './generated-character-strokes';
 import { ZHUGE_SIGNS } from './zhuge-signs';
 import { getZhugeInterpretation } from './zhuge-interpretations';
@@ -98,6 +103,7 @@ export function castKongmingHexagram(pattern?: string, options?: RandomOptions) 
       randomInt(2, context.random) === 1 ? '●' : '○',
     ).join('');
     randomTrace = context.getTrace();
+    assertReplaySamplesConsumed(options, randomTrace);
   } else {
     resolvedPattern = pattern.trim();
   }

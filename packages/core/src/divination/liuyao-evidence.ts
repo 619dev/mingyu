@@ -943,10 +943,19 @@ function buildGenerationFact(data: LiuyaoData): LiuyaoGenerationFact {
           : method === 'time'
             ? '时间起卦'
             : '旧结果未记录起卦方式';
-  const coinThrows = (data.generation?.coinThrows ?? []).map((item) => ({
-    coins: [...item.coins] as [2 | 3, 2 | 3, 2 | 3],
-    total: item.total,
-  }));
+  const recordedCoinThrows = data.generation?.coinThrows ?? [];
+  if (!Array.isArray(recordedCoinThrows)) {
+    throw new Error('六爻三钱记录必须是逐爻数组。');
+  }
+  const coinThrows = Array.from(recordedCoinThrows, (item, index) => {
+    if (!item || !Array.isArray(item.coins)) {
+      throw new Error(`第${index + 1}爻三钱记录必须包含三枚有效铜钱。`);
+    }
+    return {
+      coins: [...item.coins] as [2 | 3, 2 | 3, 2 | 3],
+      total: item.total,
+    };
+  });
   if (method === 'time' || method === 'coins') {
     coinThrows.forEach((item, index) => {
       if (

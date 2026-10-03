@@ -141,7 +141,35 @@ test('金口诀证据按五子元遁复核人元，并拒绝四位结构字段�
 
 test('金口诀证据从日干、昼夜、地分复核贵神本属并拒绝改写后的焦点依据', () => {
   const source = createShenChart();
-  assert.ok(analyzeJinkoujueEvidence(source).focusFacts.length === 4);
+  const evidence = analyzeJinkoujueEvidence(source);
+  assert.ok(evidence.focusFacts.length === 4);
+  assert.equal(evidence.summaryFact.focusCount, 4);
+  assert.deepEqual(
+    evidence.focusFacts.map((item) => item.target.slice(0, 2)),
+    ['地分', '将神', '贵神', '人元'],
+  );
+
+  for (const index of [0, 1, 2, 3]) {
+    const missingFocus = structuredClone(source);
+    delete missingFocus.focusEvidence![index];
+    const snapshot = structuredClone(missingFocus);
+    assert.equal(missingFocus.focusEvidence!.length, 4);
+    assert.throws(() => analyzeJinkoujueEvidence(missingFocus), /主线或焦点依据与四位课值不一致/);
+    assert.throws(
+      () => formatJinkoujueJudgmentFacts(missingFocus),
+      /主线或焦点依据与四位课值不一致/,
+    );
+    assert.throws(
+      () =>
+        buildDivinationPrompt({ method: 'jinkoujue', data: missingFocus, question: '核对焦点' }),
+      /主线或焦点依据与四位课值不一致/,
+    );
+    assert.deepEqual(missingFocus, snapshot);
+  }
+
+  const nullFocus = structuredClone(source);
+  (nullFocus.focusEvidence as unknown[])[1] = null;
+  assert.throws(() => analyzeJinkoujueEvidence(nullFocus), /主线或焦点依据与四位课值不一致/);
 
   const wrongGod = structuredClone(source);
   wrongGod.positions.guiShen.god = wrongGod.positions.guiShen.god === '青龙' ? '白虎' : '青龙';

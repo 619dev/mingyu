@@ -584,10 +584,12 @@ export function analyzeJinkoujueEvidence(data: JinkoujueData): JinkoujueEvidence
   }));
   if (
     data.mainLine !== expectedMainLine ||
+    !Array.isArray(data.focusEvidence) ||
     data.focusEvidence?.length !== expectedFocus.length ||
-    data.focusEvidence.some((item, index) => {
-      const expected = expectedFocus[index];
+    expectedFocus.some((expected, index) => {
+      const item = data.focusEvidence?.[index];
       return (
+        !item ||
         item.target !== expected.target ||
         item.role !== expected.role ||
         item.level !== expected.level ||

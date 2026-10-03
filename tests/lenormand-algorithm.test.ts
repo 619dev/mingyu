@@ -84,6 +84,16 @@ test('恢复缺牌雷诺曼只保留能逐张绑定的旧组合及其实际关�
   assert.equal(fixed[0].status, '已映射');
   assert.doesNotMatch(evidence.promptText, /心\+戒指|感情的承诺或婚约/u);
 
+  const duplicateSlot = structuredClone(complete);
+  duplicateSlot.cards[2].position = '起因';
+  const duplicateSlotEvidence = analyzeLenormandEvidence(duplicateSlot);
+  assert.deepEqual(duplicateSlotEvidence.spreadCoverageFact.duplicatePositions, ['起因']);
+  assert.deepEqual(duplicateSlotEvidence.fixedCombinations, []);
+  assert.equal(duplicateSlotEvidence.summaryFact.fixedCombinationCount, 0);
+  assert.ok(duplicateSlotEvidence.traditionalFacts.every((fact) => fact.kind === '单牌牌义'));
+  assert.doesNotMatch(duplicateSlotEvidence.promptText, /消息带来感情进展/u);
+  assert.match(formatEnhancedDivinationInfo('lenormand', duplicateSlot), /重复牌位起因/u);
+
   for (const change of [
     (data: LenormandData) => {
       data.cards[0].id = 2;
@@ -186,6 +196,42 @@ test('恢复缺牌网格按原牌位保留坐标和宫位，乱序完整盘保�
   const grand = drawLenormandSpread('grandTableau', {
     manualCardIds: Array.from({ length: 36 }, (_, index) => index + 1),
   });
+  const bareHouse = structuredClone(grand);
+  bareHouse.cards[0].position = '第1宫';
+  bareHouse.draw = undefined;
+  bareHouse.meta = undefined;
+  bareHouse.combinations = undefined;
+  const bareHouseEvidence = analyzeLenormandEvidence(bareHouse);
+  assert.equal(bareHouseEvidence.spreadCoverageFact.status, '完整');
+  assert.deepEqual(
+    [
+      bareHouseEvidence.cards[0].house,
+      bareHouseEvidence.cards[0].row,
+      bareHouseEvidence.cards[0].column,
+    ],
+    ['骑士', 1, 1],
+  );
+  assert.equal(bareHouseEvidence.structuredLayoutFacts.length, 39);
+  for (const position of ['第1宫（心宫）', '第1宫附记', '第01宫（骑士宫）']) {
+    const wrongHouse = structuredClone(bareHouse);
+    wrongHouse.cards[0].position = position;
+    const wrongHouseEvidence = analyzeLenormandEvidence(wrongHouse);
+    assert.equal(wrongHouseEvidence.spreadCoverageFact.status, '牌位异常');
+    assert.deepEqual(wrongHouseEvidence.spreadCoverageFact.missingPositions, ['第1宫']);
+    assert.deepEqual(wrongHouseEvidence.spreadCoverageFact.unexpectedPositions, [position]);
+    assert.deepEqual(wrongHouseEvidence.structuredLayoutFacts, []);
+    assert.deepEqual(
+      [
+        wrongHouseEvidence.cards[0].house,
+        wrongHouseEvidence.cards[0].row,
+        wrongHouseEvidence.cards[0].column,
+      ],
+      [undefined, undefined, undefined],
+    );
+    const wrongHousePrompt = formatEnhancedDivinationInfo('lenormand', wrongHouse);
+    assert.match(wrongHousePrompt, /缺少牌位第1宫/u);
+    assert.doesNotMatch(wrongHousePrompt, /布局关系：|归宫牌为/u);
+  }
   grand.cards.shift();
   const grandEvidence = analyzeLenormandEvidence(grand);
   assert.deepEqual(
@@ -1046,6 +1092,33 @@ test('雷诺曼牌位、顺序和牌号异常时应给出可定位的覆盖事�
   });
   assert.equal(unknownSpread.spreadCoverageFact.status, '未知牌阵');
   assert.equal(unknownSpread.spreadCoverageFact.expectedCardCount, null);
+  for (const spreadType of ['toString', '__proto__', 'constructor', ['three'], null]) {
+    const restored = { ...result, spreadType: spreadType as never, spreadName: '未声明牌阵' };
+    const restoredEvidence = analyzeLenormandEvidence(restored);
+    assert.equal(restoredEvidence.spreadCoverageFact.status, '未知牌阵');
+    assert.equal(restoredEvidence.spreadCoverageFact.expectedCardCount, null);
+    assert.equal(restoredEvidence.spreadCoverageFact.expectedSpreadName, null);
+    assert.deepEqual(restoredEvidence.fixedCombinations, []);
+    assert.deepEqual(restoredEvidence.structuredLayoutFacts, []);
+    assert.ok(
+      restoredEvidence.evidence.items.every((item) =>
+        item.tags?.every((tag) => typeof tag === 'string'),
+      ),
+    );
+    if (typeof spreadType !== 'string') {
+      assert.deepEqual(restoredEvidence.evidence.items[1].tags, ['牌阵结构', '未知牌阵']);
+    } else {
+      assert.deepEqual(restoredEvidence.evidence.items[1].tags, [
+        '牌阵结构',
+        spreadType,
+        '未知牌阵',
+      ]);
+    }
+    assert.match(
+      formatEnhancedDivinationInfo('lenormand', restored),
+      /本次牌阵名称与牌位关系待补/u,
+    );
+  }
 });
 
 test('雷诺曼旧布局文字只能兼容展示，不得反推结构化布局', () => {

@@ -12,6 +12,14 @@ test('小六壬双口径在原生提示词中绑定起点位置与时宫歌诀',
   for (const rule of ['common', 'duoneng'] as const) {
     const data = generateXiaoliuren({ rule, customDate: new Date('2026-05-19T10:30:00+08:00') });
     const prompt = buildDivinationPrompt('xiaoliuren', '请做整体解读。', data);
+    const sparseData = structuredClone(data);
+    delete sparseData.palaceOrder[5];
+    assert.equal(sparseData.palaceOrder.length, 6);
+    assert.equal(Object.hasOwn(sparseData.palaceOrder, 5), false);
+    assert.throws(
+      () => buildDivinationPrompt('xiaoliuren', '请做整体解读。', sparseData),
+      /顺数或占得宫与盘面不一致/u,
+    );
     const day = rule === 'common' ? '空亡' : '大安';
     const primary = rule === 'common' ? '小吉' : '空亡';
     const firstDay = rule === 'common' ? '赤口' : '小吉';

@@ -1039,6 +1039,10 @@ function buildLimitationFacts(params: {
 }
 
 export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
+  const scope = data.scope === undefined ? 'hour' : data.scope;
+  if (typeof scope !== 'string' || !Object.hasOwn(SCOPE_LABELS, scope)) {
+    throw new Error(`未知的奇门排盘级别: ${String(scope)}`);
+  }
   if (!data.jiuGongGe.length) {
     throw new Error('奇门证据分析至少需要一个宫位数据。');
   }
@@ -1094,7 +1098,6 @@ export function analyzeQimenEvidence(data: QimenData): QimenEvidenceAnalysis {
     sources: ['当前九宫数组的宫号、数量与唯一性核验'],
     limitation: PALACE_COVERAGE_FACT_LIMITATION,
   };
-  const scope = data.scope ?? 'hour';
   const scopeLabel = SCOPE_LABELS[scope];
   const layoutMethod = data.method ?? 'zhuanpan';
   const layoutMethodLabel = layoutMethod === 'feipan' ? '飞盘法' : '转盘法';

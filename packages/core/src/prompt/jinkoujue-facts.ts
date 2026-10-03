@@ -49,6 +49,7 @@ export function formatJinkoujueJudgmentFacts(
   data: JinkoujueData,
   options: { compact?: boolean; displayedRelations?: readonly string[] } = {},
 ): string[] {
+  const evidence = analyzeJinkoujueEvidence(data);
   const compact = options.compact ?? false;
   const lines = [
     `起课：${data.methodLabel}；${data.calculation.diFenNote}`,
@@ -90,7 +91,7 @@ export function formatJinkoujueJudgmentFacts(
       );
     }
   }
-  const counters = analyzeJinkoujueEvidence(data).counterEvidenceFacts.filter(
+  const counters = evidence.counterEvidenceFacts.filter(
     (item) =>
       item.type !== '受克' ||
       !positions.some((source) =>

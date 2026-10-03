@@ -1145,6 +1145,22 @@ test('MCP 排盘工具应返回 structuredContent，文本兼容输出不重复�
           analysis.draws.map((item) => item.polarity),
           ['阳', '阴', '阳', '阴', '阳'],
         );
+        const samples = [0.75, 0.25, 0.75, 0.25, 0.75];
+        const replay = await client.callTool({
+          name,
+          arguments: { replay: samples, detailMode: 'full' },
+        });
+        assert.equal(replay.isError, undefined);
+        const replayed = replay.structuredContent!.result as typeof analysis;
+        assert.deepEqual(replayed.draws, analysis.draws);
+        assert.deepEqual(replayed.interpretation, analysis.interpretation);
+        const unusedReplay = await client.callTool({
+          name,
+          arguments: { replay: [...samples, 0], detailMode: 'full' },
+        });
+        assert.equal(unusedReplay.isError, true);
+        assert.equal(unusedReplay.content[0]?.type, 'text');
+        assert.match((unusedReplay.content[0] as { text: string }).text, /随机重放样本有剩余/u);
       }
       if (name === 'number_analyze') {
         const analysis = result.structuredContent.result as {

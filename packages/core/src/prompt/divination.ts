@@ -216,13 +216,16 @@ function formatLiuyaoHiddenSpiritSummary(data: DivinationData) {
 }
 
 function getQimenActiveContext(data: QimenData) {
-  const scope = data.scope ?? 'hour';
+  const scope = data.scope === undefined ? 'hour' : data.scope;
   const scopeConfig = {
     year: { label: '年干', branchLabel: '年支', scopeLabel: '年家' },
     month: { label: '月干', branchLabel: '月支', scopeLabel: '月家' },
     day: { label: '日干', branchLabel: '日支', scopeLabel: '日家' },
     hour: { label: '时干', branchLabel: '时支', scopeLabel: '时家' },
   } as const;
+  if (typeof scope !== 'string' || !Object.hasOwn(scopeConfig, scope)) {
+    throw new Error(`未知的奇门排盘级别: ${String(scope)}`);
+  }
   const config = scopeConfig[scope] ?? scopeConfig.hour;
   const activeGanZhi = data.ganzhi[scope] ?? data.ganzhi.hour;
   return {

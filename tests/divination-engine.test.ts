@@ -151,21 +151,26 @@ let qimenStemPairSamples:
 
 function findQimenStemPairSample(heaven: string, earth: string) {
   if (!qimenStemPairSamples) {
-    qimenStemPairSamples = new Map();
-    for (
-      let cursor = new Date('2024-01-01T00:00:00+08:00');
-      cursor < new Date('2024-01-10T00:00:00+08:00');
-      cursor = new Date(cursor.getTime() + 2 * 60 * 60 * 1000)
-    ) {
-      const data = generateQimen(cursor);
+    const samples = new Map<string, { data: ReturnType<typeof generateQimen>; gong: number }>();
+    qimenStemPairSamples = samples;
+    const cacheData = (data: ReturnType<typeof generateQimen>) => {
       for (const palace of data.jiuGongGe) {
         for (const stem of [palace.tianPan.stem, palace.tianPan.companionStem].filter(Boolean)) {
           const key = `${stem}:${palace.diPan.stem}`;
-          if (!qimenStemPairSamples.has(key)) {
-            qimenStemPairSamples.set(key, { data, gong: palace.gong });
+          if (!samples.has(key)) {
+            samples.set(key, { data, gong: palace.gong });
           }
         }
       }
+    };
+
+    cacheData(structuredClone(qimen2024Jan1AtMidnight));
+    for (
+      let cursor = new Date('2024-01-01T02:00:00+08:00');
+      cursor < new Date('2024-01-10T00:00:00+08:00');
+      cursor = new Date(cursor.getTime() + 2 * 60 * 60 * 1000)
+    ) {
+      cacheData(generateQimen(cursor));
     }
   }
 

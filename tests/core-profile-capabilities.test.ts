@@ -496,10 +496,17 @@ test('能力清单可序列化且返回副本', () => {
 
   first.systems[0]!.name = '已修改';
   assert.notEqual(second.systems[0]!.name, '已修改');
+  const capabilityCache = new Map<string, ReturnType<typeof getSystemCapability>>();
+  const readCapabilityOnce = (systemId: string) => {
+    if (!capabilityCache.has(systemId)) {
+      capabilityCache.set(systemId, getSystemCapability(systemId));
+    }
+    return capabilityCache.get(systemId);
+  };
   const findInput = (systemId: string, inputId: string) =>
-    getSystemCapability(systemId)?.inputs.find((input) => input.id === inputId);
+    readCapabilityOnce(systemId)?.inputs.find((input) => input.id === inputId);
 
-  const trueSolarBirth = getSystemCapability('calendar.trueSolarBirth');
+  const trueSolarBirth = readCapabilityOnce('calendar.trueSolarBirth');
   assert.equal(findInput('calendar.trueSolarBirth', 'date'), undefined);
   assert.doesNotMatch(JSON.stringify(trueSolarBirth), /纪元年|目标公元年/);
   assert.equal(
@@ -510,7 +517,7 @@ test('能力清单可序列化且返回副本', () => {
     assert.equal(findInput('calendar.trueSolarBirth', inputId)?.required, true);
   }
 
-  const astronomicalTime = getSystemCapability('calendar.astronomicalTime');
+  const astronomicalTime = readCapabilityOnce('calendar.astronomicalTime');
   assert.equal(
     astronomicalTime?.inputs.some((input) => input.id === 'localDateTime'),
     false,
@@ -519,7 +526,7 @@ test('能力清单可序列化且返回副本', () => {
     assert.equal(findInput('calendar.astronomicalTime', inputId)?.required, true);
   }
 
-  const bazhai = getSystemCapability('bazhai');
+  const bazhai = readCapabilityOnce('bazhai');
   assert.equal(
     bazhai?.inputs.some((input) => input.id === 'profile'),
     false,
@@ -528,7 +535,7 @@ test('能力清单可序列化且返回副本', () => {
   assert.equal(findInput('bazhai', 'mingGua')?.required, false);
   assert.equal(findInput('bazhai', 'doorToInteriorDegree')?.required, false);
 
-  const residential = getSystemCapability('residential');
+  const residential = readCapabilityOnce('residential');
   assert.equal(
     residential?.inputs.some((input) => input.id === 'profile'),
     false,
@@ -537,24 +544,24 @@ test('能力清单可序列化且返回副本', () => {
     assert.ok(findInput('residential', inputId), `住宅风水应声明 ${inputId} 输入`);
   }
 
-  const almanac = getSystemCapability('almanac');
+  const almanac = readCapabilityOnce('almanac');
   assert.equal(almanac?.supports.birthTimeRequired, false);
   assert.equal(almanac?.supports.birthTimeModes, undefined);
   assert.equal(almanac?.methods, undefined);
 
-  const liuren = getSystemCapability('liuren');
+  const liuren = readCapabilityOnce('liuren');
   assert.equal(liuren?.methods, undefined);
   assert.deepEqual(
     findInput('liuren', 'template')?.options?.map((item) => item.value),
     ['general', 'ganqing', 'shiye', 'caifu'],
   );
 
-  const tarot = getSystemCapability('tarot');
+  const tarot = readCapabilityOnce('tarot');
   assert.equal(tarot?.methods, undefined);
   assert.ok(findInput('tarot', 'manualCards'));
   assert.ok(findInput('tarot', 'interactiveSamples'));
 
-  const lenormand = getSystemCapability('lenormand');
+  const lenormand = readCapabilityOnce('lenormand');
   assert.equal(lenormand?.methods, undefined);
   assert.deepEqual(
     findInput('lenormand', 'spread')?.options?.map((item) => item.value),
@@ -563,7 +570,7 @@ test('能力清单可序列化且返回副本', () => {
   assert.ok(findInput('lenormand', 'manualCardIds'));
   assert.ok(findInput('lenormand', 'interactiveSamples'));
 
-  const jinkoujue = getSystemCapability('jinkoujue');
+  const jinkoujue = readCapabilityOnce('jinkoujue');
   assert.ok(jinkoujue?.methods?.some((item) => item.value === 'branch'));
   assert.deepEqual(findInput('jinkoujue', 'branch')?.requiredWhen, { method: 'branch' });
   assert.deepEqual(
@@ -571,23 +578,23 @@ test('能力清单可序列化且返回副本', () => {
     ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'],
   );
 
-  const ssgw = getSystemCapability('ssgw');
+  const ssgw = readCapabilityOnce('ssgw');
   assert.ok(ssgw?.methods?.some((item) => item.value === 'manual'));
   assert.deepEqual(findInput('ssgw', 'number')?.requiredWhen, { method: 'manual' });
   assert.doesNotMatch(ssgw?.outputs.join('\n') ?? '', /掷筊/);
 
-  assert.equal(getSystemCapability('calendar.moonPhase')?.optionalDependencies, undefined);
-  assert.equal(getSystemCapability('astrolabe')?.optionalDependencies, undefined);
-  assert.deepEqual(getSystemCapability('ziwei')?.optionalDependencies, ['iztro']);
-  assert.equal(getSystemCapability('bazi')?.supports.birthTimeRequired, true);
-  assert.deepEqual(getSystemCapability('bazi')?.supports.birthTimeModes, [
+  assert.equal(readCapabilityOnce('calendar.moonPhase')?.optionalDependencies, undefined);
+  assert.equal(readCapabilityOnce('astrolabe')?.optionalDependencies, undefined);
+  assert.deepEqual(readCapabilityOnce('ziwei')?.optionalDependencies, ['iztro']);
+  assert.equal(readCapabilityOnce('bazi')?.supports.birthTimeRequired, true);
+  assert.deepEqual(readCapabilityOnce('bazi')?.supports.birthTimeModes, [
     'traditional-shichen',
     'precise-clock-time',
   ]);
-  assert.deepEqual(getSystemCapability('astrolabe')?.supports.birthTimeModes, [
+  assert.deepEqual(readCapabilityOnce('astrolabe')?.supports.birthTimeModes, [
     'precise-clock-time',
   ]);
-  const qizheng = getSystemCapability('qizheng');
+  const qizheng = readCapabilityOnce('qizheng');
   assert.equal(qizheng?.available, true);
   assert.equal(qizheng?.supports.trueSolarTime, true);
   assert.equal(qizheng?.supports.birthTimeRequired, true);
@@ -596,32 +603,32 @@ test('能力清单可序列化且返回副本', () => {
   assert.ok(qizheng?.outputs.includes('二十八宿真实距星边界'));
   assert.ok(qizheng?.outputs.includes('位置来源与精度分层'));
   assert.equal(
-    getSystemCapability('xuankong')?.inputs.some((input) => input.id === 'guaType'),
+    readCapabilityOnce('xuankong')?.inputs.some((input) => input.id === 'guaType'),
     true,
   );
   assert.equal(
-    getSystemCapability('residential')?.inputs.some((input) => input.id === 'guaType'),
+    readCapabilityOnce('residential')?.inputs.some((input) => input.id === 'guaType'),
     true,
   );
   for (const systemId of ['xuankong', 'residential']) {
-    const capability = getSystemCapability(systemId);
+    const capability = readCapabilityOnce(systemId);
     assert.match(capability?.outputs.join('\n') ?? '', /替卦/);
     assert.match(capability?.notes?.join('\n') ?? '', /兼向/);
   }
   for (const systemId of ['calendar.trueSolarBirth', 'bazi', 'ziwei', 'astrolabe']) {
     assert.ok(
-      getSystemCapability(systemId)?.outputs.some((item) => item.includes('真太阳时结构化计算链')),
+      readCapabilityOnce(systemId)?.outputs.some((item) => item.includes('真太阳时结构化计算链')),
       `${systemId} 应声明真太阳时结构化证据输出`,
     );
   }
-  assert.ok(getSystemCapability('calendar.astronomicalTime')?.outputs.includes('ΔT与近似JD(TT)'));
-  assert.ok(getSystemCapability('calendar.moonPhase')?.outputs.includes('前后朔弦望求根事件'));
-  assert.ok(getSystemCapability('calendar.solarTerm')?.outputs.includes('历表与模型差值核验'));
-  assert.equal(getSystemCapability('calendar.solarTerm')?.supports.batch, true);
-  assert.equal(getSystemCapability('calendar.trueSolarBirth')?.supports.trueSolarTime, true);
-  assert.equal(getSystemCapability('calendar.solarIllumination')?.supports.trueSolarTime, false);
+  assert.ok(readCapabilityOnce('calendar.astronomicalTime')?.outputs.includes('ΔT与近似JD(TT)'));
+  assert.ok(readCapabilityOnce('calendar.moonPhase')?.outputs.includes('前后朔弦望求根事件'));
+  assert.ok(readCapabilityOnce('calendar.solarTerm')?.outputs.includes('历表与模型差值核验'));
+  assert.equal(readCapabilityOnce('calendar.solarTerm')?.supports.batch, true);
+  assert.equal(readCapabilityOnce('calendar.trueSolarBirth')?.supports.trueSolarTime, true);
+  assert.equal(readCapabilityOnce('calendar.solarIllumination')?.supports.trueSolarTime, false);
   assert.ok(
-    getSystemCapability('calendar.solarIllumination')?.outputs.includes('民用、航海与天文曙暮光'),
+    readCapabilityOnce('calendar.solarIllumination')?.outputs.includes('民用、航海与天文曙暮光'),
   );
   assert.equal(requireSystemCapability('bazi').id, 'bazi');
   assert.throws(
@@ -633,7 +640,7 @@ test('能力清单可序列化且返回副本', () => {
       'category' in error &&
       error.category === 'validation',
   );
-  const liuyao = getSystemCapability('liuyao');
+  const liuyao = readCapabilityOnce('liuyao');
   assert.equal(liuyao?.supports.seed, true);
   assert.equal(liuyao?.supports.replay, true);
   assert.ok(liuyao?.methods?.some((item) => item.value === 'coins'));

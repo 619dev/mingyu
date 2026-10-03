@@ -196,6 +196,22 @@ test('奇门年日月时摘要使用对应排盘范围的主动干支和驿马�
     if (item.scope === 'hour') {
       assert.match(summary, /时驿马/);
       assert.match(fullPrompt, /时驿马/);
+      const restored = structuredClone(data);
+      delete restored.scope;
+      assert.deepEqual(getDivinationSummaryBlocks('qimen', restored).lines.join('\n'), summary);
+      assert.equal(formatEnhancedDivinationInfo('qimen', restored, '请做整体解读。'), fullPrompt);
+      for (const scope of ['toString', 'constructor', '__proto__', 'unknown', null, ['hour']]) {
+        const invalid = structuredClone(data);
+        invalid.scope = scope as unknown as typeof invalid.scope;
+        const original = structuredClone(invalid);
+        assert.throws(() => formatEnhancedDivinationInfo('qimen', invalid), /未知的奇门排盘级别/);
+        assert.throws(() => getDivinationSummaryBlocks('qimen', invalid), /未知的奇门排盘级别/);
+        assert.throws(
+          () => buildDivinationPrompt('qimen', '请做整体解读。', invalid),
+          /未知的奇门排盘级别/,
+        );
+        assert.deepEqual(invalid, original);
+      }
     } else {
       assert.doesNotMatch(summary, /时驿马/);
       assert.doesNotMatch(fullPrompt, /时驿马/);

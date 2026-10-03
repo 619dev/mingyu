@@ -60,6 +60,18 @@ test('奇门排盘应内置用神宫与宫间作用结构化证据', () => {
   const data = cloneFixedBoard();
   const evidence = data.evidenceAnalysis;
 
+  const restored = structuredClone(data);
+  delete restored.scope;
+  assert.deepEqual(analyzeQimenEvidence(restored), analyzeQimenEvidence(data));
+  assert.equal(Object.hasOwn(restored, 'scope'), false);
+  for (const scope of ['toString', 'constructor', '__proto__', 'unknown', null, ['hour']]) {
+    const invalid = structuredClone(data);
+    invalid.scope = scope as unknown as typeof invalid.scope;
+    const original = structuredClone(invalid);
+    assert.throws(() => analyzeQimenEvidence(invalid), /未知的奇门排盘级别/);
+    assert.deepEqual(invalid, original);
+  }
+
   assert.ok(evidence);
   assert.equal(evidence.key, 'qimen:evidence');
   assert.equal(evidence.status, '已计算');

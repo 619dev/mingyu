@@ -141,6 +141,14 @@ test('金口诀提示资料只列实际动爻，不再重复展开未触发的�
   for (const options of [{}, { compact: true }]) {
     const standalone = formatJinkoujueJudgmentFacts(data, options).join('\n');
     assert.match(standalone, /将神受人元克；将神受地分克/);
+    const missingFocus = structuredClone(data);
+    delete missingFocus.focusEvidence![1];
+    const missingBefore = structuredClone(missingFocus);
+    assert.throws(
+      () => formatJinkoujueJudgmentFacts(missingFocus, options),
+      /主线或焦点依据与四位课值不一致/,
+    );
+    assert.deepEqual(missingFocus, missingBefore);
   }
   assert.deepEqual(data, structuredBefore);
 });

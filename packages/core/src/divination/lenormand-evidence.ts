@@ -290,15 +290,23 @@ function unique(values: string[]) {
 
 function normalizeCoveragePosition(spreadType: string, position: string) {
   if (spreadType !== 'grandTableau') return position;
-  return position.match(/^第\d+宫/)?.[0] ?? position;
+  const index = LENORMAND_SPREADS.grandTableau.positions.indexOf(position);
+  return index >= 0 ? `第${index + 1}宫` : position;
 }
 
 function buildSpreadCoverageFact(
   data: LenormandData,
   cards: LenormandCardEvidence[],
 ): LenormandSpreadCoverageFact {
-  const expectedPositions = LENORMAND_SPREAD_POSITIONS[data.spreadType];
-  const expectedSpread = LENORMAND_SPREADS[data.spreadType as keyof typeof LENORMAND_SPREADS];
+  const expectedPositions =
+    typeof data.spreadType === 'string' &&
+    Object.hasOwn(LENORMAND_SPREAD_POSITIONS, data.spreadType)
+      ? LENORMAND_SPREAD_POSITIONS[data.spreadType]
+      : undefined;
+  const expectedSpread =
+    typeof data.spreadType === 'string' && Object.hasOwn(LENORMAND_SPREADS, data.spreadType)
+      ? LENORMAND_SPREADS[data.spreadType as keyof typeof LENORMAND_SPREADS]
+      : undefined;
   const identityMismatches =
     expectedSpread && data.spreadName !== expectedSpread.name
       ? [`牌阵名称应为${expectedSpread.name}，记录为${String(data.spreadName)}`]
@@ -1201,7 +1209,11 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
   const inputCards = data.cards;
   const mismatchesByIndex = inputCards.map(() => [] as string[]);
   const columns = data.spreadType === 'grandTableau' ? 9 : data.spreadType === 'nine' ? 3 : 0;
-  const positions = LENORMAND_SPREAD_POSITIONS[data.spreadType];
+  const positions =
+    typeof data.spreadType === 'string' &&
+    Object.hasOwn(LENORMAND_SPREAD_POSITIONS, data.spreadType)
+      ? LENORMAND_SPREAD_POSITIONS[data.spreadType]
+      : undefined;
   const normalizedPositions = inputCards.map((card) =>
     normalizeCoveragePosition(data.spreadType, card.position),
   );
@@ -1418,6 +1430,12 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
       const second = secondMatches[0];
       if (
         first.id === second.id ||
+        normalizedPositions.filter(
+          (position) => position === normalizeCoveragePosition(data.spreadType, first.position),
+        ).length !== 1 ||
+        normalizedPositions.filter(
+          (position) => position === normalizeCoveragePosition(data.spreadType, second.position),
+        ).length !== 1 ||
         !LENORMAND_CARDS.some((card) => card.id === first.id) ||
         !LENORMAND_CARDS.some((card) => card.id === second.id) ||
         !positions
@@ -1542,20 +1560,21 @@ export function analyzeLenormandEvidence(data: LenormandData): LenormandEvidence
       : drawFact.status === '来源链不一致'
         ? '抽牌来源链不一致'
         : '抽牌来源链缺失';
+  const spreadTypeTags = typeof data.spreadType === 'string' ? [data.spreadType] : [];
   const items: PromptEvidenceItem[] = [
     {
       level: calculationSteps.some((item) => item.status === '资料不足') ? '反证' : '辅证',
       title: '雷诺曼抽牌、组合与布局计算链',
       detail: `${calculationChain.join('；')}；统一边界：${CALCULATION_STEP_LIMITATION}`,
       source: unique(calculationSteps.flatMap((item) => item.sources)).join('、'),
-      tags: ['计算链', summaryFact.status, data.spreadType],
+      tags: ['计算链', summaryFact.status, ...spreadTypeTags],
     },
     {
       level: spreadCoverageFact.status === '完整' ? '辅证' : '反证',
       title: `牌阵结构：${data.spreadName}`,
       detail: `${spreadCoverageFact.promptText}；边界：${spreadCoverageFact.limitation}`,
       source: spreadCoverageFact.sources.join('、'),
-      tags: ['牌阵结构', data.spreadType, spreadCoverageFact.status],
+      tags: ['牌阵结构', ...spreadTypeTags, spreadCoverageFact.status],
     },
     {
       level: drawFact.status === '可核验' ? '辅证' : '反证',

@@ -454,4 +454,19 @@ test('小六壬恢复不能用同一旧宫序表证明被改写的月日时宫�
   const wrongIndex = structuredClone(source);
   wrongIndex.palaceOrder[4].index = 5;
   assert.throws(() => analyzeXiaoliurenEvidence(wrongIndex), /顺数或占得宫与盘面不一致/u);
+
+  const missingPalace = structuredClone(source);
+  delete missingPalace.palaceOrder[5];
+  assert.equal(missingPalace.palaceOrder.length, 6);
+  assert.equal(Object.hasOwn(missingPalace.palaceOrder, 5), false);
+  assert.throws(() => analyzeXiaoliurenEvidence(missingPalace), /顺数或占得宫与盘面不一致/u);
+  assert.throws(
+    () =>
+      buildDivinationPrompt({
+        method: 'xiaoliuren',
+        data: missingPalace,
+        question: '请核对这课。',
+      }),
+    /顺数或占得宫与盘面不一致/u,
+  );
 });

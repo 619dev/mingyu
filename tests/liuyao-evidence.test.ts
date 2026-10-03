@@ -284,6 +284,22 @@ test('六爻三钱来源须同时吻合铜钱合计与原始爻值', () => {
     },
   };
   assert.throws(() => analyzeLiuyaoEvidence(wrongCoins), /第1爻三钱记录与原始爻值不一致/u);
+  const skippedRecord = structuredClone(data);
+  delete skippedRecord.generation!.coinThrows![1];
+  const before = structuredClone(skippedRecord);
+  for (const consume of [
+    () => analyzeLiuyaoEvidence(skippedRecord),
+    () => formatEnhancedDivinationInfo('liuyao', skippedRecord),
+    () => getDivinationSummaryBlocks('liuyao', skippedRecord),
+  ]) {
+    assert.throws(consume, /第2爻三钱记录必须包含三枚有效铜钱/u);
+    assert.deepEqual(skippedRecord, before);
+  }
+  const unrecorded = structuredClone(data);
+  delete unrecorded.generation!.coinThrows;
+  const unrecordedFact = analyzeLiuyaoEvidence(unrecorded).generationFact;
+  assert.equal(unrecordedFact.status, '来源链缺失');
+  assert.equal(unrecordedFact.recordedLineCount, 0);
 });
 
 test('六爻动墓和化墓不归入日辰关系', () => {

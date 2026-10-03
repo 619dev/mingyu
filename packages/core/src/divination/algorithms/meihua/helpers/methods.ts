@@ -249,7 +249,7 @@ export function hasCompleteCharacterCalculation(calculation: MeihuaCalculation):
     if (
       !strokes ||
       strokes.length !== count ||
-      !strokes.every((value) => Number.isSafeInteger(value) && value > 0)
+      !Array.from(strokes).every((value) => Number.isSafeInteger(value) && value > 0)
     ) {
       return false;
     }
@@ -261,7 +261,7 @@ export function hasCompleteCharacterCalculation(calculation: MeihuaCalculation):
     if (
       !tones ||
       tones.length !== count ||
-      !tones.every((value) => Number.isInteger(value) && value >= 1 && value <= 4)
+      !Array.from(tones).every((value) => Number.isInteger(value) && value >= 1 && value <= 4)
     ) {
       return false;
     }
@@ -318,7 +318,7 @@ export function resolveCharacterMethod(settings: MeihuaSettings): MeihuaMethodRe
     if (characterCount < 4 || characterCount > 10) {
       throw new Error('字数起卦仅支持4-10字输入传统平上去入声数');
     }
-    tones.forEach((tone, index) =>
+    Array.from(tones).forEach((tone, index) =>
       assertIntegerRange(tone, `第${index + 1}字传统平上去入声数`, 1, 4),
     );
   }
@@ -331,7 +331,7 @@ export function resolveCharacterMethod(settings: MeihuaSettings): MeihuaMethodRe
     if (characterCount < 2 || characterCount > 3) {
       throw new Error('字数起卦仅支持2-3字输入逐字笔画数');
     }
-    strokeCounts.forEach((strokes, index) =>
+    Array.from(strokeCounts).forEach((strokes, index) =>
       positiveSafeInteger(strokes, `第${index + 1}字笔画数`),
     );
   }

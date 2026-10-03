@@ -256,8 +256,12 @@ export function analyzeXiaoliurenEvidence(data: XiaoliurenData): XiaoliurenEvide
         calculation.hourPalaceIndex !== hourIndex)) ||
     !Array.isArray(data.palaceOrder) ||
     data.palaceOrder.length !== 6 ||
-    data.palaceOrder.some(
-      (palace, index) => palace.index !== index || palace.name !== XIAOLIUREN_PALACE_NAMES[index],
+    Array.from({ length: 6 }, (_, index) => data.palaceOrder[index]).some(
+      (palace, index) =>
+        !Object.hasOwn(data.palaceOrder, index) ||
+        palace === undefined ||
+        palace.index !== index ||
+        palace.name !== XIAOLIUREN_PALACE_NAMES[index],
     ) ||
     data.sequence.month.index !== monthIndex ||
     data.sequence.day.index !== dayIndex ||
