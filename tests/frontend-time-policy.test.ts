@@ -92,6 +92,72 @@ test('网页八字紫微合参以无秒时分覆盖旧时辰并保持四柱一�
   });
   assert.equal(subject.lockedInputs.bazi?.birthHour, 0);
   assert.equal(subject.lockedInputs.ziwei?.birthMinute, 5);
+  const blankSecondSubject = buildReadingSubject(
+    { ...input, birthSecond: ' \t' },
+    { ...defaultPromptState, promptSource: 'bazi-ziwei' },
+  );
+  assert.deepEqual(blankSecondSubject, subject);
+  for (const locked of Object.values(subject.lockedInputs)) {
+    assert.equal(Object.hasOwn(locked, 'birthSecond'), false);
+  }
+  const zeroSecondSubject = buildReadingSubject(
+    { ...input, birthSecond: '0' },
+    { ...defaultPromptState, promptSource: 'bazi-ziwei' },
+  );
+  for (const locked of Object.values(zeroSecondSubject.lockedInputs)) {
+    assert.equal(locked.birthHour, 0);
+    assert.equal(locked.birthMinute, 5);
+    assert.equal(locked.birthSecond, 0);
+  }
+
+  const omittedClock = { ...input, birthHour: '', birthMinute: '', birthSecond: '' };
+  const blankClock = { ...input, birthHour: ' \t', birthMinute: '\n', birthSecond: ' ' };
+  const blankPerson = buildPersonFromInput(blankClock);
+  assert.equal(blankPerson.timeIndex, 6);
+  assert.equal(blankPerson.birthHour, undefined);
+  assert.equal(blankPerson.birthMinute, undefined);
+  assert.equal(blankPerson.birthSecond, undefined);
+  const blankSubject = buildReadingSubject(blankClock, {
+    ...defaultPromptState,
+    promptSource: 'bazi-ziwei',
+  });
+  assert.deepEqual(
+    blankSubject,
+    buildReadingSubject(omittedClock, { ...defaultPromptState, promptSource: 'bazi-ziwei' }),
+  );
+  for (const locked of Object.values(blankSubject.lockedInputs)) {
+    assert.equal(locked.timeIndex, 6);
+    for (const field of ['birthHour', 'birthMinute', 'birthSecond']) {
+      assert.equal(Object.hasOwn(locked, field), false);
+    }
+  }
+  const unknownInput = { ...blankClock, timeIndex: -1 };
+  assert.equal(buildPersonFromInput(unknownInput).isThreePillars, true);
+  const unknownSubject = buildReadingSubject(unknownInput, {
+    ...defaultPromptState,
+    promptSource: 'bazi',
+  });
+  assert.equal(unknownSubject.lockedInputs.bazi.timeIndex, -1);
+  for (const field of ['birthHour', 'birthMinute', 'birthSecond']) {
+    assert.equal(Object.hasOwn(unknownSubject.lockedInputs.bazi, field), false);
+  }
+  const partnerSubject = buildReadingSubject(
+    {
+      ...blankClock,
+      analysisMode: 'compatibility',
+      partnerBirthHour: ' ',
+      partnerBirthMinute: '\t',
+      partnerBirthSecond: '\n',
+      partnerTimeIndex: 6,
+    },
+    { ...defaultPromptState, promptSource: 'bazi-ziwei' },
+  );
+  for (const key of ['baziPartner', 'ziweiPartner']) {
+    assert.equal(partnerSubject.lockedInputs[key].timeIndex, 6);
+    for (const field of ['birthHour', 'birthMinute', 'birthSecond']) {
+      assert.equal(Object.hasOwn(partnerSubject.lockedInputs[key], field), false);
+    }
+  }
 });
 
 test('四柱日期为固定东八区，跨术数与补算保持秒级代表时刻', async () => {

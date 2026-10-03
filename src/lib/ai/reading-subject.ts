@@ -53,7 +53,7 @@ function hashText(value: string) {
 }
 
 function numberOrString(value: string | undefined) {
-  return value === '' || value === undefined ? '' : Number(value);
+  return value === undefined || String(value).trim() === '' ? '' : Number(value);
 }
 
 function addIfPresent(target: Record<string, unknown>, key: string, value: unknown) {
