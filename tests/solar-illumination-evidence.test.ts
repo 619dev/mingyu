@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateSolarIlluminationEvidence } from '../packages/core/src/calendar/solar-illumination-evidence.ts';
 import { generateAstrolabe } from '../packages/core/src/divination/algorithms/astrolabe.ts';
+import { isQizhengDaylightAtBirth } from '../packages/core/src/qi_zheng/en-nan.ts';
 
 function assertEvidenceReferences(evidence: ReturnType<typeof calculateSolarIlluminationEvidence>) {
   const factKeys = new Set([evidence.summaryFact.key, ...evidence.summaryFact.factKeys]);
@@ -100,7 +101,10 @@ test('北京夏至应给出可复核的日出日落、太阳高度与曙暮光',
     ),
   );
   assert.match(evidence.promptText, /真北起顺时针/);
-  assert.match(evidence.promptText, /日出\/日落：太阳高度-0\.833°阈值/);
+  assert.match(
+    evidence.promptText,
+    /日出\/日落：标准太阳上缘与近地平折射阈值（太阳中心名义高度约-0\.833°）/,
+  );
   assert.match(evidence.promptText, /不宣称达到观测级或导航级精度/);
   assert.equal(
     evidence.key,
@@ -185,6 +189,32 @@ test('高纬冬夏应明确表达极夜无日出和极昼无日落', () => {
   assert.equal(summer.summaryFact.status, '含全天状态');
   assertEvidenceReferences(winter);
   assertEvidenceReferences(summer);
+
+  // Astronomy Engine 2.1.19 的上缘定义：695700 km 太阳半径随距离换角半径，
+  // 海平面折射为34角分；不能将同一模型的全天状态改用固定中心-0.833°。
+  // https://github.com/cosinekitty/astronomy/blob/v2.1.19/source/js/astronomy.ts
+  const grazingSummer = calculateSolarIlluminationEvidence({
+    year: 2024,
+    month: 12,
+    day: 21,
+    hour: 12,
+    timezone: 0,
+    latitude: -65.729,
+    longitude: 179.5,
+  });
+  assert.equal(grazingSummer.sunriseSunset.status, '全天高于阈值');
+  assert.deepEqual(grazingSummer.sunriseSunset.crossings, []);
+  assert.ok(grazingSummer.solarAltitudeDegrees < -0.833);
+  assert.match(
+    grazingSummer.sunriseSunset.promptText,
+    /太阳上缘.*名义高度约-0\.833°.*全天高于阈值/,
+  );
+  assert.doesNotMatch(grazingSummer.sunriseSunset.promptText, /全天低于阈值/);
+  assertEvidenceReferences(grazingSummer);
+  assert.equal(
+    isQizhengDaylightAtBirth(Date.UTC(2024, 11, 21, 12), grazingSummer.sunriseSunset),
+    true,
+  );
 });
 
 test('极昼起始前的交点应按民用日期归属，并允许当日只有日出', () => {
@@ -451,6 +481,23 @@ test('西占应附带地点相关光照证据而不生成吉凶结论', () => {
     timezone: '8',
   });
   assert.equal(astrolabe.solarIllumination.sunriseSunset.status, '正常交点');
+  const grazing = generateAstrolabe({
+    name: '临界光照',
+    gender: 'unspecified',
+    year: '2024',
+    month: '12',
+    day: '21',
+    hour: '12',
+    minute: '0',
+    latitude: '-65.729',
+    longitude: '179.5',
+    timezone: '0',
+    useTrueSolarTime: true,
+  });
+  assert.equal(grazing.solarIllumination.sunriseSunset.status, '全天高于阈值');
+  assert.equal(grazing.solarIllumination.referenceUtcDateTime, '2024-12-21 12:00:00Z');
+  assert.equal(grazing.solarIllumination.localDate, '2024-12-21');
+  assert.match(grazing.solarIllumination.sunriseSunset.promptText, /太阳上缘.*全天高于阈值/);
   assert.doesNotMatch(
     astrolabe.evidenceAnalysis?.promptText ?? '',
     /光照吉凶|日出成功率|太阳高度评分/,

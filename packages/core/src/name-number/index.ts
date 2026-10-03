@@ -2144,9 +2144,9 @@ export function buildNumberEnergyPrompt(input: {
       : analysis.purpose === 'plate'
         ? '车牌号'
         : '数字字母编号';
-  const conversion = analysis.letterConversions
-    .map((item) => `${item.letter}=${item.value}`)
-    .join('、');
+  const conversion = [
+    ...new Set(analysis.letterConversions.map((item) => `${item.letter}=${item.value}`)),
+  ].join('、');
   const pairs = analysis.energyPairs.length
     ? analysis.energyPairs
         .map((item, index) => {

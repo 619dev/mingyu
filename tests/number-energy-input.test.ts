@@ -9,6 +9,12 @@ test('全角数字字母与半角输入产生相同磁场', () => {
   assert.equal(fullWidth.energySequence, halfWidth.energySequence);
   assert.deepEqual(fullWidth.energyPairs, halfWidth.energyPairs);
   assert.equal(analyzeNumber('ａｚ').energySequence, '126');
+
+  const repeated = analyzeNumber('A1A3A');
+  assert.equal(repeated.letterCount, 3);
+  assert.equal(repeated.energySequence, '11131');
+  assert.equal(repeated.letterConversions.length, 3);
+  assert.match(buildNumberEnergyPrompt({ analysis: repeated }), /字母换算：A=1\n/u);
 });
 
 test('单次出现的磁场不标作高频，重复出现时才列高频磁场', () => {

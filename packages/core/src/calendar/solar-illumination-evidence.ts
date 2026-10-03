@@ -12,6 +12,9 @@ import {
 } from './astronomical-time';
 
 const DAY_MS = 86_400_000;
+// 与日升日落求解采用同一太阳物理半径和海平面标准折射。
+const SUN_RADIUS_KM = 695_700;
+const STANDARD_HORIZON_REFRACTION_DEGREES = 34 / 60;
 const astronomyNamespace = AstronomyEngine as unknown as Record<string, unknown>;
 const Astronomy = (Reflect.get(astronomyNamespace, 'default') ??
   AstronomyEngine) as typeof AstronomyEngine;
@@ -20,6 +23,7 @@ const {
   Equator,
   Horizon,
   HourAngle,
+  KM_PER_AU,
   Observer,
   SearchAltitude,
   SearchHourAngle,
@@ -46,6 +50,7 @@ export interface SolarNoonEvent {
 export interface SolarCrossingEvidence {
   key: string;
   name: string;
+  /** 日出日落为太阳中心名义阈值，其余为实际太阳中心高度阈值。 */
   solarAltitudeDegrees: number;
   status: SolarCrossingStatus;
   dayStartUtcDateTime: string;
@@ -244,7 +249,11 @@ function crossingEvidence(
   const key = `光照交点:${name}`;
   const calculationStepKeys = ['solar-illumination:calculation:crossings'];
   const timezoneContext = timeZoneId || `UTC${formatFixedTimezoneOffset(timezone)}`;
-  const calculation = `以${altitudeDegrees === -0.833 ? '标准太阳上缘与近地平折射（太阳中心名义高度-0.833°）' : `太阳中心高度${altitudeDegrees}°`}为阈值，结合纬度${latitude}°、经度${longitude}°、时区${timezoneContext}，按太阳星历求该民用日期内的高度交点`;
+  const thresholdText =
+    altitudeDegrees === -0.833
+      ? '标准太阳上缘与近地平折射阈值（太阳中心名义高度约-0.833°）'
+      : `太阳高度${altitudeDegrees}°阈值`;
+  const calculation = `以${altitudeDegrees === -0.833 ? '标准太阳上缘与近地平折射（太阳中心名义高度约-0.833°）' : `太阳中心高度${altitudeDegrees}°`}为阈值，结合纬度${latitude}°、经度${longitude}°、时区${timezoneContext}，按太阳星历求该民用日期内的高度交点`;
   const observer = new Observer(latitude, longitude, 0);
   const endTimestamp = localDayEndUtcTimestamp;
   const base = {
@@ -302,7 +311,13 @@ function crossingEvidence(
     const midpoint = new Date((localMidnightUtcTimestamp + endTimestamp) / 2);
     const equator = Equator(Body.Sun, midpoint, observer, true, true);
     const altitude = Horizon(midpoint, observer, equator.ra, equator.dec, '').altitude;
-    if (altitude < altitudeDegrees) {
+    const comparisonAltitude =
+      altitudeDegrees === -0.833
+        ? altitude + (180 / Math.PI) * Math.asin(SUN_RADIUS_KM / KM_PER_AU / equator.dist)
+        : altitude;
+    const comparisonThreshold =
+      altitudeDegrees === -0.833 ? -STANDARD_HORIZON_REFRACTION_DEGREES : altitudeDegrees;
+    if (comparisonAltitude < comparisonThreshold) {
       return {
         ...base,
         status: '全天低于阈值',
@@ -311,7 +326,7 @@ function crossingEvidence(
         eveningUtcDateTime: null,
         morningLocalDateTime: null,
         eveningLocalDateTime: null,
-        promptText: `${name}：太阳高度${altitudeDegrees}°阈值在该民用日期全天无交点，状态为全天低于阈值`,
+        promptText: `${name}：${thresholdText}在该民用日期全天无交点，状态为全天低于阈值`,
         calculation: `${calculation}；当日无交点且太阳高度低于阈值，判定全天低于阈值`,
       };
     }
@@ -323,7 +338,7 @@ function crossingEvidence(
       eveningUtcDateTime: null,
       morningLocalDateTime: null,
       eveningLocalDateTime: null,
-      promptText: `${name}：太阳高度${altitudeDegrees}°阈值在该民用日期全天无交点，状态为全天高于阈值`,
+      promptText: `${name}：${thresholdText}在该民用日期全天无交点，状态为全天高于阈值`,
       calculation: `${calculation}；当日无交点且太阳高度高于阈值，判定全天高于阈值`,
     };
   }
@@ -346,7 +361,7 @@ function crossingEvidence(
     eveningUtcDateTime: evening?.utcDateTime ?? null,
     morningLocalDateTime: morning?.localDateTime ?? null,
     eveningLocalDateTime: evening?.localDateTime ?? null,
-    promptText: `${name}：太阳高度${altitudeDegrees}°阈值的当地上行交点${formatDirection('上行')}、下行交点${formatDirection('下行')}`,
+    promptText: `${name}：${thresholdText}的当地上行交点${formatDirection('上行')}、下行交点${formatDirection('下行')}`,
     calculation: `${calculation}；在${base.dayStartUtcDateTime}至${base.dayEndUtcDateTimeExclusive}（终点不含）内解得${crossings.length}个交点`,
   };
 }
@@ -447,7 +462,7 @@ export function calculateSolarIlluminationEvidence(
     '参考位置采用太阳星历的视赤道坐标与无折射地平坐标，时间方程由当地视太阳时与平太阳时之差计算；视太阳正午按太阳上中天时角零点求解，日期内高度交点按同一太阳星历计算，日出日落采用标准太阳上缘与近地平折射（太阳中心名义高度约 -0.833°），民用、航海、天文曙暮光分别以太阳中心高度 -6°、-12°、-18° 求交点';
   const source = 'VSOP87 太阳星历，球面天文坐标换算，Meeus《Astronomical Algorithms》';
   const assumptions = [
-    '日出日落的 -0.833° 阈值包含标准太阳半径与近地平大气折射近似。',
+    '日出日落以太阳上缘和海平面34角分标准折射计算；太阳角半径随距离变化，太阳中心名义高度约 -0.833°。',
     timeZoneId
       ? '同一民用日期按 IANA 历史时区确定日界，并逐事件换算当地钟表时间。'
       : '同一民用日期采用所给固定 UTC 偏移计算事件。',
@@ -545,7 +560,7 @@ export function calculateSolarIlluminationEvidence(
           astronomicalTwilight,
         ].filter((item) => item.status === '正常交点').length,
       },
-      promptText: `以 -0.833°、-6°、-12°、-18° 四个太阳高度阈值求日出日落与曙暮光交点，并记录全天状态`,
+      promptText: `按标准太阳上缘与近地平折射条件求日出日落，按太阳中心高度 -6°、-12°、-18° 求曙暮光交点，并记录全天状态`,
       sources: [...CROSSING_SOURCES],
       limitation: CALCULATION_STEP_LIMITATION,
     },

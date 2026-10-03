@@ -2006,10 +2006,11 @@ test('奇门复合格局应按日干支识别旬中地丙日', () => {
 
 test('奇门默认使用转盘法，飞盘法九星完整且可区分', () => {
   const date = new Date('2025-01-01T08:00:00+08:00');
-  const defaultData = generateQimen(date);
+  const defaultData = qimen2025Jan1At08;
   const zhuanpanData = generateQimen(date, 'zhuanpan');
   const feipanData = generateQimen(date, 'feipan');
 
+  assert.equal(defaultData.timestamp, date.getTime());
   assert.equal(defaultData.method, 'zhuanpan');
   assert.equal(zhuanpanData.method, 'zhuanpan');
   assert.equal(feipanData.method, 'feipan');
