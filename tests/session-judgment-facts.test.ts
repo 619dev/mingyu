@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { generateDivinationSession } from '../packages/core/src/divination/session';
+import type { LiurenCounterEvidenceFact } from '../packages/core/src/divination/liuren-evidence';
+import { BRANCH_WUXING, STEM_WUXING, isKe, isSheng } from '../packages/core/src/ganzhi';
 import {
   formatLiurenLesson,
   formatLiurenOrdinaryTransmissionAdjudication,
@@ -73,15 +75,51 @@ test('六壬 aiPrompt 应保留取传与课体判断依据', () => {
   }
   assert.ok(data.evidenceAnalysis!.counterEvidenceFacts.length > 0);
   assert.match(session.aiPrompt, /课传反证：/);
-  for (const fact of data.evidenceAnalysis!.counterEvidenceFacts) {
-    if (session.aiPrompt.includes(fact.promptText)) continue;
+  const expectedRelation = (
+    source: string,
+    target: string,
+    sourceRole: string,
+    targetRole: string,
+  ) => {
+    const sourceElement = STEM_WUXING[source] || BRANCH_WUXING[source];
+    const targetElement = STEM_WUXING[target] || BRANCH_WUXING[target];
+    assert.ok(sourceElement && targetElement);
+    const from = `${sourceRole}${source}${sourceElement}`;
+    const to = `${targetRole}${target}${targetElement}`;
+    if (sourceElement === targetElement) return { summary: '比和', detail: `${from}与${to}比和` };
+    for (const [verb, relates] of [
+      ['生', isSheng],
+      ['克', isKe],
+    ] as const) {
+      if (relates(sourceElement, targetElement))
+        return {
+          summary: `${sourceElement}${verb}${targetElement}`,
+          detail: `${from}${verb}${to}`,
+        };
+      if (relates(targetElement, sourceElement))
+        return {
+          summary: `${targetElement}${verb}${sourceElement}`,
+          detail: `${to}${verb}${from}`,
+        };
+    }
+    assert.fail('课传干支没有可核的五行关系');
+  };
+  const assertCounterFactShown = (fact: LiurenCounterEvidenceFact, prompt = session.aiPrompt) => {
+    if (prompt.includes(fact.promptText)) return;
     if (fact.scope === '四课') {
       const lesson = data.evidenceAnalysis!.lessons.find((item) => item.key === fact.ownerKey);
       assert.ok(lesson);
       const lessonLine = formatLiurenLesson(lesson);
-      assert.ok(lessonLine.includes(fact.detail), fact.promptText);
-      assert.ok(session.aiPrompt.includes(lessonLine), fact.promptText);
-      continue;
+      if (lessonLine.includes(fact.detail)) {
+        assert.ok(prompt.includes(lessonLine), fact.promptText);
+        return;
+      }
+      assert.equal(fact.basis, '上下神关系', fact.promptText);
+      const relation = expectedRelation(lesson.upper, lesson.lower, '上神', '下位');
+      assert.equal(fact.detail, relation.summary, fact.promptText);
+      assert.ok(lessonLine.includes(`；${relation.detail}`), fact.promptText);
+      assert.ok(prompt.includes(lessonLine), fact.promptText);
+      return;
     }
     const index = data.evidenceAnalysis!.transmissions.findIndex(
       (item) => item.key === fact.ownerKey,
@@ -91,23 +129,64 @@ test('六壬 aiPrompt 应保留取传与课体判断依据', () => {
     assert.ok(transmission);
     if (fact.basis === '相邻传关系' || fact.basis === '旬空') {
       const transmissionLine = formatLiurenTransmission(data, index);
-      assert.ok(session.aiPrompt.includes(transmissionLine), fact.promptText);
-      assert.ok(
-        fact.basis === '旬空'
-          ? transmissionLine.includes('（空）')
-          : transmissionLine.includes(fact.detail),
-        fact.promptText,
-      );
+      assert.ok(prompt.includes(transmissionLine), fact.promptText);
+      if (fact.basis === '旬空') {
+        assert.ok(transmissionLine.includes('（空）'), fact.promptText);
+      } else {
+        if (transmissionLine.includes(fact.detail)) return;
+        const previous =
+          index === 0 ? data.fourLessons[0].lower : data.threeTransmissions[index - 1].branch;
+        const previousRole = index === 0 ? '一课下位' : data.threeTransmissions[index - 1].stage;
+        const relation = expectedRelation(
+          transmission.branch,
+          previous,
+          transmission.stage,
+          previousRole,
+        );
+        assert.equal(fact.detail, relation.summary, fact.promptText);
+        assert.ok(transmissionLine.includes(`；${relation.detail}`), fact.promptText);
+      }
     } else if (fact.basis === '月令旺衰') {
       assert.ok(
-        session.aiPrompt.includes(
-          `${transmission.stage}${transmission.branch}（月令${fact.detail}`,
-        ),
+        prompt.includes(`${transmission.stage}${transmission.branch}（月令${fact.detail}`),
         fact.promptText,
       );
     } else {
       assert.fail(`三传反证缺少对应盘面事实：${fact.promptText}`);
     }
+  };
+  for (const fact of data.evidenceAnalysis!.counterEvidenceFacts) {
+    assertCounterFactShown(fact);
+  }
+  const secondLesson = data.evidenceAnalysis!.lessons.find((lesson) => lesson.name === '二课');
+  assert.ok(secondLesson);
+  assert.equal(secondLesson.upper, '午');
+  assert.equal(secondLesson.lower, '亥');
+  assert.match(session.aiPrompt, /二课午临亥乘[^；\n]+；下位亥水克上神午火/u);
+  const secondCounter = data.evidenceAnalysis!.counterEvidenceFacts.find(
+    (fact) => fact.ownerKey === secondLesson.key && fact.basis === '上下神关系',
+  );
+  assert.ok(secondCounter);
+  assert.equal(secondCounter.detail, '水克火');
+  assert.throws(() =>
+    assertCounterFactShown(
+      secondCounter,
+      session.aiPrompt.replace('下位亥水克上神午火', '上神午火克下位亥水'),
+    ),
+  );
+  for (const fact of data.evidenceAnalysis!.counterEvidenceFacts.filter(
+    (item) => item.basis === '上下神关系' || item.basis === '相邻传关系',
+  )) {
+    const extra = {
+      ...fact,
+      detail: `${fact.detail}，另有独立条件`,
+      promptText: `${fact.promptText}，另有独立条件`,
+    };
+    assert.throws(() => assertCounterFactShown(extra));
+    assertCounterFactShown(extra, `${session.aiPrompt}\n${extra.promptText}`);
+    assert.throws(() =>
+      assertCounterFactShown({ ...fact, ownerKey: '未列课传', promptText: '未列课传的关系反证' }),
+    );
   }
   assert.ok(session.aiPrompt.includes(data.evidenceAnalysis!.counterSummaryFact.status));
   assert.match(session.aiPrompt, /应期依据：/);
