@@ -170,6 +170,42 @@ function isRepeatedNamedStarBrightnessCondition(
   );
 }
 
+function isRepeatedSingleMajorStarCondition(
+  pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
+  condition: string,
+  displayedPalaces: readonly PalaceFact[],
+) {
+  const match = new RegExp(`^(.+?)单守([${EARTHLY_BRANCHES}])宫(.+宫)$`, 'u').exec(condition);
+  if (!match) return false;
+  const stars = getConditionStars(match[1], pattern.star_names);
+  if (stars?.length !== 1) return false;
+  const palace = getPatternPalace(pattern, match[3], displayedPalaces);
+  return Boolean(
+    palace &&
+    palace.earthly_branch === match[2] &&
+    palace.major_stars.length === 1 &&
+    palace.major_stars[0].name === stars[0],
+  );
+}
+
+function isRepeatedSamePalacePresenceCondition(
+  pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
+  condition: string,
+  displayedPalaces: readonly PalaceFact[],
+) {
+  const match = /^(.+?)守(.+?)并同见(.+)$/u.exec(condition);
+  if (!match) return false;
+  const guardingStars = getConditionStars(match[1], pattern.star_names);
+  const accompanyingStars = getConditionStars(match[3], pattern.star_names);
+  if (!guardingStars || !accompanyingStars) return false;
+  const palace = getPatternPalace(pattern, match[2], displayedPalaces);
+  if (!palace) return false;
+  const stars = [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars];
+  return [...guardingStars, ...accompanyingStars].every((name) =>
+    stars.some((star) => star.name === name),
+  );
+}
+
 /** 判断格局条件是否已由当前展示宫位中的星曜位置和明确属性完整表达。 */
 export function isZiweiConditionRestatedByPalaces(
   pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
@@ -179,6 +215,8 @@ export function isZiweiConditionRestatedByPalaces(
   return (
     isRepeatedZiweiCoLocationCondition(pattern, condition, displayedPalaces) ||
     isRepeatedSinglePalacePositionCondition(pattern, condition, displayedPalaces) ||
-    isRepeatedNamedStarBrightnessCondition(pattern, condition, displayedPalaces)
+    isRepeatedNamedStarBrightnessCondition(pattern, condition, displayedPalaces) ||
+    isRepeatedSingleMajorStarCondition(pattern, condition, displayedPalaces) ||
+    isRepeatedSamePalacePresenceCondition(pattern, condition, displayedPalaces)
   );
 }

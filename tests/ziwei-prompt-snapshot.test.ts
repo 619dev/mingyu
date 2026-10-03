@@ -587,6 +587,77 @@ test('紫微单宫定位条件仅在宫位中已有同一星曜事实时省略',
     /贪狼、火星亮度均为庙或旺/,
   );
   assert.deepEqual(complete, before);
+
+  const singleSunPalace = createPalace(0, '命宫', ['太阳']);
+  singleSunPalace.earthly_branch = '午';
+  const voidPalace = createPalace(0, '命宫', ['廉贞']);
+  voidPalace.other_stars = [
+    { name: '旬空', kind: 'other' },
+    { name: '天空', kind: 'other' },
+  ];
+  for (const [name, condition, shownPalace] of [
+    ['金灿光辉', '太阳单守午宫命宫', singleSunPalace],
+    ['生不逢时', '廉贞守命并同见旬空、天空', voidPalace],
+  ] as const) {
+    const payload = createPayload();
+    payload.palaces[0] = shownPalace;
+    payload.patterns = detectPatterns({ palaces: payload.palaces });
+    const actualPattern = payload.patterns.find((item) => item.name === name);
+    assert.ok(actualPattern);
+    assert.deepEqual(actualPattern.matched_conditions, [condition]);
+    assert.equal(isZiweiConditionRestatedByPalaces(actualPattern, condition, [shownPalace]), true);
+    for (const displayed of [
+      [],
+      [{ ...shownPalace, index: 1 }],
+      [{ ...shownPalace, name: '兄弟' }],
+      [{ ...shownPalace, major_stars: [], scope_stars: shownPalace.major_stars }],
+    ]) {
+      assert.equal(isZiweiConditionRestatedByPalaces(actualPattern, condition, displayed), false);
+    }
+    assert.equal(
+      isZiweiConditionRestatedByPalaces(actualPattern, `${condition}，且不见化忌`, [shownPalace]),
+      false,
+    );
+    const original = structuredClone(payload);
+    for (const text of [
+      formatZiweiPayloadForPrompt(payload),
+      buildZiweiReadableSnapshot({ payload, reportContext: createReportContext() }),
+      buildZiweiTaskBookSnapshot({ payload, reportContext: createReportContext() }),
+    ]) {
+      assert.ok(text.includes(`格局：${name}`));
+      assert.ok(text.includes('古籍依据：'));
+      for (const star of [...shownPalace.major_stars, ...shownPalace.other_stars]) {
+        assert.ok(text.includes(star.name));
+      }
+      assert.equal(text.includes(condition), false);
+    }
+    assert.ok(
+      formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['夫妻'] }).includes(condition),
+    );
+    assert.deepEqual(payload, original);
+  }
+  const singlePattern = { palace_indexes: [0], palace_names: ['命宫'], star_names: ['太阳'] };
+  for (const invalidPalace of [
+    { ...singleSunPalace, earthly_branch: '巳' },
+    { ...singleSunPalace, major_stars: [{ name: '太阴', kind: 'major' as const }] },
+    {
+      ...singleSunPalace,
+      major_stars: [...singleSunPalace.major_stars, { name: '太阴', kind: 'major' as const }],
+    },
+  ]) {
+    assert.equal(
+      isZiweiConditionRestatedByPalaces(singlePattern, '太阳单守午宫命宫', [invalidPalace]),
+      false,
+    );
+  }
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(
+      { palace_indexes: [0], palace_names: ['命宫'], star_names: ['廉贞', '旬空', '天空'] },
+      '廉贞守命并同见旬空、天空',
+      [{ ...voidPalace, other_stars: [voidPalace.other_stars[0]] }],
+    ),
+    false,
+  );
 });
 
 test('紫微在线提示词省略未出现的可选格局加强条件', () => {

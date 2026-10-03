@@ -63,8 +63,9 @@ test('“發”和“髮”按不同繁体字义与康熙笔画解析', async ()
 test('姓名逐字资料保留实际输入的繁体字形', () => {
   const analysis = analyzeChineseName({ fullName: '李樂' });
   assert.equal(analysis.chars[1].char, '樂');
-  assert.match(buildChineseNameAnalysisPrompt({ analysis }), /逐字：李（康熙/);
-  assert.match(buildChineseNameAnalysisPrompt({ analysis }), /樂（康熙/);
+  const prompt = buildChineseNameAnalysisPrompt({ analysis });
+  assert.match(prompt, /逐字：李（康熙/);
+  assert.match(prompt, /樂（康熙/);
 
   const candidate = generateChineseNames({
     surname: '李',

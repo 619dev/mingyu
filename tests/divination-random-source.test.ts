@@ -39,9 +39,9 @@ test('修改本次签文或牌面不污染后续相同输入的解读资料', ()
   const sign = drawRandomSign(DATE, { seed: '资料隔离' });
   const originalDetails = { ...sign.details };
   sign.details['核心寓意'] = '本次临时备注';
-  assert.deepEqual(resolveSignByNumber(sign.number, DATE).details, originalDetails);
-  assert.deepEqual(drawRandomSign(DATE, { seed: '资料隔离' }).details, originalDetails);
   const manual = resolveSignByNumber(sign.number, DATE);
+  assert.deepEqual(manual.details, originalDetails);
+  assert.deepEqual(drawRandomSign(DATE, { seed: '资料隔离' }).details, originalDetails);
   manual.details['核心寓意'] = '手工备注';
   assert.deepEqual(resolveSignByNumber(sign.number, DATE).details, originalDetails);
 
