@@ -19,8 +19,14 @@ const baseInput = {
   question: '请说明这份命盘的整体结构与可执行重点。',
 } as const;
 
+let baseReadingCache: ReturnType<typeof calculateBaziReading> | undefined;
+
+function getBaseReading() {
+  return (baseReadingCache ??= calculateBaziReading(baseInput));
+}
+
 test('本地八字计算保留完整事实、问题和结构化主体身份', () => {
-  const output = calculateBaziReading(baseInput);
+  const output = getBaseReading();
 
   assert.match(output.prompt, /请说明这份命盘的整体结构与可执行重点。/u);
   assert.equal(output.result.calculationIdentity.method, 'bazi');
@@ -42,17 +48,7 @@ test('本地八字计算保留完整事实、问题和结构化主体身份', ()
 });
 
 test('用户选择的八字运限进入提示词和身份目标', () => {
-  const chart = calculateBaziChartFromInput({
-    gender: 'male',
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 8,
-    dateType: 'solar',
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
-  const year = chart.luckInfo.cycles[0]?.years[0]?.year;
+  const year = getBaseReading().result.luckInfo.cycles[0]?.years[0]?.year;
   assert.equal(typeof year, 'number');
 
   const output = calculateBaziReading({

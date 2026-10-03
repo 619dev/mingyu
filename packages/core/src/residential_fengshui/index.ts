@@ -477,6 +477,7 @@ function buildEvidencePrompt(params: {
 }
 
 function buildPrompt(result: {
+  input: ResidentialFengshuiInput;
   orientationText: string;
   houseYear: number | null;
   bazhai: BaZhaiResult | BaZhaiDoorDegreeResult | null;
@@ -484,6 +485,26 @@ function buildPrompt(result: {
   xuankongStatus: ResidentialFengshuiResult['inputSummary']['xuankongStatus'];
   northReferenceUnspecified: boolean;
 }) {
+  const measurementInput = !result.bazhai && result.xuankong?.measurement ? result.input : null;
+  const originalMeasurement = measurementInput
+    ? [
+        measurementInput.doorToInteriorDegree !== undefined
+          ? `站在大门处面向屋内测量，读数${measurementInput.doorToInteriorDegree}°`
+          : '',
+        measurementInput.sitDegree !== undefined ? `坐山读数${measurementInput.sitDegree}°` : '',
+        measurementInput.facingDegree !== undefined
+          ? `朝向读数${measurementInput.facingDegree}°`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('、')
+    : '';
+  const northBasis =
+    measurementInput?.northReference === 'magnetic'
+      ? `磁北，磁偏角${measurementInput.magneticDeclinationDegrees}°（东偏为正）；坐向角度已换算为真北`
+      : measurementInput?.northReference === 'true'
+        ? '真北'
+        : '未声明，坐向按原始读数暂列，补充磁北或真北基准后复核';
   const readSection = (prompt: string, title: '盘面资料' | '传统依据') => {
     let section = '';
     return prompt
@@ -509,7 +530,8 @@ function buildPrompt(result: {
           ? '请依据以下八宅命卦与宅卦资料解读居住人的方位适配及人宅配合。'
           : '请依据以下八宅命卦资料解读居住人的方位适配。',
     '【盘面资料】',
-    result.northReferenceUnspecified && result.xuankong
+    originalMeasurement ? `原始测向：${originalMeasurement}，北向基准${northBasis}。` : '',
+    result.northReferenceUnspecified && result.xuankong && !originalMeasurement
       ? '坐向北向基准未声明；玄空角度盘按原始读数暂排，补充磁北或真北基准后复核。'
       : '',
     result.xuankong ? '' : `山向：${result.orientationText}`,
@@ -604,6 +626,7 @@ export function generateResidentialFengshui(
     northReferenceUnspecified,
   });
   const prompt = buildPrompt({
+    input,
     orientationText,
     houseYear,
     bazhai,

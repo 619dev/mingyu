@@ -42,7 +42,7 @@ function formatNatalFacts(data: QizhengResult): string[] {
     ...data.shensha.map((item) => `神煞：${item.name}${item.value}。`),
     ...(enNan
       ? [
-          `昼夜分金：${enNan.sect}；${enNan.sectSummary}。按出生时刻与当地太阳高度阈值划分，太阳上缘负零点八三三度。`,
+          `昼夜分金：${enNan.sect}；${enNan.sectSummary}。按出生时刻与当地太阳高度阈值划分，太阳中心名义高度负零点八三三度，含标准太阳半径与近地平折射近似。`,
           `命主五行${enNan.mingElement}。`,
           `恩星${enNan.enStars.join('、')}；难星${enNan.nanStars.join('、')}；仇星${enNan.chouStars.join('、')}；用星${enNan.yongStars.join('、')}。`,
           ...(enNan.aspectInteraction.length

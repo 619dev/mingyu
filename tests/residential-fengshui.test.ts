@@ -357,6 +357,18 @@ test('添加居住人资料不改变门向测量及玄空候选山向', () => {
   assert.equal(alone.xuankong?.measurement?.stability, '山向边界敏感');
   assert.deepEqual(withPerson.xuankong?.measurement, alone.xuankong?.measurement);
   assert.deepEqual(withPerson.xuankong?.plates, alone.xuankong?.plates);
+  for (const result of [alone, withPerson]) {
+    const prompt = buildMetaphysicsPrompt(result.prompt, '住宅坐向如何解读？', {
+      method: 'residential',
+      scope: 'natal',
+    });
+    assert.equal(prompt.split('读数64°').length - 1, 1);
+    assert.equal(prompt.split('磁偏角1°').length - 1, 1);
+    assert.match(prompt, /北向基准磁北/);
+    assert.match(prompt, /测量资料：坐山65°、朝向245°、误差±3°/);
+  }
+  assert.match(alone.prompt, /坐向角度已换算为真北/);
+  assert.doesNotMatch(withPerson.prompt, /原始测向：/);
   assert.match(withPerson.prompt, /候选山向/);
   assert.match(withPerson.agreements[0].detail, /中心读数盘，待复测核定/);
   assert.match(withPerson.advice[0], /中心读数盘，待复测核定/);
@@ -485,6 +497,36 @@ test('住宅风水仅有门向度数时可出玄空，不依赖出生信息', ()
   assert.equal(result.xuankong?.sitMountain, '子');
   assert.equal(result.xuankong?.facingMountain, '午');
   assert.match(result.prompt, /仅完成玄空宅运层|玄空/);
+  assert.match(result.prompt, /原始测向：站在大门处面向屋内测量，读数0°，北向基准未声明/);
+  assert.equal(result.prompt.split('北向基准未声明').length - 1, 1);
+  assert.equal(result.prompt.split('按原始读数暂列').length - 1, 1);
+  assert.equal(result.prompt.split('补充磁北或真北基准后复核').length - 1, 1);
+  assert.doesNotMatch(result.prompt, /玄空角度盘按原始读数暂排/);
+  assert.match(result.prompt, /测量资料：坐山0°、朝向180°、误差±0°/);
+  for (const [measurement, rawText] of [
+    [{ sitDegree: 70 }, '坐山读数70°'],
+    [{ facingDegree: 250 }, '朝向读数250°'],
+  ] as const) {
+    const magnetic = generateResidentialFengshui({
+      year: 2008,
+      ...measurement,
+      northReference: 'magnetic',
+      magneticDeclinationDegrees: -20,
+    });
+    assert.equal(magnetic.bazhai, null);
+    assert.equal(magnetic.xuankong?.sitMountain, '艮');
+    assert.equal(magnetic.xuankong?.facingMountain, '坤');
+    assert.equal(magnetic.xuankong?.measurement?.sitDegree, 50);
+    assert.equal(magnetic.xuankong?.measurement?.facingDegree, 230);
+    const prompt = buildMetaphysicsPrompt(magnetic.prompt, '住宅坐向如何解读？', {
+      method: 'residential',
+      scope: 'natal',
+    });
+    assert.equal(prompt.split(rawText).length - 1, 1);
+    assert.equal(prompt.split('磁偏角-20°').length - 1, 1);
+    assert.match(prompt, /北向基准磁北[\s\S]*坐向角度已换算为真北/);
+    assert.match(prompt, /测量资料：坐山50°、朝向230°、误差±0°/);
+  }
 });
 
 test('住宅合参未声明北向时将玄空角度盘标为原始读数暂算', () => {

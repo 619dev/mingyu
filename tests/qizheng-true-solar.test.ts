@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateQizheng } from '../packages/core/src/qi_zheng/index.ts';
 import { isQizhengDaylightAtBirth } from '../packages/core/src/qi_zheng/en-nan.ts';
+import { buildMetaphysicsPrompt } from '../src/lib/metaphysics-prompt';
 
 test('七政真太阳时只校正传统命身宫，天体位置保持同一时刻', () => {
   const input = {
@@ -57,6 +58,21 @@ test('七政昼夜分金按出生地日出日落状态划分极昼极夜，并�
   assert.equal(winter.enNan?.sect, '夜生');
   assert.match(summer.prompt, /昼生.*当地太阳高度阈值.*-0\.833°/);
   assert.match(winter.prompt, /夜生.*当地太阳高度阈值.*-0\.833°/);
+  for (const chart of [summer, winter]) {
+    const prompt = buildMetaphysicsPrompt(chart.prompt, '按盘面说明昼夜与命主恩难。', {
+      method: 'qizheng',
+      currentTime: new Date('2024-06-21T00:00:00Z'),
+    });
+    assert.equal(
+      chart.calculationContext.solarIllumination.sunriseSunset.solarAltitudeDegrees,
+      -0.833,
+    );
+    // USNO 日出日落定义以太阳中心天顶距 90.8333°，计入半径与近地平折射。
+    assert.match(prompt, /太阳中心名义高度-0\.833°，含标准太阳半径与近地平折射近似/);
+    assert.doesNotMatch(prompt, /太阳上缘-0\.833°/);
+    assert.match(prompt, /【任务】/u);
+    assert.match(prompt, /【传统依据】/u);
+  }
   assert.doesNotMatch(`${summer.prompt}\n${winter.prompt}`, /全天高于阈值|全天低于阈值|正常交点/);
   assert.doesNotMatch(
     `${summer.prompt}\n${winter.prompt}`,
