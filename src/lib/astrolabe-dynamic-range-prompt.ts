@@ -148,6 +148,12 @@ export async function* iterateAstrolabeDynamicPromptPages(
     startAt?: AstrolabeDynamicPromptCursor;
   } = {},
 ): AsyncGenerator<AstrolabeDynamicPromptPage> {
+  summary = { ...summary, source: { ...summary.source } };
+  options = {
+    ...options,
+    ...(options.schools ? { schools: [...options.schools] } : {}),
+    ...(options.startAt ? { startAt: { ...options.startAt } } : {}),
+  };
   const limit = options.maxCharacters ?? 12000;
   if (!Number.isSafeInteger(limit) || limit < 2000)
     throw new Error('每页提示词容量至少为2000个字符。');

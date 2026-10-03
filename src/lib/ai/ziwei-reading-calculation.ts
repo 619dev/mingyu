@@ -498,6 +498,8 @@ export async function generateZiweiReadingLocally(
   calculationRequest: JsonRecord,
   options: ZiweiReadingCalculationOptions = {},
 ): Promise<ZiweiReadingCalculationResult> {
+  calculationRequest = { ...calculationRequest };
+  options = { ...options };
   checkAborted(options.signal);
   const { chartInput, identity } = buildChartInput(calculationRequest);
   const selection = readSelection(calculationRequest);

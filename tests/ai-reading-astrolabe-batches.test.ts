@@ -95,6 +95,7 @@ test('完整星盘补算复用一次接口批次并保持本地及三段事件�
     astrolabeScope: 'full',
     astrolabeScopeDate: '2028-06-12',
     question: '请分析各阶段变化。',
+    supplementaryInfo: { knownFacts: '本次既定事实' },
   };
   const previousFetch = globalThis.fetch;
   const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
@@ -179,12 +180,28 @@ test('完整星盘补算复用一次接口批次并保持本地及三段事件�
         [...periodRequests].map(([scope, requests]) => [scope, structuredClone(requests)]),
       ),
     };
-    const local = await generateAstrolabeReadingLocally({
+    const localInput = {
       ...input,
+      supplementaryInfo: { ...input.supplementaryInfo },
       gender: '女',
       responseMode: 'full',
       astrolabeIncludePeriodEvents: false,
-    });
+    };
+    const localOptions = {
+      onProgress() {
+        localInput.question = '后来问题';
+        localInput.supplementaryInfo.knownFacts = '后来事实';
+        localOptions.onProgress = () => {
+          throw new Error('不应改用后来的进度回调');
+        };
+      },
+    };
+    const local = await generateAstrolabeReadingLocally(localInput, localOptions);
+    assert.equal(localInput.question, '后来问题');
+    assert.equal(localInput.supplementaryInfo.knownFacts, '后来事实');
+    assert.ok(local.prompt.includes('本次既定事实'));
+    assert.ok(!local.prompt.includes('后来问题'));
+    assert.ok(!local.prompt.includes('后来事实'));
     assert.equal(local.prompt, resource.text);
     assert.deepEqual(JSON.parse(JSON.stringify(local.result.scopeEvidence)), remoteEvidence);
     if (local.result.scopeEvidence.scope !== 'full') {
@@ -369,14 +386,26 @@ function makeBatchResponse(
 
 test('星盘周期客户端按七个民用日顺序取齐并跨批重建完整层级', async () => {
   const requests: string[] = [];
-  const collection = await fetchAstrolabePeriodCollection({
-    scope: 'monthly',
+  const lockedContext = structuredClone(periodContext);
+  const controller = new AbortController();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const args = {
+    scope: 'monthly' as const,
     dateStr: '2028-06',
-    periodContext,
+    periodContext: lockedContext,
+    signal: controller.signal,
     batchDays: DEFAULT_ASTROLABE_PERIOD_BATCH_DAYS,
-    fetchBatch: async (input) => {
+    fetchBatch: async (input: Record<string, unknown>, signal?: AbortSignal) => {
       const range = input.astrolabePeriodRange as { startDate: string; endDate: string };
       requests.push(`${range.startDate}/${range.endDate}`);
+      assert.equal(signal, controller.signal);
+      assert.equal(input.astrolabeScope, 'monthly');
+      assert.equal(input.astrolabeScopeDate, '2028-06');
+      assert.deepEqual(input.astrolabePeriodContext, periodContext);
+      if (requests.length === 1) await gate;
       const parentRange = { startDate: '2028-06-01', endDate: '2028-07-01' };
       const nextRange =
         range.endDate === parentRange.endDate
@@ -397,7 +426,20 @@ test('星盘周期客户端按七个民用日顺序取齐并跨批重建完整�
         nextRange,
       );
     },
-  });
+  };
+  const pending = fetchAstrolabePeriodCollection(args);
+  args.dateStr = '2029-06';
+  lockedContext.timezone = 0;
+  lockedContext.points[0].longitude = 99;
+  lockedContext.houseCusps[0] = 123;
+  args.fetchBatch = async () => {
+    throw new Error('不应改用后来的批次读取器');
+  };
+  release();
+  const collection = await pending;
+  assert.equal(args.dateStr, '2029-06');
+  assert.equal(lockedContext.points[0].longitude, 99);
+  assert.equal(lockedContext.houseCusps[0], 123);
 
   assert.deepEqual(requests, [
     '2028-06-01/2028-06-08',

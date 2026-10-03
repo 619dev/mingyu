@@ -272,6 +272,14 @@ export async function fetchAstrolabePeriodCollection(args: {
   batchDays?: number;
   onProgress?: (completed: number, total: number) => void;
 }): Promise<AstrolabePeriodCollectionResult> {
+  args = {
+    ...args,
+    periodContext: {
+      ...args.periodContext,
+      points: args.periodContext.points.map((point) => ({ ...point })),
+      houseCusps: [...args.periodContext.houseCusps],
+    },
+  };
   const parentRange = resolvePeriodRange(args.scope, args.dateStr);
   const batchDays = args.batchDays ?? DEFAULT_ASTROLABE_PERIOD_BATCH_DAYS;
   if (!Number.isInteger(batchDays) || batchDays < 1 || batchDays > 31) {

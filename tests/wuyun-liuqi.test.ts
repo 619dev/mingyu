@@ -206,7 +206,7 @@ test('五步交司应保留古籍日期序号，不伪装成精确时刻', () =>
       periodRule: '立冬后第4日起，至小寒末日',
     },
   ]);
-  const result = calculateWuyunLiuqi({ yearGanZhi: '丙午' });
+  const result = getCycleResult('丙午');
   assert.deepEqual(
     result.movementSteps.map((step) => step.startBoundary.precision),
     Array(5).fill('传统日期序号'),
@@ -281,7 +281,7 @@ test('六步节令和主客气关系应完整覆盖二十四节气', () => {
     ['秋分', '寒露', '霜降', '立冬'],
     ['小雪', '大雪', '冬至', '小寒'],
   ]);
-  const result = calculateWuyunLiuqi({ yearGanZhi: '丙午' });
+  const result = getCycleResult('丙午');
   assert.equal(result.qiSteps.flatMap((step) => step.solarTerms).length, 24);
   result.qiSteps.forEach((step) => {
     assert.ok(
@@ -341,7 +341,7 @@ test('五运六气提示词应是可独立使用的完整任务书', () => {
 });
 
 test('五运六气年度资料列出平气条件，不据年干支确认全年平气', () => {
-  const result2026 = calculateWuyunLiuqi({ yearGanZhi: '丙午' });
+  const result2026 = getCycleResult('丙午');
   assert.ok(result2026.pathomechanism);
   assert.equal(result2026.pathomechanism.isPingQi, null);
   assert.equal(result2026.pathomechanism.movementRegime, '流衍之纪');
@@ -350,7 +350,7 @@ test('五运六气年度资料列出平气条件，不据年干支确认全年�
   assert.doesNotMatch(result2026.prompt, /五脏受候|心神亢燥|病机偏胜与平气/);
 
   // 丁亥具司天同气资助；交司日时逢壬的干德符及实际平气仍须另核。
-  const resultDingHai = calculateWuyunLiuqi({ yearGanZhi: '丁亥' });
+  const resultDingHai = getCycleResult('丁亥');
   assert.ok(resultDingHai.pathomechanism);
   assert.equal(resultDingHai.pathomechanism.isPingQi, null);
   assert.equal(resultDingHai.pathomechanism.pingQiType, '具平气条件');
@@ -361,7 +361,7 @@ test('五运六气年度资料列出平气条件，不据年干支确认全年�
 });
 
 test('具平气条件的年度提示词不把年干太过所对应之纪写成已定的实际气候', () => {
-  const result = calculateWuyunLiuqi({ yearGanZhi: '庚午' });
+  const result = getCycleResult('庚午');
   assert.equal(result.pathomechanism?.isPingQi, null);
   assert.equal(result.pathomechanism?.movementRegime, '坚成之纪');
   assert.match(result.pathomechanism?.pingQiBasis ?? '', /按年干推得坚成之纪为基准/);
