@@ -553,31 +553,45 @@ export function formatBaziSchoolsPrompt(
   const selected = normalizeBaziPromptSchools(schools);
   if (!selected.length) return '';
   const pattern = result.analysis.mingGe;
-  const zipingBasisInFacts =
-    !embedded &&
-    selected.includes('ziping') &&
-    Boolean(pattern.basis) &&
-    !formatAlternativePatternCandidates(pattern);
-  const sharedPatternEvidence =
-    selected.length > 1 && !result.isThreePillars
-      ? [
-          ...(embedded ? [`透干通根：${formatRoots(result)}`] : []),
-          ...formatSchoolPatternFacts(
-            result,
-            embedded,
-            chartShowsPatternBasis || zipingBasisInFacts,
-          ),
-          ...formatTransformationFacts(result, embedded),
-        ]
-      : [];
+  const sharesPatternFacts = selected.length > 1 && !result.isThreePillars;
+  const sharedPatternBasis =
+    sharesPatternFacts && !embedded && pattern.basis && !formatAlternativePatternCandidates(pattern)
+      ? `取格依据：${formatPatternBasisForPrompt(pattern.basis)}`
+      : '';
+  const sharedPatternEvidence = sharesPatternFacts
+    ? [
+        `透干通根：${formatRoots(result)}`,
+        ...(!embedded
+          ? [`格局与取用：格局${pattern.pattern}；${formatUsefulGod(result)}`, sharedPatternBasis]
+          : []),
+        ...formatSchoolPatternFacts(
+          result,
+          embedded,
+          chartShowsPatternBasis || Boolean(sharedPatternBasis),
+        ),
+        ...formatTransformationFacts(result, embedded),
+      ].filter(Boolean)
+    : [];
   const blocks = selected.map((school, index) => {
     const profile = BAZI_SCHOOL_PROFILES[school];
     const priorSchools = selected.slice(0, index);
     const facts = formatBaziSchoolFacts(result, school, embedded, selected.length === 1)
       .split('\n')
-      .filter((line) => !(embedded && selected.length > 1 && line.startsWith('透干通根：')))
+      .filter((line) => !(sharesPatternFacts && line.startsWith('透干通根：')))
       .flatMap((line) => {
-        if (!embedded) return [line];
+        if (!embedded) {
+          if (sharesPatternFacts && /^(?:格局与成败|格局与取用)：/u.test(line)) return [];
+          if (sharesPatternFacts && line.startsWith('调候与取用：')) {
+            return [
+              `五行季节状态：${
+                Object.entries(result.wuxingSeasonStatus)
+                  .map(([element, status]) => `${element}${status}`)
+                  .join('、') || '未记录'
+              }`,
+            ];
+          }
+          return [line];
+        }
         if (line.startsWith('日主旺衰：') && priorSchools.includes('xinpai')) return [];
         if (line.startsWith('旺衰判定：') && priorSchools.includes('ziping')) {
           return [`旺衰作用：${line.slice(line.indexOf('；月令作用') + 1)}`];

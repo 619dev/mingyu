@@ -131,6 +131,16 @@ test('起名偏好与任务书字池逐字保留简繁原字形', () => {
 });
 
 test('多义简体默认原字形与明确繁体在任务书中不混用', () => {
+  const promptByCharacter = new Map<string, string>();
+  const characterPrompt = (char: string) => {
+    const cached = promptByCharacter.get(char);
+    if (cached !== undefined) return cached;
+
+    const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
+    promptByCharacter.set(char, prompt);
+    return prompt;
+  };
+
   for (const [char, traditional, kangxiStrokes, traditionalStrokes] of [
     ['复', '複', 15, 14],
     ['複', '複', 15, 14],
@@ -140,7 +150,7 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
     ['绣', '繡', 18, 19],
     ['饥', '饑', 21, 20],
   ] as const) {
-    const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
+    const prompt = characterPrompt(char);
     assert.match(prompt, new RegExp(`繁体：${traditional}`), char);
     assert.match(prompt, new RegExp(`繁体笔画：${traditionalStrokes}`), char);
     assert.match(prompt, new RegExp(`姓名学康熙笔画：${kangxiStrokes}`), char);
@@ -152,11 +162,11 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
     ['征', 8],
     ['栗', 10],
   ] as const) {
-    const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
+    const prompt = characterPrompt(char);
     assert.doesNotMatch(prompt, /繁体：/u, char);
     assert.match(prompt, new RegExp(`姓名学康熙笔画：${kangxiStrokes}`), char);
   }
-  const caiPrompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters('采') });
+  const caiPrompt = characterPrompt('采');
   assert.match(caiPrompt, /笔画用法：现代字形“采”为8画，姓名学康熙取数为7画。/u);
 
   for (const [char, incorrectTraditional] of [
@@ -175,7 +185,7 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
     ['征', '徵'],
     ['栗', '慄'],
   ] as const) {
-    const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
+    const prompt = characterPrompt(char);
     assert.doesNotMatch(prompt, new RegExp(`繁体：${incorrectTraditional}`), char);
   }
 
@@ -186,18 +196,16 @@ test('多义简体默认原字形与明确繁体在任务书中不混用', () =>
     ['繡', 18],
     ['饑', 21],
   ] as const) {
-    const characterPrompt = buildChineseCharacterPrompt({
-      analysis: analyzeChineseCharacters(char),
-    });
+    const prompt = characterPrompt(char);
     const namePrompt = buildChineseNameAnalysisPrompt({
       analysis: analyzeChineseName({ fullName: `李${char}` }),
     });
     assert.match(namePrompt, new RegExp(`${char}（康熙${strokes}画、五行未定`));
-    assert.doesNotMatch(characterPrompt, /笔画用法：/u, char);
+    assert.doesNotMatch(prompt, /笔画用法：/u, char);
     assert.doesNotMatch(namePrompt, /笔画用法：/u, char);
   }
   for (const char of ['线', '绣', '饥']) {
-    const prompt = buildChineseCharacterPrompt({ analysis: analyzeChineseCharacters(char) });
+    const prompt = characterPrompt(char);
     assert.match(prompt, /笔画用法：简体/u, char);
   }
   for (const [char, strokes] of [
@@ -218,12 +226,15 @@ test('原字形的康熙条目与现代读音保持对应', async () => {
   for (const [index, glyph] of ['后', '干', '台', '複', '複', '鐘', '鐘'].entries()) {
     assert.match(analysis.characters[index].detail?.kangxiText ?? '', new RegExp(`】 ${glyph}`));
   }
-  assert.equal(analyzeChineseCharacters('干').characters[0].detail?.pinyin, 'gān');
-  assert.match(analyzeChineseCharacters('干').characters[0].detail?.readingNote ?? '', /干扰/);
-  assert.equal(analyzeChineseCharacters('複').characters[0].detail?.pinyin, 'fù');
-  assert.equal(analyzeChineseCharacters('鐘').characters[0].detail?.pinyin, 'zhōng');
-  assert.equal(analyzeChineseCharacters('複').characters[0].detail?.wuxing, null);
-  assert.equal(analyzeChineseCharacters('鐘').characters[0].detail?.wuxing, null);
+  const gan = analyzeChineseCharacters('干').characters[0].detail;
+  const fu = analyzeChineseCharacters('複').characters[0].detail;
+  const zhong = analyzeChineseCharacters('鐘').characters[0].detail;
+  assert.equal(gan?.pinyin, 'gān');
+  assert.match(gan?.readingNote ?? '', /干扰/);
+  assert.equal(fu?.pinyin, 'fù');
+  assert.equal(zhong?.pinyin, 'zhōng');
+  assert.equal(fu?.wuxing, null);
+  assert.equal(zhong?.wuxing, null);
   const paired = await analyzeChineseCharactersWithReferences('线綫線绣綉繡饥飢饑');
   for (const [index, glyph] of ['線', '綫', '線', '繡', '綉', '繡', '饑', '飢', '饑'].entries()) {
     assert.match(paired.characters[index].detail?.kangxiText ?? '', new RegExp(`】 ${glyph}`));

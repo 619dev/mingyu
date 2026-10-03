@@ -5,6 +5,7 @@ import { formatEnhancedDivinationInfo } from '../packages/core/src/prompt/divina
 import { generateQimen } from '../packages/core/src/divination/algorithms/qimen';
 import {
   analyzeQimenEvidence,
+  formatQimenClassicPatternSummary,
   selectQimenClassicPatternsForPrompt,
 } from '../packages/core/src/divination/qimen-evidence';
 import { formatDetailedDivinationInfo } from '../packages/core/src/prompt/divination-detail';
@@ -81,6 +82,29 @@ test('复合格局引用同盘经典格局时省略占位复述并保留独有�
 });
 
 test('奇门提示词合并相同宫位相同条件的命中记录，保留不同宫位与独立条件', () => {
+  for (const [name, god] of [
+    ['真诈', '太阴'],
+    ['重诈', '九地'],
+    ['休诈', '六合'],
+  ]) {
+    const members = `丁奇、开门、${god}同宫于兑七宫`;
+    assert.equal(
+      formatQimenClassicPatternSummary(name, `${members}，三奇、吉门、${god}同宫，乃${name}之格`),
+      members,
+    );
+    assert.equal(
+      formatQimenClassicPatternSummary(name, `三奇、吉门、${god}同宫，乃${name}之格`),
+      `三奇、吉门、${god}同宫`,
+    );
+    assert.equal(
+      formatQimenClassicPatternSummary(name, `丁奇、开门同宫于兑七宫，三奇、吉门、${god}同宫`),
+      `丁奇、开门同宫于兑七宫，三奇、吉门、${god}同宫`,
+    );
+    assert.equal(
+      formatQimenClassicPatternSummary(name, `${members}，三奇、吉门、九天同宫`),
+      `${members}，三奇、吉门、九天同宫`,
+    );
+  }
   const same = { name: '条件格', palaces: [7], summary: '生门、丙奇、地盘戊同宫' };
   const duplicate = { ...same, palaces: [7] };
   const elsewhere = { ...same, palaces: [8] };

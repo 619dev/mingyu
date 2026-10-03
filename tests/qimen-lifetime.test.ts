@@ -1125,6 +1125,21 @@ test('奇门终身局基础盘省略同格局复述并保留独有组合与遁�
   assert.equal(duplicatePatterns.match(/^  虎遁（吉）：/gmu)?.length, 1);
   assert.equal(data.baseChart.classicPatterns!.filter((item) => item.name === '虎遁').length, 2);
   assert.match(duplicatePrompt.split('阶段1：')[1].split('阶段2：')[0], /成吉格「虎遁」/u);
+
+  const trueZhaData = calculateQimenLifetime({
+    birthDateTime: '2026-06-18T12:00:00',
+    timeZoneId: 'Asia/Shanghai',
+    periodRange: { startDate: '2026-06-18', endDate: '2026-06-18' },
+  });
+  const before = structuredClone(trueZhaData);
+  const trueZhaPrompt = buildLifetimePrompt(trueZhaData, undefined, { includeCurrentTime: false });
+  assert.match(trueZhaPrompt, /真诈（吉）：丁奇、开门、太阴同宫于兑七宫，主隐蔽得助、柔性成事/u);
+  assert.doesNotMatch(trueZhaPrompt, /三奇、吉门、太阴同宫/u);
+  assert.equal(
+    trueZhaData.baseChart.classicPatterns!.find((item) => item.name === '真诈')!.summary,
+    '丁奇、开门、太阴同宫于兑七宫，三奇、吉门、太阴同宫，乃真诈之格，主隐蔽得助、柔性成事。',
+  );
+  assert.deepEqual(trueZhaData, before);
 });
 
 test('奇门终身局同宫得使合并基础条件，保留不同宫位的独立事实', () => {

@@ -377,8 +377,10 @@ export function formatQimenClassicPatternSummary(name: string, summary: string):
     .replaceAll(`，乃${name}之格`, '')
     .replaceAll(`；乃${name}之格`, '')
     .replace(/（([乙丙丁戊己庚辛壬癸])在此宫落于相刑之位）/gu, '');
-  if (name === '休诈' && /[乙丙丁]奇、(?:开|休|生)门、六合同宫/u.test(text)) {
-    text = text.replace('，三奇、吉门、六合同宫', '');
+  const sanZhaGod =
+    name === '真诈' ? '太阴' : name === '重诈' ? '九地' : name === '休诈' ? '六合' : '';
+  if (sanZhaGod && new RegExp(`[乙丙丁]奇、(?:开|休|生)门、${sanZhaGod}同宫`, 'u').test(text)) {
+    text = text.replace(`，三奇、吉门、${sanZhaGod}同宫`, '');
   }
   const stemPair = text.match(
     /^天盘([乙丙丁戊己庚辛壬癸])加地盘([乙丙丁戊己庚辛壬癸])于[^，]+，\1加地盘\2为([^，；。]+)/u,

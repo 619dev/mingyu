@@ -262,6 +262,49 @@ test('紫微在线提示词省略完整十二宫已列明的同宫命中条件',
 
   const focusedPrompt = formatZiweiPayloadForPrompt(payload, { focusPalaceNames: ['命宫'] });
   assert.match(focusedPrompt, /命中条件：太阴与文曲同守夫妻宫/u);
+
+  for (const item of [
+    {
+      name: '风流彩杖',
+      branch: '寅',
+      stem: '庚',
+      stars: ['贪狼', '陀罗'],
+      condition: '贪狼、陀罗同守寅宫命宫',
+    },
+    {
+      name: '巨机居卯',
+      branch: '卯',
+      stem: '乙',
+      stars: ['巨门', '天机'],
+      condition: '巨门、天机同守卯宫命宫',
+    },
+  ]) {
+    const complete = createPayload();
+    complete.basic_info.chinese_date = `${item.stem}午年四月廿一`;
+    complete.palaces[0].earthly_branch = item.branch;
+    complete.palaces[0].major_stars = item.stars.map((name) => ({ name, kind: 'major' }));
+    complete.patterns = detectPatterns({
+      palaces: complete.palaces,
+      birthYearHeavenlyStem: item.stem,
+    });
+    const before = structuredClone(complete);
+    for (const text of [
+      formatZiweiPayloadForPrompt(complete),
+      buildZiweiReadableSnapshot({ payload: complete, reportContext: createReportContext() }),
+      buildZiweiTaskBookSnapshot({ payload: complete, reportContext: createReportContext() }),
+    ]) {
+      assert.ok(text.includes(`格局：${item.name}`));
+      assert.ok(
+        text.includes(`宫干支甲${item.branch}`) || text.includes(`宫干支：甲${item.branch}`),
+      );
+      assert.ok(item.stars.every((star) => text.includes(star)));
+      assert.ok(!text.includes(item.condition));
+      if (item.name === '巨机居卯') assert.match(text, /命中条件：生年天干为乙/);
+    }
+    const focused = formatZiweiPayloadForPrompt(complete, { focusPalaceNames: ['夫妻'] });
+    assert.ok(focused.includes(item.condition));
+    assert.deepEqual(complete, before);
+  }
 });
 
 test('紫微同宫去重保留含独立限定的复合条件', () => {
@@ -317,6 +360,35 @@ test('紫微同宫去重保留含独立限定的复合条件', () => {
       '天马与旬空同宫',
       [travelPalace],
     ),
+    false,
+  );
+
+  const branchPalace = createPalace(0, '命宫', ['贪狼', '陀罗']);
+  branchPalace.earthly_branch = '寅';
+  const branchPattern = {
+    palace_indexes: [0],
+    palace_names: ['命宫'],
+    star_names: ['贪狼', '陀罗'],
+  };
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(branchPattern, '贪狼、陀罗同守寅宫命宫', [branchPalace]),
+    true,
+  );
+  for (const displayed of [
+    [],
+    [{ ...branchPalace, earthly_branch: '卯' }],
+    [{ ...branchPalace, index: 1 }],
+    [{ ...branchPalace, major_stars: [], scope_stars: branchPalace.major_stars }],
+  ]) {
+    assert.equal(
+      isRepeatedZiweiCoLocationCondition(branchPattern, '贪狼、陀罗同守寅宫命宫', displayed),
+      false,
+    );
+  }
+  assert.equal(
+    isRepeatedZiweiCoLocationCondition(branchPattern, '贪狼、陀罗同守寅宫命宫，另见生年化忌', [
+      branchPalace,
+    ]),
     false,
   );
 });
@@ -432,6 +504,89 @@ test('紫微单宫定位条件仅在宫位中已有同一星曜事实时省略',
     isZiweiConditionRestatedByPalaces(pattern, '太阴以“陷”亮度守夫妻宫', [palace]),
     false,
   );
+
+  const brightPalace = createPalace(0, '命宫', ['贪狼']);
+  brightPalace.major_stars[0].brightness = '庙';
+  brightPalace.other_stars = [{ name: '火星', kind: 'other', brightness: '旺' }];
+  const brightPattern = {
+    palace_indexes: [0],
+    palace_names: ['命宫'],
+    star_names: ['贪狼', '火星'],
+  };
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(brightPattern, '贪狼、火星亮度均为庙或旺', [brightPalace]),
+    true,
+  );
+  for (const displayed of [
+    [],
+    [{ ...brightPalace, index: 1 }],
+    [{ ...brightPalace, other_stars: [{ ...brightPalace.other_stars[0], brightness: undefined }] }],
+    [{ ...brightPalace, other_stars: [{ ...brightPalace.other_stars[0], brightness: '陷' }] }],
+    [{ ...brightPalace, other_stars: [], scope_stars: brightPalace.other_stars }],
+  ]) {
+    assert.equal(
+      isZiweiConditionRestatedByPalaces(brightPattern, '贪狼、火星亮度均为庙或旺', displayed),
+      false,
+    );
+  }
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(brightPattern, '贪狼、火星亮度均为庙或旺，且不见化忌', [
+      brightPalace,
+    ]),
+    false,
+  );
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(brightPattern, '两颗化曜亮度均为庙或旺', [brightPalace]),
+    false,
+  );
+
+  const splitPalace = createPalace(1, '兄弟宫', []);
+  splitPalace.other_stars = brightPalace.other_stars;
+  const splitPattern = {
+    ...brightPattern,
+    palace_indexes: [0, 1],
+    palace_names: ['命宫', '兄弟宫'],
+  };
+  const firstPalace = { ...brightPalace, other_stars: [] };
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(splitPattern, '贪狼、火星亮度均为庙或旺', [
+      firstPalace,
+      splitPalace,
+    ]),
+    true,
+  );
+  assert.equal(
+    isZiweiConditionRestatedByPalaces(splitPattern, '贪狼、火星亮度均为庙或旺', [firstPalace]),
+    false,
+  );
+
+  const complete = createPayload();
+  complete.palaces[0] = brightPalace;
+  complete.patterns = detectPatterns({ palaces: complete.palaces });
+  const before = structuredClone(complete);
+  for (const [text, starText, fireText] of [
+    [formatZiweiPayloadForPrompt(complete), '贪狼，亮度：庙', '火星，亮度：旺'],
+    [
+      buildZiweiReadableSnapshot({ payload: complete, reportContext: createReportContext() }),
+      '贪狼(庙)',
+      '火星(旺)',
+    ],
+    [
+      buildZiweiTaskBookSnapshot({ payload: complete, reportContext: createReportContext() }),
+      '贪狼(庙)',
+      '火星(旺)',
+    ],
+  ]) {
+    assert.match(text, /格局：贪火相逢/);
+    assert.ok(text.includes(starText));
+    assert.ok(text.includes(fireText));
+    assert.doesNotMatch(text, /贪狼、火星亮度均为庙或旺/);
+  }
+  assert.match(
+    formatZiweiPayloadForPrompt(complete, { focusPalaceNames: ['夫妻'] }),
+    /贪狼、火星亮度均为庙或旺/,
+  );
+  assert.deepEqual(complete, before);
 });
 
 test('紫微在线提示词省略未出现的可选格局加强条件', () => {

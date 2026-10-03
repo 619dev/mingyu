@@ -473,6 +473,20 @@ test('独立流派资料中的选中取格依据和其他候选各出现一次',
     assert.doesNotMatch(prompt, /取格分层候选：|所取格局：/);
     assert.match(prompt, /当前成败判定：/);
   }
+
+  for (const schools of [
+    ['ziping', 'mangpai', 'xinpai'],
+    ['xinpai', 'mangpai', 'ziping'],
+    ['mangpai', 'xinpai'],
+  ] as const) {
+    const prompt = formatBaziSchoolsPrompt(result, schools);
+    assert.equal(prompt.match(/^格局与取用：/gm)?.length, 1);
+    assert.equal(prompt.match(/^透干通根：/gm)?.length, 1);
+    assert.equal(prompt.match(/原局格神作用：/g)?.length, 1);
+    assert.equal(prompt.split(basis).length - 1, 1);
+    assert.equal(prompt.split(`其他取格候选：${alternative.pattern}`).length - 1, 1);
+    if (schools.some((school) => school === 'ziping')) assert.match(prompt, /^五行季节状态：/m);
+  }
 });
 
 test('已成化格保留结论与取用，省略重复的逐项核验', () => {
@@ -991,6 +1005,21 @@ test('流派提示词只补充格局的盘面证据，不复述共同判定和�
       assert.equal(conditionLines.length, new Set(conditionLines).size);
     }
   }
+
+  for (const schools of [
+    ['ziping', 'mangpai', 'xinpai'],
+    ['xinpai', 'mangpai', 'ziping'],
+    ['mangpai', 'xinpai'],
+  ] as const) {
+    const prompt = formatBaziSchoolsPrompt(result, schools);
+    assert.equal(
+      prompt.match(/格局破格所忌：丁伤官（时柱）；伤官见官的救应明确不成立/g)?.length,
+      1,
+    );
+    assert.equal(prompt.match(/当前成败判定：破格/g)?.length, 1);
+    assert.equal(prompt.match(/^透干通根：/gm)?.length, 1);
+    assert.doesNotMatch(prompt, /【格局条件】|取格分层候选：/);
+  }
 });
 
 test('内嵌多派提示词共用通根事实，并省略排盘信息已有的月令、四柱和五行明细', () => {
@@ -1027,6 +1056,26 @@ test('内嵌多派提示词共用通根事实，并省略排盘信息已有的�
     if (current.includes('八字流派：盲派') || current.includes('：盲派\n')) {
       assert.match(current, /主宾定位：主位为日柱癸酉与时柱戊午/);
     }
+  }
+
+  for (const schools of [
+    ['ziping', 'mangpai', 'xinpai'],
+    ['xinpai', 'mangpai', 'ziping'],
+    ['mangpai', 'xinpai'],
+  ] as const) {
+    const standalone = formatBaziSchoolsPrompt(result, schools);
+    assert.equal(standalone.match(/^格局与取用：/gm)?.length, 1);
+    assert.equal(standalone.match(/^透干通根：/gm)?.length, 1);
+    assert.equal(standalone.match(/原局格神作用：庚正印（年柱）/g)?.length, 1);
+    assert.equal(standalone.match(/当前成败判定：成格/g)?.length, 1);
+    assert.equal(standalone.match(/^取格依据：/gm)?.length, 1);
+    if (schools.some((school) => school === 'ziping')) {
+      assert.match(standalone, /^五行季节状态：/m);
+      assert.match(standalone, /月令与节候：/);
+    }
+    if (schools.some((school) => school === 'mangpai'))
+      assert.match(standalone, /主宾定位：主位为日柱癸酉/);
+    if (schools.some((school) => school === 'xinpai')) assert.match(standalone, /旺衰判定：/);
   }
 });
 

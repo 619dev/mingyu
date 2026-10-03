@@ -413,6 +413,7 @@ test('号码解读关键词在每次结果与分组间独立保存', () => {
   result.energyPairs[0].keywords.push('本次备注');
   assert.deepEqual(result.magneticDistribution[0].keywords, expected);
   result.magneticDistribution[0].keywords.push('分组备注');
-  assert.deepEqual(analyzeNumber('1313').energyPairs[0].keywords, expected);
-  assert.deepEqual(analyzeNumber('1313').magneticDistribution[0].keywords, expected);
+  const fresh = analyzeNumber('1313');
+  assert.deepEqual(fresh.energyPairs[0].keywords, expected);
+  assert.deepEqual(fresh.magneticDistribution[0].keywords, expected);
 });

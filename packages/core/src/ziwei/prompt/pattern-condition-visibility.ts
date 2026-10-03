@@ -20,7 +20,11 @@ export function isRepeatedZiweiCoLocationCondition(
     return false;
   }
 
-  const palaceName = match[2]?.replace(/宫$/u, '');
+  const branchPalaceMatch = match[2]
+    ? new RegExp(`^([${EARTHLY_BRANCHES}])宫(.+宫)$`, 'u').exec(match[2])
+    : null;
+  const requiredBranch = branchPalaceMatch?.[1];
+  const palaceName = (branchPalaceMatch?.[2] ?? match[2])?.replace(/宫$/u, '');
   if (!palaceName && (pattern.palace_indexes.length !== 1 || pattern.palace_names.length !== 1)) {
     return false;
   }
@@ -28,7 +32,9 @@ export function isRepeatedZiweiCoLocationCondition(
   const targetPalaceName = palaceName ?? pattern.palace_names[0];
   if (!targetPalaceName) return false;
   const targetPalace = getPatternPalace(pattern, targetPalaceName, displayedPalaces);
-  if (!targetPalace) return false;
+  if (!targetPalace || (requiredBranch && targetPalace.earthly_branch !== requiredBranch)) {
+    return false;
+  }
 
   const palaceStars = new Set(
     [...targetPalace.major_stars, ...targetPalace.minor_stars, ...targetPalace.other_stars].map(
@@ -143,6 +149,27 @@ function isRepeatedSinglePalacePositionCondition(
   return false;
 }
 
+function isRepeatedNamedStarBrightnessCondition(
+  pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
+  condition: string,
+  displayedPalaces: readonly PalaceFact[],
+) {
+  const match = /^(.+?)亮度均为庙或旺$/u.exec(condition);
+  if (!match) return false;
+  const conditionStars = getConditionStars(match[1], pattern.star_names);
+  if (!conditionStars || new Set(conditionStars).size < 2) return false;
+
+  const palaceStars = pattern.palace_names.flatMap((name) => {
+    const palace = getPatternPalace(pattern, name, displayedPalaces);
+    return palace ? [...palace.major_stars, ...palace.minor_stars, ...palace.other_stars] : [];
+  });
+  return conditionStars.every((name) =>
+    palaceStars.some(
+      (star) => star.name === name && (star.brightness === '庙' || star.brightness === '旺'),
+    ),
+  );
+}
+
 /** 判断格局条件是否已由当前展示宫位中的星曜位置和明确属性完整表达。 */
 export function isZiweiConditionRestatedByPalaces(
   pattern: Pick<PatternFact, 'palace_indexes' | 'palace_names' | 'star_names'>,
@@ -151,6 +178,7 @@ export function isZiweiConditionRestatedByPalaces(
 ) {
   return (
     isRepeatedZiweiCoLocationCondition(pattern, condition, displayedPalaces) ||
-    isRepeatedSinglePalacePositionCondition(pattern, condition, displayedPalaces)
+    isRepeatedSinglePalacePositionCondition(pattern, condition, displayedPalaces) ||
+    isRepeatedNamedStarBrightnessCondition(pattern, condition, displayedPalaces)
   );
 }
