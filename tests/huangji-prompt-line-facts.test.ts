@@ -14,10 +14,10 @@ test('皇极值年同人与鼎卦按上下卦展开六爻且保留层级变爻',
     annual.prompt,
     /值年取序：以公元1984年的六十年统卦火风鼎为起点.*已过42年，顺行42位，取得天火同人为本年静态值年卦/,
   );
-  assert.match(
-    annual.prompt,
-    /十年取卦：以六十年统卦火风鼎第5爻变化，得到天风姤，统摄公元2024年至公元2033年/,
-  );
+  assert.match(annual.prompt, /十年卦：天风姤，公元2024年至公元2033年；由鼎卦第5爻变得/);
+  assert.equal(annual.prompt.split('\n').filter((line) => line.startsWith('十年卦：')).length, 1);
+  assert.match(annual.prompt, /层级取序：值年取序与十年取卦分别以六十年统卦火风鼎为起点。/);
+  assert.doesNotMatch(annual.prompt, /十年取卦：.*第5爻变化.*统摄公元2024/);
   const ding = calculateHuangjiJingshi({ year: 1984 });
   assert.match(
     ding.prompt,

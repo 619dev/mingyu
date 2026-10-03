@@ -69,6 +69,23 @@ function createMockResult(): BaziChartResult {
   } as BaziChartResult;
 }
 
+let cachedCurrentBoundaryChart: ReturnType<typeof baziCalculator.calculateBazi> | undefined;
+
+function createCurrentBoundaryChart() {
+  cachedCurrentBoundaryChart ??= baziCalculator.calculateBazi({
+    gender: 'male',
+    year: 1990,
+    month: 5,
+    day: 15,
+    timeIndex: 1,
+    isLunar: false,
+    isLeapMonth: false,
+    useTrueSolarTime: false,
+  });
+
+  return structuredClone(cachedCurrentBoundaryChart);
+}
+
 function createHandoverResult(handoverHour: number): BaziChartResult {
   const result = createMockResult();
   const nextCycle = result.luckInfo.cycles[0];
@@ -179,14 +196,7 @@ test('元旦至立春前的当前日期应回查上一节令年，不回退到�
 });
 
 test('当前阶段定位按北京时间计算，不受运行环境时区影响', () => {
-  const result = baziCalculator.calculateBazi({
-    gender: 'male',
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    isLunar: false,
-  });
+  const result = createCurrentBoundaryChart();
   // 2026 年白露后已经进入酉月；显式带 UTC+8 可在 UTC 运行环境复现边界。
   const selection = buildCurrentBaziFortuneSelection(result, new Date('2026-09-08T00:00:00+08:00'));
 
@@ -299,16 +309,7 @@ test('童运占位文字不得被解读为干支、十神或岁运作用事实',
 });
 
 test('当前快捷流日在北京时间 23:00 子初切换到次一民用日', () => {
-  const result = baziCalculator.calculateBazi({
-    gender: 'male',
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
+  const result = createCurrentBoundaryChart();
   const beforeZi = buildCurrentBaziFortuneSelection(result, new Date('2026-09-08T22:59:59+08:00'));
   const atZi = buildCurrentBaziFortuneSelection(result, new Date('2026-09-08T23:00:00+08:00'));
   const nextMidnight = buildCurrentBaziFortuneSelection(
@@ -334,16 +335,7 @@ test('当前快捷流日在北京时间 23:00 子初切换到次一民用日', (
 });
 
 test('子初与交节同晚时换日但仍保留交节前的流月', () => {
-  const result = baziCalculator.calculateBazi({
-    gender: 'male',
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
+  const result = createCurrentBoundaryChart();
   // 2022-09-07 白露在 23:32 交节。旧申月的日历切片在交节时刻结束，
   // 23:00 已属 9 月 8 日的命理日，但仍处于交节前申月。
   const selection = buildCurrentBaziFortuneSelection(result, new Date('2022-09-07T23:00:00+08:00'));
@@ -615,16 +607,7 @@ test('交节日的流时列表不应包含交节前时辰', () => {
 });
 
 test('交节裁剪后的流时文字应与有效时间一致', () => {
-  const result = baziCalculator.calculateBazi({
-    gender: 'male',
-    year: 1990,
-    month: 5,
-    day: 15,
-    timeIndex: 1,
-    isLunar: false,
-    isLeapMonth: false,
-    useTrueSolarTime: false,
-  });
+  const result = createCurrentBoundaryChart();
   const selection = buildCurrentBaziFortuneSelection(result, new Date('2024-02-04T17:00:00+08:00'));
   assert.ok(selection);
   const context = buildFortuneSelectionContext(result, selection);

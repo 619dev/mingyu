@@ -114,19 +114,6 @@ const INCOMPLETE_TAROT_SPREAD_PROMPT_FRAMEWORK: TarotSpreadPromptFramework = {
   conclusion: '归纳现有牌面主题、缺失位置和仍需结合现实资料判断的部分。',
 };
 
-function formatTarotSpreadCoverageNote(
-  data: TarotData,
-  coverage: ReturnType<typeof analyzeTarotEvidence>['spreadCoverageFact'],
-) {
-  if (coverage.status === '完整') return '';
-  const spreadName = coverage.expectedSpreadName ?? data.spreadName;
-  const actualPositions = coverage.actualPositions.join('、') || '无';
-  if (coverage.expectedCardCount === null) {
-    return `牌位记录：当前为${spreadName}，已记录${coverage.actualCardCount}张，实际牌位为${actualPositions}。`;
-  }
-  return `牌位记录：${spreadName}预设${coverage.expectedCardCount}张（${coverage.expectedPositions.join('、')}），当前记录${coverage.actualCardCount}张；实际牌位：${actualPositions}；缺少牌位：${coverage.missingPositions.join('、') || '无'}；重复牌位：${coverage.duplicatePositions.join('、') || '无'}；额外牌位：${coverage.unexpectedPositions.join('、') || '无'}；顺序异常位置：${coverage.positionOrderMismatches.join('、') || '无'}；重复牌号：${coverage.duplicateCardIds.join('、') || '无'}。`;
-}
-
 export function buildTarotSpreadTask(data: TarotData) {
   const coverage = analyzeTarotEvidence(data).spreadCoverageFact;
   const isSingleCard =
@@ -141,13 +128,11 @@ export function buildTarotSpreadTask(data: TarotData) {
     coverage.status === '完整'
       ? TAROT_SPREAD_PROMPT_FRAMEWORKS[data.spreadType as TarotSpreadType]
       : INCOMPLETE_TAROT_SPREAD_PROMPT_FRAMEWORK;
-  const coverageNote = formatTarotSpreadCoverageNote(data, coverage);
   return buildPromptTask(
     [
       '依据牌阵、牌位、正逆位与牌序组合回答【问题】。',
       '事实核对：逐张对应牌位、牌名、正逆位、关键词、元素与牌阶主题；结合相邻或对照牌位的象征关系解读。',
       '现实核对：联系问题中可观察的信息说明判断依据、现实条件与可能分支。',
-      coverageNote,
       `解读主线：${framework.mainLine}`,
       `牌位联动：${framework.connections}`,
       `结论重点：${framework.conclusion}`,

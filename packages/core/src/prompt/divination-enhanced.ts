@@ -1227,7 +1227,30 @@ function formatTarotInfo(data: TarotData) {
   const coverageLine =
     coverage.status === '完整'
       ? ''
-      : `牌位覆盖：预设${coverage.expectedCardCount === null ? '未列配置' : `${coverage.expectedCardCount}张（${coverage.expectedPositions.join('、')}）`}；实际记录${coverage.actualCardCount}张；实际牌位：${coverage.actualPositions.join('、') || '无'}；缺少牌位：${coverage.missingPositions.join('、') || '无'}；重复牌位：${coverage.duplicatePositions.join('、') || '无'}；额外牌位：${coverage.unexpectedPositions.join('、') || '无'}；顺序异常位置：${coverage.positionOrderMismatches.join('、') || '无'}；重复牌号：${coverage.duplicateCardIds.join('、') || '无'}`;
+      : [
+          coverage.expectedCardCount === null
+            ? `牌位记录：${spreadName}`
+            : `牌位覆盖：预设${coverage.expectedCardCount}张（${coverage.expectedPositions.join('、')}）`,
+          `实际记录${coverage.actualCardCount}张`,
+          `实际牌位：${coverage.actualPositions.join('、')}`,
+          coverage.missingPositions.length
+            ? `缺少牌位：${coverage.missingPositions.join('、')}`
+            : '',
+          coverage.duplicatePositions.length
+            ? `重复牌位：${coverage.duplicatePositions.join('、')}`
+            : '',
+          coverage.unexpectedPositions.length
+            ? `额外牌位：${coverage.unexpectedPositions.join('、')}`
+            : '',
+          coverage.positionOrderMismatches.length
+            ? `顺序异常位置：${coverage.positionOrderMismatches.join('、')}`
+            : '',
+          coverage.duplicateCardIds.length
+            ? `重复牌号：${coverage.duplicateCardIds.join('、')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('；');
   const cardLines = evidence.cards.map(
     (card) =>
       `  ${card.position}：${card.name}（${card.orientation}）${card.keywords.length ? `；关键词：${card.keywords.join('、')}` : ''}${card.element !== '元素未列' ? `；牌组属性：${card.element}` : ''}${card.archetype !== '牌阶主题未列' ? `；基础牌义：${card.archetype}` : ''}`,

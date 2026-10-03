@@ -93,8 +93,8 @@ test('残缺多牌阵保留原牌阵类型并列出实际牌位与缺口', () =>
     /牌位覆盖：预设3张（过去、现在、未来）；实际记录1张；实际牌位：过去；缺少牌位：现在、未来/u,
   );
   assert.match(task, /围绕已记录牌位与牌面整理本次问题的象征主题/u);
-  assert.match(task, /当前记录1张/u);
-  assert.match(task, /现在、未来/u);
+  assert.equal(prompt.match(/缺少牌位：现在、未来/gu)?.length, 1);
+  assert.doesNotMatch(prompt, /(?:重复牌位|额外牌位|顺序异常位置|重复牌号)：无/u);
   assert.doesNotMatch(task, /依据唯一牌位/u);
   assert.doesNotMatch(task, /按过去、现在、未来三个牌位/u);
   assert.doesNotMatch(prompt, /塔罗单牌以牌位职能/u);
@@ -477,6 +477,9 @@ test('塔罗牌位、顺序和牌号异常时应给出可定位的覆盖事实',
   assert.deepEqual(evidence.spreadCoverageFact.duplicatePositions, ['过去']);
   assert.deepEqual(evidence.spreadCoverageFact.positionOrderMismatches, [2]);
   assert.deepEqual(evidence.spreadCoverageFact.duplicateCardIds, [tampered.cards[0].id]);
+  const prompt = formatEnhancedDivinationInfo('tarot', tampered);
+  assert.match(prompt, /缺少牌位：现在；重复牌位：过去；顺序异常位置：2；重复牌号：1/u);
+  assert.doesNotMatch(prompt, /额外牌位：无/u);
 
   const missingCard = analyzeTarotEvidence({
     ...data,
@@ -486,14 +489,21 @@ test('塔罗牌位、顺序和牌号异常时应给出可定位的覆盖事实',
   assert.equal(missingCard.spreadCoverageFact.status, '牌数不符');
   assert.equal(missingCard.spreadCoverageFact.actualCardCount, 2);
 
-  const unknownSpread = analyzeTarotEvidence({
+  const unknownData: TarotData = {
     ...data,
     spreadType: 'unknown',
     spreadName: '未声明牌阵',
     evidenceAnalysis: undefined,
-  });
+  };
+  const unknownSpread = analyzeTarotEvidence(unknownData);
   assert.equal(unknownSpread.spreadCoverageFact.status, '未知牌阵');
   assert.equal(unknownSpread.spreadCoverageFact.expectedCardCount, null);
+  const unknownPrompt = formatEnhancedDivinationInfo('tarot', unknownData);
+  assert.match(unknownPrompt, /牌位记录：未声明牌阵；实际记录3张；实际牌位：过去、现在、未来/u);
+  assert.doesNotMatch(
+    unknownPrompt,
+    /未列配置|(?:缺少牌位|重复牌位|额外牌位|顺序异常位置|重复牌号)：无/u,
+  );
 });
 
 test('塔罗缺少正逆位时保留未记录状态，不默认按正位解释', () => {

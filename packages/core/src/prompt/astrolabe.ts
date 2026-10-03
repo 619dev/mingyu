@@ -239,7 +239,9 @@ function formatSynastryFacts(
       : '【跨盘相位】\n本次所选计算点未见容许度内的主要相位。',
     overlays.length
       ? `【跨盘落宫】\n${overlays.join('\n')}${overlayCoverage?.status === '资料不足' ? '\n至少一方宫头资料无效，以上仅为可定位方向。' : ''}`
-      : `【跨盘落宫】\n${overlayCoverage?.status === '已关闭' ? '本次未启用跨盘落宫计算。' : overlayCoverage?.status === '资料不足' ? '宫头资料不足，无法定位跨盘落宫。' : '本次所选计算点未形成可定位落宫。'}`,
+      : overlayCoverage?.status === '已关闭'
+        ? ''
+        : `【跨盘落宫】\n${overlayCoverage?.status === '资料不足' ? '宫头资料不足，无法定位跨盘落宫。' : '本次所选计算点未形成可定位落宫。'}`,
   ]
     .filter(Boolean)
     .join('\n\n');

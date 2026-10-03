@@ -252,7 +252,7 @@ test('西占双盘应保留截断数量和关闭落宫的反证', () => {
     synastry: noFacts,
   });
   assert.match(noFactsPrompt, /本次所选计算点未见容许度内的主要相位/);
-  assert.match(noFactsPrompt, /本次未启用跨盘落宫计算/);
+  assert.doesNotMatch(noFactsPrompt, /【跨盘落宫】|本次未启用跨盘落宫计算/);
   assert.match(noFactsPrompt, /请依据双方本命盘分析互动主轴/);
   assert.doesNotMatch(noFactsPrompt, /已列古典接纳与互溶/);
   assert.doesNotMatch(noFactsPrompt, /请依据双方本命盘、跨盘相位和跨盘落宫/);

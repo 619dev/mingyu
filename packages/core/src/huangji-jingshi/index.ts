@@ -379,7 +379,7 @@ export function buildHuangjiJingshiPrompt(
         `值年卦：${annual.name}（${annual.symbol}，${annual.upper}上${annual.lower}下）`,
         `值年卦辞：${annual.judgment}`,
         `值年取序：以${formatHuangjiCivilYear(sixtyYear.startYear)}的六十年统卦${sixtyYear.hexagram.name}为起点，按六十卦圆图顺序每年顺行一位；至${formatHuangjiCivilYear(annual.year)}已过${civilYearToSerial(annual.year) - civilYearToSerial(sixtyYear.startYear)}年，顺行${civilYearToSerial(annual.year) - civilYearToSerial(sixtyYear.startYear)}位，取得${annual.name}为本年静态值年卦。`,
-        `十年取卦：以六十年统卦${sixtyYear.hexagram.name}第${decade.changedLine}爻变化，得到${decade.hexagram.name}，统摄${formatHuangjiCivilYear(decade.startYear)}至${formatHuangjiCivilYear(decade.endYear)}；值年取序与十年取卦分别以上述六十年统卦为起点。`,
+        `层级取序：值年取序与十年取卦分别以六十年统卦${sixtyYear.hexagram.name}为起点。`,
         '爻象与层级：各卦阴阳爻象描述该层卦体；层级推演按所列原卦、爻位与所得卦分别取象。',
         formatHuangjiLineFacts('会内统卦', governing.hexagram.id),
         formatHuangjiLineFacts('运卦', yun.hexagram.id),
