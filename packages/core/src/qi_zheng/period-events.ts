@@ -184,6 +184,7 @@ export function createQizhengPeriodEventScanner(
 ): (
   natal: Pick<QizhengPeriodEventParams, 'natalStars' | 'twelvePalaces'>,
 ) => QizhengPeriodEventCollection {
+  params = { ...params };
   const formatEventTime = (utcMs: number) => formatUtc(utcMs, params.timezone, params.timeZoneId);
   const startDateTime = formatEventTime(params.startUtcMs);
   const endDateTime = formatEventTime(params.endUtcMs);

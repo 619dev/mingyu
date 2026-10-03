@@ -14,17 +14,25 @@ import {
 } from '@core/qi_zheng';
 import { QizhengBoard } from '../src/pages/ResultPage/components/QizhengBoard';
 
+let beijingDefaultChart: ReturnType<typeof generateQizheng> | undefined;
+function getBeijingDefaultChart() {
+  if (!beijingDefaultChart) {
+    beijingDefaultChart = generateQizheng({
+      year: 1990,
+      month: 6,
+      day: 15,
+      hour: 10,
+      minute: 30,
+      latitude: 39.9042,
+      longitude: 116.4074,
+      timezone: 8,
+    });
+  }
+  return beijingDefaultChart;
+}
+
 test('七政四余页面应能直接渲染并显示典籍折叠区', () => {
-  const data = generateQizheng({
-    year: 1990,
-    month: 6,
-    day: 15,
-    hour: 10,
-    minute: 30,
-    latitude: 39.9042,
-    longitude: 116.4074,
-    timezone: 8,
-  });
+  const data = getBeijingDefaultChart();
 
   const html = renderToStaticMarkup(
     createElement(QizhengBoard, { title: '七政四余', name: '测试命盘', data }),
@@ -79,16 +87,7 @@ test('七政四余未定义恒星黄道零点时只输出目标日期黄经', ()
 });
 
 test('七政四余可选秒数应贯穿天文时间、光照证据与出生提示，省略时保持默认结果', () => {
-  const withoutSecond = generateQizheng({
-    year: 1990,
-    month: 6,
-    day: 15,
-    hour: 10,
-    minute: 30,
-    latitude: 39.9042,
-    longitude: 116.4074,
-    timezone: 8,
-  });
+  const withoutSecond = getBeijingDefaultChart();
   const withSecond = generateQizheng({
     year: 1990,
     month: 6,
@@ -183,16 +182,7 @@ test('七政庙旺喜乐应与星学大成第三章一致并保留重叠状态',
 });
 
 test('七政四余完整盘采用二十八宿真实距星边界并保持位置来源分层', () => {
-  const result = generateQizheng({
-    year: 1990,
-    month: 6,
-    day: 15,
-    hour: 10,
-    minute: 30,
-    latitude: 39.9042,
-    longitude: 116.4074,
-    timezone: 8,
-  });
+  const result = getBeijingDefaultChart();
 
   assert.equal(result.stars.length, 11);
   assert.equal(result.stars.filter((star) => star.kind === '七政').length, 7);

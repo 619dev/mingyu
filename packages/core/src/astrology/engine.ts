@@ -855,8 +855,8 @@ export function calculateChart(
       patterns: patterns.map((pattern) => pattern.name),
     },
     options: {
-      aspectTypes,
-      aspectOrbs: DEFAULT_ORBS,
+      aspectTypes: [...aspectTypes],
+      aspectOrbs: { ...DEFAULT_ORBS },
       minimumAspectStrength: options.minimumAspectStrength ?? 0,
       includePatterns: true,
     },

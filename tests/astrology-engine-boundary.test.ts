@@ -70,7 +70,25 @@ test('星历保留验证年代与古代时标差精度说明，现代日期无�
   const old = calculateChart(input);
   assert.ok(old.warnings.some((warning) => /太阳.*1000—3000/.test(warning)));
   assert.ok(old.warnings.some((warning) => /时标差.*230秒.*0.96度.*2.11角分/.test(warning)));
-  assert.deepEqual(calculateChart({ ...input, year: 2026 }).warnings, []);
+  const aspectTypes = Object.values(AspectType);
+  const modern = calculateChart({ ...input, year: 2026 }, { aspectTypes });
+  const completeModern = structuredClone(modern);
+  assert.deepEqual(modern.warnings, []);
+  try {
+    modern.options.aspectOrbs[AspectType.Conjunction] = 0;
+    modern.options.aspectTypes.length = 0;
+    assert.deepEqual(aspectTypes, Object.values(AspectType));
+    const conjunction = calculateAspects([
+      { name: '甲', longitude: 0 },
+      { name: '乙', longitude: 7 },
+    ]).aspects.filter((aspect) => aspect.type === AspectType.Conjunction);
+    assert.equal(conjunction.length, 1);
+    assert.equal(conjunction[0].orb, 8);
+    assert.equal(conjunction[0].deviation, 7);
+    assert.deepEqual(calculateChart({ ...input, year: 2026 }), completeModern);
+  } finally {
+    Object.assign(modern.options.aspectOrbs, completeModern.options.aspectOrbs);
+  }
 });
 
 test('请求的星体超出星历数据范围时明确报错，未请求的小行星不阻断主星盘', () => {

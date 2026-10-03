@@ -21,14 +21,15 @@ test('月年周期按当前流曜求根，共享同一瞬时采样并兼容单�
   for (const mode of ['monthly', 'yearly'] as const) {
     const input = { startUtcMs: start, endUtcMs: start + 2 * hour, timezone: 0, mode };
     const calls: Array<{ utcMs: number; names: readonly string[] }> = [];
-    const scan = createQizhengPeriodEventScanner({
+    const scannerInput = {
       ...input,
-      sampleLongitudes: (utcMs, names) => {
+      sampleLongitudes: (utcMs: number, names?: readonly string[]) => {
         assert.ok(names?.length);
         calls.push({ utcMs, names: [...names] });
-        return samples(utcMs).filter((sample) => names.includes(sample.name));
+        return samples(utcMs).filter((sample) => names!.includes(sample.name));
       },
-    });
+    };
+    const scan = createQizhengPeriodEventScanner(scannerInput);
     const result = scan(natal);
     const legacy = scanQizhengPeriodEvents({ ...input, ...natal, sampleLongitudes: samples });
     assert.deepEqual(result, legacy);
@@ -48,6 +49,13 @@ test('月年周期按当前流曜求根，共享同一瞬时采样并兼容单�
     result.events[0].promptText = '调用方修改';
     result.axis.length = 0;
     result.windows.length = 0;
+    scannerInput.timezone = 8;
+    scannerInput.mode = mode === 'monthly' ? 'yearly' : 'monthly';
+    scannerInput.startUtcMs += hour;
+    scannerInput.endUtcMs += hour;
+    scannerInput.sampleLongitudes = () => {
+      throw new Error('不能使用后来替换的周期采样器。');
+    };
     const callCount = calls.length;
     assert.deepEqual(scan(natal), expected);
     assert.equal(calls.length, callCount);

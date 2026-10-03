@@ -799,11 +799,10 @@ test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该�
     yaos: [7, 6, 7, 7, 7, 6],
   });
   assert.equal(source.sanheWithDay?.group, '火局');
-  assert.ok(analyzeLiuyaoEvidence(source).structureFacts.some((fact) => fact.kind === '日辰三合'));
-  assert.match(
-    formatEnhancedDivinationInfo('liuyao', source),
-    /三合三支：日辰午与动变爻同见火局三支（寅、午、戌）/u,
-  );
+  const sourceEvidence = analyzeLiuyaoEvidence(source);
+  assert.ok(sourceEvidence.structureFacts.some((fact) => fact.kind === '日辰三合'));
+  const sourceEnhanced = formatEnhancedDivinationInfo('liuyao', source);
+  assert.match(sourceEnhanced, /三合三支：日辰午与动变爻同见火局三支（寅、午、戌）/u);
 
   const mutations: Array<(data: typeof source) => void> = [
     (data) => {
@@ -855,11 +854,8 @@ test('六爻三合结构须由动变爻和月日支复算，旧结果缺少该�
   delete oldResult.sanheWithMonth;
 
   const snapshot = structuredClone(oldResult);
-  assert.deepEqual(analyzeLiuyaoEvidence(oldResult), analyzeLiuyaoEvidence(source));
-  assert.equal(
-    formatEnhancedDivinationInfo('liuyao', oldResult),
-    formatEnhancedDivinationInfo('liuyao', source),
-  );
+  assert.deepEqual(analyzeLiuyaoEvidence(oldResult), sourceEvidence);
+  assert.equal(formatEnhancedDivinationInfo('liuyao', oldResult), sourceEnhanced);
   assert.deepEqual(
     getDivinationSummaryBlocks('liuyao', oldResult),
     getDivinationSummaryBlocks('liuyao', source),
