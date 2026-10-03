@@ -49,6 +49,35 @@ test('公共天文事实应与 JPL Horizons DE441 固定样本一致', () => {
       `${body.name}黄纬偏差超限`,
     );
   }
+
+  const original = structuredClone(facts);
+  try {
+    Reflect.set(facts.model.recommendedYearRange, '0', 2001);
+    Reflect.set(facts.model.validation, 'ephemeris', '被调用者改写的星历');
+    Reflect.set(facts.model.validation, 'longitudeToleranceDegrees', 999);
+    Reflect.set(facts.model, 'coordinate', '被调用者改写的坐标');
+
+    assert.deepEqual(ASTRONOMY_FACT_MODEL.recommendedYearRange, [1800, 2200]);
+    assert.equal(ASTRONOMY_FACT_MODEL.validation.ephemeris, 'DE441');
+    assert.equal(ASTRONOMY_FACT_MODEL.validation.longitudeToleranceDegrees, 0.02);
+    assert.equal(ASTRONOMY_FACT_MODEL.coordinate, '地心回归黄道日期坐标');
+    const fresh = queryAstronomicalFacts({
+      year: 2000,
+      month: 1,
+      day: 1,
+      hour: 12,
+      minute: 0,
+      timezone: 0,
+    });
+    assert.deepEqual(fresh, original);
+    assert.notEqual(fresh.model, facts.model);
+    assert.notEqual(fresh.model.validation, facts.model.validation);
+    assert.notEqual(fresh.model.recommendedYearRange, facts.model.recommendedYearRange);
+  } finally {
+    Reflect.set(ASTRONOMY_FACT_MODEL.recommendedYearRange, '0', 1800);
+    Reflect.set(ASTRONOMY_FACT_MODEL, 'coordinate', '地心回归黄道日期坐标');
+    Object.assign(ASTRONOMY_FACT_MODEL.validation, original.model.validation);
+  }
 });
 
 test('公共天文事实应正确换算时区、月相与逆行状态', () => {

@@ -627,7 +627,7 @@ function normalizeScopeId(raw: string | null | undefined) {
 
 export function getPromptMethodCapability(methodId: string): PromptMethodCapability | undefined {
   const normalized = normalizeMethodId(methodId);
-  return normalized ? PROMPT_METHOD_CAPABILITIES[normalized] : undefined;
+  return normalized ? structuredClone(PROMPT_METHOD_CAPABILITIES[normalized]) : undefined;
 }
 
 export function getPromptMethodCapabilities() {
@@ -647,7 +647,9 @@ export function getPromptSubtopicOptions(topicId: string, methodId?: string): Pr
   if (!topic) return [];
   const capability = methodId ? getPromptMethodCapability(methodId) : undefined;
   if (capability && !capability.topicIds.includes(topic)) return [];
-  return [...(capability?.subtopics[topic] ?? TOPIC_SUBTOPIC_OPTIONS[topic])];
+  return (capability?.subtopics[topic] ?? TOPIC_SUBTOPIC_OPTIONS[topic]).map((option) => ({
+    ...option,
+  }));
 }
 
 export function resolvePromptSelection(input: {

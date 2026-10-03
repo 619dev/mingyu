@@ -9,7 +9,7 @@ import { analyzeBaziCompatibility } from '@core/bazi';
 import { baziCalculator } from '@core/bazi/baziCalculator';
 import { formatBaziForPrompt, formatPatternBasisForPrompt } from '@core/bazi/baziAnalysisFormatter';
 import { buildFortuneSelectionContext } from '@core/bazi/fortuneSelection';
-import { generateAnalysisDimensionHints } from '@core/bazi/baziEnhancement';
+import { generateAnalysisDimensionHints, getPeachBlossomDetail } from '@core/bazi/baziEnhancement';
 import { identifyClassicPattern } from '@core/bazi/baziEnhancement/classicPatterns';
 import { generateEnhancedAnalysisSection } from '@core/bazi/baziPromptEnhancement';
 import { PROMPT_GUIDANCE_TEXT as PROMPT_ROLE_TEXT } from '../src/lib/prompt-guidance';
@@ -1799,6 +1799,35 @@ test('八字增强资料包不再按用户分类切换本地模板', () => {
   assert.doesNotMatch(generalSection, /月令旺衰权重|不代表概率|规则输入/);
   assert.doesNotMatch(healthSection, /【寿元分析】/);
   assert.doesNotMatch(careerSection, /【限运分析】/);
+
+  const expectedDescription =
+    '墙外桃花指在时柱或月柱的桃花，传统用于社交场域、事业曝光或晚运情感波动的取象。';
+  for (const pillar of ['year', 'month', 'day', 'hour'] as const) {
+    const detail = getPeachBlossomDetail(pillar);
+    const original = { ...detail };
+    try {
+      detail.type = '普通桃花';
+      detail.position = '变造位置';
+      detail.description = '变造桃花依据';
+      detail.favorable = '变造有利依据';
+      detail.unfavorable = '变造不利依据';
+      assert.deepEqual(getPeachBlossomDetail(pillar), original);
+      assert.equal(generateEnhancedAnalysisSection(result, 'general'), generalSection);
+    } finally {
+      Object.assign(detail, original);
+    }
+  }
+  assert.match(generalSection, /月柱:墙外桃花/);
+  assert.match(generalSection, /时柱:墙外桃花/);
+  assert.ok(generalSection.includes(expectedDescription));
+
+  assert.equal(result.pillars.month.ganZhi, '壬子');
+  assert.equal(result.pillars.hour.ganZhi, '丙子');
+  assert.deepEqual(result.hiddenStems.month, ['癸']);
+  assert.deepEqual(result.hiddenStems.hour, ['癸']);
+  assert.notStrictEqual(result.hiddenStems.month, result.hiddenStems.hour);
+  result.hiddenStems.month[0] = '甲';
+  assert.deepEqual(result.hiddenStems.hour, ['癸']);
 });
 
 test('高风险旁证提示改为辅助研判框架，避免直接断语', () => {

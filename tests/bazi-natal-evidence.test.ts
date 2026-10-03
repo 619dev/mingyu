@@ -72,6 +72,19 @@ test('八字本命证据应保留四柱事实及可追溯关联', () => {
     analysis.promptText,
     /命语|本项目|当前项目|项目统一|工程|接口|API|MCP|内部权重|bazi:natal:/,
   );
+
+  const inputBefore = structuredClone(result);
+  const promptBefore = formatBaziForPrompt(result);
+  for (const fact of analysis.pillarFacts) {
+    fact.hiddenStems[0] = '变造藏干';
+    fact.hiddenTenGods[0] = '变造十神';
+    fact.kongWang[0] = '变造旬空';
+  }
+  assert.deepEqual(result.hiddenStems, inputBefore.hiddenStems);
+  assert.deepEqual(result.hiddenTenGods, inputBefore.hiddenTenGods);
+  assert.deepEqual(result.kongWang, inputBefore.kongWang);
+  assert.equal(formatBaziForPrompt(result), promptBefore);
+  assert.deepEqual(analyzeBaziNatalEvidence(result), inputBefore.evidenceAnalysis);
 });
 
 test('节气边界资料不完整时本命证据不能标为完整', () => {

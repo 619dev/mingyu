@@ -374,7 +374,7 @@ export type PromptSchoolId<Method extends PromptSchoolMethod> =
   keyof (typeof PROMPT_SCHOOL_PROFILES)[Method] & string;
 
 export function getPromptSchoolProfiles(method: PromptSchoolMethod) {
-  return PROMPT_SCHOOL_PROFILES[method] as Record<string, PromptSchoolProfile>;
+  return structuredClone(PROMPT_SCHOOL_PROFILES[method]) as Record<string, PromptSchoolProfile>;
 }
 
 export function getPromptSchoolIds(method: PromptSchoolMethod) {

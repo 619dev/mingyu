@@ -193,6 +193,10 @@ export function queryAstronomicalFacts(input: AstronomicalFactInput): Astronomic
       illuminationFraction: moonGeometry.illuminationFraction,
       waxing: phaseAngleDegrees < 180,
     },
-    model: ASTRONOMY_FACT_MODEL,
+    model: {
+      ...ASTRONOMY_FACT_MODEL,
+      recommendedYearRange: [...ASTRONOMY_FACT_MODEL.recommendedYearRange],
+      validation: { ...ASTRONOMY_FACT_MODEL.validation },
+    },
   };
 }

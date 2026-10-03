@@ -374,16 +374,16 @@ function buildPillarFacts(data: BaziChartResult): BaziNatalPillarFact[] {
       zhi: pillar.zhi,
       ganZhi: pillar.ganZhi,
       tenGod: tenGodValid ? data.tenGods[key] : '',
-      hiddenStems: hiddenStemsMismatch ? [] : hiddenStems,
+      hiddenStems: hiddenStemsMismatch ? [] : [...hiddenStems],
       hiddenTenGods:
         hiddenStemsMismatch || hiddenTenGodLengthMismatch || hiddenTenGodValueMismatch
           ? []
-          : hiddenTenGods,
+          : [...hiddenTenGods],
       nayin: nayinValid ? data.nayin[key] : '',
       pillarLifeStage: pillarLifeStageValid ? data.pillarLifeStages[key] : '',
       dayMasterLifeStage: dayMasterLifeStageValid ? data.lifeStages[key] : '',
       ziZuo: ziZuoValid ? data.ziZuo[key] : '',
-      kongWang: kongWangValid ? data.kongWang[key] : [],
+      kongWang: kongWangValid ? [...data.kongWang[key]] : [],
       calculationStepKeys: ['bazi:natal:calculation:pillars', 'bazi:natal:calculation:derived'],
       promptText,
       sources: ['四柱干支、十神、藏干、纳音、十二运、自坐与旬空结构化资料'],

@@ -39,7 +39,7 @@ export function calculateHiddenStems(pillars: Pillars): HiddenStems {
     if (!stems) {
       throw new Error(`${key}柱藏干数据缺失：${pillars[key].zhi}`);
     }
-    result[key] = stems;
+    result[key] = [...stems];
   });
   return result;
 }
